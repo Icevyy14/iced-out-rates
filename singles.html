@@ -14,26 +14,28 @@
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════
    Iced Out Penguin rates — skinned to match the owner app's 💰 Pricing tab.
-   Theme: the owner's active theme, "Synthwave". Dark only, no light theme.
-   Everything between the two "PORTED" banners is lifted verbatim from
-   icevyy-tcg.html so the two editors cannot drift apart visually.
+   Theme: Synthwave, re-coloured blue / black / red (owner's call, 2026-11-04)
+   — same techniques (gradient-clipped numbers, glow, diagonal card
+   gradients) as icevyy-tcg.html's Synthwave, different palette. Dark only.
+   Everything between the two "PORTED" banners started lifted verbatim from
+   icevyy-tcg.html; selectors still match, colors now diverge on purpose.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root{
-  /* Synthwave */
-  --bg:#000000;
-  --s1:#0a0b0f;
-  --s2:#10121a;
-  --s3:#181b26;
-  --border:#242838;
-  --buy:#7dd3fc;
-  --sell:#ff4d5e;
-  --text:#eef4ff;
-  --dim:#8fa0bd;
-  --muted:#5c6880;
-  --red:#ff3b4e;
-  --yellow:#9bdcff;
-  --purple:#7dd3fc;
+  /* Synthwave — blue / black / red */
+  --bg:#040308;
+  --s1:#0a0912;
+  --s2:#100e1c;
+  --s3:#171428;
+  --border:#2a2447;
+  --buy:#3fa9ff;
+  --sell:#ff2a55;
+  --text:#eef3ff;
+  --dim:#8d97c4;
+  --muted:#5a6191;
+  --red:#ff2a55;
+  --yellow:#ff4d6d;
+  --purple:#7c5cff;
 
   --font-ui:'Rajdhani','Segoe UI',system-ui,-apple-system,sans-serif;
   --font-display:'Orbitron','Rajdhani','Segoe UI',system-ui,sans-serif;
@@ -57,20 +59,33 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-ui);min-heigh
 ::-webkit-scrollbar{width:6px;} ::-webkit-scrollbar-track{background:var(--s1);} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
 
 /* page glow */
-html::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(120% 60% at 50% -12%, rgba(125,211,252,.14), transparent 62%);}
+html::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(120% 60% at 12% -10%, rgba(63,169,255,.18), transparent 62%),
+    radial-gradient(110% 70% at 100% 112%, rgba(255,42,85,.16), transparent 60%);
+  animation:bgDrift 12s ease-in-out infinite alternate;
+}
+html::after{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:repeating-linear-gradient(0deg, transparent 0 28px, rgba(63,169,255,.05) 28px 29px);
+  -webkit-mask-image:linear-gradient(180deg, transparent 0 60%, #000 100%);
+  mask-image:linear-gradient(180deg, transparent 0 60%, #000 100%);
+}
+@keyframes bgDrift{from{background-position:0 0, 0 0;}to{background-position:-3% -2%, 3% 2%;}}
 
 /* NAV */
 .nav{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--s1);position:sticky;top:0;z-index:100;backdrop-filter:blur(10px);}
 .logo{font-size:22px;font-weight:800;letter-spacing:-0.5px;}
 .logo span{color:var(--sell);}
-.logo em{color:var(--buy);font-style:normal;}
+.logo em{font-style:normal;}
 
 /* WTB rules — grouped tiers, styled to look like a printed price chart */
-.wtb-group{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin-bottom:14px;position:relative;}
+.wtb-group{background:linear-gradient(165deg, var(--s2), var(--s1));border:1px solid color-mix(in srgb, var(--buy) 28%, var(--border));border-radius:14px;padding:18px 22px;margin-bottom:14px;position:relative;box-shadow:inset 0 1px 0 rgba(63,169,255,.10);}
 .wtb-group-header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:10px;}
 .wtb-group-header h3{font-size:15px;font-weight:900;color:var(--text);letter-spacing:1px;display:flex;align-items:center;gap:8px;}
 .wtb-group-header h3::before{content:'';width:4px;height:18px;background:var(--yellow);border-radius:2px;}
-.wtb-group-header .right{font-size:10px;color:var(--dim);font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;}
+.wtb-group-header .right{font-size:10px;color:color-mix(in srgb, var(--buy) 45%, var(--dim));font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;}
 .wtb-group .desc{font-size:12px;color:var(--dim);margin-bottom:10px;}
 .wtb-group .desc input{background:transparent;border:none;color:var(--dim);width:100%;font-size:12px;outline:none;}
 .wtb-tier{display:grid;grid-template-columns:170px 1fr 50px 110px 30px;gap:14px;align-items:center;padding:11px 6px;border-bottom:1px solid var(--border);font-size:14px;font-weight:600;color:var(--text);}
@@ -81,15 +96,17 @@ html::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 .wtb-tier .meta select{background:transparent;border:1px solid transparent;color:var(--dim);font-size:11px;padding:2px 4px;border-radius:4px;outline:none;}
 .wtb-tier .meta select:focus,.wtb-tier .meta select:hover{border-color:var(--border);background:var(--s1);}
 .wtb-tier .pct{font-size:24px;font-weight:900;color:var(--yellow);text-align:right;font-family:var(--font-ui);letter-spacing:-0.5px;}
-.wtb-tier .pct input{background:transparent;border:none;color:var(--yellow);font-size:22px;font-weight:900;width:65px;text-align:right;outline:none;font-family:var(--font-ui);}
-.wtb-tier .pct .pct-sign{color:var(--yellow);}
+.wtb-tier .pct input{background:transparent;border:none;background-image:linear-gradient(90deg, var(--buy), var(--red));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;caret-color:var(--buy);filter:drop-shadow(0 0 6px rgba(255,42,85,.4));font-size:22px;font-weight:900;width:65px;text-align:right;outline:none;font-family:var(--font-ui);}
+.wtb-tier .pct input:focus{background-image:none;-webkit-text-fill-color:var(--buy);color:var(--buy);filter:none;}
+.wtb-tier .pct .pct-sign{background-image:linear-gradient(90deg, var(--buy), var(--red));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;filter:drop-shadow(0 0 4px rgba(255,42,85,.35));}
 .wtb-tier .label-input{background:transparent;border:none;color:var(--dim);font-size:11px;width:100%;outline:none;font-style:italic;}
-.wtb-tier .del{background:transparent;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:4px;opacity:0.4;}
+.wtb-tier .del{background:transparent;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:4px;opacity:0.4;transition:opacity .15s,text-shadow .15s;}
 .wtb-tier:hover .del{opacity:1;}
+.wtb-tier .del:hover{text-shadow:0 0 8px color-mix(in srgb, var(--red) 70%, transparent);}
 .wtb-tier .sort{background:transparent;border:none;color:var(--dim);font-size:10px;width:40px;text-align:center;font-family:var(--font-mono);outline:none;}
 .wtb-tier .sort:focus{border:1px solid var(--border);border-radius:3px;}
-.wtb-add-tier{display:flex;align-items:center;gap:6px;background:transparent;border:1.5px dashed var(--border);color:var(--dim);cursor:pointer;font-size:12px;padding:9px 14px;border-radius:9px;width:100%;margin-top:10px;font-family:var(--font-ui);font-weight:700;transition:all 0.15s;}
-.wtb-add-tier:hover{border-color:var(--yellow);color:var(--yellow);}
+.wtb-add-tier{display:flex;align-items:center;gap:6px;background:transparent;border:1.5px dashed color-mix(in srgb, var(--buy) 45%, var(--border));color:var(--dim);cursor:pointer;font-size:12px;padding:9px 14px;border-radius:9px;width:100%;margin-top:10px;font-family:var(--font-ui);font-weight:700;transition:all 0.15s;}
+.wtb-add-tier:hover{border-color:var(--red);color:var(--red);}
 
 /* HELPER PILL */
 .helper-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid var(--border);background:var(--s2);color:var(--dim);font-family:var(--font-mono);letter-spacing:0.3px;}
@@ -103,15 +120,15 @@ html::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
 /* CARDS */
-.card{background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:20px;}
+.card{background:linear-gradient(165deg, var(--s2), var(--s1));border:1px solid color-mix(in srgb, var(--buy) 24%, var(--border));border-radius:16px;padding:20px;box-shadow:inset 0 1px 0 rgba(63,169,255,.08);}
 
 /* BUTTONS */
 .btn{padding:11px 22px;border-radius:10px;border:none;cursor:pointer;font-family:var(--font-ui);font-weight:700;font-size:13px;transition:all 0.15s;white-space:nowrap;}
-.btn-buy{background:var(--buy);color:var(--bg);}
+.btn-buy{background:var(--buy);color:var(--bg);box-shadow:0 0 14px rgba(63,169,255,.4);}
 .btn-buy:hover{opacity:0.85;transform:translateY(-1px);}
 .btn-sell{background:var(--sell);color:#fff;}
 .btn-sell:hover{opacity:0.85;transform:translateY(-1px);}
-.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--dim);}
+.btn-ghost{background:transparent;border:1.5px solid color-mix(in srgb, var(--buy) 35%, var(--border));color:var(--dim);}
 .btn-ghost:hover{border-color:var(--dim);color:var(--text);}
 .btn-danger{background:transparent;border:1.5px solid var(--red);color:var(--red);}
 .btn-danger:hover{background:var(--red);color:#fff;}
@@ -147,23 +164,24 @@ html::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 /* ── PORTED from the owner app's nav — same selectors, same values ──────── */
 .nav-tabs{display:flex;flex-wrap:wrap;gap:4px;background:var(--bg);padding:4px;border-radius:12px}
 .nav-tab{padding:8px 20px;border:none;border-radius:9px;cursor:pointer;font-family:var(--font-ui);font-size:13px;font-weight:700;transition:all .2s;background:transparent;color:var(--dim)}
-.nav-tab:hover{color:var(--text)}
-.nav-tab.active{background:var(--buy);color:var(--bg)}
+.nav-tab:hover{color:var(--red)}
+.nav-tab.active{background:var(--buy);color:var(--bg);box-shadow:0 0 18px rgba(63,169,255,.45)}
+.nav-tab.active:hover{color:var(--bg)}
 /* ── END PORTED ─────────────────────────────────────────────────────────── */
 
 /* ── PORTED from ledger-portal/page.html — same selectors, same values, now the Consignors tab ── */
 .wtb-table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--font-ui);table-layout:fixed;}
 .wtb-table td, .wtb-table th{overflow:hidden;}
 .wtb-table td.wtb-name{white-space:nowrap;text-overflow:ellipsis;}
-.wtb-table th{text-align:left;padding:9px 10px;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);}
+.wtb-table th{text-align:left;padding:9px 10px;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:color-mix(in srgb, var(--buy) 40%, var(--dim));}
 .wtb-table td{padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px;}
 .wtb-table td.cert{font-family:var(--font-mono);font-weight:700;}
 .wtb-table td.num{text-align:right;font-family:var(--font-mono);font-weight:700;}
 .wtb-table .bucket{display:inline-block;padding:3px 9px;border-radius:6px;font-weight:800;font-size:11px;color:#000;}
 .wtb-totals{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;}
-.wtb-total-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px 18px;text-align:center;}
+.wtb-total-card{background:linear-gradient(165deg, var(--s2), var(--s1));border:1px solid color-mix(in srgb, var(--buy) 24%, var(--border));border-radius:12px;padding:16px 18px;text-align:center;box-shadow:inset 0 1px 0 rgba(63,169,255,.08);}
 .wtb-total-card .lbl{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:6px;}
-.wtb-total-card .val{font-size:22px;font-weight:900;}
+.wtb-total-card .val{font-size:22px;font-weight:900;text-shadow:0 0 12px color-mix(in srgb, var(--buy) 40%, transparent);}
 .filter-chip{padding:6px 12px;border-radius:8px;border:none;background:transparent;color:var(--dim);font-family:var(--font-ui);font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;}
 .filter-chip:hover{color:var(--text);}
 .filter-chip.active{background:var(--buy);color:var(--bg);}
@@ -171,12 +189,12 @@ html::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 
 /* ── CONSIGNORS TAB — page additions on top of the ported table/pill rules ── */
 .stat-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:18px;}
-.stat-strip .wtb-total-card.owed{border-color:var(--red);}
-.stat-strip .wtb-total-card.owed .val{color:var(--red);}
+.stat-strip .wtb-total-card.owed{border-color:var(--red);box-shadow:0 0 16px rgba(255,42,85,.3), inset 0 1px 0 rgba(63,169,255,.08);}
+.stat-strip .wtb-total-card.owed .val{color:var(--red);text-shadow:0 0 12px color-mix(in srgb, var(--red) 55%, transparent);}
 .partner-strip{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
-.partner-card{background:var(--s1);border:1px solid var(--border);border-top:3px solid var(--border);border-radius:14px;padding:16px 18px;}
-.partner-card.p-josh{border-top-color:var(--buy);}
-.partner-card.p-penguin{border-top-color:var(--sell);}
+.partner-card{background:linear-gradient(165deg, var(--s2), var(--s1));border:1px solid var(--border);border-top:3px solid var(--border);border-radius:14px;padding:16px 18px;box-shadow:inset 0 1px 0 rgba(63,169,255,.08);}
+.partner-card.p-josh{border-top-color:var(--buy);box-shadow:0 -2px 16px rgba(63,169,255,.18), inset 0 1px 0 rgba(63,169,255,.08);}
+.partner-card.p-penguin{border-top-color:var(--sell);box-shadow:0 -2px 16px rgba(255,42,85,.18), inset 0 1px 0 rgba(63,169,255,.08);}
 .partner-card h4{font-size:14px;font-weight:800;margin-bottom:12px;}
 .partner-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
 .pg-cell{text-align:center;}
@@ -191,8 +209,8 @@ html::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 .status-pill.st-quoted{border-color:var(--border);color:var(--dim);}
 .status-pill.st-accepted{border-color:var(--buy);color:var(--buy);}
 .status-pill.st-received{background:color-mix(in srgb, var(--buy) 22%, transparent);border-color:var(--buy);color:var(--buy);}
-.status-pill.st-locked{background:color-mix(in srgb, var(--buy) 55%, transparent);border-color:var(--buy);color:var(--text);}
-.status-pill.st-paid{background:var(--buy);border-color:var(--buy);color:var(--bg);}
+.status-pill.st-locked{background:color-mix(in srgb, var(--purple) 45%, transparent);border-color:var(--purple);color:var(--text);}
+.status-pill.st-paid{background:#2fd38a;border-color:#2fd38a;color:var(--bg);}
 .status-pill.st-cancelled{background:color-mix(in srgb, var(--red) 18%, transparent);border-color:var(--red);color:var(--red);}
 .status-pill.st-unknown{border-color:var(--border);color:var(--muted);}
 .src-pill{display:inline-block;padding:3px 9px;border-radius:var(--r-pill);font-size:10px;font-weight:800;font-family:var(--font-mono);letter-spacing:.5px;border:1px solid var(--border);white-space:nowrap;background:transparent;}
@@ -227,6 +245,7 @@ html::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 .toolbar .form-input{max-width:240px;}
 .count-line{font-size:11px;color:var(--dim);margin:4px 4px 10px;font-family:var(--font-mono);}
 .loading-row td, .empty-row td{color:var(--dim);text-align:center;padding:18px;font-style:italic;}
+.wtb-table tbody tr:not(.loading-row):not(.empty-row):hover{background:linear-gradient(90deg, color-mix(in srgb, var(--buy) 10%, transparent), transparent);}
 
 /* ── SINGLES TAB — reuses .tgl (the slab tab's vintage/special toggle) for era/kind/printing chips ── */
 .chipgroup{display:inline-flex;gap:3px;align-items:center;flex-wrap:wrap;}
@@ -238,7 +257,7 @@ body>*{position:relative;z-index:1;}
 
 /* the app's own comment calls flex-wrap on the nav a bug fix, not styling */
 .nav{flex-wrap:wrap;gap:12px 16px;}
-.logo{font-family:var(--font-display);font-size:17px;}
+.logo{font-family:var(--font-display);font-size:17px;background:linear-gradient(90deg, var(--buy), var(--red));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;filter:drop-shadow(0 0 10px rgba(255,42,85,.35));display:inline-block;}
 .logo-sub{font-size:11px;color:var(--dim);margin-top:3px;}
 .nav-left{min-width:0;}
 .nav-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
@@ -246,7 +265,7 @@ body>*{position:relative;z-index:1;}
 .msg{font-size:11px;color:var(--dim);max-width:300px;}
 .msg.ok{color:var(--buy);}
 .msg.err{color:var(--red);}
-.btn-save{background:var(--buy);color:var(--bg);}
+.btn-save{background:var(--buy);color:var(--bg);box-shadow:0 0 14px rgba(63,169,255,.4);}
 .btn:disabled{opacity:.5;cursor:default;transform:none;}
 .btn:disabled:hover{opacity:.5;transform:none;}
 
@@ -265,7 +284,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
 /* VINTAGE / SPECIAL toggles — same chip treatment as .rule-lang .rl */
 .wtb-tier .tgl{padding:2px 6px;border-radius:5px;font-size:10px;font-weight:800;cursor:pointer;font-family:var(--font-mono);border:1px solid var(--border);color:var(--dim);background:transparent;letter-spacing:.5px;}
 .wtb-tier .tgl:hover{color:var(--text);}
-.wtb-tier .tgl.on{background:var(--buy);color:var(--bg);border-color:var(--buy);}
+.wtb-tier .tgl.on{background:var(--red);color:var(--bg);border-color:var(--red);}
 
 /* a row the server or the validator named in an error */
 .wtb-tier.bad{box-shadow:inset 3px 0 0 var(--red);background:color-mix(in srgb, var(--red) 8%, transparent);}
@@ -293,7 +312,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
 .errors-card li{margin-bottom:4px;}
 
 /* edit-key lock card */
-#lock-card{margin-bottom:18px;}
+#lock-card{margin-bottom:18px;border-color:var(--red);box-shadow:0 0 22px rgba(255,42,85,.3), inset 0 1px 0 rgba(63,169,255,.08);}
 .lock-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;}
 .lock-row .form-input{max-width:260px;}
 .lock-hint{font-size:11px;color:var(--dim);margin-top:10px;}
