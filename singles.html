@@ -292,6 +292,16 @@ code{font-family:var(--font-mono);font-size:.92em;}
 .errors-card ul{margin:10px 0 0;padding-left:18px;font-size:12px;line-height:1.55;}
 .errors-card li{margin-bottom:4px;}
 
+/* edit-key lock card */
+#lock-card{margin-bottom:18px;}
+.lock-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;}
+.lock-row .form-input{max-width:260px;}
+.lock-hint{font-size:11px;color:var(--dim);margin-top:10px;}
+.lock-err{font-size:12px;color:var(--red);margin-top:8px;}
+.change-key{font-size:11px;color:var(--dim);text-decoration:underline;cursor:pointer;}
+.change-key:hover{color:var(--text);}
+.editor-fieldset{display:block;border:0;margin:0;padding:0;min-width:0;}
+
 .foot{margin:18px 4px 40px;font-size:11px;color:var(--muted);font-family:var(--font-mono);}
 
 :focus-visible{outline:2px solid var(--purple);outline-offset:2px;}
@@ -345,6 +355,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
     <span class="helper-pill" id="bot-pill" title="When the bot last read these rates">⚪ Bot: not seen yet</span>
 
     <span class="saved" id="st-saved">Loading the sheet…</span>
+    <a href="#" class="change-key" id="change-key" hidden title="Forget the saved edit key on this browser">Change key</a>
 
     <button type="button" class="btn btn-ghost btn-sm" id="reload" title="Throw away unsaved edits and reload the saved sheet">↻ Reload</button>
     <button type="button" class="btn btn-sm btn-save" id="save" title="Save the sheet. Asks for the edit key the first time.">💾 Save</button>
@@ -354,7 +365,18 @@ code{font-family:var(--font-mono);font-size:.92em;}
 
 <main class="main">
 
+<section class="card" id="lock-card" hidden>
+  <div class="card-title">🔒 Enter the edit key to edit the bands</div>
+  <div class="lock-row">
+    <input class="form-input" id="lock-key" type="password" autocomplete="off" placeholder="Edit key" aria-label="Edit key" title="The shared edit key">
+    <button type="button" class="btn btn-buy btn-sm" id="lock-unlock">Unlock</button>
+  </div>
+  <div class="lock-hint">Ask Josh for the key; this browser will remember it.</div>
+  <div class="lock-err" id="lock-err" hidden></div>
+</section>
+
 <div class="tab active" id="tab-singles">
+<fieldset class="editor-fieldset">
 
   <div class="sec-head">
     <div>
@@ -422,6 +444,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
 
   <p class="foot" id="sg-foot"></p>
 
+</fieldset>
 </div>
 
 </main>
@@ -1178,6 +1201,14 @@ window.SinglesValidate = {
 'use strict';
   var activeTab = 'singles';
 
+  var el = {
+    msg: document.getElementById('msg'),
+    save: document.getElementById('save'),
+    reload: document.getElementById('reload'),
+    stSaved: document.getElementById('st-saved'),
+    botPill: document.getElementById('bot-pill')
+  };
+
 
   var KEY_STORE = 'iopRatesEditKey';
   
@@ -1211,17 +1242,12 @@ window.SinglesValidate = {
   }
   
 
-  function editKey(force) {
-    var k = null;
-    try { k = localStorage.getItem(KEY_STORE); } catch (e) { k = null; }
-    if (!k || force) {
-      k = window.prompt('Edit key for this rates page');
-      if (!k) return null;
-      k = k.trim();
-      if (!k) return null;
-      try { localStorage.setItem(KEY_STORE, k); } catch (e) { /* private mode: key lives for this page only */ }
-    }
-    return k;
+  function getStoredKey() {
+    try { return localStorage.getItem(KEY_STORE); } catch (e) { return null; }
+  }
+
+  function storeKey(k) {
+    try { localStorage.setItem(KEY_STORE, k); } catch (e) { /* private mode: key lives for this load only */ }
   }
 
   function forgetKey() {
@@ -1229,13 +1255,114 @@ window.SinglesValidate = {
   }
   
 
-  var el = {
-    msg: document.getElementById('msg'),
-    save: document.getElementById('save'),
-    reload: document.getElementById('reload'),
-    stSaved: document.getElementById('st-saved'),
-    botPill: document.getElementById('bot-pill')
+  var lockEl = {
+    card: document.getElementById('lock-card'),
+    input: document.getElementById('lock-key'),
+    unlock: document.getElementById('lock-unlock'),
+    err: document.getElementById('lock-err'),
+    changeKey: document.getElementById('change-key')
   };
+  var keyUnlocked = false;
+  var unlockWaiters = [];
+
+  function ledgerApiBase() {
+    var meta = document.querySelector('meta[name="ledger-api"]');
+    return meta && meta.content ? meta.content.replace(/\/+$/, '') : '';
+  }
+
+  /** Checks a key against the ledger API without writing anything: 'ok' | 'bad' | 'error'. */
+  function checkKey(key) {
+    return fetch(ledgerApiBase() + '/consignments?limit=1', {
+      headers: { accept: 'application/json', 'x-edit-key': key }
+    }).then(function (res) {
+      if (res.status === 200) return 'ok';
+      if (res.status === 401) return 'bad';
+      return 'error';
+    }, function () { return 'error'; });
+  }
+
+  function setFormDisabled(disabled) {
+    var list = document.querySelectorAll('.editor-fieldset');
+    for (var i = 0; i < list.length; i++) list[i].disabled = disabled;
+  }
+
+  function updateSaveReloadVisibility() {
+    var hide = !keyUnlocked || activeTab === 'consignors';
+    if (el.save) el.save.hidden = hide;
+    if (el.reload) el.reload.hidden = !keyUnlocked;
+  }
+
+  function showLock(message) {
+    keyUnlocked = false;
+    if (lockEl.card) lockEl.card.hidden = false;
+    if (lockEl.err) { lockEl.err.textContent = message || ''; lockEl.err.hidden = !message; }
+    if (lockEl.changeKey) lockEl.changeKey.hidden = true;
+    setFormDisabled(true);
+    updateSaveReloadVisibility();
+  }
+
+  function hideLock() {
+    keyUnlocked = true;
+    if (lockEl.card) lockEl.card.hidden = true;
+    if (lockEl.err) { lockEl.err.textContent = ''; lockEl.err.hidden = true; }
+    if (lockEl.changeKey) lockEl.changeKey.hidden = false;
+    setFormDisabled(false);
+    updateSaveReloadVisibility();
+    var waiters = unlockWaiters;
+    unlockWaiters = [];
+    waiters.forEach(function (fn) { fn(); });
+  }
+
+  /** Runs fn once a verified key is in hand - right away if one already is. */
+  function whenUnlocked(fn) {
+    if (keyUnlocked) fn(); else unlockWaiters.push(fn);
+  }
+
+  function attemptUnlock() {
+    var key = (lockEl.input && lockEl.input.value || '').trim();
+    if (!key) return;
+    if (lockEl.unlock) lockEl.unlock.disabled = true;
+    if (lockEl.err) { lockEl.err.hidden = true; lockEl.err.textContent = ''; }
+    checkKey(key).then(function (result) {
+      if (lockEl.unlock) lockEl.unlock.disabled = false;
+      if (result === 'ok') {
+        storeKey(key);
+        if (lockEl.input) lockEl.input.value = '';
+        hideLock();
+      } else if (result === 'bad') {
+        showLock('That key is not right');
+      } else {
+        showLock('Could not check the key, try again');
+      }
+    });
+  }
+
+  if (lockEl.unlock) lockEl.unlock.addEventListener('click', attemptUnlock);
+  if (lockEl.input) {
+    lockEl.input.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') { ev.preventDefault(); attemptUnlock(); }
+    });
+  }
+  if (lockEl.changeKey) {
+    lockEl.changeKey.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      forgetKey();
+      showLock('');
+    });
+  }
+
+  (function initLock() {
+    var stored = getStoredKey();
+    showLock('');
+    if (!stored) return;
+    checkKey(stored).then(function (result) {
+      if (result === 'ok') hideLock();
+      else if (result === 'bad') { forgetKey(); showLock('The key stopped working, enter it again'); }
+      else showLock('Could not check the key, try again');
+    });
+  })();
+  
+
 
   var SinglesTab = (function () {
     var SV = window.SinglesValidate || {};
@@ -1679,8 +1806,8 @@ window.SinglesValidate = {
       }
       showErrors(null);
 
-      var key = editKey(false);
-      if (!key) { setMsg('Save cancelled, no edit key.', 'err'); return; }
+      var key = getStoredKey();
+      if (!key) { showLock('Enter the edit key to save.'); return; }
 
       setBusy(true);
       setMsg('Saving…');
@@ -1696,7 +1823,8 @@ window.SinglesValidate = {
         apiUp = true;
         if (out.status === 401) {
           forgetKey();
-          setMsg('That edit key is wrong. Press Save again to enter another one.', 'err');
+          showLock('The key stopped working, enter it again');
+          setMsg('That edit key is wrong.', 'err');
           return;
         }
         if (out.status === 400 && out.body && out.body.errors) {
@@ -1744,6 +1872,10 @@ window.SinglesValidate = {
     };
   })();
   
+
+  el.save.addEventListener('click', function () { SinglesTab.save(); });
+  el.reload.addEventListener('click', function () { SinglesTab.reload(true); });
+
 })();
 </script>
 </body>
