@@ -250,6 +250,49 @@ html::after{
 /* ── SINGLES TAB — reuses .tgl (the slab tab's vintage/special toggle) for era/kind/printing chips ── */
 .chipgroup{display:inline-flex;gap:3px;align-items:center;flex-wrap:wrap;}
 
+/* ── SINGLES TAB — per-row exclusions (NOT-taking conditions) ───────────── */
+.wtb-tier .wtb-excl{grid-column:1 / -1;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);}
+.excl-toggle{background:transparent;border:1px solid var(--border);color:var(--dim);border-radius:6px;padding:4px 10px;font-size:11px;font-family:var(--font-mono);letter-spacing:.5px;cursor:pointer;}
+.excl-toggle:hover{border-color:var(--red);color:var(--red);}
+.excl-list{margin-top:10px;display:flex;flex-direction:column;gap:10px;}
+.excl-item{position:relative;background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:8px;padding:10px 34px 10px 12px;}
+.excl-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.excl-field{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.excl-field.wide{grid-column:1 / -1;}
+.excl-field label{font-family:var(--font-mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);}
+.excl-input{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-family:var(--font-ui);font-size:12px;outline:none;width:100%;}
+.excl-input:focus{border-color:var(--buy);}
+.excl-textarea{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-family:var(--font-ui);font-size:12px;outline:none;resize:vertical;min-height:46px;width:100%;line-height:1.45;white-space:pre-wrap;}
+.excl-textarea:focus{border-color:var(--buy);}
+.excl-item .del{position:absolute;top:8px;right:8px;background:transparent;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:4px;opacity:.55;}
+.excl-item .del:hover{opacity:1;}
+.excl-empty{font-size:11px;color:var(--muted);font-style:italic;padding:4px 0 2px;}
+.excl-add{margin-top:2px;}
+
+/* ── SINGLES TAB — the exclude-group LIBRARY (sheet-level, named + toggleable) ───────── */
+.xg-list{display:flex;flex-direction:column;gap:10px;margin-bottom:10px;}
+.xg-item{position:relative;background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--border);border-radius:8px;padding:10px 34px 10px 12px;}
+.xg-item.on{border-left-color:var(--red);}
+.xg-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.xg-head .check{flex:none;}
+.xg-name{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-family:var(--font-ui);font-size:13px;font-weight:700;outline:none;flex:1 1 160px;min-width:120px;}
+.xg-name:focus{border-color:var(--buy);}
+.xg-id{font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:.5px;}
+.xg-toggle{background:transparent;border:none;color:var(--dim);font-size:11px;cursor:pointer;text-align:left;flex:1 1 100%;padding:2px 0 0;}
+.xg-toggle:hover{color:var(--text);}
+.xg-body{margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);}
+.xg-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.xg-item .del{position:absolute;top:8px;right:8px;background:transparent;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:4px;opacity:.55;}
+.xg-item .del:hover{opacity:1;}
+.xg-empty{text-align:center;color:var(--muted);font-size:12px;padding:10px 0;}
+.xg-add{margin-top:2px;}
+.xg-item.bad{box-shadow:inset 3px 0 0 var(--red);background:color-mix(in srgb, var(--red) 8%, transparent);}
+
+/* ── SINGLES TAB — banned cards (flat, always-applied, no toggle) ───────────────────── */
+.banned-box textarea{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--font-mono);font-size:12px;outline:none;resize:vertical;min-height:70px;width:100%;line-height:1.5;}
+.banned-box textarea:focus{border-color:var(--buy);}
+.banned-count{font-size:11px;color:var(--dim);margin-top:6px;font-family:var(--font-mono);}
+
 /* ── PAGE ADDITIONS — only what this standalone editor needs on top ──────── */
 
 /* keep everything above the html::before glow */
@@ -337,6 +380,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
   .wtb-tier .sort{flex:0 0 auto;text-align:left;}
   .wtb-tier .pct{flex:0 0 auto;}
   .wtb-tier .del{flex:0 0 auto;margin-left:auto;opacity:1;}
+  .wtb-tier .wtb-excl{flex:1 1 100%;}
+  .excl-grid{grid-template-columns:1fr;}
   .form-row{grid-template-columns:1fr;}
   .msg{max-width:100%;}
   .nav-tabs{order:3;flex-basis:100%;justify-content:center;margin-top:4px;}
@@ -394,6 +439,13 @@ code{font-family:var(--font-mono);font-size:.92em;}
   <div class="lock-err" id="lock-err" hidden></div>
 </section>
 
+<style>
+  /* Scoped to this panel on purpose (see build-portal.js: only consignors.html gets this markup),
+     so it stays out of the shared head CSS that index.html/singles.html also carry. Marks a singles
+     (raw card) row in the master list at a glance - reuses the existing pill look (.src-pill /
+     .status-pill in the shared CSS) via the same custom properties rather than inventing new colors. */
+  #master-table .kind-pill{display:inline-block;margin-right:6px;padding:2px 7px;border-radius:var(--r-pill);font-size:9px;font-weight:800;font-family:var(--font-mono);letter-spacing:.4px;text-transform:uppercase;border:1px solid var(--border);color:var(--dim);vertical-align:middle;white-space:nowrap;}
+</style>
 <div class="tab active" id="tab-consignors">
 <fieldset class="editor-fieldset">
 
@@ -1128,6 +1180,25 @@ code{font-family:var(--font-mono);font-size:.92em;}
     }
 
     // ── render: Master list ───────────────────────────────────────────────────
+    // A singles (raw card) item has no cert/grader/grade - it carries set/number/printing/condition
+    // instead (see ledger-portal/README.md's Item shape). These three read the right field for
+    // either kind, so the Cert/Company/Grade columns never go blank for a singles row.
+    function masterIdText(r) {
+      if (r.kind === 'single') return [r.set, r.number].filter(Boolean).join(' ') || '—';
+      return r.cert || '—';
+    }
+    function masterCompanyText(r) {
+      if (r.kind === 'single') return r.printing || '—';
+      return r.grader || '—';
+    }
+    function masterGradeText(r) {
+      if (r.kind === 'single') return r.condition || '—';
+      return r.grade == null ? '—' : r.grade;
+    }
+    function kindPillHtml(r) {
+      return r.kind === 'single' ? '<span class="kind-pill" title="Raw single card - not a graded slab">Single</span>' : '';
+    }
+
     function masterFiltered() {
       var rows = masterRows;
       if (masterFilters.status !== 'all') rows = rows.filter(function (r) { return r.consignmentStatus === masterFilters.status; });
@@ -1137,6 +1208,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
         rows = rows.filter(function (r) {
           return (r.card || '').toLowerCase().indexOf(q) >= 0 ||
             (r.cert || '').toLowerCase().indexOf(q) >= 0 ||
+            (r.set || '').toLowerCase().indexOf(q) >= 0 ||
+            (r.number || '').toLowerCase().indexOf(q) >= 0 ||
             (r.sellerName || '').toLowerCase().indexOf(q) >= 0 ||
             (r.sellerHandle || '').toLowerCase().indexOf(q) >= 0;
         });
@@ -1149,7 +1222,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
       var extra = masterTotal > masterRows.length ? (' (' + masterTotal.toLocaleString('en-US') + ' total on the server)') : '';
       dom.masterCount.textContent = 'Showing ' + rows.length.toLocaleString('en-US') + ' of ' + masterRows.length.toLocaleString('en-US') + ' loaded' + extra;
       if (!rows.length) {
-        dom.masterTbody.innerHTML = '<tr class="empty-row"><td colspan="11">No slabs match these filters.</td></tr>';
+        dom.masterTbody.innerHTML = '<tr class="empty-row"><td colspan="11">No items match these filters.</td></tr>';
         return;
       }
       var html = '';
@@ -1158,10 +1231,10 @@ code{font-family:var(--font-mono);font-size:.92em;}
         html += '<td>' + fmtDate(r.quotedAt) + '</td>';
         html += '<td>' + esc(r.sellerName || 'Unknown') + '</td>';
         html += '<td>' + srcPill(r.sourcedBy) + '</td>';
-        html += '<td class="cert">' + esc(r.cert || '—') + '</td>';
-        html += '<td>' + esc(r.grader || '—') + '</td>';
-        html += '<td class="wtb-name" title="' + esc(r.card || '') + '">' + esc(r.card || '—') + '</td>';
-        html += '<td>' + esc(r.grade == null ? '—' : r.grade) + '</td>';
+        html += '<td class="cert">' + esc(masterIdText(r)) + '</td>';
+        html += '<td>' + esc(masterCompanyText(r)) + '</td>';
+        html += '<td class="wtb-name" title="' + esc(r.card || '') + '">' + kindPillHtml(r) + esc(r.card || '—') + '</td>';
+        html += '<td>' + esc(masterGradeText(r)) + '</td>';
         html += '<td>' + esc(r.sport || '—') + '</td>';
         html += '<td class="num">' + money(r.marketCents) + '</td>';
         html += '<td class="num">' + money(r.payoutCents) + '</td>';
@@ -1196,14 +1269,15 @@ code{font-family:var(--font-mono);font-size:.92em;}
       var header = ['Date', 'Seller', 'Sourced by', 'Cert', 'Company', 'Card', 'Grade', 'Sport', 'Market', 'Payout', 'Status'];
       var lines = [header.map(csvCell).join(',')];
       rows.forEach(function (r) {
+        var isSingle = r.kind === 'single';
         var cells = [
           fmtDate(r.quotedAt),
           r.sellerName || '',
           srcLabel(r.sourcedBy),
-          r.cert || '',
-          r.grader || '',
-          r.card || '',
-          r.grade == null ? '' : r.grade,
+          isSingle ? ([r.set, r.number].filter(Boolean).join(' ')) : (r.cert || ''),
+          isSingle ? (r.printing || '') : (r.grader || ''),
+          (isSingle ? 'Single: ' : '') + (r.card || ''),
+          isSingle ? (r.condition || '') : (r.grade == null ? '' : r.grade),
           r.sport || '',
           r.marketCents == null ? '' : (r.marketCents / 100).toFixed(2),
           r.payoutCents == null ? '' : (r.payoutCents / 100).toFixed(2),

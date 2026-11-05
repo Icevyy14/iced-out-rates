@@ -250,6 +250,49 @@ html::after{
 /* ── SINGLES TAB — reuses .tgl (the slab tab's vintage/special toggle) for era/kind/printing chips ── */
 .chipgroup{display:inline-flex;gap:3px;align-items:center;flex-wrap:wrap;}
 
+/* ── SINGLES TAB — per-row exclusions (NOT-taking conditions) ───────────── */
+.wtb-tier .wtb-excl{grid-column:1 / -1;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);}
+.excl-toggle{background:transparent;border:1px solid var(--border);color:var(--dim);border-radius:6px;padding:4px 10px;font-size:11px;font-family:var(--font-mono);letter-spacing:.5px;cursor:pointer;}
+.excl-toggle:hover{border-color:var(--red);color:var(--red);}
+.excl-list{margin-top:10px;display:flex;flex-direction:column;gap:10px;}
+.excl-item{position:relative;background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:8px;padding:10px 34px 10px 12px;}
+.excl-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.excl-field{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.excl-field.wide{grid-column:1 / -1;}
+.excl-field label{font-family:var(--font-mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);}
+.excl-input{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-family:var(--font-ui);font-size:12px;outline:none;width:100%;}
+.excl-input:focus{border-color:var(--buy);}
+.excl-textarea{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-family:var(--font-ui);font-size:12px;outline:none;resize:vertical;min-height:46px;width:100%;line-height:1.45;white-space:pre-wrap;}
+.excl-textarea:focus{border-color:var(--buy);}
+.excl-item .del{position:absolute;top:8px;right:8px;background:transparent;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:4px;opacity:.55;}
+.excl-item .del:hover{opacity:1;}
+.excl-empty{font-size:11px;color:var(--muted);font-style:italic;padding:4px 0 2px;}
+.excl-add{margin-top:2px;}
+
+/* ── SINGLES TAB — the exclude-group LIBRARY (sheet-level, named + toggleable) ───────── */
+.xg-list{display:flex;flex-direction:column;gap:10px;margin-bottom:10px;}
+.xg-item{position:relative;background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--border);border-radius:8px;padding:10px 34px 10px 12px;}
+.xg-item.on{border-left-color:var(--red);}
+.xg-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.xg-head .check{flex:none;}
+.xg-name{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-family:var(--font-ui);font-size:13px;font-weight:700;outline:none;flex:1 1 160px;min-width:120px;}
+.xg-name:focus{border-color:var(--buy);}
+.xg-id{font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:.5px;}
+.xg-toggle{background:transparent;border:none;color:var(--dim);font-size:11px;cursor:pointer;text-align:left;flex:1 1 100%;padding:2px 0 0;}
+.xg-toggle:hover{color:var(--text);}
+.xg-body{margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);}
+.xg-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.xg-item .del{position:absolute;top:8px;right:8px;background:transparent;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:4px;opacity:.55;}
+.xg-item .del:hover{opacity:1;}
+.xg-empty{text-align:center;color:var(--muted);font-size:12px;padding:10px 0;}
+.xg-add{margin-top:2px;}
+.xg-item.bad{box-shadow:inset 3px 0 0 var(--red);background:color-mix(in srgb, var(--red) 8%, transparent);}
+
+/* ── SINGLES TAB — banned cards (flat, always-applied, no toggle) ───────────────────── */
+.banned-box textarea{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--font-mono);font-size:12px;outline:none;resize:vertical;min-height:70px;width:100%;line-height:1.5;}
+.banned-box textarea:focus{border-color:var(--buy);}
+.banned-count{font-size:11px;color:var(--dim);margin-top:6px;font-family:var(--font-mono);}
+
 /* ── PAGE ADDITIONS — only what this standalone editor needs on top ──────── */
 
 /* keep everything above the html::before glow */
@@ -337,6 +380,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
   .wtb-tier .sort{flex:0 0 auto;text-align:left;}
   .wtb-tier .pct{flex:0 0 auto;}
   .wtb-tier .del{flex:0 0 auto;margin-left:auto;opacity:1;}
+  .wtb-tier .wtb-excl{flex:1 1 100%;}
+  .excl-grid{grid-template-columns:1fr;}
   .form-row{grid-template-columns:1fr;}
   .msg{max-width:100%;}
   .nav-tabs{order:3;flex-basis:100%;justify-content:center;margin-top:4px;}
@@ -406,6 +451,23 @@ code{font-family:var(--font-mono);font-size:.92em;}
   </div>
 
   <div id="sg-rules-list"></div>
+
+  <section class="card" id="sg-exclude-groups">
+    <div class="card-head">
+      <div class="card-title">🚫 Exclude groups</div>
+      <div class="card-sub">Josh's weekly ban list. Flip a group on/off here - no code change, no redeploy. A disabled group is saved but matches nothing.</div>
+    </div>
+    <div class="xg-list" id="xg-list"></div>
+  </section>
+
+  <section class="card banned-box" id="sg-banned-cards">
+    <div class="card-head">
+      <div class="card-title">⛔ Banned cards</div>
+      <div class="card-sub">Paste TCGplayer product ids to refuse these exact cards, always - no toggle, no price band escapes it. Comma, space or newline separated.</div>
+    </div>
+    <textarea id="sg-banned-ids" placeholder="e.g. 517028, 610516, 42382" aria-label="Banned product ids"></textarea>
+    <div class="banned-count" id="sg-banned-count"></div>
+  </section>
 
   <section class="card" id="sg-sheet-settings">
     <div class="card-head">
@@ -615,12 +677,64 @@ const LIMITS = {
   maxCards: 5000,
   maxPausedMessage: 300,
   condPctDecimals: 2,
+  // excludes: a row's NOT-taking conditions (see SinglesExclude below)
+  maxExcludesPerRow: 20,
+  maxExcludeListLen: 30,
+  maxKeywordLength: 60,
+  // excludeGroups: the sheet-level, named + toggleable exclude library (see SinglesExcludeGroup)
+  maxExcludeGroups: 50,
+  maxGroupIdLength: 60,
+  maxGroupNameLength: 100,
+  maxGroupProductIds: 200,
+  // bannedProductIds: the flat, always-applied, no-toggle ban list
+  maxBannedProductIds: 2000,
 };
 
 const DEFAULT_MIN_MARKET_CENTS = 100;
 const DEFAULT_MAX_CARDS_PER_COMP = 500;
 
 // ── shapes ───────────────────────────────────────────────────────────────────
+
+/**
+ * One NOT-taking condition on a row. A card is excluded from the row when it matches EVERY
+ * non-null field here (sets AND rarities AND kinds AND nameKeywords, whichever are set - a field
+ * left null never constrains) - UNLESS its name also hits one of `except`'s keywords, which rescues
+ * it (e.g. "30th Celebration, but first partners OK": `{ sets: [...30th ids], except: ['Charmander',
+ * 'Squirtle', ...] }`). An excluded card is never rejected outright: it just fails this row and
+ * falls through to the next one in sort order, same as any other restriction mismatch - see
+ * singles/rules.js rowMatches/rowExcludes. At least one of sets/rarities/kinds/nameKeywords must be
+ * set; an exclude with none of them would vacuously match every card, which is never the intent.
+ */
+
+/**
+ * One NAMED, TOGGLEABLE entry in the sheet-level exclude-group library (`SinglesSettings.
+ * excludeGroups`). This is the weekly-post shape Josh asked for: his buy sheet is a WEEKLY post
+ * ("there shouldn't be a standing ban... there needs to be a way to change between what we need");
+ * instead of baking an exclusion into a row's own `excludes` (which needs an edit + a fresh save to
+ * turn off), a group lives in this library once and is flipped on/off per week from the portal with
+ * `enabled`, no code change and no redeploy.
+ *
+ * The matching fields (`sets`/`rarities`/`kinds`/`nameKeywords`/`except`) are the EXACT same shape
+ * and semantics as `SinglesExclude` above: a card matches the group when it matches every non-null
+ * field of those (AND), unless `except` rescues it. `productIds` is the one new field: a list of
+ * catalog productIds, ORed with the rest (not ANDed) because it is an explicit "this exact card"
+ * escape hatch, not another restriction those fields all have to agree with — a card whose
+ * productId is in this list is excluded outright, `except` included, even when nothing else on the
+ * group would have matched it. See singles/rules.js excludeGroupMatches for the engine's half.
+ *
+ * `id` is a stable slug (lowercase letters/digits/hyphens), unique within the sheet, so the portal
+ * and the bot can both refer to "this exact group" across edits that change its name or fields.
+ * `name` is the Josh-facing label shown on the page ("151 IRs", "Golds", ...). `enabled` is the
+ * weekly switch: a disabled group is still saved (so flipping it back on costs nothing) but never
+ * excludes anything.
+ *
+ * At least one of sets/rarities/kinds/nameKeywords/productIds must be set — same rule as
+ * SinglesExclude, except `productIds` ALSO counts here (a group may restrict on productIds alone).
+ */
+
+                                                   
+
+                                                         
 
 // ── small helpers (no exports the page does not need) ────────────────────────
 
@@ -671,6 +785,7 @@ function defaults()                  {
         rarities: null,
         printings: null,
         sets: null,
+        excludes: null,
         language: 'english',
       },
     ],
@@ -679,6 +794,8 @@ function defaults()                  {
     maxCardsPerComp: DEFAULT_MAX_CARDS_PER_COMP,
     paused: false,
     pausedMessage: '',
+    excludeGroups: [],
+    bannedProductIds: [],
   };
 }
 
@@ -709,6 +826,8 @@ function normalize(raw         )          {
     maxCardsPerComp: normNumber(src.maxCardsPerComp, DEFAULT_MAX_CARDS_PER_COMP),
     paused: normBool(src.paused),
     pausedMessage: src.pausedMessage == null ? '' : String(src.pausedMessage),
+    excludeGroups: Array.isArray(src.excludeGroups) ? src.excludeGroups.map(normalizeExcludeGroup) : src.excludeGroups,
+    bannedProductIds: normIntList(src.bannedProductIds) || [],
   };
 }
 
@@ -730,7 +849,45 @@ function normalizeRow(raw         , legacyDefault              )          {
     rarities: normListKeep(r.rarities),
     printings: normPrintingList(r.printings),
     sets: normIntList(r.sets),
+    excludes: normalizeExcludes(r.excludes),
     language: r.language == null || r.language === '' ? 'english' : normKey(r.language),
+  };
+}
+
+/** Type-coerce one exclude condition object. Never validates ranges/limits - validateExclude does that. */
+function normalizeExclude(raw         )          {
+  if (!isObject(raw)) return raw;
+  const r = raw                           ;
+  return {
+    sets: normIntList(r.sets),
+    rarities: normListKeep(r.rarities),
+    kinds: normListLower(r.kinds),
+    nameKeywords: normListKeep(r.nameKeywords),
+    except: normListKeep(r.except),
+  };
+}
+
+/** A row's `excludes` list: type-coerce each object, leave non-arrays as-is so validateRow can name the problem. */
+function normalizeExcludes(x         )          {
+  if (x == null || x === '') return null;
+  if (!Array.isArray(x)) return x;
+  return x.map(normalizeExclude);
+}
+
+/** Type-coerce one exclude-group library entry. Never validates ranges/limits/uniqueness - validateExcludeGroup does that. */
+function normalizeExcludeGroup(raw         )          {
+  if (!isObject(raw)) return raw;
+  const r = raw                           ;
+  return {
+    id: r.id == null ? '' : String(r.id).trim().toLowerCase(),
+    name: r.name == null ? '' : String(r.name),
+    enabled: normBool(r.enabled),
+    sets: normIntList(r.sets),
+    rarities: normListKeep(r.rarities),
+    kinds: normListLower(r.kinds),
+    nameKeywords: normListKeep(r.nameKeywords),
+    except: normListKeep(r.except),
+    productIds: normIntList(r.productIds),
   };
 }
 
@@ -925,6 +1082,12 @@ function validateSettings(raw         )                        {
     }
   }
 
+  // excludeGroups — the named, toggleable exclude library (see SinglesExcludeGroup)
+  const excludeGroups = validateExcludeGroups(s.excludeGroups, errors);
+
+  // bannedProductIds — flat, always-applied, no-toggle ban list
+  const bannedProductIds = validateBannedProductIds(s.bannedProductIds, errors);
+
   if (errors.length) return { ok: false, errors };
 
   return {
@@ -937,6 +1100,8 @@ function validateSettings(raw         )                        {
       maxCardsPerComp,
       paused,
       pausedMessage,
+      excludeGroups,
+      bannedProductIds,
     },
   };
 }
@@ -1174,6 +1339,27 @@ function validateRow(raw         , n        , errors          )                 
     }
   }
 
+  // excludes — NOT-taking conditions; null means nothing is excluded from this row. A card matching
+  // every non-null field of ANY ONE object below is turned away (falls through to the next row,
+  // never rejected outright here - see the SinglesExclude doc comment and singles/rules.js).
+  let excludes                          = null;
+  if (r.excludes != null && r.excludes !== '') {
+    if (!Array.isArray(r.excludes)) {
+      errors.push(at + 'Excludes must be a list.');
+    } else if (r.excludes.length > LIMITS.maxExcludesPerRow) {
+      errors.push(at + 'Too many excludes: ' + LIMITS.maxExcludesPerRow + ' is the limit, you have ' + r.excludes.length + '.');
+    } else {
+      const out                   = [];
+      let bad = false;
+      for (let j = 0; j < r.excludes.length; j++) {
+        const ex = validateExclude(r.excludes[j], n, j + 1, errors);
+        if (ex === null) bad = true;
+        else out.push(ex);
+      }
+      if (!bad && out.length) excludes = out;
+    }
+  }
+
   // language — only English is bought today; the field exists so the schema need not change later
   let language            = 'english';
   if (r.language != null && r.language !== '') {
@@ -1184,7 +1370,368 @@ function validateRow(raw         , n        , errors          )                 
 
   if (errors.length > before) return null;
 
-  return { sort, label, from, to, pct, basis, eras, yearMin, yearMax, kinds, rarities, printings, sets, language };
+  return { sort, label, from, to, pct, basis, eras, yearMin, yearMax, kinds, rarities, printings, sets, excludes, language };
+}
+
+/**
+ * One object inside a row's `excludes` list. Errors are prefixed "Row N, exclude M: " so a page can
+ * point at exactly which condition is wrong. At least one of sets/rarities/kinds/nameKeywords must be
+ * present - an exclude with none of them is rejected outright (it would otherwise vacuously match
+ * every card). `except` never counts toward that requirement: it only rescues cards the exclude's
+ * other fields already matched.
+ */
+function validateExclude(raw         , rowN        , exN        , errors          )                        {
+  const at = 'Row ' + rowN + ', exclude ' + exN + ': ';
+  if (!isObject(raw)) {
+    errors.push(at + 'this exclude is not filled in.');
+    return null;
+  }
+  const r = raw                           ;
+  const before = errors.length;
+
+  // sets — groupIds; null means this exclude does not restrict on set
+  let sets                  = null;
+  if (r.sets != null && r.sets !== '') {
+    if (!Array.isArray(r.sets)) {
+      errors.push(at + 'Sets must be a list of set ids.');
+    } else if (r.sets.length > LIMITS.maxExcludeListLen) {
+      errors.push(at + 'Too many sets: ' + LIMITS.maxExcludeListLen + ' is the limit, you have ' + r.sets.length + '.');
+    } else {
+      const out           = [];
+      let bad = false;
+      for (const item of r.sets) {
+        const v = num(item);
+        if (v === null || !Number.isInteger(v) || v < 0) { bad = true; break; }
+        if (out.indexOf(v) < 0) out.push(v);
+      }
+      if (bad) errors.push(at + 'Sets must be a list of set ids (whole numbers).');
+      else if (out.length) sets = out;
+    }
+  }
+
+  // rarities — catalog-exact text, same length limit as a row's own rarities
+  let rarities                  = null;
+  if (r.rarities != null && r.rarities !== '') {
+    if (!Array.isArray(r.rarities)) {
+      errors.push(at + 'Rarities must be a list.');
+    } else if (r.rarities.length > LIMITS.maxExcludeListLen) {
+      errors.push(at + 'Too many rarities: ' + LIMITS.maxExcludeListLen + ' is the limit, you have ' + r.rarities.length + '.');
+    } else {
+      const out           = [];
+      let bad = false;
+      for (const item of r.rarities) {
+        if (typeof item !== 'string' || !item.trim() || item.length > LIMITS.maxRarityLength) { bad = true; break; }
+        const v = item.trim();
+        if (out.indexOf(v) < 0) out.push(v);
+      }
+      if (bad) errors.push(at + 'Each rarity must be text, ' + LIMITS.maxRarityLength + ' characters or less.');
+      else if (out.length) rarities = out;
+    }
+  }
+
+  // kinds — pokemon/trainer/energy only
+  let kinds                  = null;
+  if (r.kinds != null && r.kinds !== '') {
+    if (!Array.isArray(r.kinds)) {
+      errors.push(at + 'Kinds must be a list.');
+    } else {
+      const out           = [];
+      let bad = false;
+      for (const item of r.kinds) {
+        const key = typeof item === 'string' ? item.trim().toLowerCase() : null;
+        if (!key || KIND_KEYS.indexOf(key) < 0) { bad = true; break; }
+        if (out.indexOf(key) < 0) out.push(key);
+      }
+      if (bad) errors.push(at + 'Kind must be ' + listNames(KIND_KEYS, KIND_LABEL) + '.');
+      else if (out.length) kinds = out;
+    }
+  }
+
+  // nameKeywords — free text matched word-for-word (case/accent-insensitive) against the card's name
+  let nameKeywords                  = null;
+  if (r.nameKeywords != null && r.nameKeywords !== '') {
+    if (!Array.isArray(r.nameKeywords)) {
+      errors.push(at + 'Name keywords must be a list.');
+    } else if (r.nameKeywords.length > LIMITS.maxExcludeListLen) {
+      errors.push(at + 'Too many name keywords: ' + LIMITS.maxExcludeListLen + ' is the limit, you have ' + r.nameKeywords.length + '.');
+    } else {
+      const out           = [];
+      let bad = false;
+      for (const item of r.nameKeywords) {
+        if (typeof item !== 'string' || !item.trim() || item.length > LIMITS.maxKeywordLength) { bad = true; break; }
+        const v = item.trim();
+        if (out.indexOf(v) < 0) out.push(v);
+      }
+      if (bad) errors.push(at + 'Each name keyword must be text, ' + LIMITS.maxKeywordLength + ' characters or less.');
+      else if (out.length) nameKeywords = out;
+    }
+  }
+
+  // except — name keywords that RESCUE a card this exclude would otherwise turn away
+  let except                  = null;
+  if (r.except != null && r.except !== '') {
+    if (!Array.isArray(r.except)) {
+      errors.push(at + 'Except must be a list.');
+    } else if (r.except.length > LIMITS.maxExcludeListLen) {
+      errors.push(at + 'Too many except keywords: ' + LIMITS.maxExcludeListLen + ' is the limit, you have ' + r.except.length + '.');
+    } else {
+      const out           = [];
+      let bad = false;
+      for (const item of r.except) {
+        if (typeof item !== 'string' || !item.trim() || item.length > LIMITS.maxKeywordLength) { bad = true; break; }
+        const v = item.trim();
+        if (out.indexOf(v) < 0) out.push(v);
+      }
+      if (bad) errors.push(at + 'Each except keyword must be text, ' + LIMITS.maxKeywordLength + ' characters or less.');
+      else if (out.length) except = out;
+    }
+  }
+
+  if (errors.length > before) return null;
+
+  if (!sets && !rarities && !kinds && !nameKeywords) {
+    errors.push(at + 'An exclude needs at least one of sets, rarities, kinds or name keywords to match on.');
+    return null;
+  }
+
+  return { sets, rarities, kinds, nameKeywords, except };
+}
+
+// ── exclude GROUPS (sheet-level, named + toggleable) ────────────────────────
+
+/**
+ * The sheet-level exclude-group library. Each entry is validated like a row-level exclude (same
+ * sets/rarities/kinds/nameKeywords/except shape, see validateExcludeGroup) plus id/name/enabled/
+ * productIds. `id`s must be unique across the sheet — the portal and the bot both address "this
+ * exact group" by its id across edits that change its name or fields.
+ */
+function validateExcludeGroups(raw         , errors          )                        {
+  if (raw == null || raw === '') return [];
+  if (!Array.isArray(raw)) {
+    errors.push('Exclude groups must be a list.');
+    return [];
+  }
+  if (raw.length > LIMITS.maxExcludeGroups) {
+    errors.push('Too many exclude groups: ' + LIMITS.maxExcludeGroups + ' is the limit, you have ' + raw.length + '.');
+  }
+  const groups                        = [];
+  const seenIds                          = {};
+  const count = Math.min(raw.length, LIMITS.maxExcludeGroups);
+  for (let i = 0; i < count; i++) {
+    const g = validateExcludeGroup(raw[i], i + 1, errors);
+    if (!g) continue;
+    if (seenIds[g.id]) {
+      errors.push('Exclude group ' + (i + 1) + ': id "' + g.id + '" is already used by another group — each group needs its own id.');
+      continue;
+    }
+    seenIds[g.id] = true;
+    groups.push(g);
+  }
+  return groups;
+}
+
+/**
+ * One entry in the exclude-group library. Errors are prefixed "Exclude group N: " so the page can
+ * point at exactly which one is wrong. At least one of sets/rarities/kinds/nameKeywords/productIds
+ * must be present — `productIds` counts here (unlike a plain SinglesExclude), since a group may
+ * restrict on productIds alone — see the SinglesExcludeGroup interface doc above.
+ */
+function validateExcludeGroup(raw         , n        , errors          )                             {
+  const at = 'Exclude group ' + n + ': ';
+  if (!isObject(raw)) {
+    errors.push(at + 'this group is not filled in.');
+    return null;
+  }
+  const r = raw                           ;
+  const before = errors.length;
+
+  // id — a stable slug (lowercase letters/digits/hyphens), unique within the sheet (checked by the caller)
+  let id = '';
+  if (typeof r.id !== 'string' || !r.id.trim()) {
+    errors.push(at + 'needs an id.');
+  } else {
+    const v = r.id.trim();
+    if (v.length > LIMITS.maxGroupIdLength) {
+      errors.push(at + 'id must be ' + LIMITS.maxGroupIdLength + ' characters or less.');
+    } else if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(v)) {
+      errors.push(at + 'id must be lowercase letters, digits and hyphens only (e.g. "151-irs").');
+    } else {
+      id = v;
+    }
+  }
+
+  // name — the Josh-facing label shown on the page
+  let name = '';
+  if (r.name == null || r.name === '') {
+    errors.push(at + 'needs a name.');
+  } else if (typeof r.name !== 'string') {
+    errors.push(at + 'Name must be text.');
+  } else if (r.name.length > LIMITS.maxGroupNameLength) {
+    errors.push(at + 'Name must be ' + LIMITS.maxGroupNameLength + ' characters or less.');
+  } else {
+    name = r.name;
+  }
+
+  // enabled — the weekly on/off switch; a disabled group is saved but never excludes anything
+  let enabled = false;
+  if (typeof r.enabled !== 'boolean') {
+    errors.push(at + 'Enabled must be on or off.');
+  } else {
+    enabled = r.enabled;
+  }
+
+  // sets
+  let sets                  = null;
+  if (r.sets != null && r.sets !== '') {
+    if (!Array.isArray(r.sets)) {
+      errors.push(at + 'Sets must be a list of set ids.');
+    } else if (r.sets.length > LIMITS.maxExcludeListLen) {
+      errors.push(at + 'Too many sets: ' + LIMITS.maxExcludeListLen + ' is the limit, you have ' + r.sets.length + '.');
+    } else {
+      const out           = [];
+      let bad = false;
+      for (const item of r.sets) {
+        const v = num(item);
+        if (v === null || !Number.isInteger(v) || v < 0) { bad = true; break; }
+        if (out.indexOf(v) < 0) out.push(v);
+      }
+      if (bad) errors.push(at + 'Sets must be a list of set ids (whole numbers).');
+      else if (out.length) sets = out;
+    }
+  }
+
+  // rarities
+  let rarities                  = null;
+  if (r.rarities != null && r.rarities !== '') {
+    if (!Array.isArray(r.rarities)) {
+      errors.push(at + 'Rarities must be a list.');
+    } else if (r.rarities.length > LIMITS.maxExcludeListLen) {
+      errors.push(at + 'Too many rarities: ' + LIMITS.maxExcludeListLen + ' is the limit, you have ' + r.rarities.length + '.');
+    } else {
+      const out           = [];
+      let bad = false;
+      for (const item of r.rarities) {
+        if (typeof item !== 'string' || !item.trim() || item.length > LIMITS.maxRarityLength) { bad = true; break; }
+        const v = item.trim();
+        if (out.indexOf(v) < 0) out.push(v);
+      }
+      if (bad) errors.push(at + 'Each rarity must be text, ' + LIMITS.maxRarityLength + ' characters or less.');
+      else if (out.length) rarities = out;
+    }
+  }
+
+  // kinds
+  let kinds                  = null;
+  if (r.kinds != null && r.kinds !== '') {
+    if (!Array.isArray(r.kinds)) {
+      errors.push(at + 'Kinds must be a list.');
+    } else {
+      const out           = [];
+      let bad = false;
+      for (const item of r.kinds) {
+        const key = typeof item === 'string' ? item.trim().toLowerCase() : null;
+        if (!key || KIND_KEYS.indexOf(key) < 0) { bad = true; break; }
+        if (out.indexOf(key) < 0) out.push(key);
+      }
+      if (bad) errors.push(at + 'Kind must be ' + listNames(KIND_KEYS, KIND_LABEL) + '.');
+      else if (out.length) kinds = out;
+    }
+  }
+
+  // nameKeywords
+  let nameKeywords                  = null;
+  if (r.nameKeywords != null && r.nameKeywords !== '') {
+    if (!Array.isArray(r.nameKeywords)) {
+      errors.push(at + 'Name keywords must be a list.');
+    } else if (r.nameKeywords.length > LIMITS.maxExcludeListLen) {
+      errors.push(at + 'Too many name keywords: ' + LIMITS.maxExcludeListLen + ' is the limit, you have ' + r.nameKeywords.length + '.');
+    } else {
+      const out           = [];
+      let bad = false;
+      for (const item of r.nameKeywords) {
+        if (typeof item !== 'string' || !item.trim() || item.length > LIMITS.maxKeywordLength) { bad = true; break; }
+        const v = item.trim();
+        if (out.indexOf(v) < 0) out.push(v);
+      }
+      if (bad) errors.push(at + 'Each name keyword must be text, ' + LIMITS.maxKeywordLength + ' characters or less.');
+      else if (out.length) nameKeywords = out;
+    }
+  }
+
+  // except — name keywords that RESCUE a card this group would otherwise turn away (never applies to productIds)
+  let except                  = null;
+  if (r.except != null && r.except !== '') {
+    if (!Array.isArray(r.except)) {
+      errors.push(at + 'Except must be a list.');
+    } else if (r.except.length > LIMITS.maxExcludeListLen) {
+      errors.push(at + 'Too many except keywords: ' + LIMITS.maxExcludeListLen + ' is the limit, you have ' + r.except.length + '.');
+    } else {
+      const out           = [];
+      let bad = false;
+      for (const item of r.except) {
+        if (typeof item !== 'string' || !item.trim() || item.length > LIMITS.maxKeywordLength) { bad = true; break; }
+        const v = item.trim();
+        if (out.indexOf(v) < 0) out.push(v);
+      }
+      if (bad) errors.push(at + 'Each except keyword must be text, ' + LIMITS.maxKeywordLength + ' characters or less.');
+      else if (out.length) except = out;
+    }
+  }
+
+  // productIds — the "this exact card" escape hatch, ORed with every field above (see interface doc)
+  let productIds                  = null;
+  if (r.productIds != null && r.productIds !== '') {
+    if (!Array.isArray(r.productIds)) {
+      errors.push(at + 'Product ids must be a list.');
+    } else if (r.productIds.length > LIMITS.maxGroupProductIds) {
+      errors.push(at + 'Too many product ids: ' + LIMITS.maxGroupProductIds + ' is the limit, you have ' + r.productIds.length + '.');
+    } else {
+      const out           = [];
+      let bad = false;
+      for (const item of r.productIds) {
+        const v = num(item);
+        if (v === null || !Number.isInteger(v) || v <= 0) { bad = true; break; }
+        if (out.indexOf(v) < 0) out.push(v);
+      }
+      if (bad) errors.push(at + 'Product ids must be a list of positive whole numbers.');
+      else if (out.length) productIds = out;
+    }
+  }
+
+  if (errors.length > before) return null;
+
+  if (!sets && !rarities && !kinds && !nameKeywords && !productIds) {
+    errors.push(at + 'needs at least one of sets, rarities, kinds, name keywords or product ids to match on.');
+    return null;
+  }
+
+  return { id, name, enabled, sets, rarities, kinds, nameKeywords, except, productIds };
+}
+
+/**
+ * The flat, always-applied, no-toggle ban list — Josh's "just ban specific cards" shortcut. Every
+ * entry must be a positive whole number (a catalog productId); there is nothing else to validate
+ * per entry beyond "is this really a product id".
+ */
+function validateBannedProductIds(raw         , errors          )           {
+  if (raw == null || raw === '') return [];
+  if (!Array.isArray(raw)) {
+    errors.push('Banned product ids must be a list.');
+    return [];
+  }
+  if (raw.length > LIMITS.maxBannedProductIds) {
+    errors.push('Too many banned product ids: ' + LIMITS.maxBannedProductIds + ' is the limit, you have ' + raw.length + '.');
+  }
+  const out           = [];
+  let bad = false;
+  const count = Math.min(raw.length, LIMITS.maxBannedProductIds);
+  for (let i = 0; i < count; i++) {
+    const v = num(raw[i]);
+    if (v === null || !Number.isInteger(v) || v <= 0) { bad = true; break; }
+    if (out.indexOf(v) < 0) out.push(v);
+  }
+  if (bad) errors.push('Banned product ids must be a list of positive whole numbers.');
+  return out;
 }
 
 window.SinglesValidate = {
@@ -1405,7 +1952,10 @@ window.SinglesValidate = {
       condMP: document.getElementById('sg-cond-MP'),
       condHP: document.getElementById('sg-cond-HP'),
       condDMG: document.getElementById('sg-cond-DMG'),
-      foot: document.getElementById('sg-foot')
+      foot: document.getElementById('sg-foot'),
+      groupsList: document.getElementById('xg-list'),
+      bannedIds: document.getElementById('sg-banned-ids'),
+      bannedCount: document.getElementById('sg-banned-count')
     };
 
     function str(v) { return v === null || v === undefined ? '' : String(v); }
@@ -1418,6 +1968,19 @@ window.SinglesValidate = {
     }
 
     // ── settings <-> form values ───────────────────────────────────────────
+    /** One NOT-taking condition in a row's `excludes` list. See validate-singles.ts SinglesExclude. */
+    function toFormExclude(e) {
+      e = e || {};
+      return {
+        _uid: 'ex' + (++uidSeq),
+        sets: Array.isArray(e.sets) ? e.sets.join(', ') : str(e.sets),
+        rarities: Array.isArray(e.rarities) ? e.rarities.join(', ') : str(e.rarities),
+        kinds: (Array.isArray(e.kinds) && e.kinds.length) ? e.kinds.slice() : null,
+        nameKeywords: Array.isArray(e.nameKeywords) ? e.nameKeywords.join(', ') : str(e.nameKeywords),
+        except: Array.isArray(e.except) ? e.except.join(', ') : str(e.except)
+      };
+    }
+
     function toFormRow(r) {
       r = r || {};
       return {
@@ -1434,7 +1997,36 @@ window.SinglesValidate = {
         kinds: (Array.isArray(r.kinds) && r.kinds.length) ? r.kinds.slice() : null,
         rarities: Array.isArray(r.rarities) ? r.rarities.join(', ') : str(r.rarities),
         printings: (Array.isArray(r.printings) && r.printings.length) ? r.printings.slice() : null,
-        sets: Array.isArray(r.sets) ? r.sets.join(', ') : str(r.sets)
+        sets: Array.isArray(r.sets) ? r.sets.join(', ') : str(r.sets),
+        excludes: (Array.isArray(r.excludes) ? r.excludes : []).map(toFormExclude),
+        // UI-only: whether the exclusions panel starts open. Never part of the saved shape
+        // (plainRow/plainExclude below never copy it) — a row that already has exclusions
+        // opens expanded so they are readable the moment the sheet loads; a blank/new row
+        // starts collapsed.
+        _exclOpen: !!(Array.isArray(r.excludes) && r.excludes.length)
+      };
+    }
+
+    /**
+     * One NAMED, TOGGLEABLE entry in the sheet-level exclude-group library. Same matching fields as
+     * a row-level exclude (toFormExclude above), plus id/name/enabled and the productIds escape
+     * hatch. See validate-singles.ts SinglesExcludeGroup and singles/rules.js excludeGroupMatches.
+     */
+    function toFormGroup(g) {
+      g = g || {};
+      return {
+        _uid: 'xg' + (++uidSeq),
+        id: str(g.id),
+        name: str(g.name),
+        enabled: g.enabled !== false,
+        sets: Array.isArray(g.sets) ? g.sets.join(', ') : str(g.sets),
+        rarities: Array.isArray(g.rarities) ? g.rarities.join(', ') : str(g.rarities),
+        kinds: (Array.isArray(g.kinds) && g.kinds.length) ? g.kinds.slice() : null,
+        nameKeywords: Array.isArray(g.nameKeywords) ? g.nameKeywords.join(', ') : str(g.nameKeywords),
+        except: Array.isArray(g.except) ? g.except.join(', ') : str(g.except),
+        productIds: Array.isArray(g.productIds) ? g.productIds.join(', ') : str(g.productIds),
+        // UI-only: whether the group's detail panel starts open. Never part of the saved shape.
+        _open: false
       };
     }
 
@@ -1452,7 +2044,23 @@ window.SinglesValidate = {
         maxCardsPerComp: settings.maxCardsPerComp == null ? '' : str(settings.maxCardsPerComp),
         paused: !!settings.paused,
         pausedMessage: str(settings.pausedMessage),
-        rates: (settings.rates || []).map(toFormRow)
+        rates: (settings.rates || []).map(toFormRow),
+        excludeGroups: (settings.excludeGroups || []).map(toFormGroup),
+        bannedProductIdsText: Array.isArray(settings.bannedProductIds) ? settings.bannedProductIds.join(', ') : ''
+      };
+    }
+
+    /** One exclude as the schema wants it: no _uid, strings left for normalize() to coerce. */
+    function plainExclude(e) {
+      return { sets: e.sets, rarities: e.rarities, kinds: e.kinds, nameKeywords: e.nameKeywords, except: e.except };
+    }
+
+    /** One exclude-group library entry as the schema wants it: no _uid/_open, strings left for normalize() to coerce. */
+    function plainGroup(g) {
+      return {
+        id: g.id, name: g.name, enabled: !!g.enabled,
+        sets: g.sets, rarities: g.rarities, kinds: g.kinds, nameKeywords: g.nameKeywords, except: g.except,
+        productIds: g.productIds
       };
     }
 
@@ -1468,6 +2076,7 @@ window.SinglesValidate = {
         rarities: r.rarities,
         printings: r.printings,
         sets: r.sets,
+        excludes: (r.excludes || []).map(plainExclude),
         language: 'english'
       };
     }
@@ -1480,26 +2089,53 @@ window.SinglesValidate = {
         minMarketCents: dollarsToCents(state.minMarketCents),
         maxCardsPerComp: state.maxCardsPerComp,
         paused: state.paused,
-        pausedMessage: state.paused ? state.pausedMessage : ''
+        pausedMessage: state.paused ? state.pausedMessage : '',
+        excludeGroups: state.excludeGroups.map(plainGroup),
+        bannedProductIds: state.bannedProductIdsText
       };
     }
 
     function blankRow(sort) {
-      return toFormRow({ sort: sort, label: '', from: 0, to: null, pct: '', basis: 'market', eras: null, yearMin: null, yearMax: null, kinds: null, rarities: '', printings: null, sets: '' });
+      return toFormRow({ sort: sort, label: '', from: 0, to: null, pct: '', basis: 'market', eras: null, yearMin: null, yearMax: null, kinds: null, rarities: '', printings: null, sets: '', excludes: null });
+    }
+
+    /** lower-case letters/digits/hyphens only, matching validate-singles.ts's id format. */
+    function slugify(name) {
+      var s = String(name || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      return s || 'group';
+    }
+    /** A slug not already used by another group in state - the id is generated ONCE, at creation, and never changes again (it stays stable even if Josh renames the group later). */
+    function uniqueGroupId(base) {
+      var used = {};
+      (state ? state.excludeGroups : []).forEach(function (g) { used[g.id] = true; });
+      if (!used[base]) return base;
+      var i = 2;
+      while (used[base + '-' + i]) i++;
+      return base + '-' + i;
+    }
+    function blankGroup() {
+      var id = uniqueGroupId(slugify('new group'));
+      var g = toFormGroup({ id: id, name: '', enabled: true, sets: null, rarities: null, kinds: null, nameKeywords: null, except: null, productIds: null });
+      g._open = true;
+      return g;
     }
 
     // ── dirty tracking ───────────────────────────────────────────────────────
     function captureBaseline() {
       var rows = {};
       state.rates.forEach(function (r) { rows[r._uid] = JSON.stringify(plainRow(r)); });
+      var groups = {};
+      state.excludeGroups.forEach(function (g) { groups[g._uid] = JSON.stringify(plainGroup(g)); });
       baseline = {
         rows: rows,
+        groups: groups,
         top: {
           minMarketCents: state.minMarketCents,
           maxCardsPerComp: state.maxCardsPerComp,
           pausedMessage: state.pausedMessage,
           paused: !!state.paused,
-          cond: JSON.stringify(state.buyConditions)
+          cond: JSON.stringify(state.buyConditions),
+          bannedProductIdsText: state.bannedProductIdsText
         }
       };
     }
@@ -1507,7 +2143,7 @@ window.SinglesValidate = {
     function countChanges() {
       if (!baseline || !state) return 0;
       var n = 0;
-      ['minMarketCents', 'maxCardsPerComp', 'pausedMessage'].forEach(function (k) {
+      ['minMarketCents', 'maxCardsPerComp', 'pausedMessage', 'bannedProductIdsText'].forEach(function (k) {
         if (str(state[k]) !== str(baseline.top[k])) n++;
       });
       if (!!state.paused !== !!baseline.top.paused) n++;
@@ -1519,6 +2155,13 @@ window.SinglesValidate = {
         if (was === undefined || was !== JSON.stringify(plainRow(r))) n++;
       });
       Object.keys(baseline.rows).forEach(function (uid) { if (!seen[uid]) n++; });
+      var seenG = {};
+      state.excludeGroups.forEach(function (g) {
+        seenG[g._uid] = true;
+        var was = baseline.groups[g._uid];
+        if (was === undefined || was !== JSON.stringify(plainGroup(g))) n++;
+      });
+      Object.keys(baseline.groups).forEach(function (uid) { if (!seenG[uid]) n++; });
       return n;
     }
 
@@ -1576,6 +2219,69 @@ window.SinglesValidate = {
       return '<span class="chipgroup" title="Which printings this row buys. None selected = any printing.">' + chips + '</span>';
     }
 
+    // ── exclusions (NOT-taking conditions on an otherwise-matching row) ────────
+    // A card is excluded from a row when it matches EVERY non-null field of ANY ONE exclusion
+    // below (sets AND rarities AND kinds AND name keywords, whichever are filled in) unless its
+    // name also hits one of that exclusion's "except" keywords, which rescues it. An excluded
+    // card is never rejected outright - it just falls through to the next row. See
+    // validate-singles.ts's SinglesExclude doc comment and singles/rules.js rowExcludes.
+    function exclInput(uid, key, value, placeholder, title) {
+      return '<input class="excl-input" type="text" data-exuid="' + esc(uid) + '" data-ek="' + key +
+        '" value="' + esc(value) + '" placeholder="' + esc(placeholder) + '" title="' + esc(title) +
+        '" aria-label="' + esc(title) + '">';
+    }
+    function exclTextarea(uid, key, value, placeholder, title) {
+      return '<textarea class="excl-textarea" data-exuid="' + esc(uid) + '" data-ek="' + key +
+        '" placeholder="' + esc(placeholder) + '" title="' + esc(title) + '" aria-label="' + esc(title) + '">' +
+        esc(value) + '</textarea>';
+    }
+    function exclKindChips(ex) {
+      var keys = SV.KIND_KEYS || [], labels = SV.KIND_LABEL || {};
+      var sel = ex.kinds || [];
+      var chips = keys.map(function (k) {
+        return '<button type="button" class="tgl' + (sel.indexOf(k) >= 0 ? ' on' : '') + '" data-act="exclkind" data-exuid="' +
+          esc(ex._uid) + '" data-key="' + esc(k) + '" title="' + esc(labels[k] || k) + '" aria-pressed="' +
+          (sel.indexOf(k) >= 0) + '">' + esc(labels[k] || k) + '</button>';
+      }).join('');
+      return '<span class="chipgroup" title="Which kinds this exclusion matches. None selected = does not restrict on kind.">' + chips + '</span>';
+    }
+    function exclItemHtml(ex) {
+      return '' +
+        '<div class="excl-item" data-exuid="' + esc(ex._uid) + '">' +
+          '<div class="excl-grid">' +
+            '<div class="excl-field"><label>Sets</label>' +
+              exclInput(ex._uid, 'sets', ex.sets, 'any set', 'Comma-separated set (group) ids this exclusion matches. Blank = does not restrict on set.') +
+            '</div>' +
+            '<div class="excl-field"><label>Rarities</label>' +
+              exclInput(ex._uid, 'rarities', ex.rarities, 'any rarity', 'Comma-separated TCGplayer rarity names. Blank = does not restrict on rarity.') +
+            '</div>' +
+            '<div class="excl-field"><label>Kinds</label>' + exclKindChips(ex) + '</div>' +
+            '<div class="excl-field wide"><label>Name has (any of)</label>' +
+              exclTextarea(ex._uid, 'nameKeywords', ex.nameKeywords, 'comma-separated words/phrases, e.g. V, VMAX, ex', 'Comma-separated words or phrases. A card whose name contains ANY of these matches this field. Blank = does not restrict on name.') +
+            '</div>' +
+            '<div class="excl-field wide"><label>Except (rescues a match)</label>' +
+              exclTextarea(ex._uid, 'except', ex.except, 'comma-separated keywords that still get bought, e.g. Charmander, Squirtle', 'A card this exclusion would otherwise turn away is still bought when its name contains one of these keywords.') +
+            '</div>' +
+          '</div>' +
+          '<button type="button" class="del" data-act="excl-del" data-exuid="' + esc(ex._uid) + '" title="Delete this exclusion" aria-label="Delete this exclusion">✕</button>' +
+        '</div>';
+    }
+    function exclusionsHtml(r) {
+      var n = r.excludes.length;
+      var open = !!r._exclOpen;
+      var items = r.excludes.map(exclItemHtml).join('');
+      return '' +
+        '<div class="wtb-excl">' +
+          '<button type="button" class="excl-toggle" data-act="excl-toggle" aria-expanded="' + open + '">' +
+            (open ? '▾' : '▸') + ' ' + (n ? n + ' exclusion' + (n === 1 ? '' : 's') : 'No exclusions') +
+          '</button>' +
+          '<div class="excl-list"' + (open ? '' : ' hidden') + '>' +
+            (items || '<div class="excl-empty">No exclusions on this row. Add one to turn away cards that otherwise match this row (except keywords you name).</div>') +
+            '<button type="button" class="btn btn-ghost btn-sm excl-add" data-act="excl-add">＋ Add exclusion</button>' +
+          '</div>' +
+        '</div>';
+    }
+
     // ── rows ─────────────────────────────────────────────────────────────────
     function reorder() {
       state.rates = state.rates
@@ -1615,6 +2321,7 @@ window.SinglesValidate = {
             '<input type="number" step="0.01" min="1" max="100" data-k="pct" value="' + esc(r.pct) + '" title="Percent of the basis this row pays" aria-label="Percent paid"><span class="pct-sign">%</span>' +
           '</div>' +
           '<button type="button" class="del" data-act="del" title="Delete row" aria-label="Delete this row">✕</button>' +
+          exclusionsHtml(r) +
         '</div>';
     }
 
@@ -1642,6 +2349,94 @@ window.SinglesValidate = {
       dom.pausedMessage.value = state.pausedMessage;
     }
 
+    // ── exclude GROUPS (sheet-level, named + toggleable library) ────────────────
+    function groupKindChips(g) {
+      var keys = SV.KIND_KEYS || [], labels = SV.KIND_LABEL || {};
+      var sel = g.kinds || [];
+      var chips = keys.map(function (k) {
+        return '<button type="button" class="tgl' + (sel.indexOf(k) >= 0 ? ' on' : '') + '" data-act="xgkind" data-xguid="' +
+          esc(g._uid) + '" data-key="' + esc(k) + '" title="' + esc(labels[k] || k) + '" aria-pressed="' +
+          (sel.indexOf(k) >= 0) + '">' + esc(labels[k] || k) + '</button>';
+      }).join('');
+      return '<span class="chipgroup" title="Which kinds this group matches. None selected = does not restrict on kind.">' + chips + '</span>';
+    }
+    /** Plain-English summary of what a group actually matches, so Josh can tell groups apart at a glance (collapsed or not). */
+    function groupSummary(g) {
+      var parts = [];
+      if (g.sets) parts.push('Sets ' + g.sets);
+      if (g.rarities) parts.push('Rarities ' + g.rarities);
+      if (g.kinds && g.kinds.length) parts.push('Kinds ' + g.kinds.join('/'));
+      if (g.nameKeywords) parts.push('Name has ' + g.nameKeywords);
+      if (g.productIds) parts.push('Product IDs ' + g.productIds);
+      if (g.except) parts.push('except ' + g.except);
+      return parts.length ? parts.join(' · ') : 'Nothing set yet — edit to add a restriction';
+    }
+    function groupItemHtml(g) {
+      var open = !!g._open;
+      var nameMax = (SV.LIMITS && SV.LIMITS.maxGroupNameLength) || 100;
+      return '' +
+        '<div class="xg-item' + (g.enabled ? ' on' : '') + '" data-xguid="' + esc(g._uid) + '">' +
+          '<div class="xg-head">' +
+            '<label class="check" title="On = this group excludes cards this week. Off = saved but inert, no code change needed to bring it back.">' +
+              '<input type="checkbox" data-xg="enabled"' + (g.enabled ? ' checked' : '') + ' aria-label="Group enabled">' +
+            '</label>' +
+            '<input class="xg-name" type="text" data-xg="name" maxlength="' + nameMax + '" value="' + esc(g.name) +
+              '" placeholder="Group name, e.g. 151 IRs" title="Josh-facing name" aria-label="Group name">' +
+            '<span class="xg-id" title="Internal id - stable even if you rename this group">' + esc(g.id) + '</span>' +
+            '<button type="button" class="del" data-act="xg-del" title="Delete this group" aria-label="Delete this group">✕</button>' +
+            '<button type="button" class="xg-toggle" data-act="xg-toggle" aria-expanded="' + open + '">' +
+              (open ? '▾ ' : '▸ ') + esc(groupSummary(g)) +
+            '</button>' +
+          '</div>' +
+          (open ? (
+            '<div class="xg-body">' +
+              '<div class="xg-grid">' +
+                '<div class="excl-field"><label>Sets</label>' +
+                  '<input class="excl-input" type="text" data-xg="sets" value="' + esc(g.sets) +
+                    '" placeholder="any set" title="Comma-separated set (group) ids. Blank = does not restrict on set." aria-label="Sets">' +
+                '</div>' +
+                '<div class="excl-field"><label>Rarities</label>' +
+                  '<input class="excl-input" type="text" data-xg="rarities" value="' + esc(g.rarities) +
+                    '" placeholder="any rarity" title="Comma-separated TCGplayer rarity names. Blank = does not restrict on rarity." aria-label="Rarities">' +
+                '</div>' +
+                '<div class="excl-field"><label>Kinds</label>' + groupKindChips(g) + '</div>' +
+                '<div class="excl-field wide"><label>Name has (any of)</label>' +
+                  '<textarea class="excl-textarea" data-xg="nameKeywords" placeholder="comma-separated words/phrases, e.g. V, VMAX, ex" ' +
+                    'title="A card whose name contains ANY of these matches. Blank = does not restrict on name." aria-label="Name has">' + esc(g.nameKeywords) + '</textarea>' +
+                '</div>' +
+                '<div class="excl-field wide"><label>Except (rescues a match)</label>' +
+                  '<textarea class="excl-textarea" data-xg="except" placeholder="comma-separated keywords that still get bought, e.g. Charmander, Squirtle" ' +
+                    'title="A card this group would otherwise turn away is still bought when its name contains one of these. Never rescues a Product IDs hit." aria-label="Except">' + esc(g.except) + '</textarea>' +
+                '</div>' +
+                '<div class="excl-field wide"><label>Product IDs (exact-card escape hatch)</label>' +
+                  '<textarea class="excl-textarea" data-xg="productIds" placeholder="comma-separated TCGplayer product ids, e.g. 517028, 610516" ' +
+                    'title="A card with one of these product ids is excluded outright, regardless of the fields above and ignoring Except." aria-label="Product IDs">' + esc(g.productIds) + '</textarea>' +
+                '</div>' +
+              '</div>' +
+            '</div>'
+          ) : '') +
+        '</div>';
+    }
+    function renderGroups() {
+      var maxGroups = (SV.LIMITS && SV.LIMITS.maxExcludeGroups) || 50;
+      var items = state.excludeGroups.map(groupItemHtml).join('');
+      var html = (items || '<div class="xg-empty">No exclude groups yet. Add one to build the weekly ban list.</div>') +
+        '<button type="button" class="btn btn-ghost btn-sm xg-add" data-act="xg-add"' +
+          (state.excludeGroups.length >= maxGroups ? ' disabled' : '') + '>＋ Add group</button>';
+      dom.groupsList.innerHTML = html;
+    }
+
+    // ── banned cards (flat, always-applied, no toggle) ──────────────────────────
+    function updateBannedCount() {
+      var n = String(state.bannedProductIdsText || '').split(/[\s,]+/).filter(Boolean).length;
+      dom.bannedCount.textContent = n ? (n + ' banned product id' + (n === 1 ? '' : 's')) : 'No banned product ids';
+    }
+    /** Sets the textarea's value too - only call this when the box is NOT focused (load, or after blur normalizes it), never on every keystroke. */
+    function renderBanned() {
+      dom.bannedIds.value = state.bannedProductIdsText;
+      updateBannedCount();
+    }
+
     // ── status line ────────────────────────────────────────────────────────
     function renderStatus() {
       if (!isActive()) return;
@@ -1666,15 +2461,49 @@ window.SinglesValidate = {
     }
 
     function showErrors(list) {
+      if (list && list.length) {
+        // An exclusion-only error ("Row N, exclude M: ...") is invisible if that row's
+        // exclusions panel is still collapsed — open any such row before marking it bad.
+        var opened = false;
+        list.forEach(function (e) {
+          var m = /^Row (\d+), exclude/.exec(e);
+          if (!m) return;
+          var tier = dom.rulesList.querySelector('.wtb-tier[data-row="' + m[1] + '"]');
+          var row = tier ? rowOf(tier) : null;
+          if (row && !row._exclOpen) { row._exclOpen = true; opened = true; }
+        });
+        if (opened) renderRules();
+        // Same idea for "Exclude group N: ..." - open that group's panel so the error is visible.
+        var openedGroup = false;
+        list.forEach(function (e) {
+          var gm = /^Exclude group (\d+)/.exec(e);
+          if (!gm) return;
+          var idx = Number(gm[1]) - 1;
+          var g = state.excludeGroups[idx];
+          if (g && !g._open) { g._open = true; openedGroup = true; }
+        });
+        if (openedGroup) renderGroups();
+      }
       Array.prototype.forEach.call(dom.rulesList.querySelectorAll('.wtb-tier.bad'), function (t) { t.classList.remove('bad'); });
+      Array.prototype.forEach.call(dom.groupsList.querySelectorAll('.xg-item.bad'), function (t) { t.classList.remove('bad'); });
       if (!list || !list.length) { dom.errors.hidden = true; dom.errorsList.innerHTML = ''; return; }
       dom.errorsList.innerHTML = list.map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('');
       dom.errors.hidden = false;
       list.forEach(function (e) {
-        var m = /^Row (\d+)[:.]/.exec(e);
-        if (!m) return;
-        var tier = dom.rulesList.querySelector('.wtb-tier[data-row="' + m[1] + '"]');
-        if (tier) tier.classList.add('bad');
+        // Matches both a plain row error ("Row 3: ...") and an exclusion's own ("Row 3, exclude 2: ...").
+        var m = /^Row (\d+)[:,.]/.exec(e);
+        if (m) {
+          var tier = dom.rulesList.querySelector('.wtb-tier[data-row="' + m[1] + '"]');
+          if (tier) tier.classList.add('bad');
+          return;
+        }
+        var gm = /^Exclude group (\d+)[:,.]/.exec(e);
+        if (gm) {
+          var idx = Number(gm[1]) - 1;
+          var g = state.excludeGroups[idx];
+          var item = g ? dom.groupsList.querySelector('.xg-item[data-xguid="' + g._uid + '"]') : null;
+          if (item) item.classList.add('bad');
+        }
       });
       dom.errors.scrollIntoView({ block: 'nearest' });
     }
@@ -1701,13 +2530,32 @@ window.SinglesValidate = {
       row[field] = cur.length ? allKeys.filter(function (k) { return cur.indexOf(k) >= 0; }) : null;
     }
 
+    /** The exclude object a node inside `.excl-item` belongs to, on the row that node is also inside. */
+    function exclOf(row, node) {
+      var item = node.closest ? node.closest('.excl-item') : null;
+      if (!item || !row) return null;
+      var uid = item.getAttribute('data-exuid');
+      for (var i = 0; i < row.excludes.length; i++) if (row.excludes[i]._uid === uid) return row.excludes[i];
+      return null;
+    }
+    function readExclField(t) {
+      var row = rowOf(t);
+      var ex = row ? exclOf(row, t) : null;
+      if (!ex || !t.dataset.ek) return null;
+      ex[t.dataset.ek] = t.value;
+      markDirty();
+      return ex;
+    }
+
     dom.rulesList.addEventListener('input', function (ev) {
       var t = ev.target;
+      if (t.dataset && t.dataset.ek) { readExclField(t); return; }
       if (!t.dataset || !t.dataset.k) return;
       readField(t);
     });
     dom.rulesList.addEventListener('change', function (ev) {
       var t = ev.target;
+      if (t.dataset && t.dataset.ek) { readExclField(t); return; }
       if (!t.dataset || !t.dataset.k) return;
       var r = readField(t);
       if (!r) return;
@@ -1752,6 +2600,138 @@ window.SinglesValidate = {
         markDirty();
         return;
       }
+
+      if (act === 'excl-toggle') {
+        row._exclOpen = !row._exclOpen;
+        renderRules();
+        return;
+      }
+
+      if (act === 'excl-add') {
+        var maxEx = (SV.LIMITS && SV.LIMITS.maxExcludesPerRow) || 20;
+        if (row.excludes.length >= maxEx) { setMsg(maxEx + ' exclusions is the limit for one row.', 'err'); return; }
+        row.excludes.push(toFormExclude({}));
+        row._exclOpen = true;
+        markDirty();
+        renderRules();
+        setMsg('Exclusion added. Not saved yet.');
+        return;
+      }
+
+      if (act === 'excl-del') {
+        var exDel = exclOf(row, btn);
+        if (!exDel) return;
+        if (!window.confirm('Delete this exclusion?')) return;
+        row.excludes = row.excludes.filter(function (e) { return e !== exDel; });
+        markDirty();
+        renderRules();
+        setMsg('Exclusion deleted. Not saved yet.');
+        return;
+      }
+
+      if (act === 'exclkind') {
+        var exKind = exclOf(row, btn);
+        if (!exKind) return;
+        toggleList(exKind, 'kinds', SV.KIND_KEYS || [], btn.dataset.key);
+        var nowOnKind = Array.isArray(exKind.kinds) && exKind.kinds.indexOf(btn.dataset.key) >= 0;
+        btn.classList.toggle('on', nowOnKind);
+        btn.setAttribute('aria-pressed', String(nowOnKind));
+        markDirty();
+        return;
+      }
+    });
+
+    // ── exclude-group editing ───────────────────────────────────────────────
+    function groupOf(node) {
+      var item = node.closest ? node.closest('.xg-item') : null;
+      if (!item) return null;
+      var uid = item.getAttribute('data-xguid');
+      for (var i = 0; i < state.excludeGroups.length; i++) if (state.excludeGroups[i]._uid === uid) return state.excludeGroups[i];
+      return null;
+    }
+    function readGroupField(t) {
+      var g = groupOf(t);
+      if (!g || !t.dataset.xg) return null;
+      var key = t.dataset.xg;
+      g[key] = (t.type === 'checkbox') ? t.checked : t.value;
+      if (key === 'enabled') {
+        var item = t.closest('.xg-item');
+        if (item) item.classList.toggle('on', !!g.enabled);
+      }
+      markDirty();
+      return g;
+    }
+    dom.groupsList.addEventListener('input', function (ev) {
+      var t = ev.target;
+      if (!t.dataset || !t.dataset.xg) return;
+      readGroupField(t);
+    });
+    dom.groupsList.addEventListener('change', function (ev) {
+      var t = ev.target;
+      if (!t.dataset || !t.dataset.xg) return;
+      readGroupField(t);
+    });
+    dom.groupsList.addEventListener('click', function (ev) {
+      var btn = ev.target.closest('[data-act]');
+      if (!btn) return;
+      var act = btn.dataset.act;
+
+      if (act === 'xg-add') {
+        var maxGroups = (SV.LIMITS && SV.LIMITS.maxExcludeGroups) || 50;
+        if (state.excludeGroups.length >= maxGroups) { setMsg(maxGroups + ' exclude groups is the limit.', 'err'); return; }
+        state.excludeGroups.push(blankGroup());
+        markDirty();
+        renderGroups();
+        setMsg('Group added. Not saved yet.');
+        return;
+      }
+
+      var g = groupOf(btn);
+      if (!g) return;
+
+      if (act === 'xg-del') {
+        if (!window.confirm('Delete the "' + (g.name || g.id) + '" group?')) return;
+        state.excludeGroups = state.excludeGroups.filter(function (x) { return x !== g; });
+        markDirty();
+        renderGroups();
+        setMsg('Group deleted. Not saved yet.');
+        return;
+      }
+
+      if (act === 'xg-toggle') {
+        g._open = !g._open;
+        renderGroups();
+        return;
+      }
+
+      if (act === 'xgkind') {
+        toggleList(g, 'kinds', SV.KIND_KEYS || [], btn.dataset.key);
+        var nowOnKind = Array.isArray(g.kinds) && g.kinds.indexOf(btn.dataset.key) >= 0;
+        btn.classList.toggle('on', nowOnKind);
+        btn.setAttribute('aria-pressed', String(nowOnKind));
+        markDirty();
+        return;
+      }
+    });
+
+    // ── banned cards editing ─────────────────────────────────────────────────
+    dom.bannedIds.addEventListener('input', function () {
+      state.bannedProductIdsText = dom.bannedIds.value;
+      markDirty();
+      updateBannedCount();
+    });
+    dom.bannedIds.addEventListener('blur', function () {
+      // Normalize on blur, same spirit as every other free-text list field: dedupe, drop blanks,
+      // but keep a non-numeric token AS TYPED so validateSettings can still name the problem on save.
+      var tokens = String(state.bannedProductIdsText || '').split(/[\s,]+/).filter(Boolean);
+      var seen = {}, out = [];
+      tokens.forEach(function (x) {
+        var n = Number(x);
+        if (!Number.isFinite(n) || !Number.isInteger(n)) { out.push(x); return; }
+        if (!seen[n]) { seen[n] = true; out.push(String(n)); }
+      });
+      state.bannedProductIdsText = out.join(', ');
+      renderBanned();
     });
 
     // ── sheet settings ───────────────────────────────────────────────────────
@@ -1778,6 +2758,8 @@ window.SinglesValidate = {
       captureBaseline();
       renderTop();
       renderRules();
+      renderGroups();
+      renderBanned();
       updateDirty();
     }
 
