@@ -651,7 +651,11 @@ const LIMITS = {
   minYear: 1990,
   maxYear: 2100,
   minSlabs: 1,
-  maxSlabs: 300,
+  // Raised from 300 on Josh's instruction 2026-11-05 ("Set the block for both at like 2k"), to match
+  // the singles side's maxCardsPerComp. This is only the ceiling the portal will SAVE; whether a comp
+  // that size can actually finish is a separate question, governed by COMP_TIMEOUT_MS and by how long
+  // Triumph and Card Ladder take per cert.
+  maxSlabs: 2000,
   maxKeywords: 50,
   maxKeywordLength: 60,
   maxPausedMessage: 300,

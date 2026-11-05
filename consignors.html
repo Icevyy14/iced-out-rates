@@ -447,7 +447,11 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #master-table .kind-pill{display:inline-block;margin-right:6px;padding:2px 7px;border-radius:var(--r-pill);font-size:9px;font-weight:800;font-family:var(--font-mono);letter-spacing:.4px;text-transform:uppercase;border:1px solid var(--border);color:var(--dim);vertical-align:middle;white-space:nowrap;}
 </style>
 <div class="tab active" id="tab-consignors">
-<fieldset class="editor-fieldset">
+<!-- Hidden until a verified edit key is in hand (see MODULE:consignors' lock-gating
+     block below): this fieldset is the entire dashboard body - stat cards, partner
+     cards, and all three tables - so a public, unauthenticated visitor sees nothing
+     but the lock card above. -->
+<fieldset class="editor-fieldset" id="consignors-dashboard" hidden>
 
   <section class="stat-strip" id="stat-strip" aria-label="Ledger totals">
     <div class="wtb-total-card"><div class="lbl">Slabs in</div><div class="val" id="stat-slabs">—</div></div>
@@ -776,6 +780,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
     function isActive() { return activeTab === 'consignors'; }
 
     var dom = {
+      dashboard: document.getElementById('consignors-dashboard'),
       statSlabs: document.getElementById('stat-slabs'),
       statMarket: document.getElementById('stat-market'),
       statPayout: document.getElementById('stat-payout'),
@@ -1332,6 +1337,72 @@ code{font-family:var(--font-mono);font-size:.92em;}
       });
     }
 
+    // ── lock gating ───────────────────────────────────────────────────────────
+    // This whole dashboard (stat cards, partner cards, all three tables) is a
+    // single <fieldset id="consignors-dashboard" hidden> in the markup, so a
+    // public, unauthenticated visitor never sees a seller name, a partner label,
+    // a column header, or a "Loading…" placeholder - only the lock card. These
+    // three helpers un-hide it and populate it once (and only once) a key has
+    // actually been verified against the ledger API.
+    function setDashboardVisible(visible) {
+      if (dom.dashboard) dom.dashboard.hidden = !visible;
+    }
+
+    /** Wipes every already-rendered row/stat back to nothing (not even "—" or
+     * "Loading…") so a later relock never leaves a prior session's consignor
+     * data sitting in the DOM while the dashboard is hidden. */
+    function blankDashboardData() {
+      summaryData = null;
+      masterRows = [];
+      masterTotal = 0;
+      expanded = {};
+      sellerCache = {};
+      loadedOnce = false;
+      if (dom.owedTbody) dom.owedTbody.innerHTML = '';
+      if (dom.sellersTbody) dom.sellersTbody.innerHTML = '';
+      if (dom.masterTbody) dom.masterTbody.innerHTML = '';
+      if (dom.recentList) dom.recentList.innerHTML = '';
+      if (dom.masterCount) dom.masterCount.textContent = '';
+      renderStats();
+      renderPartners();
+    }
+
+    function revealAndLoad() {
+      setDashboardVisible(true);
+      return loadAll();
+    }
+
+    // whenUnlocked() waiters fire once then clear (see SHARED:lockcard), so a
+    // relock needs to re-arm its own "reveal on the next unlock" rather than
+    // relying on a single registration from activate(). revealQueued just
+    // keeps a rapid run of failed-key attempts from stacking up duplicate
+    // reveal-and-loads behind the one unlock that finally succeeds.
+    var revealQueued = false;
+    function queueReveal() {
+      if (revealQueued) return;
+      revealQueued = true;
+      whenUnlocked(function () {
+        revealQueued = false;
+        revealAndLoad();
+      });
+    }
+
+    // showLock() is the one function every lock path already calls - a bad key,
+    // a 401 on any ledger call mid-session (see request() above), "Change key",
+    // or a stored key that stopped working (see initLock() in SHARED:lockcard).
+    // Hooking it here, instead of teaching each of those call sites about this
+    // one tab, keeps the gate local to the page that needs it and guarantees a
+    // relock always hides and blanks this dashboard too.
+    (function hookLock() {
+      var baseShowLock = showLock;
+      showLock = function (message) {
+        baseShowLock(message);
+        setDashboardVisible(false);
+        blankDashboardData();
+        queueReveal();
+      };
+    })();
+
     (function footer() {
       var host = 'the ledger API';
       try { host = new URL(apiUrl('/status'), location.href).host; } catch (e) { /* keep the fallback */ }
@@ -1343,7 +1414,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
 
     return {
       isBusy: function () { return busy; },
-      reload: function () { loadStatus(); whenUnlocked(loadAll); },
+      reload: function () { loadStatus(); queueReveal(); },
       activate: function () {
         el.msg.textContent = msgCache.text;
         el.msg.className = 'msg' + (msgCache.kind ? ' ' + msgCache.kind : '');
@@ -1351,7 +1422,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
         if (!loadedOnce) {
           loadedOnce = true;
           loadStatus();
-          whenUnlocked(loadAll);
+          queueReveal();
         }
       }
     };
