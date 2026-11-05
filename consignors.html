@@ -363,6 +363,11 @@ code{font-family:var(--font-mono);font-size:.92em;}
 .change-key{font-size:11px;color:var(--dim);text-decoration:underline;cursor:pointer;}
 .change-key:hover{color:var(--text);}
 .editor-fieldset{display:block;border:0;margin:0;padding:0;min-width:0;}
+/* A class rule that sets `display` outbeats the browser's own `[hidden]{display:none}`, so a
+   fieldset carrying the hidden attribute still rendered: the locked Consignors page leaked every
+   seller name, partner name and column header to anyone with the URL. Caught live 2026-11-05 after
+   a source-only test passed. This wins for every element on the page, not just that fieldset. */
+[hidden]{display:none !important;}
 
 .foot{margin:18px 4px 40px;font-size:11px;color:var(--muted);font-family:var(--font-mono);}
 
