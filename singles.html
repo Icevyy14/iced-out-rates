@@ -1,0 +1,1750 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex, nofollow">
+<meta name="rates-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/slab-rates">
+<meta name="ledger-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/slab-ledger">
+<title>Iced Out Penguin · Singles</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   Iced Out Penguin rates — skinned to match the owner app's 💰 Pricing tab.
+   Theme: the owner's active theme, "Synthwave". Dark only, no light theme.
+   Everything between the two "PORTED" banners is lifted verbatim from
+   icevyy-tcg.html so the two editors cannot drift apart visually.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root{
+  /* Synthwave */
+  --bg:#000000;
+  --s1:#0a0b0f;
+  --s2:#10121a;
+  --s3:#181b26;
+  --border:#242838;
+  --buy:#7dd3fc;
+  --sell:#ff4d5e;
+  --text:#eef4ff;
+  --dim:#8fa0bd;
+  --muted:#5c6880;
+  --red:#ff3b4e;
+  --yellow:#9bdcff;
+  --purple:#7dd3fc;
+
+  --font-ui:'Rajdhani','Segoe UI',system-ui,-apple-system,sans-serif;
+  --font-display:'Orbitron','Rajdhani','Segoe UI',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
+
+  /* Radius scale (DESIGN.md §3) — deliberately varied, NOT one value everywhere. */
+  --r-slab: 3px;    /* cert chips, stat cells — crisp graded-slab feel */
+  --r: 8px;         /* buttons, inputs, small cards */
+  --r-lg: 14px;     /* large panels */
+  --r-pill: 999px;  /* status pills / segmented controls only */
+
+  /* Micro-label ink, one step dimmer than --dim; derived so it tracks the theme. */
+  --faint: color-mix(in srgb, var(--dim) 62%, var(--bg));
+  --hairline: color-mix(in srgb, var(--border) 70%, var(--bg));
+}
+
+/* ── PORTED from icevyy-tcg.html — same selectors, same values ──────────── */
+
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-ui);min-height:100vh;overflow-x:hidden;}
+::-webkit-scrollbar{width:6px;} ::-webkit-scrollbar-track{background:var(--s1);} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* page glow */
+html::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(120% 60% at 50% -12%, rgba(125,211,252,.14), transparent 62%);}
+
+/* NAV */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--s1);position:sticky;top:0;z-index:100;backdrop-filter:blur(10px);}
+.logo{font-size:22px;font-weight:800;letter-spacing:-0.5px;}
+.logo span{color:var(--sell);}
+.logo em{color:var(--buy);font-style:normal;}
+
+/* WTB rules — grouped tiers, styled to look like a printed price chart */
+.wtb-group{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin-bottom:14px;position:relative;}
+.wtb-group-header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:10px;}
+.wtb-group-header h3{font-size:15px;font-weight:900;color:var(--text);letter-spacing:1px;display:flex;align-items:center;gap:8px;}
+.wtb-group-header h3::before{content:'';width:4px;height:18px;background:var(--yellow);border-radius:2px;}
+.wtb-group-header .right{font-size:10px;color:var(--dim);font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;}
+.wtb-group .desc{font-size:12px;color:var(--dim);margin-bottom:10px;}
+.wtb-group .desc input{background:transparent;border:none;color:var(--dim);width:100%;font-size:12px;outline:none;}
+.wtb-tier{display:grid;grid-template-columns:170px 1fr 50px 110px 30px;gap:14px;align-items:center;padding:11px 6px;border-bottom:1px solid var(--border);font-size:14px;font-weight:600;color:var(--text);}
+.wtb-tier:last-child{border-bottom:none;}
+.wtb-tier .range input{background:transparent;border:none;color:var(--text);font-weight:600;font-size:14px;width:65px;outline:none;text-align:left;}
+.wtb-tier .range .dash{color:var(--dim);}
+.wtb-tier .meta{font-size:11px;color:var(--dim);display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.wtb-tier .meta select{background:transparent;border:1px solid transparent;color:var(--dim);font-size:11px;padding:2px 4px;border-radius:4px;outline:none;}
+.wtb-tier .meta select:focus,.wtb-tier .meta select:hover{border-color:var(--border);background:var(--s1);}
+.wtb-tier .pct{font-size:24px;font-weight:900;color:var(--yellow);text-align:right;font-family:var(--font-ui);letter-spacing:-0.5px;}
+.wtb-tier .pct input{background:transparent;border:none;color:var(--yellow);font-size:22px;font-weight:900;width:65px;text-align:right;outline:none;font-family:var(--font-ui);}
+.wtb-tier .pct .pct-sign{color:var(--yellow);}
+.wtb-tier .label-input{background:transparent;border:none;color:var(--dim);font-size:11px;width:100%;outline:none;font-style:italic;}
+.wtb-tier .del{background:transparent;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:4px;opacity:0.4;}
+.wtb-tier:hover .del{opacity:1;}
+.wtb-tier .sort{background:transparent;border:none;color:var(--dim);font-size:10px;width:40px;text-align:center;font-family:var(--font-mono);outline:none;}
+.wtb-tier .sort:focus{border:1px solid var(--border);border-radius:3px;}
+.wtb-add-tier{display:flex;align-items:center;gap:6px;background:transparent;border:1.5px dashed var(--border);color:var(--dim);cursor:pointer;font-size:12px;padding:9px 14px;border-radius:9px;width:100%;margin-top:10px;font-family:var(--font-ui);font-weight:700;transition:all 0.15s;}
+.wtb-add-tier:hover{border-color:var(--yellow);color:var(--yellow);}
+
+/* HELPER PILL */
+.helper-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid var(--border);background:var(--s2);color:var(--dim);font-family:var(--font-mono);letter-spacing:0.3px;}
+.helper-pill.up{border-color:var(--buy);color:var(--buy);background:var(--s2);}
+.helper-pill.down{border-color:var(--red);color:var(--red);background:#1a0808;}
+
+/* LAYOUT */
+.main{padding:24px 28px;max-width:1400px;margin:0 auto;}
+.tab{display:none;animation:fadeUp 0.25s ease;}
+.tab.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* CARDS */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:20px;}
+
+/* BUTTONS */
+.btn{padding:11px 22px;border-radius:10px;border:none;cursor:pointer;font-family:var(--font-ui);font-weight:700;font-size:13px;transition:all 0.15s;white-space:nowrap;}
+.btn-buy{background:var(--buy);color:var(--bg);}
+.btn-buy:hover{opacity:0.85;transform:translateY(-1px);}
+.btn-sell{background:var(--sell);color:#fff;}
+.btn-sell:hover{opacity:0.85;transform:translateY(-1px);}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--dim);}
+.btn-ghost:hover{border-color:var(--dim);color:var(--text);}
+.btn-danger{background:transparent;border:1.5px solid var(--red);color:var(--red);}
+.btn-danger:hover{background:var(--red);color:#fff;}
+.btn-sm{padding:6px 14px;font-size:12px;}
+
+/* FORM */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.form-group{margin-bottom:14px;}
+.form-label{font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);display:block;margin-bottom:7px;}
+.form-input,.form-select,.form-textarea{width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:var(--font-ui);font-size:13px;outline:none;transition:border-color 0.2s;}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--buy);}
+.form-input::placeholder{color:var(--muted);}
+.form-textarea{resize:vertical;min-height:70px;}
+.form-select{cursor:pointer;}
+
+/* FILTER CHIPS / language filter — global toggle + per-rule override */
+.filter-group{display:flex;background:var(--s2);border-radius:10px;padding:3px;gap:2px;}
+.lang-toggle{display:inline-flex;gap:5px}
+.lang-chip{padding:4px 10px;border-radius:7px;border:1px solid var(--border);background:var(--s2);color:var(--dim);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-ui);letter-spacing:.4px;transition:all .12s}
+.lang-chip:hover{color:var(--text)}
+.lang-chip.on{background:var(--buy);color:var(--bg);border-color:var(--buy)}
+.rule-lang{display:inline-flex;gap:3px;align-items:center;margin-left:2px;vertical-align:middle}
+.rule-lang .rl{padding:2px 6px;border-radius:5px;font-size:10px;font-weight:800;cursor:pointer;font-family:var(--font-mono);border:1px solid var(--border);color:var(--dim);background:transparent;letter-spacing:.5px}
+.rule-lang .rl.on{background:var(--buy);color:var(--bg);border-color:var(--buy)}
+.rule-lang.inherit .rl{opacity:.65}
+.rule-lang.inherit .rl.on{background:transparent;color:var(--buy);border-color:var(--buy);border-style:dashed}
+.rule-lang .rl-reset{cursor:pointer;color:var(--dim);font-size:11px;padding:0 2px}
+.rule-lang .rl-reset:hover{color:var(--text)}
+
+/* ── END PORTED ─────────────────────────────────────────────────────────── */
+
+
+/* ── PORTED from the owner app's nav — same selectors, same values ──────── */
+.nav-tabs{display:flex;flex-wrap:wrap;gap:4px;background:var(--bg);padding:4px;border-radius:12px}
+.nav-tab{padding:8px 20px;border:none;border-radius:9px;cursor:pointer;font-family:var(--font-ui);font-size:13px;font-weight:700;transition:all .2s;background:transparent;color:var(--dim)}
+.nav-tab:hover{color:var(--text)}
+.nav-tab.active{background:var(--buy);color:var(--bg)}
+/* ── END PORTED ─────────────────────────────────────────────────────────── */
+
+/* ── PORTED from ledger-portal/page.html — same selectors, same values, now the Consignors tab ── */
+.wtb-table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--font-ui);table-layout:fixed;}
+.wtb-table td, .wtb-table th{overflow:hidden;}
+.wtb-table td.wtb-name{white-space:nowrap;text-overflow:ellipsis;}
+.wtb-table th{text-align:left;padding:9px 10px;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);}
+.wtb-table td{padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px;}
+.wtb-table td.cert{font-family:var(--font-mono);font-weight:700;}
+.wtb-table td.num{text-align:right;font-family:var(--font-mono);font-weight:700;}
+.wtb-table .bucket{display:inline-block;padding:3px 9px;border-radius:6px;font-weight:800;font-size:11px;color:#000;}
+.wtb-totals{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;}
+.wtb-total-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px 18px;text-align:center;}
+.wtb-total-card .lbl{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:6px;}
+.wtb-total-card .val{font-size:22px;font-weight:900;}
+.filter-chip{padding:6px 12px;border-radius:8px;border:none;background:transparent;color:var(--dim);font-family:var(--font-ui);font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;}
+.filter-chip:hover{color:var(--text);}
+.filter-chip.active{background:var(--buy);color:var(--bg);}
+/* ── END PORTED ─────────────────────────────────────────────────────────── */
+
+/* ── CONSIGNORS TAB — page additions on top of the ported table/pill rules ── */
+.stat-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:18px;}
+.stat-strip .wtb-total-card.owed{border-color:var(--red);}
+.stat-strip .wtb-total-card.owed .val{color:var(--red);}
+.partner-strip{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
+.partner-card{background:var(--s1);border:1px solid var(--border);border-top:3px solid var(--border);border-radius:14px;padding:16px 18px;}
+.partner-card.p-josh{border-top-color:var(--buy);}
+.partner-card.p-penguin{border-top-color:var(--sell);}
+.partner-card h4{font-size:14px;font-weight:800;margin-bottom:12px;}
+.partner-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.pg-cell{text-align:center;}
+.pg-lbl{font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-bottom:4px;}
+.pg-val{font-size:16px;font-weight:800;}
+.unknown-warning{font-size:11px;color:var(--yellow);margin:0 4px 14px;}
+.table-wrap{overflow-x:auto;}
+.wtb-table.owed-tbl{min-width:860px;}
+.wtb-table.sellers-tbl{min-width:980px;}
+.wtb-table.master-tbl{min-width:1120px;}
+.status-pill{display:inline-block;padding:3px 10px;border-radius:var(--r-pill);font-size:10px;font-weight:800;font-family:var(--font-mono);letter-spacing:.5px;text-transform:uppercase;border:1px solid var(--border);color:var(--dim);white-space:nowrap;background:transparent;}
+.status-pill.st-quoted{border-color:var(--border);color:var(--dim);}
+.status-pill.st-accepted{border-color:var(--buy);color:var(--buy);}
+.status-pill.st-received{background:color-mix(in srgb, var(--buy) 22%, transparent);border-color:var(--buy);color:var(--buy);}
+.status-pill.st-locked{background:color-mix(in srgb, var(--buy) 55%, transparent);border-color:var(--buy);color:var(--text);}
+.status-pill.st-paid{background:var(--buy);border-color:var(--buy);color:var(--bg);}
+.status-pill.st-cancelled{background:color-mix(in srgb, var(--red) 18%, transparent);border-color:var(--red);color:var(--red);}
+.status-pill.st-unknown{border-color:var(--border);color:var(--muted);}
+.src-pill{display:inline-block;padding:3px 9px;border-radius:var(--r-pill);font-size:10px;font-weight:800;font-family:var(--font-mono);letter-spacing:.5px;border:1px solid var(--border);white-space:nowrap;background:transparent;}
+.src-pill.src-josh{border-color:var(--buy);color:var(--buy);background:color-mix(in srgb, var(--buy) 12%, transparent);}
+.src-pill.src-penguin{border-color:var(--sell);color:var(--sell);background:color-mix(in srgb, var(--sell) 12%, transparent);}
+.src-pill.src-unknown{border-color:var(--border);color:var(--muted);}
+.wtb-table th.sortable{cursor:pointer;user-select:none;}
+.wtb-table th.sortable:hover{color:var(--text);}
+.wtb-table th.sortable:focus-visible{outline:2px solid var(--purple);outline-offset:-2px;}
+.wtb-table th .arrow{margin-left:4px;color:var(--buy);}
+.exp-toggle{background:transparent;border:1px solid var(--border);color:var(--dim);border-radius:6px;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;margin-right:8px;padding:0;vertical-align:middle;}
+.exp-toggle:hover{border-color:var(--buy);color:var(--buy);}
+.owed-row{cursor:pointer;}
+.owed-row:hover{background:var(--s2);}
+.owed-row .handle{color:var(--dim);font-size:11px;display:inline-block;margin-left:6px;}
+.owed-detail td{background:var(--s2);padding:14px;}
+.cons-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 0;border-bottom:1px solid var(--border);font-size:12px;}
+.cons-row:last-child{border-bottom:none;}
+.cons-row .cr-pay{font-family:var(--font-mono);font-weight:700;}
+.cr-links a{color:var(--buy);text-decoration:none;font-size:11px;margin-right:10px;}
+.cr-links a:hover{text-decoration:underline;}
+.cons-actions{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;}
+.cons-actions .btn{padding:4px 10px;font-size:11px;}
+.recent-list{display:flex;flex-direction:column;margin-bottom:18px;}
+.recent-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 4px;border-bottom:1px solid var(--border);font-size:12px;}
+.recent-row:last-child{border-bottom:none;}
+.rr-ticket{font-weight:700;min-width:140px;}
+.rr-seller{color:var(--dim);min-width:110px;}
+.rr-pay{font-family:var(--font-mono);font-weight:700;margin-left:auto;}
+.rr-links a{color:var(--buy);text-decoration:none;font-size:11px;margin-left:8px;}
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+.toolbar .form-input{max-width:240px;}
+.count-line{font-size:11px;color:var(--dim);margin:4px 4px 10px;font-family:var(--font-mono);}
+.loading-row td, .empty-row td{color:var(--dim);text-align:center;padding:18px;font-style:italic;}
+
+/* ── SINGLES TAB — reuses .tgl (the slab tab's vintage/special toggle) for era/kind/printing chips ── */
+.chipgroup{display:inline-flex;gap:3px;align-items:center;flex-wrap:wrap;}
+
+/* ── PAGE ADDITIONS — only what this standalone editor needs on top ──────── */
+
+/* keep everything above the html::before glow */
+body>*{position:relative;z-index:1;}
+
+/* the app's own comment calls flex-wrap on the nav a bug fix, not styling */
+.nav{flex-wrap:wrap;gap:12px 16px;}
+.logo{font-family:var(--font-display);font-size:17px;}
+.logo-sub{font-size:11px;color:var(--dim);margin-top:3px;}
+.nav-left{min-width:0;}
+.nav-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
+.saved{font-size:11px;color:var(--dim);font-family:var(--font-mono);}
+.msg{font-size:11px;color:var(--dim);max-width:300px;}
+.msg.ok{color:var(--buy);}
+.msg.err{color:var(--red);}
+.btn-save{background:var(--buy);color:var(--bg);}
+.btn:disabled{opacity:.5;cursor:default;transform:none;}
+.btn:disabled:hover{opacity:.5;transform:none;}
+
+/* section header, matching the app's "⚙️ Pricing Rules" block */
+.sec-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;padding:0 4px;}
+.sec-title{font-size:16px;font-weight:800;}
+.sec-sub{font-size:11px;color:var(--dim);}
+.dirty-hint{font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--yellow);white-space:nowrap;padding-top:4px;}
+code{font-family:var(--font-mono);font-size:.92em;}
+
+/* global buy-language row */
+#wtb-buylang{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:2px 4px 14px;}
+.buylang-label{font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);}
+.buylang-hint{font-size:11px;color:var(--dim);}
+
+/* VINTAGE / SPECIAL toggles — same chip treatment as .rule-lang .rl */
+.wtb-tier .tgl{padding:2px 6px;border-radius:5px;font-size:10px;font-weight:800;cursor:pointer;font-family:var(--font-mono);border:1px solid var(--border);color:var(--dim);background:transparent;letter-spacing:.5px;}
+.wtb-tier .tgl:hover{color:var(--text);}
+.wtb-tier .tgl.on{background:var(--buy);color:var(--bg);border-color:var(--buy);}
+
+/* a row the server or the validator named in an error */
+.wtb-tier.bad{box-shadow:inset 3px 0 0 var(--red);background:color-mix(in srgb, var(--red) 8%, transparent);}
+.wtb-tier .del:focus-visible{opacity:1;}
+.wtb-tier .meta .sep{color:var(--muted);}
+
+.new-group-row{display:flex;gap:8px;justify-content:center;margin-top:6px;margin-bottom:18px;}
+.btn.new-group{background:var(--buy);color:var(--bg);}
+.empty-rules{text-align:center;color:var(--muted);font-size:13px;margin-bottom:12px;}
+
+/* sheet-settings card */
+.card-head{margin-bottom:14px;}
+.card-title{font-size:16px;font-weight:800;}
+.card-sub{font-size:11px;color:var(--dim);}
+.form-group.wide{grid-column:1 / -1;}
+.form-group:last-child{margin-bottom:0;}
+.pause-row{padding:12px 14px;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;margin-bottom:14px;}
+.check{display:inline-flex;align-items:center;gap:9px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;}
+.check input{width:17px;height:17px;accent-color:var(--buy);cursor:pointer;flex:none;}
+
+/* errors panel */
+.errors-card{border-color:var(--red);margin-top:16px;}
+.errors-card .card-title{color:var(--red);}
+.errors-card ul{margin:10px 0 0;padding-left:18px;font-size:12px;line-height:1.55;}
+.errors-card li{margin-bottom:4px;}
+
+.foot{margin:18px 4px 40px;font-size:11px;color:var(--muted);font-family:var(--font-mono);}
+
+:focus-visible{outline:2px solid var(--purple);outline-offset:2px;}
+
+@media (max-width:768px){
+  .main{padding:16px;}
+  .nav{padding:12px 16px;}
+  .nav-right{justify-content:flex-start;}
+  .wtb-group{padding:14px 15px;}
+  /* collapse the 5-column grid into: range / meta / sort+pct+del on one line */
+  .wtb-tier{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 2px;}
+  .wtb-tier .range{flex:1 1 100%;}
+  .wtb-tier .meta{flex:1 1 100%;}
+  .wtb-tier .sort{flex:0 0 auto;text-align:left;}
+  .wtb-tier .pct{flex:0 0 auto;}
+  .wtb-tier .del{flex:0 0 auto;margin-left:auto;opacity:1;}
+  .form-row{grid-template-columns:1fr;}
+  .msg{max-width:100%;}
+  .nav-tabs{order:3;flex-basis:100%;justify-content:center;margin-top:4px;}
+  .stat-strip{grid-template-columns:repeat(2,1fr);}
+  .partner-strip{grid-template-columns:1fr;}
+  .partner-grid{grid-template-columns:repeat(2,1fr);}
+  .toolbar{flex-direction:column;align-items:stretch;}
+  .toolbar .form-input{max-width:none;}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+    scroll-behavior:auto!important;
+  }
+}
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="nav-left">
+    <div class="logo">Iced Out <em>Penguin</em></div>
+    <div class="logo-sub">Singles · raw cards</div>
+  </div>
+<nav class="nav-tabs" aria-label="Sections">
+    <a class="nav-tab" href="index.html">💰 Pricing Rules</a>
+    <a class="nav-tab active" href="singles.html">🃏 Singles</a>
+    <a class="nav-tab" href="consignors.html">📦 Consignors</a>
+  </nav>
+  <div class="nav-right">
+    <span class="msg" id="msg" role="status" aria-live="polite"></span>
+
+    <span class="helper-pill" id="bot-pill" title="When the bot last read these rates">⚪ Bot: not seen yet</span>
+
+    <span class="saved" id="st-saved">Loading the sheet…</span>
+
+    <button type="button" class="btn btn-ghost btn-sm" id="reload" title="Throw away unsaved edits and reload the saved sheet">↻ Reload</button>
+    <button type="button" class="btn btn-sm btn-save" id="save" title="Save the sheet. Asks for the edit key the first time.">💾 Save</button>
+
+  </div>
+</header>
+
+<main class="main">
+
+<div class="tab active" id="tab-singles">
+
+  <div class="sec-head">
+    <div>
+      <div class="sec-title">🃏 Singles</div>
+      <div class="sec-sub">First matching row (top → bottom) wins. Edit inline. Lower <code>sort</code> = checked first.</div>
+    </div>
+    <span class="dirty-hint" id="sg-dirty-hint" hidden>unsaved</span>
+  </div>
+
+  <div id="sg-rules-list"></div>
+
+  <section class="card" id="sg-sheet-settings">
+    <div class="card-head">
+      <div class="card-title">⚙️ Singles settings</div>
+      <div class="card-sub">These apply to every row.</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="sg-minMarketCents">Min market $</label>
+        <input class="form-input" id="sg-minMarketCents" type="number" inputmode="decimal" min="0" step="0.01" placeholder="1.00" title="Cards below this TCG market price are not bought">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="sg-maxCardsPerComp">Max cards per comp</label>
+        <input class="form-input" id="sg-maxCardsPerComp" type="number" inputmode="numeric" min="1" step="1" placeholder="500" title="How many cards the bot will price in one comp">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">NM</label>
+        <input class="form-input" type="text" value="100" disabled title="Near Mint is always the 100% baseline every other condition is paid a percent of">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="sg-cond-LP">LP %</label>
+        <input class="form-input" id="sg-cond-LP" type="number" inputmode="decimal" min="0" max="100" step="0.01" placeholder="blank = not bought" title="Percent of the NM price paid for Lightly Played. Blank = goes to staff.">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="sg-cond-MP">MP %</label>
+        <input class="form-input" id="sg-cond-MP" type="number" inputmode="decimal" min="0" max="100" step="0.01" placeholder="blank = not bought" title="Percent of the NM price paid for Moderately Played. Blank = goes to staff.">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="sg-cond-HP">HP %</label>
+        <input class="form-input" id="sg-cond-HP" type="number" inputmode="decimal" min="0" max="100" step="0.01" placeholder="blank = not bought" title="Percent of the NM price paid for Heavily Played. Blank = goes to staff.">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="sg-cond-DMG">DMG %</label>
+        <input class="form-input" id="sg-cond-DMG" type="number" inputmode="decimal" min="0" max="100" step="0.01" placeholder="blank = not bought" title="Percent of the NM price paid for Damaged. Blank = goes to staff.">
+      </div>
+    </div>
+    <div class="pause-row">
+      <label class="check" for="sg-paused">
+        <input type="checkbox" id="sg-paused" title="Stop the bot quoting any singles at all">
+        <span>Paused, stop quoting singles</span>
+      </label>
+    </div>
+    <div class="form-group wide" id="sg-pausedWrap" hidden>
+      <label class="form-label" for="sg-pausedMessage">Paused message</label>
+      <input class="form-input" id="sg-pausedMessage" type="text" maxlength="300" placeholder="We are closed for buying singles until Monday." title="What the seller is told while singles quoting is paused">
+    </div>
+  </section>
+
+  <section class="card errors-card" id="sg-errors" hidden tabindex="-1">
+    <div class="card-title" id="sg-errors-head">Nothing was saved. Fix these first:</div>
+    <ul id="sg-errors-list"></ul>
+  </section>
+
+  <p class="foot" id="sg-foot"></p>
+
+</div>
+
+</main>
+
+<script>
+/* SINGLES-CORE:START - generated from validate-singles.ts by build-portal.js, do not edit by hand */
+(function () {
+'use strict';
+/**
+ * Iced Out Penguin SINGLES rates - the schema and its validator.
+ *
+ * Pure TypeScript. No Deno, no Node, no DOM, no imports. Same conventions as the
+ * slab schema (./validate.ts) so a later build script can inline both into one
+ * page: every export at the start of a line, as `export function` / `export
+ * const` / `export type` / `export interface`, because a line-anchored regex
+ * strips the `export ` keyword and Node/Deno erase the type-only ones outright.
+ *
+ * Money is in DOLLARS on a Row's from/to/pct (the bot converts to cents itself),
+ * with ONE exception: `minMarketCents`, which is cents by name and by value
+ * (100 = $1) because it is compared directly against a card's TCGplayer market
+ * price, which the price book already carries in cents.
+ *
+ * Rows are tried in `sort` order and the FIRST match wins - the same rule the
+ * slab sheet uses. A row's `eras` is a subset of the price book's own era keys
+ * (wotc/ex/dp/hgss/bw/xy/sm/swsh/sv/me/other), so a row never drifts from the
+ * book's own classification of a set's era.
+ *
+ * Basis (what a payout is a percentage OF) is REQUIRED on every row - there is no sheet-wide
+ * `defaultBasis` and no "use default" option, mirroring the slab schema (./validate.ts). A sheet
+ * saved under the old rules (a sheet-wide `defaultBasis`, rows with `basis: null`) still LOADS:
+ * normalize() fills every such row from the sheet's old `defaultBasis` (else 'market') and drops the
+ * sheet-wide field, but a sheet cannot be saved again with a missing row basis.
+ */
+
+// ── vocabulary ───────────────────────────────────────────────────────────────
+
+const SINGLES_SCHEMA = 'iced-out-singles-v1';
+
+/** The price book's own era keys, oldest first. A row's `eras` is a subset of these (null = any). */
+const ERA_KEYS = ['wotc', 'ex', 'dp', 'hgss', 'bw', 'xy', 'sm', 'swsh', 'sv', 'me', 'other'];
+
+/** Plain-English year ranges, for the page and for error messages. */
+const ERA_LABEL                         = {
+  wotc: 'WOTC (1999–2003)',
+  ex: 'EX (2003–2007)',
+  dp: 'DP (2007–2009)',
+  hgss: 'HGSS (2010–2011)',
+  bw: 'BW (2011–2013)',
+  xy: 'XY (2014–2016)',
+  sm: 'SM (2017–2019)',
+  swsh: 'SWSH (2020–2022)',
+  sv: 'SV (2023–2025)',
+  me: 'ME (2026+)',
+  other: 'Other',
+};
+
+/** [{key,label}] oldest first - a page builds its era checkboxes off this, not ERA_KEYS alone. */
+const ERAS = ERA_KEYS.map((key) => ({ key, label: ERA_LABEL[key] }));
+
+/** A card is one of three kinds for pricing. Sealed product and "other" catalog rows are never singles. */
+const KIND_KEYS = ['pokemon', 'trainer', 'energy'];
+
+const KIND_LABEL                         = {
+  pokemon: 'Pokémon',
+  trainer: 'Trainer',
+  energy: 'Energy',
+};
+
+const KINDS = KIND_KEYS.map((key) => ({ key, label: KIND_LABEL[key] }));
+
+/** TCGplayer's five conditions, best first. */
+const CONDITION_KEYS = ['NM', 'LP', 'MP', 'HP', 'DMG'];
+
+const CONDITION_LABEL                         = {
+  NM: 'Near Mint',
+  LP: 'Lightly Played',
+  MP: 'Moderately Played',
+  HP: 'Heavily Played',
+  DMG: 'Damaged',
+};
+
+const CONDITIONS = CONDITION_KEYS.map((key) => ({ key, label: CONDITION_LABEL[key] }));
+
+/**
+ * The printings a rate row can restrict on. Not every printing a card can come in on TCGplayer -
+ * just the ones a rate band is allowed to name. These are tcgcsv's own live names, confirmed against
+ * a real sync of the catalog: there is no bare "1st Edition Normal" or "Unlimited Normal" - only
+ * "1st Edition" and "Unlimited" on their own (PRINTING_ALIASES below still accepts the old spellings
+ * as input, for a sheet saved before this was corrected). `singles/priceBook.js printingsOf()` may
+ * return other values for an individual card; a row naming a printing a card doesn't have simply
+ * never matches that card.
+ */
+const PRINTINGS = [
+  'Normal',
+  'Holofoil',
+  'Reverse Holofoil',
+  '1st Edition',
+  '1st Edition Holofoil',
+  'Unlimited',
+  'Unlimited Holofoil',
+];
+
+/** Old spellings a rate sheet (or this page) used to save, accepted on input and mapped onto the live PRINTINGS names above. */
+const PRINTING_ALIASES                         = {
+  '1st edition normal': '1st Edition',
+  'unlimited normal': 'Unlimited',
+};
+
+/**
+ * TCGplayer rarity names as the catalog spells them today. Not exhaustive on purpose: a row may
+ * name any string up to LIMITS.maxRarityLength, so a new rarity the catalog adds still works
+ * before this list is updated.
+ */
+const KNOWN_RARITIES = [
+  'Common', 'Uncommon', 'Rare', 'Holo Rare', 'Ultra Rare', 'Secret Rare',
+  'Illustration Rare', 'Special Illustration Rare', 'Hyper Rare', 'Double Rare',
+  'ACE SPEC Rare', 'Promo',
+];
+
+/** Payout basis keys: what a card's payout percentage is a percentage OF. */
+const BASIS_KEYS = ['market', 'low', 'lowerOfMarketAndSales'];
+
+const BASIS_LABEL                         = {
+  market: 'TCG Market',
+  low: 'TCG Low',
+  lowerOfMarketAndSales: 'Lower of Market & 30-day sales',
+};
+
+/** Every hard limit in one place, so the page and the function cannot drift apart. */
+const LIMITS = {
+  minRows: 1,
+  maxRows: 60,
+  maxLabel: 100,
+  maxMoney: 1000000,
+  moneyDecimals: 2,
+  minPct: 1,
+  maxPct: 100,
+  pctDecimals: 2,
+  minSort: 0,
+  maxSort: 100000,
+  minYear: 1990,
+  maxYear: 2100,
+  maxRarityLength: 40,
+  // the allowed range for the minMarketCents SETTING itself (cents)
+  minMarketFloor: 0,
+  maxMarketFloor: 100000,
+  // the allowed range for the maxCardsPerComp SETTING itself
+  minCards: 1,
+  maxCards: 5000,
+  maxPausedMessage: 300,
+  condPctDecimals: 2,
+};
+
+const DEFAULT_MIN_MARKET_CENTS = 100;
+const DEFAULT_MAX_CARDS_PER_COMP = 500;
+
+// ── shapes ───────────────────────────────────────────────────────────────────
+
+// ── small helpers (no exports the page does not need) ────────────────────────
+
+function isObject(x         )          {
+  return !!x && typeof x === 'object' && !Array.isArray(x);
+}
+
+/** A finite number, or null when the input is not one. Strings are NOT coerced here. */
+function num(x         )                {
+  return typeof x === 'number' && Number.isFinite(x) ? x : null;
+}
+
+/** True when `n` has at most `places` decimal places (float-safe). */
+function decimalsOk(n        , places        )          {
+  const scaled = n * Math.pow(10, places);
+  return Math.abs(scaled - Math.round(scaled)) < 1e-6;
+}
+
+function listNames(keys          , labels                        )         {
+  const names = keys.map((k) => labels[k] || k);
+  if (names.length < 2) return names.join('');
+  return names.slice(0, -1).join(', ') + ' or ' + names[names.length - 1];
+}
+
+/** "$1,000,000" for the limit messages. */
+function money(n        )         {
+  return '$' + n.toLocaleString('en-US');
+}
+
+// ── defaults ─────────────────────────────────────────────────────────────────
+
+/** A valid, deliberately bare settings object. The page starts here when nothing is saved. */
+function defaults()                  {
+  return {
+    schema: SINGLES_SCHEMA,
+    rates: [
+      {
+        sort: 0,
+        label: 'Every card',
+        from: 0,
+        to: null,
+        pct: 70,
+        basis: 'market',
+        eras: null,
+        yearMin: null,
+        yearMax: null,
+        kinds: null,
+        rarities: null,
+        printings: null,
+        sets: null,
+        language: 'english',
+      },
+    ],
+    buyConditions: { NM: 100, LP: null, MP: null, HP: null, DMG: null },
+    minMarketCents: DEFAULT_MIN_MARKET_CENTS,
+    maxCardsPerComp: DEFAULT_MAX_CARDS_PER_COMP,
+    paused: false,
+    pausedMessage: '',
+  };
+}
+
+// ── normalize ────────────────────────────────────────────────────────────────
+
+/**
+ * Coerce whatever arrived into the shape validateSettings wants. It only changes
+ * TYPES, never values: "abc" in a number field stays "abc", so validateSettings
+ * can still complain about it by name. A `{ settings: {...} }` wrapper (what a
+ * GET from the portal answers) is unwrapped first.
+ *
+ * Basis is required on every row now (see the file header): a row with no basis of its own
+ * inherits the sheet's old `defaultBasis` when it had one, else plain 'market' - the same rule a
+ * brand new form post with a blank basis field falls under, since it has no `defaultBasis` either.
+ * The sheet-wide field itself is dropped either way; it is never part of the shape this returns.
+ */
+function normalize(raw         )          {
+  if (!isObject(raw)) return raw;
+  const r = raw                           ;
+  const src = isObject(r.settings) ? (r.settings                           ) : r;
+
+  const legacyDefault = (normBasis(src.defaultBasis)                ) || 'market';
+  return {
+    schema: SINGLES_SCHEMA,
+    rates: Array.isArray(src.rates) ? src.rates.map((row) => normalizeRow(row, legacyDefault)) : src.rates,
+    buyConditions: normalizeBuyConditions(src.buyConditions),
+    minMarketCents: normNumber(src.minMarketCents, DEFAULT_MIN_MARKET_CENTS),
+    maxCardsPerComp: normNumber(src.maxCardsPerComp, DEFAULT_MAX_CARDS_PER_COMP),
+    paused: normBool(src.paused),
+    pausedMessage: src.pausedMessage == null ? '' : String(src.pausedMessage),
+  };
+}
+
+/** `legacyDefault` is the sheet's old `defaultBasis` (already resolved), used only when this row has none of its own. */
+function normalizeRow(raw         , legacyDefault              )          {
+  if (!isObject(raw)) return raw;
+  const r = raw                           ;
+  return {
+    sort: normNumber(r.sort, 0),
+    label: r.label == null ? '' : String(r.label),
+    from: normMoney(r.from, 0),
+    to: r.to === '' || r.to == null ? null : normMoney(r.to, r.to),
+    pct: normMoney(r.pct, r.pct),
+    basis: r.basis === '' || r.basis == null ? legacyDefault : normBasis(r.basis) || r.basis,
+    eras: normListLower(r.eras),
+    yearMin: r.yearMin === '' || r.yearMin == null ? null : normNumber(r.yearMin, r.yearMin),
+    yearMax: r.yearMax === '' || r.yearMax == null ? null : normNumber(r.yearMax, r.yearMax),
+    kinds: normListLower(r.kinds),
+    rarities: normListKeep(r.rarities),
+    printings: normPrintingList(r.printings),
+    sets: normIntList(r.sets),
+    language: r.language == null || r.language === '' ? 'english' : normKey(r.language),
+  };
+}
+
+function normalizeBuyConditions(raw         )          {
+  if (!isObject(raw)) return { NM: 100, LP: null, MP: null, HP: null, DMG: null };
+  const r = raw                           ;
+  const pct = (x         ) => (x === '' || x == null ? null : normMoney(x, x));
+  return { NM: 100, LP: pct(r.LP), MP: pct(r.MP), HP: pct(r.HP), DMG: pct(r.DMG) };
+}
+
+/** A vocabulary key as the schema spells it: trimmed and lower case ('Pokemon' -> 'pokemon'). */
+function normKey(x         )          {
+  return typeof x === 'string' ? x.trim().toLowerCase() : x;
+}
+
+function normBasis(x         )                {
+  if (typeof x !== 'string') return null;
+  const s = x.trim();
+  return BASIS_KEYS.indexOf(s) >= 0 ? s : null;
+}
+
+/** A comma line or array -> trimmed, lower-cased, de-duplicated keys (eras, kinds). null = nothing picked. */
+function normListLower(x         )                  {
+  let list           ;
+  if (x == null || x === '') return null;
+  if (typeof x === 'string') list = x.split(',');
+  else if (Array.isArray(x)) list = x;
+  else return null;
+  const out           = [];
+  for (const item of list) {
+    const key = typeof item === 'string' ? item.trim().toLowerCase() : String(item);
+    if (key !== '' && out.indexOf(key) < 0) out.push(key);
+  }
+  return out.length ? out : null;
+}
+
+/** Same, but keeps the original case (rarities, printings are catalog-exact strings). */
+function normListKeep(x         )                  {
+  let list           ;
+  if (x == null || x === '') return null;
+  if (typeof x === 'string') list = x.split(',');
+  else if (Array.isArray(x)) list = x;
+  else return null;
+  const out           = [];
+  for (const item of list) {
+    const v = typeof item === 'string' ? item.trim() : String(item);
+    if (v !== '' && out.indexOf(v) < 0) out.push(v);
+  }
+  return out.length ? out : null;
+}
+
+/** normListKeep, but an old "1st Edition Normal"/"Unlimited Normal" spelling is mapped onto its live PRINTINGS name first - see PRINTING_ALIASES. */
+function normPrintingList(x         )                  {
+  const list = normListKeep(x);
+  if (!list) return null;
+  const out           = [];
+  for (const v of list) {
+    const mapped = PRINTING_ALIASES[v.toLowerCase()] || v;
+    if (out.indexOf(mapped) < 0) out.push(mapped);
+  }
+  return out;
+}
+
+/** A comma line or array of set (group) ids -> de-duplicated numbers. null = nothing picked. */
+function normIntList(x         )                  {
+  let list           ;
+  if (x == null || x === '') return null;
+  if (typeof x === 'string') list = x.split(',');
+  else if (Array.isArray(x)) list = x;
+  else return null;
+  const out           = [];
+  for (const item of list) {
+    const n = typeof item === 'number' ? item : Number(String(item).trim());
+    if (Number.isFinite(n) && out.indexOf(n) < 0) out.push(n);
+  }
+  return out.length ? out : null;
+}
+
+/** Numbers that may arrive as "$1,200.50" or "85%" from a text input. */
+function normMoney(x         , fallback         )          {
+  if (typeof x === 'number') return x;
+  if (typeof x !== 'string') return x == null ? fallback : x;
+  const cleaned = x.trim().replace(/[$,%\s]/g, '');
+  if (cleaned === '') return fallback;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : x;
+}
+
+function normNumber(x         , fallback         )          {
+  if (typeof x === 'number') return x;
+  if (typeof x !== 'string') return x == null ? fallback : x;
+  const cleaned = x.trim();
+  if (cleaned === '') return fallback;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : x;
+}
+
+/** Checkboxes post "on"/"true"/"1"; absent means off. */
+function normBool(x         )          {
+  if (typeof x === 'boolean') return x;
+  if (x == null || x === '') return false;
+  if (typeof x === 'number') return x !== 0;
+  if (typeof x === 'string') {
+    const s = x.trim().toLowerCase();
+    if (s === 'true' || s === 'on' || s === 'yes' || s === '1') return true;
+    if (s === 'false' || s === 'off' || s === 'no' || s === '0') return false;
+  }
+  return x;
+}
+
+// ── validate ─────────────────────────────────────────────────────────────────
+
+/**
+ * Check `raw` against the schema. On success the returned settings are a fresh,
+ * fully-populated object (never the caller's), with the rows ordered by `sort`;
+ * on failure every problem is listed in plain English, rows prefixed "Row N: ".
+ */
+function validateSettings(raw         )                        {
+  const errors           = [];
+
+  if (!isObject(raw)) {
+    return { ok: false, errors: ['The settings must be an object.'] };
+  }
+  const s = raw                           ;
+
+  if (!Array.isArray(s.rates)) {
+    return { ok: false, errors: ['The rate table is missing.'] };
+  }
+  if (s.rates.length < LIMITS.minRows) {
+    errors.push('Add at least one rate row.');
+  }
+  if (s.rates.length > LIMITS.maxRows) {
+    errors.push('Too many rate rows: ' + LIMITS.maxRows + ' is the limit, you have ' + s.rates.length + '.');
+  }
+
+  const rates               = [];
+  const rowCount = Math.min(s.rates.length, LIMITS.maxRows);
+  for (let i = 0; i < rowCount; i++) {
+    const row = validateRow(s.rates[i], i + 1, errors);
+    if (row) rates.push(row);
+  }
+  // Pricing reads the rows in this order and stops at the first match, so the stored sheet is
+  // stored in that order too: what staff see on the page is what the bot walks.
+  sortRows(rates);
+
+  // buyConditions
+  const buyConditions = validateBuyConditions(s.buyConditions, errors);
+
+  // minMarketCents
+  let minMarketCents = DEFAULT_MIN_MARKET_CENTS;
+  if (s.minMarketCents != null && s.minMarketCents !== '') {
+    const m = num(s.minMarketCents);
+    if (m === null || !Number.isInteger(m) || m < LIMITS.minMarketFloor || m > LIMITS.maxMarketFloor) {
+      errors.push(
+        'Minimum market price must be a whole number of cents between ' + LIMITS.minMarketFloor +
+          ' and ' + LIMITS.maxMarketFloor + '.',
+      );
+    } else {
+      minMarketCents = m;
+    }
+  }
+
+  // maxCardsPerComp
+  let maxCardsPerComp = DEFAULT_MAX_CARDS_PER_COMP;
+  if (s.maxCardsPerComp != null && s.maxCardsPerComp !== '') {
+    const m = num(s.maxCardsPerComp);
+    if (m === null || !Number.isInteger(m) || m < LIMITS.minCards || m > LIMITS.maxCards) {
+      errors.push(
+        'Max cards per comp must be a whole number between ' + LIMITS.minCards + ' and ' + LIMITS.maxCards + '.',
+      );
+    } else {
+      maxCardsPerComp = m;
+    }
+  }
+
+  // paused
+  let paused = false;
+  if (s.paused != null && s.paused !== '') {
+    if (typeof s.paused !== 'boolean') errors.push('Paused must be on or off.');
+    else paused = s.paused;
+  }
+
+  // pausedMessage
+  let pausedMessage = '';
+  if (s.pausedMessage != null && s.pausedMessage !== '') {
+    if (typeof s.pausedMessage !== 'string') {
+      errors.push('Paused message must be text.');
+    } else if (s.pausedMessage.length > LIMITS.maxPausedMessage) {
+      errors.push('Paused message is longer than ' + LIMITS.maxPausedMessage + ' characters.');
+    } else {
+      pausedMessage = s.pausedMessage;
+    }
+  }
+
+  if (errors.length) return { ok: false, errors };
+
+  return {
+    ok: true,
+    settings: {
+      schema: SINGLES_SCHEMA,
+      rates,
+      buyConditions,
+      minMarketCents,
+      maxCardsPerComp,
+      paused,
+      pausedMessage,
+    },
+  };
+}
+
+/** Ascending `sort`, stable on a tie, so two rows on the same number keep the order they were saved in. */
+function sortRows(rows              )               {
+  const withIndex = rows.map((row, i) => ({ row, i }));
+  withIndex.sort((a, b) => (a.row.sort === b.row.sort ? a.i - b.i : a.row.sort - b.row.sort));
+  for (let i = 0; i < withIndex.length; i++) rows[i] = withIndex[i].row;
+  return rows;
+}
+
+/** NM is always 100 (the baseline every other condition is a percent of); LP/MP/HP/DMG are a percent or null (not bought). */
+function validateBuyConditions(raw         , errors          )                       {
+  const out                       = { NM: 100, LP: null, MP: null, HP: null, DMG: null };
+  if (raw == null || raw === '') return out;
+  if (!isObject(raw)) {
+    errors.push('Buy conditions must be an object.');
+    return out;
+  }
+  const r = raw                           ;
+  if (r.NM != null && r.NM !== '') {
+    const v = num(r.NM);
+    if (v !== 100) errors.push('Buy conditions: NM is always 100 - it is the baseline every other condition is paid a percent of.');
+  }
+  const keys                                    = ['LP', 'MP', 'HP', 'DMG'];
+  for (const key of keys) {
+    const v = r[key];
+    if (v == null || v === '') continue; // null = that condition is not bought at all
+    const p = num(v);
+    if (p === null || p < 0 || p > 100 || !decimalsOk(p, LIMITS.condPctDecimals)) {
+      errors.push(
+        'Buy conditions: ' + key + ' must be a percent of the NM price between 0 and 100, or blank to not buy that condition.',
+      );
+    } else {
+      out[key] = p;
+    }
+  }
+  return out;
+}
+
+function validateRow(raw         , n        , errors          )                    {
+  const at = 'Row ' + n + ': ';
+  if (!isObject(raw)) {
+    errors.push(at + 'this row is not filled in.');
+    return null;
+  }
+  const r = raw                           ;
+  const before = errors.length;
+
+  // sort — the order the bot tries the rows in, first match wins
+  let sort = 0;
+  if (r.sort != null && r.sort !== '') {
+    const o = num(r.sort);
+    if (o === null || !Number.isInteger(o) || o < LIMITS.minSort || o > LIMITS.maxSort) {
+      errors.push(at + 'Sort order must be a whole number between ' + LIMITS.minSort + ' and ' + LIMITS.maxSort + '.');
+    } else sort = o;
+  }
+
+  // label
+  let label = '';
+  if (r.label != null && r.label !== '') {
+    if (typeof r.label !== 'string') errors.push(at + 'Label must be text.');
+    else if (r.label.length > LIMITS.maxLabel) errors.push(at + 'Label must be ' + LIMITS.maxLabel + ' characters or less.');
+    else label = r.label;
+  }
+
+  // from
+  let from = 0;
+  const f = num(r.from);
+  if (r.from == null || r.from === '') {
+    from = 0;
+  } else if (f === null) {
+    errors.push(at + 'From $ must be a number.');
+  } else if (f < 0) {
+    errors.push(at + 'From $ cannot be negative.');
+  } else if (f > LIMITS.maxMoney) {
+    errors.push(at + 'From $ cannot be more than ' + money(LIMITS.maxMoney) + '.');
+  } else if (!decimalsOk(f, LIMITS.moneyDecimals)) {
+    errors.push(at + 'From $ can have at most ' + LIMITS.moneyDecimals + ' decimal places.');
+  } else {
+    from = f;
+  }
+
+  // to
+  let to                = null;
+  if (r.to != null && r.to !== '') {
+    const t = num(r.to);
+    if (t === null) {
+      errors.push(at + 'To $ must be a number, or blank for no limit.');
+    } else if (t < 0) {
+      errors.push(at + 'To $ cannot be negative.');
+    } else if (t > LIMITS.maxMoney) {
+      errors.push(at + 'To $ cannot be more than ' + money(LIMITS.maxMoney) + '.');
+    } else if (!decimalsOk(t, LIMITS.moneyDecimals)) {
+      errors.push(at + 'To $ can have at most ' + LIMITS.moneyDecimals + ' decimal places.');
+    } else if (f !== null && t <= f) {
+      errors.push(at + 'To $ must be more than From $.');
+    } else {
+      to = t;
+    }
+  }
+
+  // pct
+  let pct = 0;
+  const p = num(r.pct);
+  if (p === null) {
+    errors.push(at + 'Pays % must be a number.');
+  } else if (p < LIMITS.minPct || p > LIMITS.maxPct) {
+    errors.push(at + 'Pays % must be between ' + LIMITS.minPct + ' and ' + LIMITS.maxPct + '.');
+  } else if (!decimalsOk(p, LIMITS.pctDecimals)) {
+    errors.push(at + 'Pays % can have at most ' + LIMITS.pctDecimals + ' decimal places.');
+  } else {
+    pct = p;
+  }
+
+  // basis — required: every row says what it pays on, there is no sheet-wide default any more
+  let basis               = 'market';
+  if (r.basis == null || r.basis === '') {
+    errors.push(at + 'Basis must be ' + listNames(BASIS_KEYS, BASIS_LABEL) + '.');
+  } else {
+    const b = normBasis(r.basis);
+    if (!b) errors.push(at + 'Basis must be ' + listNames(BASIS_KEYS, BASIS_LABEL) + '.');
+    else basis = b                ;
+  }
+
+  // eras — null means "any era"
+  let eras                  = null;
+  if (r.eras != null && r.eras !== '') {
+    if (!Array.isArray(r.eras)) {
+      errors.push(at + 'Eras must be a list.');
+    } else {
+      const out           = [];
+      let bad = false;
+      for (const item of r.eras) {
+        const key = typeof item === 'string' ? item.trim().toLowerCase() : null;
+        if (!key || ERA_KEYS.indexOf(key) < 0) { bad = true; break; }
+        if (out.indexOf(key) < 0) out.push(key);
+      }
+      if (bad) errors.push(at + 'Era must be one of: ' + listNames(ERA_KEYS, ERA_LABEL) + '.');
+      else if (out.length) eras = out;
+    }
+  }
+
+  // yearMin / yearMax — set release year, null means no bound
+  let yearMin                = null;
+  if (r.yearMin != null && r.yearMin !== '') {
+    const y = num(r.yearMin);
+    if (y === null || !Number.isInteger(y) || y < LIMITS.minYear || y > LIMITS.maxYear) {
+      errors.push(at + 'Year min must be a whole year between ' + LIMITS.minYear + ' and ' + LIMITS.maxYear + '.');
+    } else yearMin = y;
+  }
+  let yearMax                = null;
+  if (r.yearMax != null && r.yearMax !== '') {
+    const y = num(r.yearMax);
+    if (y === null || !Number.isInteger(y) || y < LIMITS.minYear || y > LIMITS.maxYear) {
+      errors.push(at + 'Year max must be a whole year between ' + LIMITS.minYear + ' and ' + LIMITS.maxYear + '.');
+    } else if (yearMin !== null && y < yearMin) {
+      errors.push(at + 'Year max must be at least year min.');
+    } else yearMax = y;
+  }
+
+  // kinds — null means any of pokemon/trainer/energy
+  let kinds                  = null;
+  if (r.kinds != null && r.kinds !== '') {
+    if (!Array.isArray(r.kinds)) {
+      errors.push(at + 'Kinds must be a list.');
+    } else {
+      const out           = [];
+      let bad = false;
+      for (const item of r.kinds) {
+        const key = typeof item === 'string' ? item.trim().toLowerCase() : null;
+        if (!key || KIND_KEYS.indexOf(key) < 0) { bad = true; break; }
+        if (out.indexOf(key) < 0) out.push(key);
+      }
+      if (bad) errors.push(at + 'Kind must be ' + listNames(KIND_KEYS, KIND_LABEL) + '.');
+      else if (out.length) kinds = out;
+    }
+  }
+
+  // rarities — null means any rarity; any string up to maxRarityLength is accepted (not just KNOWN_RARITIES)
+  let rarities                  = null;
+  if (r.rarities != null && r.rarities !== '') {
+    if (!Array.isArray(r.rarities)) {
+      errors.push(at + 'Rarities must be a list.');
+    } else {
+      const out           = [];
+      let bad = false;
+      for (const item of r.rarities) {
+        if (typeof item !== 'string' || !item.trim() || item.length > LIMITS.maxRarityLength) { bad = true; break; }
+        const v = item.trim();
+        if (out.indexOf(v) < 0) out.push(v);
+      }
+      if (bad) errors.push(at + 'Each rarity must be text, ' + LIMITS.maxRarityLength + ' characters or less.');
+      else if (out.length) rarities = out;
+    }
+  }
+
+  // printings — null means any printing; must be one of the fixed PRINTINGS list
+  let printings                  = null;
+  if (r.printings != null && r.printings !== '') {
+    if (!Array.isArray(r.printings)) {
+      errors.push(at + 'Printings must be a list.');
+    } else {
+      const out           = [];
+      let bad = false;
+      for (const item of r.printings) {
+        const raw = typeof item === 'string' ? item.trim() : '';
+        // An old "1st Edition Normal"/"Unlimited Normal" spelling (a sheet saved before PRINTINGS
+        // was corrected to the catalog's real names) is accepted and mapped onto its live name.
+        const v = PRINTING_ALIASES[raw.toLowerCase()] || raw;
+        if (!v || PRINTINGS.indexOf(v) < 0) { bad = true; break; }
+        if (out.indexOf(v) < 0) out.push(v);
+      }
+      if (bad) errors.push(at + 'Printing must be one of: ' + PRINTINGS.join(', ') + '.');
+      else if (out.length) printings = out;
+    }
+  }
+
+  // sets — groupIds; null means any set
+  let sets                  = null;
+  if (r.sets != null && r.sets !== '') {
+    if (!Array.isArray(r.sets)) {
+      errors.push(at + 'Sets must be a list.');
+    } else {
+      const out           = [];
+      let bad = false;
+      for (const item of r.sets) {
+        const v = num(item);
+        if (v === null || !Number.isInteger(v) || v < 0) { bad = true; break; }
+        if (out.indexOf(v) < 0) out.push(v);
+      }
+      if (bad) errors.push(at + 'Sets must be a list of set ids (whole numbers).');
+      else if (out.length) sets = out;
+    }
+  }
+
+  // language — only English is bought today; the field exists so the schema need not change later
+  let language            = 'english';
+  if (r.language != null && r.language !== '') {
+    if (typeof r.language !== 'string' || r.language.trim().toLowerCase() !== 'english') {
+      errors.push(at + 'Language must be English (the only language bought for now).');
+    }
+  }
+
+  if (errors.length > before) return null;
+
+  return { sort, label, from, to, pct, basis, eras, yearMin, yearMax, kinds, rarities, printings, sets, language };
+}
+
+window.SinglesValidate = {
+  SINGLES_SCHEMA: SINGLES_SCHEMA,
+  ERA_KEYS: ERA_KEYS,
+  ERA_LABEL: ERA_LABEL,
+  ERAS: ERAS,
+  KIND_KEYS: KIND_KEYS,
+  KIND_LABEL: KIND_LABEL,
+  KINDS: KINDS,
+  CONDITION_KEYS: CONDITION_KEYS,
+  CONDITION_LABEL: CONDITION_LABEL,
+  CONDITIONS: CONDITIONS,
+  PRINTINGS: PRINTINGS,
+  PRINTING_ALIASES: PRINTING_ALIASES,
+  KNOWN_RARITIES: KNOWN_RARITIES,
+  BASIS_KEYS: BASIS_KEYS,
+  BASIS_LABEL: BASIS_LABEL,
+  LIMITS: LIMITS,
+  DEFAULT_MIN_MARKET_CENTS: DEFAULT_MIN_MARKET_CENTS,
+  DEFAULT_MAX_CARDS_PER_COMP: DEFAULT_MAX_CARDS_PER_COMP,
+  defaults: defaults,
+  normalize: normalize,
+  validateSettings: validateSettings,
+  sortRows: sortRows,
+};
+})();
+/* SINGLES-CORE:END */
+</script>
+
+<script>
+(function () {
+'use strict';
+  var activeTab = 'singles';
+
+
+  var KEY_STORE = 'iopRatesEditKey';
+  
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  
+
+  function fmtTime(iso) {
+    if (!iso) return null;
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    var now = new Date();
+    var sameDay = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+    return d.toLocaleString(undefined, sameDay
+      ? { hour: 'numeric', minute: '2-digit' }
+      : { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  }
+  
+
+  // The function is served at .../functions/v1/slab-rates with no trailing slash, so a
+  // literal "./settings" would resolve one level too high. Build the sibling path from
+  // whatever path this page was loaded at; still host-relative, works behind any domain.
+  function api(name) {
+    var meta = document.querySelector('meta[name="rates-api"]');
+    var base = meta && meta.content ? meta.content : location.pathname;
+    return base.replace(new RegExp('[/]+$'), '') + '/' + name;
+  }
+  
+
+  function editKey(force) {
+    var k = null;
+    try { k = localStorage.getItem(KEY_STORE); } catch (e) { k = null; }
+    if (!k || force) {
+      k = window.prompt('Edit key for this rates page');
+      if (!k) return null;
+      k = k.trim();
+      if (!k) return null;
+      try { localStorage.setItem(KEY_STORE, k); } catch (e) { /* private mode: key lives for this page only */ }
+    }
+    return k;
+  }
+
+  function forgetKey() {
+    try { localStorage.removeItem(KEY_STORE); } catch (e) { /* nothing to forget */ }
+  }
+  
+
+  var el = {
+    msg: document.getElementById('msg'),
+    save: document.getElementById('save'),
+    reload: document.getElementById('reload'),
+    stSaved: document.getElementById('st-saved'),
+    botPill: document.getElementById('bot-pill')
+  };
+
+  var SinglesTab = (function () {
+    var SV = window.SinglesValidate || {};
+
+    var state = null, baseline = null, savedAt = null, apiUp = true, busy = false, justSaved = false, uidSeq = 0;
+    var msgCache = { text: '', kind: '' };
+
+    function isActive() { return activeTab === 'singles'; }
+
+    var dom = {
+      rulesList: document.getElementById('sg-rules-list'),
+      errors: document.getElementById('sg-errors'),
+      errorsList: document.getElementById('sg-errors-list'),
+      dirtyHint: document.getElementById('sg-dirty-hint'),
+      paused: document.getElementById('sg-paused'),
+      pausedWrap: document.getElementById('sg-pausedWrap'),
+      pausedMessage: document.getElementById('sg-pausedMessage'),
+      minMarketCents: document.getElementById('sg-minMarketCents'),
+      maxCardsPerComp: document.getElementById('sg-maxCardsPerComp'),
+      condLP: document.getElementById('sg-cond-LP'),
+      condMP: document.getElementById('sg-cond-MP'),
+      condHP: document.getElementById('sg-cond-HP'),
+      condDMG: document.getElementById('sg-cond-DMG'),
+      foot: document.getElementById('sg-foot')
+    };
+
+    function str(v) { return v === null || v === undefined ? '' : String(v); }
+    function centsToDollars(c) { var n = Number(c); return Number.isFinite(n) ? (n / 100).toFixed(2) : ''; }
+    function dollarsToCents(s) {
+      if (s === '' || s == null) return null;
+      var n = Number(s);
+      if (!Number.isFinite(n)) return s;
+      return Math.round(n * 100);
+    }
+
+    // ── settings <-> form values ───────────────────────────────────────────
+    function toFormRow(r) {
+      r = r || {};
+      return {
+        _uid: 'sg' + (++uidSeq),
+        sort: str(r.sort == null ? 0 : r.sort),
+        label: str(r.label),
+        from: str(r.from == null ? 0 : r.from),
+        to: r.to == null ? '' : str(r.to),
+        pct: r.pct == null ? '' : str(r.pct),
+        basis: r.basis == null ? 'market' : str(r.basis),
+        eras: (Array.isArray(r.eras) && r.eras.length) ? r.eras.slice() : null,
+        yearMin: r.yearMin == null ? '' : str(r.yearMin),
+        yearMax: r.yearMax == null ? '' : str(r.yearMax),
+        kinds: (Array.isArray(r.kinds) && r.kinds.length) ? r.kinds.slice() : null,
+        rarities: Array.isArray(r.rarities) ? r.rarities.join(', ') : str(r.rarities),
+        printings: (Array.isArray(r.printings) && r.printings.length) ? r.printings.slice() : null,
+        sets: Array.isArray(r.sets) ? r.sets.join(', ') : str(r.sets)
+      };
+    }
+
+    function toForm(settings) {
+      settings = settings || {};
+      var bc = settings.buyConditions || {};
+      return {
+        buyConditions: {
+          LP: bc.LP == null ? '' : str(bc.LP),
+          MP: bc.MP == null ? '' : str(bc.MP),
+          HP: bc.HP == null ? '' : str(bc.HP),
+          DMG: bc.DMG == null ? '' : str(bc.DMG)
+        },
+        minMarketCents: centsToDollars(settings.minMarketCents != null ? settings.minMarketCents : (SV.DEFAULT_MIN_MARKET_CENTS || 100)),
+        maxCardsPerComp: settings.maxCardsPerComp == null ? '' : str(settings.maxCardsPerComp),
+        paused: !!settings.paused,
+        pausedMessage: str(settings.pausedMessage),
+        rates: (settings.rates || []).map(toFormRow)
+      };
+    }
+
+    /** The row as the schema wants it: no _uid, strings left for normalize() to coerce. */
+    function plainRow(r) {
+      return {
+        sort: r.sort, label: r.label, from: r.from, to: r.to, pct: r.pct,
+        basis: r.basis || null,
+        eras: r.eras,
+        yearMin: r.yearMin === '' ? null : r.yearMin,
+        yearMax: r.yearMax === '' ? null : r.yearMax,
+        kinds: r.kinds,
+        rarities: r.rarities,
+        printings: r.printings,
+        sets: r.sets,
+        language: 'english'
+      };
+    }
+
+    function fromForm() {
+      return {
+        schema: SV.SINGLES_SCHEMA,
+        rates: state.rates.map(plainRow),
+        buyConditions: { NM: 100, LP: state.buyConditions.LP, MP: state.buyConditions.MP, HP: state.buyConditions.HP, DMG: state.buyConditions.DMG },
+        minMarketCents: dollarsToCents(state.minMarketCents),
+        maxCardsPerComp: state.maxCardsPerComp,
+        paused: state.paused,
+        pausedMessage: state.paused ? state.pausedMessage : ''
+      };
+    }
+
+    function blankRow(sort) {
+      return toFormRow({ sort: sort, label: '', from: 0, to: null, pct: '', basis: 'market', eras: null, yearMin: null, yearMax: null, kinds: null, rarities: '', printings: null, sets: '' });
+    }
+
+    // ── dirty tracking ───────────────────────────────────────────────────────
+    function captureBaseline() {
+      var rows = {};
+      state.rates.forEach(function (r) { rows[r._uid] = JSON.stringify(plainRow(r)); });
+      baseline = {
+        rows: rows,
+        top: {
+          minMarketCents: state.minMarketCents,
+          maxCardsPerComp: state.maxCardsPerComp,
+          pausedMessage: state.pausedMessage,
+          paused: !!state.paused,
+          cond: JSON.stringify(state.buyConditions)
+        }
+      };
+    }
+
+    function countChanges() {
+      if (!baseline || !state) return 0;
+      var n = 0;
+      ['minMarketCents', 'maxCardsPerComp', 'pausedMessage'].forEach(function (k) {
+        if (str(state[k]) !== str(baseline.top[k])) n++;
+      });
+      if (!!state.paused !== !!baseline.top.paused) n++;
+      if (JSON.stringify(state.buyConditions) !== baseline.top.cond) n++;
+      var seen = {};
+      state.rates.forEach(function (r) {
+        seen[r._uid] = true;
+        var was = baseline.rows[r._uid];
+        if (was === undefined || was !== JSON.stringify(plainRow(r))) n++;
+      });
+      Object.keys(baseline.rows).forEach(function (uid) { if (!seen[uid]) n++; });
+      return n;
+    }
+
+    function markDirty() { justSaved = false; updateDirty(); }
+
+    function updateDirty() {
+      var n = countChanges();
+      dom.dirtyHint.hidden = n === 0;
+      if (!isActive()) return;
+      if (busy) { el.save.disabled = true; el.save.textContent = 'Saving…'; return; }
+      if (n > 0) {
+        el.save.disabled = false;
+        el.save.textContent = '💾 Save (' + n + ' change' + (n === 1 ? '' : 's') + ')';
+      } else if (justSaved) {
+        el.save.disabled = true;
+        el.save.textContent = '✓ Saved';
+      } else {
+        el.save.disabled = false;
+        el.save.textContent = '💾 Save';
+      }
+    }
+
+    // ── html helpers ─────────────────────────────────────────────────────────
+    function opts(pairs, value) {
+      return pairs.map(function (p) {
+        return '<option value="' + esc(p[0]) + '"' + (String(p[0]) === String(value) ? ' selected' : '') + '>' + esc(p[1]) + '</option>';
+      }).join('');
+    }
+    function basisOptions(sel) {
+      var keys = SV.BASIS_KEYS || [], labels = SV.BASIS_LABEL || {};
+      return opts(keys.map(function (k) { return [k, labels[k] || k]; }), sel);
+    }
+    function chip(active, act, key, label, title) {
+      return '<button type="button" class="tgl' + (active ? ' on' : '') + '" data-act="' + esc(act) + '" data-key="' + esc(key) + '" title="' + esc(title || label) + '" aria-pressed="' + active + '">' + esc(label) + '</button>';
+    }
+    function eraChips(r) {
+      var keys = SV.ERA_KEYS || [], labels = SV.ERA_LABEL || {};
+      var sel = r.eras || [];
+      var chips = keys.map(function (k) { return chip(sel.indexOf(k) >= 0, 'era', k, k.toUpperCase(), labels[k] || k); }).join('');
+      return '<span class="chipgroup" title="Which set eras this row buys. None selected = any era.">' + chips + '</span>';
+    }
+    function kindChips(r) {
+      var keys = SV.KIND_KEYS || [], labels = SV.KIND_LABEL || {};
+      var sel = r.kinds || [];
+      var chips = keys.map(function (k) { return chip(sel.indexOf(k) >= 0, 'kind', k, labels[k] || k, labels[k] || k); }).join('');
+      return '<span class="chipgroup" title="Which card kinds this row buys. None selected = any kind. No trainers = turn on Pok\u00e9mon and Energy, leave Trainer off.">' + chips + '</span>';
+    }
+    function printingLabel(p) {
+      return String(p).replace('1st Edition', '1st Ed.').replace('Unlimited', 'Unl.').replace('Holofoil', 'Holo').replace('Normal', 'Norm').replace('Reverse', 'Rev.');
+    }
+    function printingChips(r) {
+      var list = SV.PRINTINGS || [];
+      var sel = r.printings || [];
+      var chips = list.map(function (p) { return chip(sel.indexOf(p) >= 0, 'printing', p, printingLabel(p), p); }).join('');
+      return '<span class="chipgroup" title="Which printings this row buys. None selected = any printing.">' + chips + '</span>';
+    }
+
+    // ── rows ─────────────────────────────────────────────────────────────────
+    function reorder() {
+      state.rates = state.rates
+        .map(function (r, i) { return { r: r, i: i }; })
+        .sort(function (a, b) {
+          var oa = Number(a.r.sort) || 0, ob = Number(b.r.sort) || 0;
+          if (oa !== ob) return oa - ob;
+          return a.i - b.i;
+        })
+        .map(function (x) { return x.r; });
+    }
+
+    function tierHtml(r, idx) {
+      var sep = '<span class="sep">·</span>';
+      return '' +
+        '<div class="wtb-tier" data-row="' + (idx + 1) + '" data-uid="' + esc(r._uid) + '">' +
+          '<div class="range">' +
+            '<input type="number" step="0.01" min="0" data-k="from" value="' + esc(r.from) + '" placeholder="0" title="Min TCG market $" aria-label="Min dollars">' +
+            '<span class="dash">–</span>' +
+            '<input type="number" step="0.01" min="0" data-k="to" value="' + esc(r.to) + '" placeholder="∞" title="Max $ (blank = no cap)" aria-label="Max dollars, blank for no cap">' +
+          '</div>' +
+          '<div class="meta">' +
+            '<select data-k="basis" title="What this row\'s percent is taken from." aria-label="Basis">' + basisOptions(r.basis) + '</select>' +
+            sep + eraChips(r) + sep +
+            '<input type="number" step="1" min="1990" max="2100" data-k="yearMin" value="' + esc(r.yearMin) + '" placeholder="any" title="Set release year, minimum" aria-label="Year min" style="width:58px">' +
+            '<span class="dash">–</span>' +
+            '<input type="number" step="1" min="1990" max="2100" data-k="yearMax" value="' + esc(r.yearMax) + '" placeholder="any" title="Set release year, maximum" aria-label="Year max" style="width:58px">' +
+            sep + kindChips(r) + sep +
+            '<input class="label-input" type="text" data-k="rarities" value="' + esc(r.rarities) + '" placeholder="any rarity" title="Comma-separated TCGplayer rarity names, e.g. Ultra Rare, Secret Rare" aria-label="Rarities" style="width:150px">' +
+            sep + printingChips(r) + sep +
+            '<input class="label-input" type="text" data-k="sets" value="' + esc(r.sets) + '" placeholder="any set" title="Comma-separated set ids" aria-label="Sets" style="width:90px">' +
+            sep +
+            '<input class="label-input" type="text" data-k="label" maxlength="100" value="' + esc(r.label) + '" placeholder="note (optional)" title="Note (optional). Staff see this." aria-label="Note" style="width:130px">' +
+          '</div>' +
+          '<input class="sort" type="number" step="1" data-k="sort" value="' + esc(r.sort) + '" title="Sort order: lower = checked first" aria-label="Sort order, lower is checked first">' +
+          '<div class="pct">' +
+            '<input type="number" step="0.01" min="1" max="100" data-k="pct" value="' + esc(r.pct) + '" title="Percent of the basis this row pays" aria-label="Percent paid"><span class="pct-sign">%</span>' +
+          '</div>' +
+          '<button type="button" class="del" data-act="del" title="Delete row" aria-label="Delete this row">✕</button>' +
+        '</div>';
+    }
+
+    function renderRules() {
+      reorder();
+      var rows = '';
+      state.rates.forEach(function (r, idx) { rows += tierHtml(r, idx); });
+      var html = '<section class="wtb-group">' +
+        '<div class="wtb-group-header"><h3>🃏 Pokémon singles</h3><div class="right">% of TCG market</div></div>' +
+        (rows || '<div class="empty-rules">No rows yet. Add one below and the bot starts quoting it.</div>') +
+        '<button type="button" class="wtb-add-tier" data-act="add-row" title="Add another row">＋ Add row</button>' +
+        '</section>';
+      dom.rulesList.innerHTML = html;
+    }
+
+    function renderTop() {
+      dom.minMarketCents.value = state.minMarketCents;
+      dom.maxCardsPerComp.value = state.maxCardsPerComp;
+      dom.condLP.value = state.buyConditions.LP;
+      dom.condMP.value = state.buyConditions.MP;
+      dom.condHP.value = state.buyConditions.HP;
+      dom.condDMG.value = state.buyConditions.DMG;
+      dom.paused.checked = !!state.paused;
+      dom.pausedWrap.hidden = !state.paused;
+      dom.pausedMessage.value = state.pausedMessage;
+    }
+
+    // ── status line ────────────────────────────────────────────────────────
+    function renderStatus() {
+      if (!isActive()) return;
+      var saved = fmtTime(savedAt);
+      el.stSaved.textContent = saved ? 'Last saved ' + saved : 'Nothing saved yet';
+      if (!apiUp) {
+        el.botPill.className = 'helper-pill down';
+        el.botPill.textContent = '🔴 Rates API unreachable';
+        el.botPill.title = 'The page could not reach the rates API';
+      } else {
+        el.botPill.className = 'helper-pill';
+        el.botPill.textContent = '⚪ Singles sheet';
+        el.botPill.title = 'Saved separately from the slab sheet';
+      }
+    }
+
+    function setMsg(text, kind) {
+      msgCache = { text: text || '', kind: kind || '' };
+      if (!isActive()) return;
+      el.msg.textContent = msgCache.text;
+      el.msg.className = 'msg' + (kind ? ' ' + kind : '');
+    }
+
+    function showErrors(list) {
+      Array.prototype.forEach.call(dom.rulesList.querySelectorAll('.wtb-tier.bad'), function (t) { t.classList.remove('bad'); });
+      if (!list || !list.length) { dom.errors.hidden = true; dom.errorsList.innerHTML = ''; return; }
+      dom.errorsList.innerHTML = list.map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('');
+      dom.errors.hidden = false;
+      list.forEach(function (e) {
+        var m = /^Row (\d+)[:.]/.exec(e);
+        if (!m) return;
+        var tier = dom.rulesList.querySelector('.wtb-tier[data-row="' + m[1] + '"]');
+        if (tier) tier.classList.add('bad');
+      });
+      dom.errors.scrollIntoView({ block: 'nearest' });
+    }
+
+    // ── row editing ──────────────────────────────────────────────────────────
+    function rowOf(node) {
+      var tier = node.closest ? node.closest('.wtb-tier') : null;
+      if (!tier) return null;
+      var uid = tier.getAttribute('data-uid');
+      for (var i = 0; i < state.rates.length; i++) if (state.rates[i]._uid === uid) return state.rates[i];
+      return null;
+    }
+    function readField(t) {
+      var r = rowOf(t);
+      if (!r || !t.dataset.k) return null;
+      r[t.dataset.k] = t.value;
+      markDirty();
+      return r;
+    }
+    function toggleList(row, field, allKeys, key) {
+      var cur = Array.isArray(row[field]) ? row[field].slice() : [];
+      var at = cur.indexOf(key);
+      if (at >= 0) cur.splice(at, 1); else cur.push(key);
+      row[field] = cur.length ? allKeys.filter(function (k) { return cur.indexOf(k) >= 0; }) : null;
+    }
+
+    dom.rulesList.addEventListener('input', function (ev) {
+      var t = ev.target;
+      if (!t.dataset || !t.dataset.k) return;
+      readField(t);
+    });
+    dom.rulesList.addEventListener('change', function (ev) {
+      var t = ev.target;
+      if (!t.dataset || !t.dataset.k) return;
+      var r = readField(t);
+      if (!r) return;
+      if (t.dataset.k === 'sort') renderRules();
+    });
+    dom.rulesList.addEventListener('click', function (ev) {
+      var btn = ev.target.closest('[data-act]');
+      if (!btn) return;
+      var act = btn.dataset.act;
+
+      if (act === 'add-row') {
+        var maxRows = (SV.LIMITS && SV.LIMITS.maxRows) || 60;
+        if (state.rates.length >= maxRows) { setMsg(maxRows + ' rows is the limit.', 'err'); return; }
+        var max = 0;
+        state.rates.forEach(function (r) { max = Math.max(max, Number(r.sort) || 0); });
+        state.rates.push(blankRow(max + 10));
+        markDirty();
+        renderRules();
+        setMsg('Row added. Not saved yet.');
+        return;
+      }
+
+      var row = rowOf(btn);
+      if (!row) return;
+
+      if (act === 'del') {
+        if (!window.confirm('Delete this row?')) return;
+        state.rates = state.rates.filter(function (r) { return r !== row; });
+        markDirty();
+        renderRules();
+        setMsg('Row deleted. Not saved yet.');
+        return;
+      }
+
+      if (act === 'era' || act === 'kind' || act === 'printing') {
+        var field = act === 'era' ? 'eras' : (act === 'kind' ? 'kinds' : 'printings');
+        var allKeys = act === 'era' ? (SV.ERA_KEYS || []) : (act === 'kind' ? (SV.KIND_KEYS || []) : (SV.PRINTINGS || []));
+        toggleList(row, field, allKeys, btn.dataset.key);
+        var nowOn = Array.isArray(row[field]) && row[field].indexOf(btn.dataset.key) >= 0;
+        btn.classList.toggle('on', nowOn);
+        btn.setAttribute('aria-pressed', String(nowOn));
+        markDirty();
+        return;
+      }
+    });
+
+    // ── sheet settings ───────────────────────────────────────────────────────
+    ['minMarketCents', 'maxCardsPerComp', 'pausedMessage'].forEach(function (k) {
+      var node = dom[k];
+      if (!node) return;
+      node.addEventListener('input', function () { state[k] = node.value; markDirty(); });
+      node.addEventListener('change', function () { state[k] = node.value; markDirty(); });
+    });
+    [['LP', dom.condLP], ['MP', dom.condMP], ['HP', dom.condHP], ['DMG', dom.condDMG]].forEach(function (pair) {
+      var key = pair[0], node = pair[1];
+      node.addEventListener('input', function () { state.buyConditions[key] = node.value; markDirty(); });
+      node.addEventListener('change', function () { state.buyConditions[key] = node.value; markDirty(); });
+    });
+    dom.paused.addEventListener('change', function () {
+      state.paused = dom.paused.checked;
+      dom.pausedWrap.hidden = !state.paused;
+      markDirty();
+    });
+
+    // ── load ───────────────────────────────────────────────────────────────
+    function applySettings(settings) {
+      state = toForm(settings);
+      captureBaseline();
+      renderTop();
+      renderRules();
+      updateDirty();
+    }
+
+    function load(announce) {
+      if (announce && countChanges() > 0 && !window.confirm('Throw away your unsaved edits and reload the saved singles sheet?')) return;
+      setBusy(true);
+      setMsg(announce ? 'Reloading…' : '');
+      fetch(api('singles'), { headers: { accept: 'application/json' } })
+        .then(function (res) {
+          if (res.status === 404) return null;
+          if (!res.ok) throw new Error('singles ' + res.status);
+          return res.json();
+        }).then(function (body) {
+          apiUp = true;
+          savedAt = body ? body.updatedAt : null;
+          applySettings(SV.normalize(body && body.settings ? body.settings : SV.defaults()));
+          justSaved = false;
+          updateDirty();
+          renderStatus();
+          showErrors(null);
+          setMsg(body ? (announce ? 'Reloaded.' : '') : 'Nothing saved yet. This is a starter sheet.');
+        }).catch(function (err) {
+          apiUp = false;
+          if (!state) applySettings(SV.normalize(SV.defaults()));
+          renderStatus();
+          setMsg('Could not load the singles sheet: ' + err.message, 'err');
+        }).then(function () { setBusy(false); });
+    }
+
+    function setBusy(on) {
+      busy = on;
+      if (isActive()) el.reload.disabled = on;
+      updateDirty();
+    }
+
+    // ── save ─────────────────────────────────────────────────────────────────
+    function doSave() {
+      if (busy || !state) return;
+
+      var checked = SV.validateSettings(SV.normalize(fromForm()));
+      if (!checked.ok) {
+        showErrors(checked.errors);
+        setMsg(checked.errors.length + ' problem' + (checked.errors.length === 1 ? '' : 's') + ' to fix.', 'err');
+        return;
+      }
+      showErrors(null);
+
+      var key = editKey(false);
+      if (!key) { setMsg('Save cancelled, no edit key.', 'err'); return; }
+
+      setBusy(true);
+      setMsg('Saving…');
+      fetch(api('singles'), {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json', 'x-edit-key': key },
+        body: JSON.stringify(checked.settings)
+      }).then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (body) {
+          return { status: res.status, body: body };
+        });
+      }).then(function (out) {
+        apiUp = true;
+        if (out.status === 401) {
+          forgetKey();
+          setMsg('That edit key is wrong. Press Save again to enter another one.', 'err');
+          return;
+        }
+        if (out.status === 400 && out.body && out.body.errors) {
+          showErrors(out.body.errors);
+          setMsg('The server rejected the sheet.', 'err');
+          return;
+        }
+        if (out.status < 200 || out.status >= 300) {
+          setMsg('Save failed (' + out.status + ').', 'err');
+          return;
+        }
+        savedAt = out.body.updatedAt || new Date().toISOString();
+        applySettings(out.body.settings ? SV.normalize(out.body.settings) : SV.normalize(checked.settings));
+        justSaved = true;
+        updateDirty();
+        renderStatus();
+        setMsg('Saved ' + (fmtTime(savedAt) || 'just now'), 'ok');
+      }).catch(function (err) {
+        apiUp = false;
+        renderStatus();
+        setMsg('Save failed: ' + err.message, 'err');
+      }).then(function () { setBusy(false); });
+    }
+
+    (function footer() {
+      var host = 'the rates API';
+      try { host = new URL(api('singles'), location.href).host; } catch (e) { /* keep the fallback */ }
+      dom.foot.textContent = 'Saved to ' + host + '.';
+    })();
+
+    applySettings(SV.normalize(SV.defaults()));
+    renderStatus();
+    load(false);
+
+    return {
+      save: doSave,
+      reload: function (announce) { load(announce); },
+      isBusy: function () { return busy; },
+      activate: function () {
+        renderStatus();
+        updateDirty();
+        el.msg.textContent = msgCache.text;
+        el.msg.className = 'msg' + (msgCache.kind ? ' ' + msgCache.kind : '');
+      }
+    };
+  })();
+  
+})();
+</script>
+</body>
+</html>

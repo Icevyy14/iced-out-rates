@@ -6,7 +6,8 @@
 <meta name="color-scheme" content="dark">
 <meta name="robots" content="noindex, nofollow">
 <meta name="rates-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/slab-rates">
-<title>Iced Out Penguin</title>
+<meta name="ledger-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/slab-ledger">
+<title>Iced Out Penguin · Pricing Rules</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
@@ -143,6 +144,93 @@ html::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 /* ── END PORTED ─────────────────────────────────────────────────────────── */
 
 
+/* ── PORTED from the owner app's nav — same selectors, same values ──────── */
+.nav-tabs{display:flex;flex-wrap:wrap;gap:4px;background:var(--bg);padding:4px;border-radius:12px}
+.nav-tab{padding:8px 20px;border:none;border-radius:9px;cursor:pointer;font-family:var(--font-ui);font-size:13px;font-weight:700;transition:all .2s;background:transparent;color:var(--dim)}
+.nav-tab:hover{color:var(--text)}
+.nav-tab.active{background:var(--buy);color:var(--bg)}
+/* ── END PORTED ─────────────────────────────────────────────────────────── */
+
+/* ── PORTED from ledger-portal/page.html — same selectors, same values, now the Consignors tab ── */
+.wtb-table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--font-ui);table-layout:fixed;}
+.wtb-table td, .wtb-table th{overflow:hidden;}
+.wtb-table td.wtb-name{white-space:nowrap;text-overflow:ellipsis;}
+.wtb-table th{text-align:left;padding:9px 10px;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);}
+.wtb-table td{padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px;}
+.wtb-table td.cert{font-family:var(--font-mono);font-weight:700;}
+.wtb-table td.num{text-align:right;font-family:var(--font-mono);font-weight:700;}
+.wtb-table .bucket{display:inline-block;padding:3px 9px;border-radius:6px;font-weight:800;font-size:11px;color:#000;}
+.wtb-totals{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;}
+.wtb-total-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px 18px;text-align:center;}
+.wtb-total-card .lbl{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:6px;}
+.wtb-total-card .val{font-size:22px;font-weight:900;}
+.filter-chip{padding:6px 12px;border-radius:8px;border:none;background:transparent;color:var(--dim);font-family:var(--font-ui);font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;}
+.filter-chip:hover{color:var(--text);}
+.filter-chip.active{background:var(--buy);color:var(--bg);}
+/* ── END PORTED ─────────────────────────────────────────────────────────── */
+
+/* ── CONSIGNORS TAB — page additions on top of the ported table/pill rules ── */
+.stat-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:18px;}
+.stat-strip .wtb-total-card.owed{border-color:var(--red);}
+.stat-strip .wtb-total-card.owed .val{color:var(--red);}
+.partner-strip{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
+.partner-card{background:var(--s1);border:1px solid var(--border);border-top:3px solid var(--border);border-radius:14px;padding:16px 18px;}
+.partner-card.p-josh{border-top-color:var(--buy);}
+.partner-card.p-penguin{border-top-color:var(--sell);}
+.partner-card h4{font-size:14px;font-weight:800;margin-bottom:12px;}
+.partner-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.pg-cell{text-align:center;}
+.pg-lbl{font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-bottom:4px;}
+.pg-val{font-size:16px;font-weight:800;}
+.unknown-warning{font-size:11px;color:var(--yellow);margin:0 4px 14px;}
+.table-wrap{overflow-x:auto;}
+.wtb-table.owed-tbl{min-width:860px;}
+.wtb-table.sellers-tbl{min-width:980px;}
+.wtb-table.master-tbl{min-width:1120px;}
+.status-pill{display:inline-block;padding:3px 10px;border-radius:var(--r-pill);font-size:10px;font-weight:800;font-family:var(--font-mono);letter-spacing:.5px;text-transform:uppercase;border:1px solid var(--border);color:var(--dim);white-space:nowrap;background:transparent;}
+.status-pill.st-quoted{border-color:var(--border);color:var(--dim);}
+.status-pill.st-accepted{border-color:var(--buy);color:var(--buy);}
+.status-pill.st-received{background:color-mix(in srgb, var(--buy) 22%, transparent);border-color:var(--buy);color:var(--buy);}
+.status-pill.st-locked{background:color-mix(in srgb, var(--buy) 55%, transparent);border-color:var(--buy);color:var(--text);}
+.status-pill.st-paid{background:var(--buy);border-color:var(--buy);color:var(--bg);}
+.status-pill.st-cancelled{background:color-mix(in srgb, var(--red) 18%, transparent);border-color:var(--red);color:var(--red);}
+.status-pill.st-unknown{border-color:var(--border);color:var(--muted);}
+.src-pill{display:inline-block;padding:3px 9px;border-radius:var(--r-pill);font-size:10px;font-weight:800;font-family:var(--font-mono);letter-spacing:.5px;border:1px solid var(--border);white-space:nowrap;background:transparent;}
+.src-pill.src-josh{border-color:var(--buy);color:var(--buy);background:color-mix(in srgb, var(--buy) 12%, transparent);}
+.src-pill.src-penguin{border-color:var(--sell);color:var(--sell);background:color-mix(in srgb, var(--sell) 12%, transparent);}
+.src-pill.src-unknown{border-color:var(--border);color:var(--muted);}
+.wtb-table th.sortable{cursor:pointer;user-select:none;}
+.wtb-table th.sortable:hover{color:var(--text);}
+.wtb-table th.sortable:focus-visible{outline:2px solid var(--purple);outline-offset:-2px;}
+.wtb-table th .arrow{margin-left:4px;color:var(--buy);}
+.exp-toggle{background:transparent;border:1px solid var(--border);color:var(--dim);border-radius:6px;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;margin-right:8px;padding:0;vertical-align:middle;}
+.exp-toggle:hover{border-color:var(--buy);color:var(--buy);}
+.owed-row{cursor:pointer;}
+.owed-row:hover{background:var(--s2);}
+.owed-row .handle{color:var(--dim);font-size:11px;display:inline-block;margin-left:6px;}
+.owed-detail td{background:var(--s2);padding:14px;}
+.cons-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 0;border-bottom:1px solid var(--border);font-size:12px;}
+.cons-row:last-child{border-bottom:none;}
+.cons-row .cr-pay{font-family:var(--font-mono);font-weight:700;}
+.cr-links a{color:var(--buy);text-decoration:none;font-size:11px;margin-right:10px;}
+.cr-links a:hover{text-decoration:underline;}
+.cons-actions{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;}
+.cons-actions .btn{padding:4px 10px;font-size:11px;}
+.recent-list{display:flex;flex-direction:column;margin-bottom:18px;}
+.recent-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 4px;border-bottom:1px solid var(--border);font-size:12px;}
+.recent-row:last-child{border-bottom:none;}
+.rr-ticket{font-weight:700;min-width:140px;}
+.rr-seller{color:var(--dim);min-width:110px;}
+.rr-pay{font-family:var(--font-mono);font-weight:700;margin-left:auto;}
+.rr-links a{color:var(--buy);text-decoration:none;font-size:11px;margin-left:8px;}
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+.toolbar .form-input{max-width:240px;}
+.count-line{font-size:11px;color:var(--dim);margin:4px 4px 10px;font-family:var(--font-mono);}
+.loading-row td, .empty-row td{color:var(--dim);text-align:center;padding:18px;font-style:italic;}
+
+/* ── SINGLES TAB — reuses .tgl (the slab tab's vintage/special toggle) for era/kind/printing chips ── */
+.chipgroup{display:inline-flex;gap:3px;align-items:center;flex-wrap:wrap;}
+
 /* ── PAGE ADDITIONS — only what this standalone editor needs on top ──────── */
 
 /* keep everything above the html::before glow */
@@ -222,6 +310,12 @@ code{font-family:var(--font-mono);font-size:.92em;}
   .wtb-tier .del{flex:0 0 auto;margin-left:auto;opacity:1;}
   .form-row{grid-template-columns:1fr;}
   .msg{max-width:100%;}
+  .nav-tabs{order:3;flex-basis:100%;justify-content:center;margin-top:4px;}
+  .stat-strip{grid-template-columns:repeat(2,1fr);}
+  .partner-strip{grid-template-columns:1fr;}
+  .partner-grid{grid-template-columns:repeat(2,1fr);}
+  .toolbar{flex-direction:column;align-items:stretch;}
+  .toolbar .form-input{max-width:none;}
 }
 
 @media (prefers-reduced-motion:reduce){
@@ -235,23 +329,33 @@ code{font-family:var(--font-mono);font-size:.92em;}
 </style>
 </head>
 <body>
-
+<script>if (location.hash === '#consignors') location.href = 'consignors.html';</script>
 <header class="nav">
   <div class="nav-left">
     <div class="logo">Iced Out <em>Penguin</em></div>
-    <div class="logo-sub">Rates · what the bot pays for a slab</div>
+    <div class="logo-sub">Pricing Rules · what the bot pays for a slab</div>
   </div>
+<nav class="nav-tabs" aria-label="Sections">
+    <a class="nav-tab active" href="index.html">💰 Pricing Rules</a>
+    <a class="nav-tab" href="singles.html">🃏 Singles</a>
+    <a class="nav-tab" href="consignors.html">📦 Consignors</a>
+  </nav>
   <div class="nav-right">
     <span class="msg" id="msg" role="status" aria-live="polite"></span>
+
     <span class="helper-pill" id="bot-pill" title="When the bot last read these rates">⚪ Bot: not seen yet</span>
+
     <span class="saved" id="st-saved">Loading the sheet…</span>
+
     <button type="button" class="btn btn-ghost btn-sm" id="reload" title="Throw away unsaved edits and reload the saved sheet">↻ Reload</button>
     <button type="button" class="btn btn-sm btn-save" id="save" title="Save the sheet. Asks for the edit key the first time.">💾 Save</button>
+
   </div>
 </header>
 
 <main class="main">
-<div class="tab active" id="tab-rates">
+
+<div class="tab active" id="tab-rules">
 
   <div class="sec-head">
     <div>
@@ -271,10 +375,6 @@ code{font-family:var(--font-mono);font-size:.92em;}
       <div class="card-sub">These apply to every band.</div>
     </div>
     <div class="form-row">
-      <div class="form-group">
-        <label class="form-label" for="defaultBasis">Default basis</label>
-        <select class="form-select" id="defaultBasis" title="Which number a tier's percent is taken from when the tier itself says Default"></select>
-      </div>
       <div class="form-group">
         <label class="form-label" for="maxSlabsPerComp">Max slabs per comp</label>
         <input class="form-input" id="maxSlabsPerComp" type="number" inputmode="numeric" min="1" step="1" placeholder="200" title="How many slabs the bot will price in one comp">
@@ -308,6 +408,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   <p class="foot" id="foot"></p>
 
 </div>
+
 </main>
 
 <script>
@@ -332,6 +433,13 @@ code{font-family:var(--font-mono);font-size:.92em;}
  * v2 mirrors the owner's app "Pricing Rules" tab: every row says which Sport, which Grader, which
  * Grade range and which languages it takes, and the rows are tried in `sort` order with the FIRST
  * match winning. v1 sheets still load: normalize() migrates them (see the table in migrateRow).
+ *
+ * Basis (what a payout is a percentage OF) is REQUIRED on every row as of this version — there is no
+ * sheet-wide `defaultBasis` any more and no "use default" option. This did not need a v3: it is
+ * additive-compatible, so a sheet saved under the old rules (a sheet-wide `defaultBasis`, rows with
+ * `basis: null`) still LOADS — normalize() fills every such row from the sheet's old `defaultBasis`
+ * (else 'clv') and drops the sheet-wide field — but a sheet cannot be SAVED again with a missing or
+ * null row basis: validateSettings rejects it outright. schema stays 'iced-out-rates-v2'.
  */
 
 // ── vocabulary ───────────────────────────────────────────────────────────────
@@ -526,7 +634,7 @@ function defaults()           {
         from: 0,
         to: 100,
         pct: 90,
-        basis: null,
+        basis: 'clv',
         label: 'Every slab, up to $100',
         languages: null,
         minConfidence: null,
@@ -535,7 +643,6 @@ function defaults()           {
         special: false,
       },
     ],
-    defaultBasis: 'clv',
     buyLanguages: LANGUAGE_KEYS.slice(),
     vintageMaxYear: DEFAULT_VINTAGE_YEAR,
     specialKeywords: [],
@@ -558,6 +665,12 @@ function defaults()           {
  * A `{ settings: {...} }` wrapper (what the function answers a GET with) is unwrapped either way.
  *
  * It only changes TYPES, never values: "abc" in a number field stays "abc".
+ *
+ * Basis is required on every row now (see the file header), so this is also where a sheet saved
+ * under the old rules gets fixed up: a row with no basis of its own inherits the sheet's old
+ * `defaultBasis` when it had one, else plain 'clv' — the same rule a brand new form post with a
+ * blank basis field falls under, since it has no `defaultBasis` to inherit either. Either way the
+ * sheet-wide field itself is dropped; it is never part of the v2 shape this returns.
  */
 function normalize(raw         )          {
   if (!isObject(raw)) return raw;
@@ -566,13 +679,10 @@ function normalize(raw         )          {
 
   if (looksV1(src)) return migrateV1(src);
 
+  const legacyDefault = (normBasis(src.defaultBasis)         ) || 'clv';
   const out                          = {
     schema: SCHEMA,
-    rates: Array.isArray(src.rates) ? src.rates.map(normalizeRow) : src.rates,
-    defaultBasis:
-      src.defaultBasis == null || src.defaultBasis === ''
-        ? 'clv'
-        : normBasis(src.defaultBasis) || src.defaultBasis,
+    rates: Array.isArray(src.rates) ? src.rates.map((row) => normalizeRow(row, legacyDefault)) : src.rates,
     buyLanguages: normLanguages(src.buyLanguages) ?? LANGUAGE_KEYS.slice(),
     vintageMaxYear: normNumber(src.vintageMaxYear, DEFAULT_VINTAGE_YEAR),
     specialKeywords: normKeywords(src.specialKeywords),
@@ -623,9 +733,11 @@ const V1_LANGUAGE                                  = {
 /**
  * One v1 row as a v2 row. `sort` is filled in by migrateV1, which is where the ordering lives:
  * v1 picked the highest-% matching row, v2 takes the first match, so the rows have to come out in
- * descending pct for the prices to stay exactly the same.
+ * descending pct for the prices to stay exactly the same. `legacyDefault` is the v1 sheet's own
+ * `defaultBasis` (already resolved to a live key, or 'clv'): a row with no basis of its own inherits
+ * it, since basis is required on every v2 row now.
  */
-function migrateRow(raw         )          {
+function migrateRow(raw         , legacyDefault       )          {
   if (!isObject(raw)) return raw;
   const r = raw                           ;
   const cat = r.category == null || r.category === '' || r.category === 'any' ? null : String(r.category);
@@ -641,7 +753,7 @@ function migrateRow(raw         )          {
     from: normMoney(r.from, 0),
     to: r.to === '' || r.to == null ? null : normMoney(r.to, r.to),
     pct: normMoney(r.pct, r.pct),
-    basis: r.basis === '' || r.basis == null ? null : normBasis(r.basis) || r.basis,
+    basis: r.basis === '' || r.basis == null ? legacyDefault : normBasis(r.basis) || r.basis,
     label: r.label == null ? '' : String(r.label),
     languages: Object.prototype.hasOwnProperty.call(V1_LANGUAGE, lang) ? V1_LANGUAGE[lang] : [lang],
     minConfidence:
@@ -659,7 +771,8 @@ function migrateRow(raw         )          {
  * v1 had no such setting and gated language per row.
  */
 function migrateV1(src                         )          {
-  const rows = Array.isArray(src.rates) ? src.rates.map(migrateRow) : src.rates;
+  const legacyDefault = (normBasis(src.defaultBasis)         ) || 'clv';
+  const rows = Array.isArray(src.rates) ? src.rates.map((row) => migrateRow(row, legacyDefault)) : src.rates;
   if (Array.isArray(rows)) {
     const withIndex = rows.map((row, i) => ({ row, i }));
     withIndex.sort((a, b) => {
@@ -681,10 +794,6 @@ function migrateV1(src                         )          {
   return {
     schema: SCHEMA,
     rates: rows,
-    defaultBasis:
-      src.defaultBasis == null || src.defaultBasis === ''
-        ? 'clv'
-        : normBasis(src.defaultBasis) || src.defaultBasis,
     buyLanguages: LANGUAGE_KEYS.slice(),
     vintageMaxYear: normNumber(src.vintageMaxYear, DEFAULT_VINTAGE_YEAR),
     specialKeywords: normKeywords(src.specialKeywords),
@@ -694,7 +803,8 @@ function migrateV1(src                         )          {
   };
 }
 
-function normalizeRow(raw         )          {
+/** `legacyDefault` is the sheet's old `defaultBasis` (already resolved), used only when this row has none of its own. */
+function normalizeRow(raw         , legacyDefault       )          {
   if (!isObject(raw)) return raw;
   const r = raw                           ;
   return {
@@ -706,7 +816,7 @@ function normalizeRow(raw         )          {
     from: normMoney(r.from, 0),
     to: r.to === '' || r.to == null ? null : normMoney(r.to, r.to),
     pct: normMoney(r.pct, r.pct),
-    basis: r.basis === '' || r.basis == null ? null : normBasis(r.basis) || r.basis,
+    basis: r.basis === '' || r.basis == null ? legacyDefault : normBasis(r.basis) || r.basis,
     label: r.label == null ? '' : String(r.label),
     languages: normLanguages(r.languages),
     minConfidence:
@@ -839,17 +949,6 @@ function validateSettings(raw         )                 {
   // in that order too: what staff see on the page is what the bot walks.
   sortRows(rates);
 
-  // defaultBasis
-  let defaultBasis        = 'clv';
-  const db = normBasis(s.defaultBasis);
-  if (s.defaultBasis == null || s.defaultBasis === '') {
-    defaultBasis = 'clv';
-  } else if (db) {
-    defaultBasis = db         ;
-  } else {
-    errors.push('Default basis must be one of: ' + listNames(BASIS_KEYS, BASIS_LABEL) + '.');
-  }
-
   // buyLanguages — the sheet-wide default every row inherits unless it names its own
   let buyLanguages           = LANGUAGE_KEYS.slice();
   if (s.buyLanguages != null && s.buyLanguages !== '') {
@@ -938,7 +1037,6 @@ function validateSettings(raw         )                 {
     settings: {
       schema: SCHEMA,
       rates,
-      defaultBasis,
       buyLanguages,
       vintageMaxYear,
       specialKeywords,
@@ -1093,11 +1191,13 @@ function validateRow(raw         , n        , errors          )                 
     pct = p;
   }
 
-  // basis
-  let basis               = null;
-  if (r.basis != null && r.basis !== '') {
+  // basis — required: every row says what it pays on, there is no sheet-wide default any more
+  let basis        = 'clv';
+  if (r.basis == null || r.basis === '') {
+    errors.push(at + 'Basis must be ' + listNames(BASIS_KEYS, BASIS_LABEL) + '.');
+  } else {
     const b = normBasis(r.basis);
-    if (!b) errors.push(at + 'Basis must be Use default, ' + listNames(BASIS_KEYS, BASIS_LABEL) + '.');
+    if (!b) errors.push(at + 'Basis must be ' + listNames(BASIS_KEYS, BASIS_LABEL) + '.');
     else basis = b         ;
   }
 
@@ -1195,7 +1295,11 @@ window.RatesValidate = {
 
 <script>
 (function () {
-  'use strict';
+'use strict';
+
+
+  // ── tabs ─────────────────────────────────────────────────────────────────
+  var activeTab = 'rules';   // 'rules' | 'singles' | 'consignors' - which tab owns the shared header
 
   var V = window.RatesValidate || {};
   var KEY_STORE = 'iopRatesEditKey';
@@ -1290,24 +1394,28 @@ window.RatesValidate = {
   var justSaved = false;
   var uidSeq = 0;
 
-  var el = {
+  // el mixes the rules-only body elements with the handful of header elements every
+  // tab shares (msg/save/reload/stSaved/botPill) — those live in their own literal so
+  // build-portal.js can lift just that part into the singles/consignors pages, which
+  // have no rules body to query.
+  var el = Object.assign({
     rulesList: document.getElementById('wtb-rules-list'),
     buyLang: document.getElementById('wtb-buylang'),
     errors: document.getElementById('errors'),
     errorsList: document.getElementById('errors-list'),
+    dirtyHint: document.getElementById('dirty-hint'),
+    paused: document.getElementById('paused'),
+    pausedWrap: document.getElementById('pausedWrap'),
+    foot: document.getElementById('foot')
+  },{
     msg: document.getElementById('msg'),
     save: document.getElementById('save'),
     reload: document.getElementById('reload'),
     stSaved: document.getElementById('st-saved'),
-    botPill: document.getElementById('bot-pill'),
-    dirtyHint: document.getElementById('dirty-hint'),
-    paused: document.getElementById('paused'),
-    pausedWrap: document.getElementById('pausedWrap'),
-    defaultBasis: document.getElementById('defaultBasis'),
-    foot: document.getElementById('foot')
-  };
+    botPill: document.getElementById('bot-pill')
+  });
 
-  var TOP_FIELDS = ['defaultBasis', 'vintageMaxYear', 'maxSlabsPerComp', 'specialKeywords', 'pausedMessage'];
+  var TOP_FIELDS = ['vintageMaxYear', 'maxSlabsPerComp', 'specialKeywords', 'pausedMessage'];
 
   // ── settings <-> form values ───────────────────────────────────────────────
   function str(v) { return v === null || v === undefined ? '' : String(v); }
@@ -1324,7 +1432,7 @@ window.RatesValidate = {
       from: str(r.from == null ? 0 : r.from),
       to: r.to == null ? '' : str(r.to),
       pct: str(r.pct == null ? '' : r.pct),
-      basis: r.basis == null ? '' : str(r.basis),
+      basis: r.basis == null ? 'clv' : str(r.basis),
       label: str(r.label),
       languages: (Array.isArray(r.languages) && r.languages.length) ? r.languages.slice() : null,
       minConfidence: r.minConfidence == null ? '' : str(r.minConfidence),
@@ -1340,7 +1448,6 @@ window.RatesValidate = {
       ? settings.buyLanguages.filter(function (k) { return LANG_KEYS.indexOf(k) >= 0; })
       : [];
     return {
-      defaultBasis: str(settings.defaultBasis || 'clv'),
       buyLanguages: langs.length ? langs : LANG_KEYS.slice(),
       vintageMaxYear: str(settings.vintageMaxYear),
       specialKeywords: (settings.specialKeywords || []).join(', '),
@@ -1375,7 +1482,6 @@ window.RatesValidate = {
   function fromForm() {
     return {
       schema: V.SCHEMA,
-      defaultBasis: state.defaultBasis,
       buyLanguages: state.buyLanguages.slice(),
       vintageMaxYear: state.vintageMaxYear,
       specialKeywords: state.specialKeywords,
@@ -1390,7 +1496,7 @@ window.RatesValidate = {
     return toFormRow({
       sort: sort, sport: sport || '*', grader: '*',
       gradeMin: 1, gradeMax: 10, from: 0, to: null,
-      pct: '', basis: null, label: '', languages: null,
+      pct: '', basis: 'clv', label: '', languages: null,
       minConfidence: null, certRule: 'any', vintage: false, special: false
     });
   }
@@ -1402,7 +1508,6 @@ window.RatesValidate = {
     baseline = {
       rows: rows,
       top: {
-        defaultBasis: state.defaultBasis,
         vintageMaxYear: state.vintageMaxYear,
         specialKeywords: state.specialKeywords,
         maxSlabsPerComp: state.maxSlabsPerComp,
@@ -1416,7 +1521,7 @@ window.RatesValidate = {
   function countChanges() {
     if (!baseline || !state) return 0;
     var n = 0;
-    ['defaultBasis', 'vintageMaxYear', 'specialKeywords', 'maxSlabsPerComp', 'pausedMessage'].forEach(function (k) {
+    ['vintageMaxYear', 'specialKeywords', 'maxSlabsPerComp', 'pausedMessage'].forEach(function (k) {
       if (str(state[k]) !== str(baseline.top[k])) n++;
     });
     if (!!state.paused !== !!baseline.top.paused) n++;
@@ -1436,6 +1541,7 @@ window.RatesValidate = {
   function updateDirty() {
     var n = countChanges();
     el.dirtyHint.hidden = n === 0;
+    if (activeTab !== 'rules') return;
     if (busy) { el.save.disabled = true; el.save.textContent = 'Saving…'; return; }
     if (n > 0) {
       el.save.disabled = false;
@@ -1474,9 +1580,6 @@ window.RatesValidate = {
     }).join('');
   }
   function basisOptions(sel) {
-    return opts([['', 'Default']].concat(BASIS_KEYS.map(function (k) { return [k, BASIS_LABEL[k] || k]; })), sel);
-  }
-  function defaultBasisOptions(sel) {
     return opts(BASIS_KEYS.map(function (k) { return [k, BASIS_LABEL[k] || k]; }), sel);
   }
   function certOptions(sel) {
@@ -1556,7 +1659,7 @@ window.RatesValidate = {
           sep +
           '<input class="label-input" type="text" data-k="label" maxlength="100" placeholder="note (optional)" value="' + esc(r.label) + '" style="width:140px" title="Note (optional). Staff and sellers see this." aria-label="Note">' +
           sep +
-          '<select data-k="basis" title="What this tier\'s percent is taken from. Default follows the sheet setting below." aria-label="Basis">' + basisOptions(r.basis) + '</select>' +
+          '<select data-k="basis" title="What this tier\'s percent is taken from." aria-label="Basis">' + basisOptions(r.basis) + '</select>' +
           sep +
           langChips(r) +
           sep +
@@ -1609,7 +1712,6 @@ window.RatesValidate = {
   }
 
   function renderTop() {
-    el.defaultBasis.innerHTML = defaultBasisOptions(state.defaultBasis);
     TOP_FIELDS.forEach(function (k) {
       var node = document.getElementById(k);
       if (node) node.value = state[k];
@@ -1631,6 +1733,7 @@ window.RatesValidate = {
   }
 
   function renderStatus() {
+    if (activeTab !== 'rules') return;
     var saved = fmtTime(savedAt);
     el.stSaved.textContent = saved ? 'Last saved ' + saved : 'Nothing saved yet';
 
@@ -1650,8 +1753,11 @@ window.RatesValidate = {
     }
   }
 
+  var rulesMsgCache = { text: '', kind: '' };
   function setMsg(text, kind) {
-    el.msg.textContent = text || '';
+    rulesMsgCache = { text: text || '', kind: kind || '' };
+    if (activeTab !== 'rules') return;
+    el.msg.textContent = rulesMsgCache.text;
     el.msg.className = 'msg' + (kind ? ' ' + kind : '');
   }
 
@@ -1863,11 +1969,11 @@ window.RatesValidate = {
 
   function setBusy(on) {
     busy = on;
-    el.reload.disabled = on;
+    if (activeTab === 'rules') el.reload.disabled = on;
     updateDirty();
   }
 
-  el.save.addEventListener('click', function () {
+  function doSaveRules() {
     if (busy || !state) return;
 
     var checked = V.validateSettings(V.normalize(fromForm()));
@@ -1918,9 +2024,7 @@ window.RatesValidate = {
       renderStatus();
       setMsg('Save failed: ' + err.message, 'err');
     }).then(function () { setBusy(false); });
-  });
-
-  el.reload.addEventListener('click', function () { load(true); });
+  }
 
   // ── go ─────────────────────────────────────────────────────────────────────
   (function footer() {
@@ -1932,6 +2036,7 @@ window.RatesValidate = {
   applySettings(V.normalize(V.defaults()));
   renderStatus();
   load(false);
+  
 })();
 </script>
 </body>

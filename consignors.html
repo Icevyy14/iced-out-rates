@@ -1,0 +1,1147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex, nofollow">
+<meta name="rates-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/slab-rates">
+<meta name="ledger-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/slab-ledger">
+<title>Iced Out Penguin · Consignors</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   Iced Out Penguin rates — skinned to match the owner app's 💰 Pricing tab.
+   Theme: the owner's active theme, "Synthwave". Dark only, no light theme.
+   Everything between the two "PORTED" banners is lifted verbatim from
+   icevyy-tcg.html so the two editors cannot drift apart visually.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root{
+  /* Synthwave */
+  --bg:#000000;
+  --s1:#0a0b0f;
+  --s2:#10121a;
+  --s3:#181b26;
+  --border:#242838;
+  --buy:#7dd3fc;
+  --sell:#ff4d5e;
+  --text:#eef4ff;
+  --dim:#8fa0bd;
+  --muted:#5c6880;
+  --red:#ff3b4e;
+  --yellow:#9bdcff;
+  --purple:#7dd3fc;
+
+  --font-ui:'Rajdhani','Segoe UI',system-ui,-apple-system,sans-serif;
+  --font-display:'Orbitron','Rajdhani','Segoe UI',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
+
+  /* Radius scale (DESIGN.md §3) — deliberately varied, NOT one value everywhere. */
+  --r-slab: 3px;    /* cert chips, stat cells — crisp graded-slab feel */
+  --r: 8px;         /* buttons, inputs, small cards */
+  --r-lg: 14px;     /* large panels */
+  --r-pill: 999px;  /* status pills / segmented controls only */
+
+  /* Micro-label ink, one step dimmer than --dim; derived so it tracks the theme. */
+  --faint: color-mix(in srgb, var(--dim) 62%, var(--bg));
+  --hairline: color-mix(in srgb, var(--border) 70%, var(--bg));
+}
+
+/* ── PORTED from icevyy-tcg.html — same selectors, same values ──────────── */
+
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-ui);min-height:100vh;overflow-x:hidden;}
+::-webkit-scrollbar{width:6px;} ::-webkit-scrollbar-track{background:var(--s1);} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* page glow */
+html::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(120% 60% at 50% -12%, rgba(125,211,252,.14), transparent 62%);}
+
+/* NAV */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--s1);position:sticky;top:0;z-index:100;backdrop-filter:blur(10px);}
+.logo{font-size:22px;font-weight:800;letter-spacing:-0.5px;}
+.logo span{color:var(--sell);}
+.logo em{color:var(--buy);font-style:normal;}
+
+/* WTB rules — grouped tiers, styled to look like a printed price chart */
+.wtb-group{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin-bottom:14px;position:relative;}
+.wtb-group-header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:10px;}
+.wtb-group-header h3{font-size:15px;font-weight:900;color:var(--text);letter-spacing:1px;display:flex;align-items:center;gap:8px;}
+.wtb-group-header h3::before{content:'';width:4px;height:18px;background:var(--yellow);border-radius:2px;}
+.wtb-group-header .right{font-size:10px;color:var(--dim);font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;}
+.wtb-group .desc{font-size:12px;color:var(--dim);margin-bottom:10px;}
+.wtb-group .desc input{background:transparent;border:none;color:var(--dim);width:100%;font-size:12px;outline:none;}
+.wtb-tier{display:grid;grid-template-columns:170px 1fr 50px 110px 30px;gap:14px;align-items:center;padding:11px 6px;border-bottom:1px solid var(--border);font-size:14px;font-weight:600;color:var(--text);}
+.wtb-tier:last-child{border-bottom:none;}
+.wtb-tier .range input{background:transparent;border:none;color:var(--text);font-weight:600;font-size:14px;width:65px;outline:none;text-align:left;}
+.wtb-tier .range .dash{color:var(--dim);}
+.wtb-tier .meta{font-size:11px;color:var(--dim);display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.wtb-tier .meta select{background:transparent;border:1px solid transparent;color:var(--dim);font-size:11px;padding:2px 4px;border-radius:4px;outline:none;}
+.wtb-tier .meta select:focus,.wtb-tier .meta select:hover{border-color:var(--border);background:var(--s1);}
+.wtb-tier .pct{font-size:24px;font-weight:900;color:var(--yellow);text-align:right;font-family:var(--font-ui);letter-spacing:-0.5px;}
+.wtb-tier .pct input{background:transparent;border:none;color:var(--yellow);font-size:22px;font-weight:900;width:65px;text-align:right;outline:none;font-family:var(--font-ui);}
+.wtb-tier .pct .pct-sign{color:var(--yellow);}
+.wtb-tier .label-input{background:transparent;border:none;color:var(--dim);font-size:11px;width:100%;outline:none;font-style:italic;}
+.wtb-tier .del{background:transparent;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:4px;opacity:0.4;}
+.wtb-tier:hover .del{opacity:1;}
+.wtb-tier .sort{background:transparent;border:none;color:var(--dim);font-size:10px;width:40px;text-align:center;font-family:var(--font-mono);outline:none;}
+.wtb-tier .sort:focus{border:1px solid var(--border);border-radius:3px;}
+.wtb-add-tier{display:flex;align-items:center;gap:6px;background:transparent;border:1.5px dashed var(--border);color:var(--dim);cursor:pointer;font-size:12px;padding:9px 14px;border-radius:9px;width:100%;margin-top:10px;font-family:var(--font-ui);font-weight:700;transition:all 0.15s;}
+.wtb-add-tier:hover{border-color:var(--yellow);color:var(--yellow);}
+
+/* HELPER PILL */
+.helper-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid var(--border);background:var(--s2);color:var(--dim);font-family:var(--font-mono);letter-spacing:0.3px;}
+.helper-pill.up{border-color:var(--buy);color:var(--buy);background:var(--s2);}
+.helper-pill.down{border-color:var(--red);color:var(--red);background:#1a0808;}
+
+/* LAYOUT */
+.main{padding:24px 28px;max-width:1400px;margin:0 auto;}
+.tab{display:none;animation:fadeUp 0.25s ease;}
+.tab.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* CARDS */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:20px;}
+
+/* BUTTONS */
+.btn{padding:11px 22px;border-radius:10px;border:none;cursor:pointer;font-family:var(--font-ui);font-weight:700;font-size:13px;transition:all 0.15s;white-space:nowrap;}
+.btn-buy{background:var(--buy);color:var(--bg);}
+.btn-buy:hover{opacity:0.85;transform:translateY(-1px);}
+.btn-sell{background:var(--sell);color:#fff;}
+.btn-sell:hover{opacity:0.85;transform:translateY(-1px);}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--dim);}
+.btn-ghost:hover{border-color:var(--dim);color:var(--text);}
+.btn-danger{background:transparent;border:1.5px solid var(--red);color:var(--red);}
+.btn-danger:hover{background:var(--red);color:#fff;}
+.btn-sm{padding:6px 14px;font-size:12px;}
+
+/* FORM */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.form-group{margin-bottom:14px;}
+.form-label{font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);display:block;margin-bottom:7px;}
+.form-input,.form-select,.form-textarea{width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:var(--font-ui);font-size:13px;outline:none;transition:border-color 0.2s;}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--buy);}
+.form-input::placeholder{color:var(--muted);}
+.form-textarea{resize:vertical;min-height:70px;}
+.form-select{cursor:pointer;}
+
+/* FILTER CHIPS / language filter — global toggle + per-rule override */
+.filter-group{display:flex;background:var(--s2);border-radius:10px;padding:3px;gap:2px;}
+.lang-toggle{display:inline-flex;gap:5px}
+.lang-chip{padding:4px 10px;border-radius:7px;border:1px solid var(--border);background:var(--s2);color:var(--dim);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-ui);letter-spacing:.4px;transition:all .12s}
+.lang-chip:hover{color:var(--text)}
+.lang-chip.on{background:var(--buy);color:var(--bg);border-color:var(--buy)}
+.rule-lang{display:inline-flex;gap:3px;align-items:center;margin-left:2px;vertical-align:middle}
+.rule-lang .rl{padding:2px 6px;border-radius:5px;font-size:10px;font-weight:800;cursor:pointer;font-family:var(--font-mono);border:1px solid var(--border);color:var(--dim);background:transparent;letter-spacing:.5px}
+.rule-lang .rl.on{background:var(--buy);color:var(--bg);border-color:var(--buy)}
+.rule-lang.inherit .rl{opacity:.65}
+.rule-lang.inherit .rl.on{background:transparent;color:var(--buy);border-color:var(--buy);border-style:dashed}
+.rule-lang .rl-reset{cursor:pointer;color:var(--dim);font-size:11px;padding:0 2px}
+.rule-lang .rl-reset:hover{color:var(--text)}
+
+/* ── END PORTED ─────────────────────────────────────────────────────────── */
+
+
+/* ── PORTED from the owner app's nav — same selectors, same values ──────── */
+.nav-tabs{display:flex;flex-wrap:wrap;gap:4px;background:var(--bg);padding:4px;border-radius:12px}
+.nav-tab{padding:8px 20px;border:none;border-radius:9px;cursor:pointer;font-family:var(--font-ui);font-size:13px;font-weight:700;transition:all .2s;background:transparent;color:var(--dim)}
+.nav-tab:hover{color:var(--text)}
+.nav-tab.active{background:var(--buy);color:var(--bg)}
+/* ── END PORTED ─────────────────────────────────────────────────────────── */
+
+/* ── PORTED from ledger-portal/page.html — same selectors, same values, now the Consignors tab ── */
+.wtb-table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--font-ui);table-layout:fixed;}
+.wtb-table td, .wtb-table th{overflow:hidden;}
+.wtb-table td.wtb-name{white-space:nowrap;text-overflow:ellipsis;}
+.wtb-table th{text-align:left;padding:9px 10px;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);}
+.wtb-table td{padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px;}
+.wtb-table td.cert{font-family:var(--font-mono);font-weight:700;}
+.wtb-table td.num{text-align:right;font-family:var(--font-mono);font-weight:700;}
+.wtb-table .bucket{display:inline-block;padding:3px 9px;border-radius:6px;font-weight:800;font-size:11px;color:#000;}
+.wtb-totals{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;}
+.wtb-total-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px 18px;text-align:center;}
+.wtb-total-card .lbl{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:6px;}
+.wtb-total-card .val{font-size:22px;font-weight:900;}
+.filter-chip{padding:6px 12px;border-radius:8px;border:none;background:transparent;color:var(--dim);font-family:var(--font-ui);font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;}
+.filter-chip:hover{color:var(--text);}
+.filter-chip.active{background:var(--buy);color:var(--bg);}
+/* ── END PORTED ─────────────────────────────────────────────────────────── */
+
+/* ── CONSIGNORS TAB — page additions on top of the ported table/pill rules ── */
+.stat-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:18px;}
+.stat-strip .wtb-total-card.owed{border-color:var(--red);}
+.stat-strip .wtb-total-card.owed .val{color:var(--red);}
+.partner-strip{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
+.partner-card{background:var(--s1);border:1px solid var(--border);border-top:3px solid var(--border);border-radius:14px;padding:16px 18px;}
+.partner-card.p-josh{border-top-color:var(--buy);}
+.partner-card.p-penguin{border-top-color:var(--sell);}
+.partner-card h4{font-size:14px;font-weight:800;margin-bottom:12px;}
+.partner-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.pg-cell{text-align:center;}
+.pg-lbl{font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-bottom:4px;}
+.pg-val{font-size:16px;font-weight:800;}
+.unknown-warning{font-size:11px;color:var(--yellow);margin:0 4px 14px;}
+.table-wrap{overflow-x:auto;}
+.wtb-table.owed-tbl{min-width:860px;}
+.wtb-table.sellers-tbl{min-width:980px;}
+.wtb-table.master-tbl{min-width:1120px;}
+.status-pill{display:inline-block;padding:3px 10px;border-radius:var(--r-pill);font-size:10px;font-weight:800;font-family:var(--font-mono);letter-spacing:.5px;text-transform:uppercase;border:1px solid var(--border);color:var(--dim);white-space:nowrap;background:transparent;}
+.status-pill.st-quoted{border-color:var(--border);color:var(--dim);}
+.status-pill.st-accepted{border-color:var(--buy);color:var(--buy);}
+.status-pill.st-received{background:color-mix(in srgb, var(--buy) 22%, transparent);border-color:var(--buy);color:var(--buy);}
+.status-pill.st-locked{background:color-mix(in srgb, var(--buy) 55%, transparent);border-color:var(--buy);color:var(--text);}
+.status-pill.st-paid{background:var(--buy);border-color:var(--buy);color:var(--bg);}
+.status-pill.st-cancelled{background:color-mix(in srgb, var(--red) 18%, transparent);border-color:var(--red);color:var(--red);}
+.status-pill.st-unknown{border-color:var(--border);color:var(--muted);}
+.src-pill{display:inline-block;padding:3px 9px;border-radius:var(--r-pill);font-size:10px;font-weight:800;font-family:var(--font-mono);letter-spacing:.5px;border:1px solid var(--border);white-space:nowrap;background:transparent;}
+.src-pill.src-josh{border-color:var(--buy);color:var(--buy);background:color-mix(in srgb, var(--buy) 12%, transparent);}
+.src-pill.src-penguin{border-color:var(--sell);color:var(--sell);background:color-mix(in srgb, var(--sell) 12%, transparent);}
+.src-pill.src-unknown{border-color:var(--border);color:var(--muted);}
+.wtb-table th.sortable{cursor:pointer;user-select:none;}
+.wtb-table th.sortable:hover{color:var(--text);}
+.wtb-table th.sortable:focus-visible{outline:2px solid var(--purple);outline-offset:-2px;}
+.wtb-table th .arrow{margin-left:4px;color:var(--buy);}
+.exp-toggle{background:transparent;border:1px solid var(--border);color:var(--dim);border-radius:6px;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;margin-right:8px;padding:0;vertical-align:middle;}
+.exp-toggle:hover{border-color:var(--buy);color:var(--buy);}
+.owed-row{cursor:pointer;}
+.owed-row:hover{background:var(--s2);}
+.owed-row .handle{color:var(--dim);font-size:11px;display:inline-block;margin-left:6px;}
+.owed-detail td{background:var(--s2);padding:14px;}
+.cons-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 0;border-bottom:1px solid var(--border);font-size:12px;}
+.cons-row:last-child{border-bottom:none;}
+.cons-row .cr-pay{font-family:var(--font-mono);font-weight:700;}
+.cr-links a{color:var(--buy);text-decoration:none;font-size:11px;margin-right:10px;}
+.cr-links a:hover{text-decoration:underline;}
+.cons-actions{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;}
+.cons-actions .btn{padding:4px 10px;font-size:11px;}
+.recent-list{display:flex;flex-direction:column;margin-bottom:18px;}
+.recent-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 4px;border-bottom:1px solid var(--border);font-size:12px;}
+.recent-row:last-child{border-bottom:none;}
+.rr-ticket{font-weight:700;min-width:140px;}
+.rr-seller{color:var(--dim);min-width:110px;}
+.rr-pay{font-family:var(--font-mono);font-weight:700;margin-left:auto;}
+.rr-links a{color:var(--buy);text-decoration:none;font-size:11px;margin-left:8px;}
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+.toolbar .form-input{max-width:240px;}
+.count-line{font-size:11px;color:var(--dim);margin:4px 4px 10px;font-family:var(--font-mono);}
+.loading-row td, .empty-row td{color:var(--dim);text-align:center;padding:18px;font-style:italic;}
+
+/* ── SINGLES TAB — reuses .tgl (the slab tab's vintage/special toggle) for era/kind/printing chips ── */
+.chipgroup{display:inline-flex;gap:3px;align-items:center;flex-wrap:wrap;}
+
+/* ── PAGE ADDITIONS — only what this standalone editor needs on top ──────── */
+
+/* keep everything above the html::before glow */
+body>*{position:relative;z-index:1;}
+
+/* the app's own comment calls flex-wrap on the nav a bug fix, not styling */
+.nav{flex-wrap:wrap;gap:12px 16px;}
+.logo{font-family:var(--font-display);font-size:17px;}
+.logo-sub{font-size:11px;color:var(--dim);margin-top:3px;}
+.nav-left{min-width:0;}
+.nav-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
+.saved{font-size:11px;color:var(--dim);font-family:var(--font-mono);}
+.msg{font-size:11px;color:var(--dim);max-width:300px;}
+.msg.ok{color:var(--buy);}
+.msg.err{color:var(--red);}
+.btn-save{background:var(--buy);color:var(--bg);}
+.btn:disabled{opacity:.5;cursor:default;transform:none;}
+.btn:disabled:hover{opacity:.5;transform:none;}
+
+/* section header, matching the app's "⚙️ Pricing Rules" block */
+.sec-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;padding:0 4px;}
+.sec-title{font-size:16px;font-weight:800;}
+.sec-sub{font-size:11px;color:var(--dim);}
+.dirty-hint{font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--yellow);white-space:nowrap;padding-top:4px;}
+code{font-family:var(--font-mono);font-size:.92em;}
+
+/* global buy-language row */
+#wtb-buylang{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:2px 4px 14px;}
+.buylang-label{font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);}
+.buylang-hint{font-size:11px;color:var(--dim);}
+
+/* VINTAGE / SPECIAL toggles — same chip treatment as .rule-lang .rl */
+.wtb-tier .tgl{padding:2px 6px;border-radius:5px;font-size:10px;font-weight:800;cursor:pointer;font-family:var(--font-mono);border:1px solid var(--border);color:var(--dim);background:transparent;letter-spacing:.5px;}
+.wtb-tier .tgl:hover{color:var(--text);}
+.wtb-tier .tgl.on{background:var(--buy);color:var(--bg);border-color:var(--buy);}
+
+/* a row the server or the validator named in an error */
+.wtb-tier.bad{box-shadow:inset 3px 0 0 var(--red);background:color-mix(in srgb, var(--red) 8%, transparent);}
+.wtb-tier .del:focus-visible{opacity:1;}
+.wtb-tier .meta .sep{color:var(--muted);}
+
+.new-group-row{display:flex;gap:8px;justify-content:center;margin-top:6px;margin-bottom:18px;}
+.btn.new-group{background:var(--buy);color:var(--bg);}
+.empty-rules{text-align:center;color:var(--muted);font-size:13px;margin-bottom:12px;}
+
+/* sheet-settings card */
+.card-head{margin-bottom:14px;}
+.card-title{font-size:16px;font-weight:800;}
+.card-sub{font-size:11px;color:var(--dim);}
+.form-group.wide{grid-column:1 / -1;}
+.form-group:last-child{margin-bottom:0;}
+.pause-row{padding:12px 14px;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;margin-bottom:14px;}
+.check{display:inline-flex;align-items:center;gap:9px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;}
+.check input{width:17px;height:17px;accent-color:var(--buy);cursor:pointer;flex:none;}
+
+/* errors panel */
+.errors-card{border-color:var(--red);margin-top:16px;}
+.errors-card .card-title{color:var(--red);}
+.errors-card ul{margin:10px 0 0;padding-left:18px;font-size:12px;line-height:1.55;}
+.errors-card li{margin-bottom:4px;}
+
+.foot{margin:18px 4px 40px;font-size:11px;color:var(--muted);font-family:var(--font-mono);}
+
+:focus-visible{outline:2px solid var(--purple);outline-offset:2px;}
+
+@media (max-width:768px){
+  .main{padding:16px;}
+  .nav{padding:12px 16px;}
+  .nav-right{justify-content:flex-start;}
+  .wtb-group{padding:14px 15px;}
+  /* collapse the 5-column grid into: range / meta / sort+pct+del on one line */
+  .wtb-tier{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 2px;}
+  .wtb-tier .range{flex:1 1 100%;}
+  .wtb-tier .meta{flex:1 1 100%;}
+  .wtb-tier .sort{flex:0 0 auto;text-align:left;}
+  .wtb-tier .pct{flex:0 0 auto;}
+  .wtb-tier .del{flex:0 0 auto;margin-left:auto;opacity:1;}
+  .form-row{grid-template-columns:1fr;}
+  .msg{max-width:100%;}
+  .nav-tabs{order:3;flex-basis:100%;justify-content:center;margin-top:4px;}
+  .stat-strip{grid-template-columns:repeat(2,1fr);}
+  .partner-strip{grid-template-columns:1fr;}
+  .partner-grid{grid-template-columns:repeat(2,1fr);}
+  .toolbar{flex-direction:column;align-items:stretch;}
+  .toolbar .form-input{max-width:none;}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+    scroll-behavior:auto!important;
+  }
+}
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="nav-left">
+    <div class="logo">Iced Out <em>Penguin</em></div>
+    <div class="logo-sub">Consignors · who is sending what, and what we owe</div>
+  </div>
+<nav class="nav-tabs" aria-label="Sections">
+    <a class="nav-tab" href="index.html">💰 Pricing Rules</a>
+    <a class="nav-tab" href="singles.html">🃏 Singles</a>
+    <a class="nav-tab active" href="consignors.html">📦 Consignors</a>
+  </nav>
+  <div class="nav-right">
+    <span class="msg" id="msg" role="status" aria-live="polite"></span>
+<span hidden>
+    <span class="helper-pill" id="bot-pill" title="When the bot last read these rates">⚪ Bot: not seen yet</span>
+</span>
+    <span class="saved" id="st-saved">Loading the sheet…</span>
+<span hidden>
+    <button type="button" class="btn btn-ghost btn-sm" id="reload" title="Throw away unsaved edits and reload the saved sheet">↻ Reload</button>
+    <button type="button" class="btn btn-sm btn-save" id="save" title="Save the sheet. Asks for the edit key the first time.">💾 Save</button>
+</span>
+  </div>
+</header>
+
+<main class="main">
+
+<div class="tab active" id="tab-consignors">
+
+  <section class="stat-strip" id="stat-strip" aria-label="Ledger totals">
+    <div class="wtb-total-card"><div class="lbl">Slabs in</div><div class="val" id="stat-slabs">—</div></div>
+    <div class="wtb-total-card"><div class="lbl">Market value</div><div class="val" id="stat-market">—</div></div>
+    <div class="wtb-total-card"><div class="lbl">Payout quoted</div><div class="val" id="stat-payout">—</div></div>
+    <div class="wtb-total-card owed"><div class="lbl">Owed</div><div class="val" id="stat-owed">—</div></div>
+    <div class="wtb-total-card"><div class="lbl">Paid out</div><div class="val" id="stat-paid">—</div></div>
+    <div class="wtb-total-card"><div class="lbl">Consignments</div><div class="val" id="stat-consignments">—</div></div>
+  </section>
+
+  <section class="partner-strip" id="partner-strip" aria-label="By partner">
+    <div class="partner-card p-josh">
+      <h4><span class="src-pill src-josh" title="Sourced by Icevyy">Icevyy</span></h4>
+      <div class="partner-grid">
+        <div class="pg-cell"><div class="pg-lbl">Slabs</div><div class="pg-val" id="p-josh-slabs">—</div></div>
+        <div class="pg-cell"><div class="pg-lbl">Market</div><div class="pg-val" id="p-josh-market">—</div></div>
+        <div class="pg-cell"><div class="pg-lbl">Owed</div><div class="pg-val" id="p-josh-owed">—</div></div>
+        <div class="pg-cell"><div class="pg-lbl">Paid</div><div class="pg-val" id="p-josh-paid">—</div></div>
+      </div>
+    </div>
+    <div class="partner-card p-penguin">
+      <h4><span class="src-pill src-penguin" title="Sourced by Penguin">Penguin</span></h4>
+      <div class="partner-grid">
+        <div class="pg-cell"><div class="pg-lbl">Slabs</div><div class="pg-val" id="p-penguin-slabs">—</div></div>
+        <div class="pg-cell"><div class="pg-lbl">Market</div><div class="pg-val" id="p-penguin-market">—</div></div>
+        <div class="pg-cell"><div class="pg-lbl">Owed</div><div class="pg-val" id="p-penguin-owed">—</div></div>
+        <div class="pg-cell"><div class="pg-lbl">Paid</div><div class="pg-val" id="p-penguin-paid">—</div></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="unknown-warning" id="lg-unknown-warning" hidden role="status"></div>
+
+  <section class="card" id="owed-section">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title">💸 Who we owe</div>
+        <div class="sec-sub">Sellers with an outstanding balance. Click a row to open their consignments.</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="wtb-table owed-tbl" id="owed-table">
+        <colgroup>
+          <col><col style="width:110px"><col style="width:70px"><col style="width:110px"><col style="width:110px"><col style="width:130px"><col style="width:70px">
+        </colgroup>
+        <thead><tr>
+          <th>Seller</th><th>Sourced by</th><th>Slabs</th><th>Market</th><th>Owed</th><th>Last activity</th><th>Sheet</th>
+        </tr></thead>
+        <tbody id="owed-tbody"><tr class="loading-row"><td colspan="7">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card" id="sellers-section">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title">📦 Who's sending what</div>
+        <div class="sec-sub">Every consignor on file. Click a column header to sort.</div>
+      </div>
+    </div>
+    <div class="toolbar">
+      <input class="form-input" id="sellers-search" type="text" placeholder="Filter by name or handle…" title="Filter the table below by seller name or @handle">
+    </div>
+    <div class="table-wrap">
+      <table class="wtb-table sellers-tbl" id="sellers-table">
+        <colgroup>
+          <col><col style="width:100px"><col style="width:80px"><col style="width:70px"><col style="width:100px"><col style="width:100px"><col style="width:100px"><col style="width:130px"><col style="width:70px">
+        </colgroup>
+        <thead><tr>
+          <th class="sortable" data-sort="sellerName" tabindex="0" role="button" title="Sort by seller">Seller</th>
+          <th class="sortable" data-sort="sourcedBy" tabindex="0" role="button" title="Sort by who sourced them">Sourced by</th>
+          <th class="sortable" data-sort="consignments" tabindex="0" role="button" title="Sort by number of consignments">Consign.</th>
+          <th class="sortable" data-sort="slabs" tabindex="0" role="button" title="Sort by slab count">Slabs</th>
+          <th class="sortable" data-sort="marketCents" tabindex="0" role="button" title="Sort by market value">Market</th>
+          <th class="sortable" data-sort="payoutCents" tabindex="0" role="button" title="Sort by payout quoted">Payout</th>
+          <th class="sortable" data-sort="paidCents" tabindex="0" role="button" title="Sort by amount paid">Paid</th>
+          <th class="sortable" data-sort="lastAt" tabindex="0" role="button" title="Sort by last activity">Last activity</th>
+          <th>Sheet</th>
+        </tr></thead>
+        <tbody id="sellers-tbody"><tr class="loading-row"><td colspan="9">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card" id="master-section">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title">📋 Master list</div>
+        <div class="sec-sub">Every slab across every consignment.</div>
+      </div>
+    </div>
+
+    <div class="sub-head">Recent</div>
+    <div class="recent-list" id="recent-list"><div class="recent-row"><span style="color:var(--dim);">Loading…</span></div></div>
+
+    <div class="toolbar">
+      <div class="filter-group" id="master-status-filter" aria-label="Filter by status">
+        <button type="button" class="filter-chip active" data-status="all" title="Show every status">All</button>
+        <button type="button" class="filter-chip" data-status="quoted" title="Show only Quoted">Quoted</button>
+        <button type="button" class="filter-chip" data-status="accepted" title="Show only Accepted">Accepted</button>
+        <button type="button" class="filter-chip" data-status="received" title="Show only Received">Received</button>
+        <button type="button" class="filter-chip" data-status="locked" title="Show only Locked">Locked</button>
+        <button type="button" class="filter-chip" data-status="paid" title="Show only Paid">Paid</button>
+        <button type="button" class="filter-chip" data-status="cancelled" title="Show only Cancelled">Cancelled</button>
+      </div>
+      <div class="filter-group" id="master-partner-filter" aria-label="Filter by partner">
+        <button type="button" class="filter-chip active" data-partner="all" title="Show both partners">All</button>
+        <button type="button" class="filter-chip" data-partner="josh" title="Show only Icevyy">Icevyy</button>
+        <button type="button" class="filter-chip" data-partner="penguin" title="Show only Penguin">Penguin</button>
+        <button type="button" class="filter-chip" data-partner="unknown" title="Show only Unknown">Unknown</button>
+      </div>
+      <input class="form-input" id="master-search" type="text" placeholder="Search card, cert, seller…" title="Filter the master list by card, cert or seller">
+      <button type="button" class="btn btn-ghost btn-sm" id="export-csv" title="Download the rows currently shown as a CSV file">⬇ Export CSV</button>
+    </div>
+
+    <div class="count-line" id="master-count"></div>
+
+    <div class="table-wrap">
+      <table class="wtb-table master-tbl" id="master-table">
+        <colgroup>
+          <col style="width:100px"><col style="width:130px"><col style="width:100px"><col style="width:110px"><col style="width:90px"><col><col style="width:70px"><col style="width:90px"><col style="width:100px"><col style="width:100px"><col style="width:100px">
+        </colgroup>
+        <thead><tr>
+          <th class="sortable" data-sort="quotedAt" tabindex="0" role="button" title="Sort by date">Date</th>
+          <th class="sortable" data-sort="sellerName" tabindex="0" role="button" title="Sort by seller">Seller</th>
+          <th class="sortable" data-sort="sourcedBy" tabindex="0" role="button" title="Sort by who sourced them">Sourced by</th>
+          <th class="sortable" data-sort="cert" tabindex="0" role="button" title="Sort by cert number">Cert</th>
+          <th class="sortable" data-sort="grader" tabindex="0" role="button" title="Sort by grading company">Company</th>
+          <th class="sortable" data-sort="card" tabindex="0" role="button" title="Sort by card name">Card</th>
+          <th class="sortable" data-sort="grade" tabindex="0" role="button" title="Sort by grade">Grade</th>
+          <th class="sortable" data-sort="sport" tabindex="0" role="button" title="Sort by sport">Sport</th>
+          <th class="sortable" data-sort="marketCents" tabindex="0" role="button" title="Sort by market value">Market</th>
+          <th class="sortable" data-sort="payoutCents" tabindex="0" role="button" title="Sort by payout">Payout</th>
+          <th class="sortable" data-sort="consignmentStatus" tabindex="0" role="button" title="Sort by status">Status</th>
+        </tr></thead>
+        <tbody id="master-tbody"><tr class="loading-row"><td colspan="11">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card errors-card" id="lg-errors" hidden tabindex="-1">
+    <div class="card-title" id="lg-errors-title">Something went wrong</div>
+    <div id="lg-errors-body" style="font-size:12px;color:var(--dim);"></div>
+  </section>
+
+  <p class="foot" id="lg-foot"></p>
+
+</div>
+
+</main>
+
+<script>
+(function () {
+'use strict';
+  var activeTab = 'consignors';
+
+
+  var KEY_STORE = 'iopRatesEditKey';
+  
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  
+
+  function fmtTime(iso) {
+    if (!iso) return null;
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    var now = new Date();
+    var sameDay = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+    return d.toLocaleString(undefined, sameDay
+      ? { hour: 'numeric', minute: '2-digit' }
+      : { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  }
+  
+
+  // The function is served at .../functions/v1/slab-rates with no trailing slash, so a
+  // literal "./settings" would resolve one level too high. Build the sibling path from
+  // whatever path this page was loaded at; still host-relative, works behind any domain.
+  function api(name) {
+    var meta = document.querySelector('meta[name="rates-api"]');
+    var base = meta && meta.content ? meta.content : location.pathname;
+    return base.replace(new RegExp('[/]+$'), '') + '/' + name;
+  }
+  
+
+  function editKey(force) {
+    var k = null;
+    try { k = localStorage.getItem(KEY_STORE); } catch (e) { k = null; }
+    if (!k || force) {
+      k = window.prompt('Edit key for this rates page');
+      if (!k) return null;
+      k = k.trim();
+      if (!k) return null;
+      try { localStorage.setItem(KEY_STORE, k); } catch (e) { /* private mode: key lives for this page only */ }
+    }
+    return k;
+  }
+
+  function forgetKey() {
+    try { localStorage.removeItem(KEY_STORE); } catch (e) { /* nothing to forget */ }
+  }
+  
+
+  var el = {
+    msg: document.getElementById('msg'),
+    save: document.getElementById('save'),
+    reload: document.getElementById('reload'),
+    stSaved: document.getElementById('st-saved'),
+    botPill: document.getElementById('bot-pill')
+  };
+
+  var ConsignorsTab = (function () {
+    var SRC_LABEL = { josh: 'Icevyy', penguin: 'Penguin', unknown: 'Unknown' };
+    var STATUS_LABEL = { quoted: 'Quoted', accepted: 'Accepted', received: 'Received', locked: 'Locked', paid: 'Paid', cancelled: 'Cancelled' };
+    var STATUS_ORDER = ['quoted', 'accepted', 'received', 'locked', 'paid'];
+
+    function isActive() { return activeTab === 'consignors'; }
+
+    var dom = {
+      statSlabs: document.getElementById('stat-slabs'),
+      statMarket: document.getElementById('stat-market'),
+      statPayout: document.getElementById('stat-payout'),
+      statOwed: document.getElementById('stat-owed'),
+      statPaid: document.getElementById('stat-paid'),
+      statConsignments: document.getElementById('stat-consignments'),
+      unknownWarning: document.getElementById('lg-unknown-warning'),
+      owedTbody: document.getElementById('owed-tbody'),
+      sellersTbody: document.getElementById('sellers-tbody'),
+      sellersSearch: document.getElementById('sellers-search'),
+      sellersTable: document.getElementById('sellers-table'),
+      recentList: document.getElementById('recent-list'),
+      masterTbody: document.getElementById('master-tbody'),
+      masterTable: document.getElementById('master-table'),
+      masterCount: document.getElementById('master-count'),
+      masterSearch: document.getElementById('master-search'),
+      masterStatusFilter: document.getElementById('master-status-filter'),
+      masterPartnerFilter: document.getElementById('master-partner-filter'),
+      exportCsv: document.getElementById('export-csv'),
+      errors: document.getElementById('lg-errors'),
+      errorsBody: document.getElementById('lg-errors-body'),
+      foot: document.getElementById('lg-foot')
+    };
+
+    var statusData = null;
+    var statusOk = false;
+    var summaryData = null;
+    var masterRows = [];
+    var masterTotal = 0;
+    var busy = false;
+    var loadedOnce = false;
+    var msgCache = { text: '', kind: '' };
+
+    var expanded = {};
+    var sellerCache = {};
+
+    var sellersSort = { field: 'owedCents', dir: 'desc' };
+    var masterSort = { field: 'quotedAt', dir: 'desc' };
+    var masterFilters = { status: 'all', partner: 'all', q: '' };
+
+    // ── small helpers ────────────────────────────────────────────────────────
+    function money(cents) {
+      if (cents == null || isNaN(cents)) return '—';
+      var n = Number(cents) / 100;
+      var neg = n < 0;
+      n = Math.abs(n);
+      var out = '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return neg ? '-' + out : out;
+    }
+
+    function fmtDate(iso) {
+      if (!iso) return '—';
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    function srcLabel(k) { return SRC_LABEL[k] || 'Unknown'; }
+    function srcClass(k) { return k === 'josh' ? 'src-josh' : (k === 'penguin' ? 'src-penguin' : 'src-unknown'); }
+    function srcPill(k) { return '<span class="src-pill ' + srcClass(k) + '">' + esc(srcLabel(k)) + '</span>'; }
+
+    function statusClass(s) { return STATUS_LABEL[s] ? 'st-' + s : 'st-unknown'; }
+    function statusLabelOf(s) { return STATUS_LABEL[s] || (s ? (String(s).charAt(0).toUpperCase() + String(s).slice(1)) : '—'); }
+    function statusPillHtml(s) { return '<span class="status-pill ' + statusClass(s) + '">' + esc(statusLabelOf(s)) + '</span>'; }
+
+    function cmp(a, b) {
+      if (a == null && b == null) return 0;
+      if (a == null) return -1;
+      if (b == null) return 1;
+      if (typeof a === 'string' || typeof b === 'string') return String(a).localeCompare(String(b));
+      return a - b;
+    }
+
+    function sortRows(rows, field, dir) {
+      var copy = rows.slice();
+      copy.sort(function (a, b) {
+        var r = cmp(a[field], b[field]);
+        return dir === 'desc' ? -r : r;
+      });
+      return copy;
+    }
+
+    function setMsg(text, kind) {
+      msgCache = { text: text || '', kind: kind || '' };
+      if (!isActive()) return;
+      el.msg.textContent = msgCache.text;
+      el.msg.className = 'msg' + (kind ? ' ' + kind : '');
+    }
+
+    function showError(msg) { dom.errorsBody.textContent = msg; dom.errors.hidden = false; }
+    function clearError() { dom.errors.hidden = true; dom.errorsBody.textContent = ''; }
+
+    // ── api ──────────────────────────────────────────────────────────────────
+    function apiBase() {
+      var meta = document.querySelector('meta[name="ledger-api"]');
+      return meta && meta.content ? meta.content.replace(/\/+$/, '') : '';
+    }
+    function apiUrl(path, params) {
+      var url = apiBase() + path;
+      if (params) {
+        var parts = [];
+        Object.keys(params).forEach(function (k) {
+          if (params[k] != null && params[k] !== '') parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(params[k]));
+        });
+        if (parts.length) url += '?' + parts.join('&');
+      }
+      return url;
+    }
+
+    function request(url, opts, retried) {
+      opts = opts || {};
+      var key = null;
+      try { key = localStorage.getItem(KEY_STORE); } catch (e) { key = null; }
+      var headers = Object.assign({ accept: 'application/json' }, opts.headers || {});
+      if (key) headers['x-edit-key'] = key;
+      return fetch(url, Object.assign({}, opts, { headers: headers })).then(function (res) {
+        if (res.status === 401 && !retried) {
+          forgetKey();
+          var k2 = editKey(true);
+          if (!k2) return Promise.reject(new Error('No edit key provided'));
+          return request(url, opts, true);
+        }
+        if (!res.ok) {
+          return res.json().catch(function () { return {}; }).then(function (body) {
+            throw new Error((body && body.error) || ('Request failed (' + res.status + ')'));
+          });
+        }
+        return res.json();
+      });
+    }
+    function apiGet(path, params) { return request(apiUrl(path, params), { method: 'GET' }); }
+    function apiPatch(path, body) {
+      return request(apiUrl(path), { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    }
+
+    // ── status pill (public endpoint, no key needed) ────────────────────────
+    function loadStatus() {
+      return fetch(apiUrl('/status'), { headers: { accept: 'application/json' } })
+        .then(function (res) { if (!res.ok) throw new Error('status ' + res.status); return res.json(); })
+        .then(function (data) { statusOk = true; statusData = data; renderPill(); })
+        .catch(function () { statusOk = false; renderPill(); });
+    }
+    function renderPill() {
+      if (!isActive()) return;
+      if (!statusOk || !statusData) {
+        el.botPill.className = 'helper-pill down';
+        el.botPill.textContent = '🔴 Ledger unreachable';
+        el.botPill.title = 'Could not reach the ledger API';
+        el.stSaved.textContent = 'Not loaded yet';
+        return;
+      }
+      var when = fmtTime(statusData.updatedAt);
+      el.botPill.className = 'helper-pill up';
+      el.botPill.textContent = '🟢 Ledger · ' + (statusData.consignments == null ? '?' : statusData.consignments) + ' consignments';
+      el.botPill.title = 'Ledger API status';
+      el.stSaved.textContent = when ? 'Ledger updated ' + when : 'Nothing recorded yet';
+    }
+
+    // ── master list: page through every row ─────────────────────────────────
+    function fetchAllMaster() {
+      var limit = 500, offset = 0, all = [], guard = 0, total = 0;
+      function next() {
+        return apiGet('/master', { limit: limit, offset: offset }).then(function (res) {
+          var rows = (res && res.rows) || [];
+          total = (res && typeof res.total === 'number') ? res.total : (all.length + rows.length);
+          all = all.concat(rows);
+          offset += rows.length;
+          guard++;
+          if (rows.length > 0 && all.length < total && guard < 40) return next();
+          return { rows: all, total: total };
+        });
+      }
+      return next();
+    }
+
+    // ── render: stat strip + partner cards ──────────────────────────────────
+    function renderStats() {
+      var t = (summaryData && summaryData.totals) || {};
+      dom.statSlabs.textContent = t.slabs == null ? '—' : Number(t.slabs).toLocaleString('en-US');
+      dom.statMarket.textContent = money(t.marketCents);
+      dom.statPayout.textContent = money(t.payoutCents);
+      dom.statOwed.textContent = money(t.owedCents);
+      dom.statPaid.textContent = money(t.paidCents);
+      dom.statConsignments.textContent = t.consignments == null ? '—' : Number(t.consignments).toLocaleString('en-US');
+    }
+
+    function renderPartners() {
+      var bp = (summaryData && summaryData.byPartner) || {};
+      ['josh', 'penguin'].forEach(function (k) {
+        var p = bp[k] || {};
+        var slabsEl = document.getElementById('p-' + k + '-slabs');
+        var marketEl = document.getElementById('p-' + k + '-market');
+        var owedEl = document.getElementById('p-' + k + '-owed');
+        var paidEl = document.getElementById('p-' + k + '-paid');
+        if (slabsEl) slabsEl.textContent = p.slabs == null ? '—' : Number(p.slabs).toLocaleString('en-US');
+        if (marketEl) marketEl.textContent = money(p.marketCents);
+        if (owedEl) owedEl.textContent = money(p.owedCents);
+        if (paidEl) paidEl.textContent = money(p.paidCents);
+      });
+      // No "Unknown" partner card on purpose: the bot tags every consignment from
+      // Discord's own invite record, so byPartner.unknown should stay empty. If it
+      // isn't, that is worth a line, not a third card.
+      var unk = bp.unknown;
+      var n = unk && typeof unk.consignments === 'number' ? unk.consignments : 0;
+      if (dom.unknownWarning) {
+        dom.unknownWarning.hidden = !(n > 0);
+        if (n > 0) dom.unknownWarning.textContent = n + ' consignment' + (n === 1 ? '' : 's') + ' from sellers the bot could not tag yet.';
+      }
+    }
+
+    // ── render: "Who we owe" ─────────────────────────────────────────────────
+    function renderOwed() {
+      var rows = ((summaryData && summaryData.bySeller) || []).filter(function (s) { return (s.owedCents || 0) > 0; });
+      rows = sortRows(rows, 'owedCents', 'desc');
+      if (!rows.length) {
+        dom.owedTbody.innerHTML = '<tr class="empty-row"><td colspan="7">Nobody is owed anything right now.</td></tr>';
+        return;
+      }
+      var html = '';
+      rows.forEach(function (s) {
+        var isOpen = !!expanded[s.sellerId];
+        html += '<tr class="owed-row" data-seller="' + esc(s.sellerId) + '">';
+        html += '<td><button type="button" class="exp-toggle" aria-expanded="' + (isOpen ? 'true' : 'false') + '" title="Show consignments from this seller">' + (isOpen ? '▾' : '▸') + '</button>' + esc(s.sellerName || 'Unknown') + (s.sellerHandle ? '<span class="handle">@' + esc(s.sellerHandle) + '</span>' : '') + '</td>';
+        html += '<td>' + srcPill(s.sourcedBy) + '</td>';
+        html += '<td class="num">' + (s.slabs == null ? '—' : s.slabs) + '</td>';
+        html += '<td class="num">' + money(s.marketCents) + '</td>';
+        html += '<td class="num" style="color:var(--red);">' + money(s.owedCents) + '</td>';
+        html += '<td>' + (fmtTime(s.lastAt) || '—') + '</td>';
+        html += '<td>' + (s.sellerSheetUrl ? '<a href="' + esc(s.sellerSheetUrl) + '" target="_blank" rel="noopener">Sheet</a>' : '—') + '</td>';
+        html += '</tr>';
+        html += '<tr class="owed-detail" data-seller-detail="' + esc(s.sellerId) + '"' + (isOpen ? '' : ' hidden') + '><td colspan="7">' + (isOpen ? ownedDetailHtml(s.sellerId) : '') + '</td></tr>';
+      });
+      dom.owedTbody.innerHTML = html;
+      Object.keys(expanded).forEach(function (id) {
+        if (expanded[id] && !sellerCache[id]) loadSellerConsignments(id);
+      });
+    }
+
+    function ownedDetailHtml(sellerId) {
+      var cache = sellerCache[sellerId];
+      if (cache == null || cache === 'loading') return '<div style="color:var(--dim);font-style:italic;padding:6px 0;">Loading…</div>';
+      if (cache === 'error') return '<div style="color:var(--red);padding:6px 0;">Could not load this seller&#39;s consignments.</div>';
+      if (!cache.length) return '<div style="color:var(--dim);padding:6px 0;">No consignments found.</div>';
+      var html = '';
+      cache.forEach(function (c) {
+        html += '<div class="wtb-group" style="margin-bottom:10px;padding:14px 16px;">';
+        html += '<div class="wtb-group-header"><h3>' + esc(c.ticketName || c.ticketId || c.id) + '</h3><span class="right">' + (fmtTime(c.quotedAt) || '') + '</span></div>';
+        html += '<div class="cons-row">';
+        html += statusPillHtml(c.status);
+        html += '<span class="cr-pay">' + money(c.payoutCents) + '</span>';
+        html += '<span class="cr-links">';
+        if (c.staffSheetUrl) html += '<a href="' + esc(c.staffSheetUrl) + '" target="_blank" rel="noopener">Staff sheet</a>';
+        if (c.sellerSheetUrl) html += '<a href="' + esc(c.sellerSheetUrl) + '" target="_blank" rel="noopener">Seller sheet</a>';
+        html += '</span>';
+        html += '<span class="cons-actions">' + actionButtonsHtml(c) + '</span>';
+        html += '</div></div>';
+      });
+      return html;
+    }
+
+    function actionButtonsHtml(c) {
+      var idx = STATUS_ORDER.indexOf(c.status);
+      var html = '';
+      if (idx >= 0) {
+        STATUS_ORDER.slice(idx + 1).forEach(function (s) {
+          html += '<button type="button" class="btn btn-ghost btn-sm" data-action="status" data-id="' + esc(c.id) + '" data-status="' + s + '" title="Mark this consignment ' + STATUS_LABEL[s] + '">' + STATUS_LABEL[s] + '</button>';
+        });
+      }
+      if (c.status !== 'paid' && c.status !== 'cancelled') {
+        html += '<button type="button" class="btn btn-danger btn-sm" data-action="status" data-id="' + esc(c.id) + '" data-status="cancelled" title="Cancel this consignment">Cancel</button>';
+      }
+      return html;
+    }
+
+    function loadSellerConsignments(sellerId) {
+      sellerCache[sellerId] = 'loading';
+      apiGet('/consignments', { seller: sellerId, limit: 200 }).then(function (res) {
+        sellerCache[sellerId] = (res && res.rows) || [];
+        renderOwed();
+      }).catch(function () {
+        sellerCache[sellerId] = 'error';
+        renderOwed();
+      });
+    }
+
+    function handleStatusAction(btn) {
+      var id = btn.getAttribute('data-id');
+      var newStatus = btn.getAttribute('data-status');
+      var label = STATUS_LABEL[newStatus] || newStatus;
+      var ok = window.confirm(newStatus === 'cancelled' ? 'Cancel this consignment? This cannot be undone.' : ('Mark this consignment ' + label + '?'));
+      if (!ok) return;
+      var body = { status: newStatus };
+      if (newStatus === 'paid') body.paidAt = new Date().toISOString();
+      setMsg('Updating…');
+      apiPatch('/consignments/' + encodeURIComponent(id), body).then(function () {
+        setMsg('Updated.', 'ok');
+        return refreshAfterChange();
+      }).catch(function (err) {
+        setMsg('Update failed: ' + err.message, 'err');
+      });
+    }
+
+    function refreshAfterChange() {
+      var openIds = Object.keys(expanded).filter(function (id) { return expanded[id]; });
+      openIds.forEach(function (id) { sellerCache[id] = null; });
+      return loadAll().then(function () {
+        openIds.forEach(function (id) { loadSellerConsignments(id); });
+      });
+    }
+
+    dom.owedTbody.addEventListener('click', function (e) {
+      var actionBtn = e.target.closest ? e.target.closest('[data-action="status"]') : null;
+      if (actionBtn) { handleStatusAction(actionBtn); return; }
+      var row = e.target.closest ? e.target.closest('.owed-row') : null;
+      if (!row) return;
+      var sellerId = row.getAttribute('data-seller');
+      expanded[sellerId] = !expanded[sellerId];
+      if (expanded[sellerId] && !sellerCache[sellerId]) loadSellerConsignments(sellerId);
+      renderOwed();
+    });
+
+    // ── render: "Who's sending what" ─────────────────────────────────────────
+    function renderSellers() {
+      var rows = (summaryData && summaryData.bySeller) || [];
+      var q = (dom.sellersSearch.value || '').trim().toLowerCase();
+      if (q) {
+        rows = rows.filter(function (s) {
+          return (s.sellerName || '').toLowerCase().indexOf(q) >= 0 || (s.sellerHandle || '').toLowerCase().indexOf(q) >= 0;
+        });
+      }
+      rows = sortRows(rows, sellersSort.field, sellersSort.dir);
+      if (!rows.length) {
+        dom.sellersTbody.innerHTML = '<tr class="empty-row"><td colspan="9">No consignors match.</td></tr>';
+        return;
+      }
+      var html = '';
+      rows.forEach(function (s) {
+        html += '<tr>';
+        html += '<td>' + esc(s.sellerName || 'Unknown') + (s.sellerHandle ? ' <span style="color:var(--dim);">@' + esc(s.sellerHandle) + '</span>' : '') + '</td>';
+        html += '<td>' + srcPill(s.sourcedBy) + '</td>';
+        html += '<td class="num">' + (s.consignments == null ? '—' : s.consignments) + '</td>';
+        html += '<td class="num">' + (s.slabs == null ? '—' : s.slabs) + '</td>';
+        html += '<td class="num">' + money(s.marketCents) + '</td>';
+        html += '<td class="num">' + money(s.payoutCents) + '</td>';
+        html += '<td class="num">' + money(s.paidCents) + '</td>';
+        html += '<td>' + (fmtTime(s.lastAt) || '—') + '</td>';
+        html += '<td>' + (s.sellerSheetUrl ? '<a href="' + esc(s.sellerSheetUrl) + '" target="_blank" rel="noopener">Sheet</a>' : '—') + '</td>';
+        html += '</tr>';
+      });
+      dom.sellersTbody.innerHTML = html;
+    }
+    dom.sellersSearch.addEventListener('input', renderSellers);
+
+    // ── generic sortable-header wiring (sellers + master tables) ────────────
+    function setupSortableHeaders(table, sortState, renderFn) {
+      var ths = table.querySelectorAll('th.sortable');
+      function refreshArrows() {
+        Array.prototype.forEach.call(ths, function (th) {
+          var field = th.getAttribute('data-sort');
+          var label = th.getAttribute('data-label');
+          if (!label) { label = th.textContent.trim(); th.setAttribute('data-label', label); }
+          th.textContent = label;
+          if (field === sortState.field) th.textContent = label + ' ' + (sortState.dir === 'asc' ? '▲' : '▼');
+        });
+      }
+      function activate(th) {
+        var field = th.getAttribute('data-sort');
+        if (sortState.field === field) sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+        else { sortState.field = field; sortState.dir = 'asc'; }
+        refreshArrows();
+        renderFn();
+      }
+      Array.prototype.forEach.call(ths, function (th) {
+        th.addEventListener('click', function () { activate(th); });
+        th.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(th); }
+        });
+      });
+      refreshArrows();
+    }
+
+    // ── render: Recent ───────────────────────────────────────────────────────
+    function renderRecent() {
+      var rows = (summaryData && summaryData.recent) || [];
+      if (!rows.length) {
+        dom.recentList.innerHTML = '<div class="recent-row"><span style="color:var(--dim);">Nothing yet.</span></div>';
+        return;
+      }
+      var html = '';
+      rows.slice(0, 20).forEach(function (c) {
+        html += '<div class="recent-row">';
+        html += '<span class="rr-ticket">' + esc(c.ticketName || c.ticketId || c.id) + '</span>';
+        html += '<span class="rr-seller">' + esc(c.sellerName || 'Unknown') + '</span>';
+        html += '<span>' + (c.slabCount == null ? '—' : c.slabCount) + ' slabs</span>';
+        html += statusPillHtml(c.status);
+        html += '<span class="rr-pay">' + money(c.payoutCents) + '</span>';
+        html += '<span class="rr-links">';
+        if (c.staffSheetUrl) html += '<a href="' + esc(c.staffSheetUrl) + '" target="_blank" rel="noopener">Staff</a>';
+        if (c.sellerSheetUrl) html += '<a href="' + esc(c.sellerSheetUrl) + '" target="_blank" rel="noopener">Seller</a>';
+        html += '</span>';
+        html += '</div>';
+      });
+      dom.recentList.innerHTML = html;
+    }
+
+    // ── render: Master list ───────────────────────────────────────────────────
+    function masterFiltered() {
+      var rows = masterRows;
+      if (masterFilters.status !== 'all') rows = rows.filter(function (r) { return r.consignmentStatus === masterFilters.status; });
+      if (masterFilters.partner !== 'all') rows = rows.filter(function (r) { return (r.sourcedBy || 'unknown') === masterFilters.partner; });
+      var q = masterFilters.q.trim().toLowerCase();
+      if (q) {
+        rows = rows.filter(function (r) {
+          return (r.card || '').toLowerCase().indexOf(q) >= 0 ||
+            (r.cert || '').toLowerCase().indexOf(q) >= 0 ||
+            (r.sellerName || '').toLowerCase().indexOf(q) >= 0 ||
+            (r.sellerHandle || '').toLowerCase().indexOf(q) >= 0;
+        });
+      }
+      return sortRows(rows, masterSort.field, masterSort.dir);
+    }
+
+    function renderMaster() {
+      var rows = masterFiltered();
+      var extra = masterTotal > masterRows.length ? (' (' + masterTotal.toLocaleString('en-US') + ' total on the server)') : '';
+      dom.masterCount.textContent = 'Showing ' + rows.length.toLocaleString('en-US') + ' of ' + masterRows.length.toLocaleString('en-US') + ' loaded' + extra;
+      if (!rows.length) {
+        dom.masterTbody.innerHTML = '<tr class="empty-row"><td colspan="11">No slabs match these filters.</td></tr>';
+        return;
+      }
+      var html = '';
+      rows.forEach(function (r) {
+        html += '<tr>';
+        html += '<td>' + fmtDate(r.quotedAt) + '</td>';
+        html += '<td>' + esc(r.sellerName || 'Unknown') + '</td>';
+        html += '<td>' + srcPill(r.sourcedBy) + '</td>';
+        html += '<td class="cert">' + esc(r.cert || '—') + '</td>';
+        html += '<td>' + esc(r.grader || '—') + '</td>';
+        html += '<td class="wtb-name" title="' + esc(r.card || '') + '">' + esc(r.card || '—') + '</td>';
+        html += '<td>' + esc(r.grade == null ? '—' : r.grade) + '</td>';
+        html += '<td>' + esc(r.sport || '—') + '</td>';
+        html += '<td class="num">' + money(r.marketCents) + '</td>';
+        html += '<td class="num">' + money(r.payoutCents) + '</td>';
+        html += '<td>' + statusPillHtml(r.consignmentStatus) + '</td>';
+        html += '</tr>';
+      });
+      dom.masterTbody.innerHTML = html;
+    }
+    dom.masterSearch.addEventListener('input', function () { masterFilters.q = dom.masterSearch.value; renderMaster(); });
+
+    function wireFilterGroup(container, key) {
+      container.addEventListener('click', function (e) {
+        var btn = e.target.closest ? e.target.closest('.filter-chip') : null;
+        if (!btn) return;
+        Array.prototype.forEach.call(container.querySelectorAll('.filter-chip'), function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        masterFilters[key] = btn.getAttribute('data-' + key);
+        renderMaster();
+      });
+    }
+    wireFilterGroup(dom.masterStatusFilter, 'status');
+    wireFilterGroup(dom.masterPartnerFilter, 'partner');
+
+    function csvCell(v) {
+      var s = String(v == null ? '' : v);
+      if (/[",\r\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }
+
+    dom.exportCsv.addEventListener('click', function () {
+      var rows = masterFiltered();
+      var header = ['Date', 'Seller', 'Sourced by', 'Cert', 'Company', 'Card', 'Grade', 'Sport', 'Market', 'Payout', 'Status'];
+      var lines = [header.map(csvCell).join(',')];
+      rows.forEach(function (r) {
+        var cells = [
+          fmtDate(r.quotedAt),
+          r.sellerName || '',
+          srcLabel(r.sourcedBy),
+          r.cert || '',
+          r.grader || '',
+          r.card || '',
+          r.grade == null ? '' : r.grade,
+          r.sport || '',
+          r.marketCents == null ? '' : (r.marketCents / 100).toFixed(2),
+          r.payoutCents == null ? '' : (r.payoutCents / 100).toFixed(2),
+          statusLabelOf(r.consignmentStatus)
+        ];
+        lines.push(cells.map(csvCell).join(','));
+      });
+      var blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'ledger-master-' + new Date().toISOString().slice(0, 10) + '.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    });
+
+    // ── load orchestration ───────────────────────────────────────────────────
+    function setLoadingStates() {
+      dom.owedTbody.innerHTML = '<tr class="loading-row"><td colspan="7">Loading…</td></tr>';
+      dom.sellersTbody.innerHTML = '<tr class="loading-row"><td colspan="9">Loading…</td></tr>';
+      dom.masterTbody.innerHTML = '<tr class="loading-row"><td colspan="11">Loading…</td></tr>';
+      dom.recentList.innerHTML = '<div class="recent-row"><span style="color:var(--dim);">Loading…</span></div>';
+    }
+
+    function loadAll() {
+      clearError();
+      setLoadingStates();
+      var key = editKey(false);
+      if (!key) {
+        showError('An edit key is needed to load the ledger. Click ↻ Reload to try again.');
+        return Promise.resolve();
+      }
+      busy = true;
+      if (isActive()) el.reload.disabled = true;
+      return Promise.all([apiGet('/summary'), fetchAllMaster()]).then(function (out) {
+        summaryData = out[0];
+        masterRows = out[1].rows;
+        masterTotal = out[1].total;
+        renderStats();
+        renderPartners();
+        renderOwed();
+        renderSellers();
+        renderRecent();
+        renderMaster();
+      }).catch(function (err) {
+        showError('Could not load the ledger: ' + err.message);
+      }).then(function () {
+        busy = false;
+        if (isActive()) el.reload.disabled = false;
+      });
+    }
+
+    (function footer() {
+      var host = 'the ledger API';
+      try { host = new URL(apiUrl('/status'), location.href).host; } catch (e) { /* keep the fallback */ }
+      dom.foot.textContent = 'Reading from ' + host + '. The status pill is public; every other call needs the edit key.';
+    })();
+
+    setupSortableHeaders(dom.sellersTable, sellersSort, renderSellers);
+    setupSortableHeaders(dom.masterTable, masterSort, renderMaster);
+
+    return {
+      isBusy: function () { return busy; },
+      reload: function () { loadStatus(); loadAll(); },
+      activate: function () {
+        el.msg.textContent = msgCache.text;
+        el.msg.className = 'msg' + (msgCache.kind ? ' ' + msgCache.kind : '');
+        renderPill();
+        if (!loadedOnce) {
+          loadedOnce = true;
+          loadStatus();
+          loadAll();
+        }
+      }
+    };
+  })();
+  
+
+  ConsignorsTab.activate();
+})();
+</script>
+</body>
+</html>
