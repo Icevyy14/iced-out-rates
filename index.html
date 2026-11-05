@@ -3,462 +3,312 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="dark">
 <meta name="robots" content="noindex, nofollow">
 <meta name="rates-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/slab-rates">
-<title>Iced Out Penguin rates</title>
+<title>Iced Out Penguin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
 <style>
-/* Hallmark · macrostructure: Workbench · tone: utilitarian · anchor hue: 240 (glacier)
- * theme: custom "Glacier" · paper oklch(97% .006 240) · accent oklch(50% .115 215) cool
- * display: system mono (the tool's voice: certs, dollars, percents) · body: system UI sans
- * nav: none (single-screen tool) · footer: Ft2 inline single line · enrichment: none
- * pre-emit critique: P4 H5 E5 S5 R5 V4
- */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Iced Out Penguin rates — skinned to match the owner app's 💰 Pricing tab.
+   Theme: the owner's active theme, "Synthwave". Dark only, no light theme.
+   Everything between the two "PORTED" banners is lifted verbatim from
+   icevyy-tcg.html so the two editors cannot drift apart visually.
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── tokens ──────────────────────────────────────────────────────────────── */
-:root {
-  --color-paper:    oklch(97% 0.006 240);
-  --color-paper-2:  oklch(94% 0.008 240);
-  --color-paper-3:  oklch(90% 0.011 240);
-  --color-rule:     oklch(84% 0.013 240);
-  --color-rule-2:   oklch(76% 0.015 240);
-  --color-neutral:  oklch(56% 0.013 240);
-  --color-muted:    oklch(42% 0.015 245);
-  --color-ink:      oklch(21% 0.016 250);
-  --color-accent:   oklch(50% 0.115 215);
-  --color-accent-2: oklch(42% 0.110 215);
-  --color-on-accent:oklch(98% 0.010 215);
-  --color-focus:    oklch(55% 0.150 215);
-  --color-danger:   oklch(47% 0.160 25);
-  --color-danger-bg:oklch(94% 0.030 25);
-  --color-ok:       oklch(45% 0.100 155);
-  --color-warn:     oklch(50% 0.110 70);
-  --color-warn-bg:  oklch(94% 0.040 80);
+:root{
+  /* Synthwave */
+  --bg:#000000;
+  --s1:#0a0b0f;
+  --s2:#10121a;
+  --s3:#181b26;
+  --border:#242838;
+  --buy:#7dd3fc;
+  --sell:#ff4d5e;
+  --text:#eef4ff;
+  --dim:#8fa0bd;
+  --muted:#5c6880;
+  --red:#ff3b4e;
+  --yellow:#9bdcff;
+  --purple:#7dd3fc;
 
-  --font-ui:   system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --font-ui:'Rajdhani','Segoe UI',system-ui,-apple-system,sans-serif;
+  --font-display:'Orbitron','Rajdhani','Segoe UI',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
 
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.5rem;
-  --space-6: 2rem;
-  --space-7: 3rem;
+  /* Radius scale (DESIGN.md §3) — deliberately varied, NOT one value everywhere. */
+  --r-slab: 3px;    /* cert chips, stat cells — crisp graded-slab feel */
+  --r: 8px;         /* buttons, inputs, small cards */
+  --r-lg: 14px;     /* large panels */
+  --r-pill: 999px;  /* status pills / segmented controls only */
 
-  --text-xs: 0.75rem;
-  --text-sm: 0.8125rem;
-  --text-md: 0.9375rem;
-  --text-lg: 1.0625rem;
-  --text-xl: 1.375rem;
-  --text-display: clamp(1.75rem, 1.2rem + 2.4vw, 2.5rem);
-
-  --rule: 1px solid var(--color-rule);
-  --radius-sm: 4px;
-  --radius-md: 7px;
-
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --dur-fast: 110ms;
-  --dur-mid: 200ms;
+  /* Micro-label ink, one step dimmer than --dim; derived so it tracks the theme. */
+  --faint: color-mix(in srgb, var(--dim) 62%, var(--bg));
+  --hairline: color-mix(in srgb, var(--border) 70%, var(--bg));
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-paper:    oklch(15% 0.012 245);
-    --color-paper-2:  oklch(19% 0.014 245);
-    --color-paper-3:  oklch(23% 0.016 245);
-    --color-rule:     oklch(31% 0.014 245);
-    --color-rule-2:   oklch(40% 0.016 245);
-    --color-neutral:  oklch(62% 0.012 245);
-    --color-muted:    oklch(76% 0.012 245);
-    --color-ink:      oklch(94% 0.008 245);
-    --color-accent:   oklch(70% 0.105 215);
-    --color-accent-2: oklch(78% 0.095 215);
-    --color-on-accent:oklch(16% 0.020 215);
-    --color-focus:    oklch(75% 0.130 215);
-    --color-danger:   oklch(70% 0.130 25);
-    --color-danger-bg:oklch(26% 0.060 25);
-    --color-ok:       oklch(72% 0.090 155);
-    --color-warn:     oklch(78% 0.090 80);
-    --color-warn-bg:  oklch(27% 0.050 80);
-  }
-  body { font-weight: 350; }
+/* ── PORTED from icevyy-tcg.html — same selectors, same values ──────────── */
+
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-ui);min-height:100vh;overflow-x:hidden;}
+::-webkit-scrollbar{width:6px;} ::-webkit-scrollbar-track{background:var(--s1);} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* page glow */
+html::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(120% 60% at 50% -12%, rgba(125,211,252,.14), transparent 62%);}
+
+/* NAV */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--s1);position:sticky;top:0;z-index:100;backdrop-filter:blur(10px);}
+.logo{font-size:22px;font-weight:800;letter-spacing:-0.5px;}
+.logo span{color:var(--sell);}
+.logo em{color:var(--buy);font-style:normal;}
+
+/* WTB rules — grouped tiers, styled to look like a printed price chart */
+.wtb-group{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin-bottom:14px;position:relative;}
+.wtb-group-header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:10px;}
+.wtb-group-header h3{font-size:15px;font-weight:900;color:var(--text);letter-spacing:1px;display:flex;align-items:center;gap:8px;}
+.wtb-group-header h3::before{content:'';width:4px;height:18px;background:var(--yellow);border-radius:2px;}
+.wtb-group-header .right{font-size:10px;color:var(--dim);font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;}
+.wtb-group .desc{font-size:12px;color:var(--dim);margin-bottom:10px;}
+.wtb-group .desc input{background:transparent;border:none;color:var(--dim);width:100%;font-size:12px;outline:none;}
+.wtb-tier{display:grid;grid-template-columns:170px 1fr 50px 110px 30px;gap:14px;align-items:center;padding:11px 6px;border-bottom:1px solid var(--border);font-size:14px;font-weight:600;color:var(--text);}
+.wtb-tier:last-child{border-bottom:none;}
+.wtb-tier .range input{background:transparent;border:none;color:var(--text);font-weight:600;font-size:14px;width:65px;outline:none;text-align:left;}
+.wtb-tier .range .dash{color:var(--dim);}
+.wtb-tier .meta{font-size:11px;color:var(--dim);display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.wtb-tier .meta select{background:transparent;border:1px solid transparent;color:var(--dim);font-size:11px;padding:2px 4px;border-radius:4px;outline:none;}
+.wtb-tier .meta select:focus,.wtb-tier .meta select:hover{border-color:var(--border);background:var(--s1);}
+.wtb-tier .pct{font-size:24px;font-weight:900;color:var(--yellow);text-align:right;font-family:var(--font-ui);letter-spacing:-0.5px;}
+.wtb-tier .pct input{background:transparent;border:none;color:var(--yellow);font-size:22px;font-weight:900;width:65px;text-align:right;outline:none;font-family:var(--font-ui);}
+.wtb-tier .pct .pct-sign{color:var(--yellow);}
+.wtb-tier .label-input{background:transparent;border:none;color:var(--dim);font-size:11px;width:100%;outline:none;font-style:italic;}
+.wtb-tier .del{background:transparent;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:4px;opacity:0.4;}
+.wtb-tier:hover .del{opacity:1;}
+.wtb-tier .sort{background:transparent;border:none;color:var(--dim);font-size:10px;width:40px;text-align:center;font-family:var(--font-mono);outline:none;}
+.wtb-tier .sort:focus{border:1px solid var(--border);border-radius:3px;}
+.wtb-add-tier{display:flex;align-items:center;gap:6px;background:transparent;border:1.5px dashed var(--border);color:var(--dim);cursor:pointer;font-size:12px;padding:9px 14px;border-radius:9px;width:100%;margin-top:10px;font-family:var(--font-ui);font-weight:700;transition:all 0.15s;}
+.wtb-add-tier:hover{border-color:var(--yellow);color:var(--yellow);}
+
+/* HELPER PILL */
+.helper-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid var(--border);background:var(--s2);color:var(--dim);font-family:var(--font-mono);letter-spacing:0.3px;}
+.helper-pill.up{border-color:var(--buy);color:var(--buy);background:var(--s2);}
+.helper-pill.down{border-color:var(--red);color:var(--red);background:#1a0808;}
+
+/* LAYOUT */
+.main{padding:24px 28px;max-width:1400px;margin:0 auto;}
+.tab{display:none;animation:fadeUp 0.25s ease;}
+.tab.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* CARDS */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:20px;}
+
+/* BUTTONS */
+.btn{padding:11px 22px;border-radius:10px;border:none;cursor:pointer;font-family:var(--font-ui);font-weight:700;font-size:13px;transition:all 0.15s;white-space:nowrap;}
+.btn-buy{background:var(--buy);color:var(--bg);}
+.btn-buy:hover{opacity:0.85;transform:translateY(-1px);}
+.btn-sell{background:var(--sell);color:#fff;}
+.btn-sell:hover{opacity:0.85;transform:translateY(-1px);}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--dim);}
+.btn-ghost:hover{border-color:var(--dim);color:var(--text);}
+.btn-danger{background:transparent;border:1.5px solid var(--red);color:var(--red);}
+.btn-danger:hover{background:var(--red);color:#fff;}
+.btn-sm{padding:6px 14px;font-size:12px;}
+
+/* FORM */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.form-group{margin-bottom:14px;}
+.form-label{font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);display:block;margin-bottom:7px;}
+.form-input,.form-select,.form-textarea{width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:var(--font-ui);font-size:13px;outline:none;transition:border-color 0.2s;}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--buy);}
+.form-input::placeholder{color:var(--muted);}
+.form-textarea{resize:vertical;min-height:70px;}
+.form-select{cursor:pointer;}
+
+/* FILTER CHIPS / language filter — global toggle + per-rule override */
+.filter-group{display:flex;background:var(--s2);border-radius:10px;padding:3px;gap:2px;}
+.lang-toggle{display:inline-flex;gap:5px}
+.lang-chip{padding:4px 10px;border-radius:7px;border:1px solid var(--border);background:var(--s2);color:var(--dim);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-ui);letter-spacing:.4px;transition:all .12s}
+.lang-chip:hover{color:var(--text)}
+.lang-chip.on{background:var(--buy);color:var(--bg);border-color:var(--buy)}
+.rule-lang{display:inline-flex;gap:3px;align-items:center;margin-left:2px;vertical-align:middle}
+.rule-lang .rl{padding:2px 6px;border-radius:5px;font-size:10px;font-weight:800;cursor:pointer;font-family:var(--font-mono);border:1px solid var(--border);color:var(--dim);background:transparent;letter-spacing:.5px}
+.rule-lang .rl.on{background:var(--buy);color:var(--bg);border-color:var(--buy)}
+.rule-lang.inherit .rl{opacity:.65}
+.rule-lang.inherit .rl.on{background:transparent;color:var(--buy);border-color:var(--buy);border-style:dashed}
+.rule-lang .rl-reset{cursor:pointer;color:var(--dim);font-size:11px;padding:0 2px}
+.rule-lang .rl-reset:hover{color:var(--text)}
+
+/* ── END PORTED ─────────────────────────────────────────────────────────── */
+
+
+/* ── PAGE ADDITIONS — only what this standalone editor needs on top ──────── */
+
+/* keep everything above the html::before glow */
+body>*{position:relative;z-index:1;}
+
+/* the app's own comment calls flex-wrap on the nav a bug fix, not styling */
+.nav{flex-wrap:wrap;gap:12px 16px;}
+.logo{font-family:var(--font-display);font-size:17px;}
+.logo-sub{font-size:11px;color:var(--dim);margin-top:3px;}
+.nav-left{min-width:0;}
+.nav-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
+.saved{font-size:11px;color:var(--dim);font-family:var(--font-mono);}
+.msg{font-size:11px;color:var(--dim);max-width:300px;}
+.msg.ok{color:var(--buy);}
+.msg.err{color:var(--red);}
+.btn-save{background:var(--buy);color:var(--bg);}
+.btn:disabled{opacity:.5;cursor:default;transform:none;}
+.btn:disabled:hover{opacity:.5;transform:none;}
+
+/* section header, matching the app's "⚙️ Pricing Rules" block */
+.sec-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;padding:0 4px;}
+.sec-title{font-size:16px;font-weight:800;}
+.sec-sub{font-size:11px;color:var(--dim);}
+.dirty-hint{font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--yellow);white-space:nowrap;padding-top:4px;}
+code{font-family:var(--font-mono);font-size:.92em;}
+
+/* global buy-language row */
+#wtb-buylang{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:2px 4px 14px;}
+.buylang-label{font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);}
+.buylang-hint{font-size:11px;color:var(--dim);}
+
+/* VINTAGE / SPECIAL toggles — same chip treatment as .rule-lang .rl */
+.wtb-tier .tgl{padding:2px 6px;border-radius:5px;font-size:10px;font-weight:800;cursor:pointer;font-family:var(--font-mono);border:1px solid var(--border);color:var(--dim);background:transparent;letter-spacing:.5px;}
+.wtb-tier .tgl:hover{color:var(--text);}
+.wtb-tier .tgl.on{background:var(--buy);color:var(--bg);border-color:var(--buy);}
+
+/* a row the server or the validator named in an error */
+.wtb-tier.bad{box-shadow:inset 3px 0 0 var(--red);background:color-mix(in srgb, var(--red) 8%, transparent);}
+.wtb-tier .del:focus-visible{opacity:1;}
+.wtb-tier .meta .sep{color:var(--muted);}
+
+.new-group-row{display:flex;gap:8px;justify-content:center;margin-top:6px;margin-bottom:18px;}
+.btn.new-group{background:var(--buy);color:var(--bg);}
+.empty-rules{text-align:center;color:var(--muted);font-size:13px;margin-bottom:12px;}
+
+/* sheet-settings card */
+.card-head{margin-bottom:14px;}
+.card-title{font-size:16px;font-weight:800;}
+.card-sub{font-size:11px;color:var(--dim);}
+.form-group.wide{grid-column:1 / -1;}
+.form-group:last-child{margin-bottom:0;}
+.pause-row{padding:12px 14px;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;margin-bottom:14px;}
+.check{display:inline-flex;align-items:center;gap:9px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;}
+.check input{width:17px;height:17px;accent-color:var(--buy);cursor:pointer;flex:none;}
+
+/* errors panel */
+.errors-card{border-color:var(--red);margin-top:16px;}
+.errors-card .card-title{color:var(--red);}
+.errors-card ul{margin:10px 0 0;padding-left:18px;font-size:12px;line-height:1.55;}
+.errors-card li{margin-bottom:4px;}
+
+.foot{margin:18px 4px 40px;font-size:11px;color:var(--muted);font-family:var(--font-mono);}
+
+:focus-visible{outline:2px solid var(--purple);outline-offset:2px;}
+
+@media (max-width:768px){
+  .main{padding:16px;}
+  .nav{padding:12px 16px;}
+  .nav-right{justify-content:flex-start;}
+  .wtb-group{padding:14px 15px;}
+  /* collapse the 5-column grid into: range / meta / sort+pct+del on one line */
+  .wtb-tier{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 2px;}
+  .wtb-tier .range{flex:1 1 100%;}
+  .wtb-tier .meta{flex:1 1 100%;}
+  .wtb-tier .sort{flex:0 0 auto;text-align:left;}
+  .wtb-tier .pct{flex:0 0 auto;}
+  .wtb-tier .del{flex:0 0 auto;margin-left:auto;opacity:1;}
+  .form-row{grid-template-columns:1fr;}
+  .msg{max-width:100%;}
 }
 
-/* ── base ────────────────────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; }
-html, body { overflow-x: clip; }
-html { -webkit-text-size-adjust: 100%; }
-body {
-  margin: 0;
-  background: var(--color-paper);
-  color: var(--color-ink);
-  font-family: var(--font-ui);
-  font-size: var(--text-md);
-  line-height: 1.5;
-  padding-bottom: 6.5rem;           /* clearance for the save bar */
-}
-h1, h2, h3 { font-style: normal; margin: 0; overflow-wrap: anywhere; min-width: 0; }
-p { margin: 0; }
-:where(a) { color: var(--color-accent); text-underline-offset: 2px; }
-
-:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-
-.wrap { max-width: 68rem; margin: 0 auto; padding: 0 var(--space-4); }
-.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-
-/* ── masthead ────────────────────────────────────────────────────────────── */
-.mast {
-  border-bottom: var(--rule);
-  background: var(--color-paper-2);
-  padding: var(--space-5) 0 var(--space-4);
-}
-.mast h1 {
-  font-family: var(--font-mono);
-  font-size: var(--text-display);
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-}
-.mast .sub { color: var(--color-muted); font-size: var(--text-sm); margin-top: var(--space-2); max-width: 46ch; }
-.status {
-  margin-top: var(--space-4);
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-4);
-  font-size: var(--text-sm);
-  font-family: var(--font-mono);
-  color: var(--color-muted);
-}
-.status b { color: var(--color-ink); font-weight: 600; }
-
-/* ── panels ──────────────────────────────────────────────────────────────── */
-main { padding-top: var(--space-6); }
-.panel { margin-bottom: var(--space-6); }
-.panel > h2 {
-  font-size: var(--text-lg);
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  margin-bottom: var(--space-1);
-}
-.panel > .note { color: var(--color-muted); font-size: var(--text-sm); margin-bottom: var(--space-4); max-width: 60ch; }
-
-.card {
-  background: var(--color-paper-2);
-  border: var(--rule);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-}
-
-/* ── fields ──────────────────────────────────────────────────────────────── */
-.fields {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.25rem), 1fr));
-  gap: var(--space-3);
-}
-.f { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
-.f-l {
-  font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--color-muted);
-}
-.f-wide { grid-column: 1 / -1; }
-
-input[type="text"], input[type="number"], select, textarea {
-  font: inherit;
-  font-size: 16px;                   /* iOS will not zoom the page at 16px */
-  width: 100%;
-  min-width: 0;
-  color: var(--color-ink);
-  background: var(--color-paper);
-  border: 1px solid var(--color-rule-2);
-  border-radius: var(--radius-sm);
-  padding: 0.5rem 0.55rem;
-  transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
-}
-input[type="number"], input.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-textarea { resize: vertical; min-height: 3.5rem; }
-select { appearance: none; background-image: none; padding-right: 0.55rem; }
-
-input:hover:not(:disabled), select:hover:not(:disabled), textarea:hover:not(:disabled) {
-  border-color: var(--color-neutral);
-}
-input:focus-visible, select:focus-visible, textarea:focus-visible { border-color: var(--color-focus); }
-input:disabled, select:disabled, textarea:disabled {
-  background: var(--color-paper-3);
-  color: var(--color-neutral);
-  cursor: not-allowed;
-}
-input::placeholder { color: var(--color-neutral); }
-.f.bad input, .f.bad select { border-color: var(--color-danger); }
-
-.check {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  padding: 0.4rem 0;
-  cursor: pointer;
-  min-width: 0;
-}
-.check input { width: 1.15rem; height: 1.15rem; accent-color: var(--color-accent); flex: none; margin: 0; }
-
-/* ── buttons ─────────────────────────────────────────────────────────────── */
-button {
-  font: inherit;
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-ink);
-  background: var(--color-paper);
-  border: 1px solid var(--color-rule-2);
-  border-radius: var(--radius-sm);
-  padding: 0.5rem 0.75rem;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out),
-              transform var(--dur-fast) var(--ease-out);
-}
-button:hover:not(:disabled) { background: var(--color-paper-3); border-color: var(--color-neutral); }
-button:active:not(:disabled) { transform: translateY(1px); }
-button:disabled { opacity: 0.5; cursor: not-allowed; }
-button.primary {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-on-accent);
-  padding: 0.6rem 1.1rem;
-  font-size: var(--text-md);
-}
-button.primary:hover:not(:disabled) { background: var(--color-accent-2); border-color: var(--color-accent-2); }
-button.icon {
-  padding: 0.4rem 0.55rem;
-  font-family: var(--font-mono);
-  line-height: 1;
-  min-width: 2.1rem;
-}
-button.danger { color: var(--color-danger); }
-button.danger:hover:not(:disabled) { background: var(--color-danger-bg); border-color: var(--color-danger); }
-
-/* ── bands ───────────────────────────────────────────────────────────────── */
-.band {
-  border: var(--rule);
-  border-radius: var(--radius-md);
-  background: var(--color-paper-2);
-  padding: var(--space-4);
-  margin-bottom: var(--space-3);
-}
-.band.bad { border-color: var(--color-danger); }
-.band-top {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-  padding-bottom: var(--space-3);
-  border-bottom: var(--rule);
-}
-.band-n {
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  font-weight: 700;
-  color: var(--color-accent);
-  flex: none;
-}
-.band-sum {
-  font-size: var(--text-sm);
-  color: var(--color-muted);
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.band-ctl { display: flex; gap: var(--space-1); flex: none; }
-.band-checks { display: flex; flex-wrap: wrap; gap: 0 var(--space-5); margin-top: var(--space-2); }
-.band-add { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-4); }
-
-/* ── save bar ────────────────────────────────────────────────────────────── */
-.savebar {
-  position: fixed;
-  inset: auto 0 0 0;
-  background: var(--color-paper-2);
-  border-top: var(--rule);
-  padding: var(--space-3) 0 calc(var(--space-3) + env(safe-area-inset-bottom));
-  z-index: 10;
-}
-.savebar .wrap { display: flex; align-items: center; gap: var(--space-3); }
-.savebar .msg { font-size: var(--text-sm); color: var(--color-muted); min-width: 0; flex: 1 1 auto; }
-.savebar .msg.ok { color: var(--color-ok); }
-.savebar .msg.err { color: var(--color-danger); }
-
-.errors {
-  background: var(--color-danger-bg);
-  border: 1px solid var(--color-danger);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
-  margin-bottom: var(--space-4);
-  font-size: var(--text-sm);
-}
-.errors h3 { font-size: var(--text-sm); margin-bottom: var(--space-2); color: var(--color-danger); }
-.errors ul { margin: 0; padding-left: 1.1rem; }
-.errors li { margin-bottom: var(--space-1); }
-
-.paused-note {
-  background: var(--color-warn-bg);
-  border: 1px solid var(--color-warn);
-  border-radius: var(--radius-sm);
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--text-sm);
-  margin-top: var(--space-3);
-}
-
-/* ── how it works ────────────────────────────────────────────────────────── */
-.howto { border-top: var(--rule); padding-top: var(--space-5); }
-.howto h2 { font-size: var(--text-lg); font-weight: 650; margin-bottom: var(--space-3); }
-.howto dl { margin: 0; display: grid; gap: var(--space-3); max-width: 70ch; }
-.howto dt { font-weight: 650; font-size: var(--text-sm); }
-.howto dd { margin: var(--space-1) 0 0; color: var(--color-muted); font-size: var(--text-sm); }
-.howto code {
-  font-family: var(--font-mono);
-  font-size: 0.9em;
-  background: var(--color-paper-3);
-  padding: 0.05em 0.3em;
-  border-radius: 3px;
-}
-
-footer {
-  border-top: var(--rule);
-  margin-top: var(--space-6);
-  padding: var(--space-4) 0;
-  font-size: var(--text-xs);
-  color: var(--color-neutral);
-  font-family: var(--font-mono);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+    scroll-behavior:auto!important;
   }
 }
 </style>
 </head>
 <body>
 
-<header class="mast">
-  <div class="wrap">
-    <h1>Iced Out Penguin rates</h1>
-    <p class="sub">What the bot pays for a slab. Set the bands here, press Save, and the next comp uses them.</p>
-    <p class="status" id="status">
-      <span id="st-saved">Loading the sheet...</span>
-      <span id="st-bot"></span>
-    </p>
+<header class="nav">
+  <div class="nav-left">
+    <div class="logo">Iced Out <em>Penguin</em></div>
+    <div class="logo-sub">Rates · what the bot pays for a slab</div>
+  </div>
+  <div class="nav-right">
+    <span class="msg" id="msg" role="status" aria-live="polite"></span>
+    <span class="helper-pill" id="bot-pill" title="When the bot last read these rates">⚪ Bot: not seen yet</span>
+    <span class="saved" id="st-saved">Loading the sheet…</span>
+    <button type="button" class="btn btn-ghost btn-sm" id="reload" title="Throw away unsaved edits and reload the saved sheet">↻ Reload</button>
+    <button type="button" class="btn btn-sm btn-save" id="save" title="Save the sheet. Asks for the edit key the first time.">💾 Save</button>
   </div>
 </header>
 
-<main class="wrap">
+<main class="main">
+<div class="tab active" id="tab-rates">
 
-  <div id="errors" class="errors" hidden>
-    <h3 id="errors-head">Nothing was saved. Fix these first:</h3>
+  <div class="sec-head">
+    <div>
+      <div class="sec-title">⚙️ Pricing Rules</div>
+      <div class="sec-sub">First matching tier (top → bottom) wins. Edit inline. Lower <code>sort</code> = checked first.</div>
+    </div>
+    <span class="dirty-hint" id="dirty-hint" hidden>unsaved</span>
+  </div>
+
+  <div id="wtb-buylang"></div>
+
+  <div id="wtb-rules-list"></div>
+
+  <section class="card" id="sheet-settings">
+    <div class="card-head">
+      <div class="card-title">⚙️ Sheet settings</div>
+      <div class="card-sub">These apply to every band.</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="defaultBasis">Default basis</label>
+        <select class="form-select" id="defaultBasis" title="Which number a tier's percent is taken from when the tier itself says Default"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="maxSlabsPerComp">Max slabs per comp</label>
+        <input class="form-input" id="maxSlabsPerComp" type="number" inputmode="numeric" min="1" step="1" placeholder="200" title="How many slabs the bot will price in one comp">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="vintageMaxYear">Vintage year</label>
+        <input class="form-input" id="vintageMaxYear" type="number" inputmode="numeric" step="1" placeholder="2003" title="A card at or under this year counts as vintage">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="specialKeywords">Special keywords (comma separated)</label>
+        <input class="form-input" id="specialKeywords" type="text" placeholder="Expedition, Aquapolis, Skyridge" title="A card whose name contains one of these counts as special">
+      </div>
+    </div>
+    <div class="pause-row">
+      <label class="check" for="paused">
+        <input type="checkbox" id="paused" title="Stop the bot quoting anything at all">
+        <span>Paused, stop quoting</span>
+      </label>
+    </div>
+    <div class="form-group wide" id="pausedWrap" hidden>
+      <label class="form-label" for="pausedMessage">Paused message</label>
+      <input class="form-input" id="pausedMessage" type="text" maxlength="300" placeholder="We are closed for buying until Monday." title="What the seller is told while quoting is paused">
+    </div>
+  </section>
+
+  <section class="card errors-card" id="errors" hidden tabindex="-1">
+    <div class="card-title" id="errors-head">Nothing was saved. Fix these first:</div>
     <ul id="errors-list"></ul>
-  </div>
-
-  <section class="panel">
-    <h2>Sheet settings</h2>
-    <p class="note">These apply to every band.</p>
-    <div class="card">
-      <div class="fields">
-        <label class="f">
-          <span class="f-l">Default basis</span>
-          <select id="defaultBasis">
-            <option value="clv">CL value</option>
-            <option value="avg3">Avg of last 3</option>
-            <option value="lowest">Lowest of the two</option>
-          </select>
-        </label>
-        <label class="f">
-          <span class="f-l">Max slabs per comp</span>
-          <input class="num" id="maxSlabsPerComp" type="text" inputmode="numeric" placeholder="200">
-        </label>
-        <label class="f">
-          <span class="f-l">Vintage year</span>
-          <input class="num" id="vintageMaxYear" type="text" inputmode="numeric" placeholder="2003">
-        </label>
-        <label class="f f-wide">
-          <span class="f-l">Special keywords (comma separated)</span>
-          <input id="specialKeywords" type="text" placeholder="Expedition, Aquapolis, Skyridge">
-        </label>
-      </div>
-      <div class="band-checks">
-        <label class="check">
-          <input id="paused" type="checkbox">
-          <span>Paused, stop quoting</span>
-        </label>
-      </div>
-      <div id="pausedWrap" class="paused-note" hidden>
-        <label class="f">
-          <span class="f-l">What the seller is told while paused</span>
-          <textarea id="pausedMessage" maxlength="300" placeholder="We are closed for buying until Monday."></textarea>
-        </label>
-      </div>
-    </div>
   </section>
 
-  <section class="panel">
-    <h2>Rate bands</h2>
-    <p class="note">One band per rule. Up to 30. The highest Pays % that matches a slab is the one that wins.</p>
-    <div id="bands"></div>
-    <div class="band-add">
-      <button type="button" id="addRow">Add band</button>
-      <button type="button" id="reload">Reload saved</button>
-    </div>
-  </section>
+  <p class="foot" id="foot"></p>
 
-  <section class="howto">
-    <h2>How a slab is priced</h2>
-    <dl>
-      <dt>The best band wins</dt>
-      <dd>The bot checks every band and uses the highest Pays % among the ones that match. If two tie, it takes the bigger payout.</dd>
-
-      <dt>Ranges are over From, up to To</dt>
-      <dd>A $100 card belongs to a 0 to 100 band, not to a 100 to 1,000 band. Leave To blank for no ceiling.</dd>
-
-      <dt>No band means no offer</dt>
-      <dd>A slab that fits no band is not priced. The seller is told "We're not buying this right now" and staff can still quote it by hand.</dd>
-
-      <dt>CGC is its own category</dt>
-      <dd>A CGC slab only matches bands set to CGC. A band set to Any PSA never takes one, so leave at least one CGC band in place if you buy CGC.</dd>
-
-      <dt>New certs means 70,000,000 and up</dt>
-      <dd>Cert rule "New certs 7+" only takes PSA cert numbers of 70,000,000 or higher.</dd>
-
-      <dt>Vintage and Special</dt>
-      <dd>Vintage holo only: the card year is at or under the vintage year above and the card name has "holo" in it. Special or WOTC only: the card year is at or under the vintage year, or the name contains one of the special keywords above.</dd>
-
-      <dt>Basis is what the percent is taken from</dt>
-      <dd>CL value is the Card Ladder value. Avg of last 3 is the average of the last three sales. Lowest of the two is whichever is smaller. "Use default" follows the Default basis at the top, and the per-seller Market pick staff make in Discord beats both.</dd>
-
-      <dt>Language</dt>
-      <dd>Any takes every slab. Pick one language and the band only takes slabs read as that language. A slab with no readable card name only fits Any.</dd>
-    </dl>
-  </section>
-
-  <footer>
-    Saved to Josh's Supabase. The bot reads <code>/settings</code> on its own, usually within a minute.
-  </footer>
-</main>
-
-<div class="savebar">
-  <div class="wrap">
-    <button type="button" class="primary" id="save">Save</button>
-    <span class="msg" id="msg"></span>
-  </div>
 </div>
+</main>
 
 <script>
 /* VALIDATE-CORE:START - generated from validate.ts by build-portal.js, do not edit by hand */
@@ -478,41 +328,119 @@ footer {
  * Node/Deno erase the type-only ones outright.
  *
  * Money is in dollars here (the bot converts to cents itself). Two decimals max.
+ *
+ * v2 mirrors the owner's app "Pricing Rules" tab: every row says which Sport, which Grader, which
+ * Grade range and which languages it takes, and the rows are tried in `sort` order with the FIRST
+ * match winning. v1 sheets still load: normalize() migrates them (see the table in migrateRow).
  */
 
 // ── vocabulary ───────────────────────────────────────────────────────────────
 
-const SCHEMA = 'iced-out-rates-v1';
+const SCHEMA = 'iced-out-rates-v2';
+
+/** Every sport/game a row can ask for. '*' is "any sport" and takes a slab we could not classify. */
+const SPORT_KEYS = [
+  'pokemon', 'one_piece', 'dragon_ball',
+  'nba', 'nfl', 'mlb', 'nhl', 'soccer', 'racing', 'fighting', 'golf',
+  'sports', 'other', '*',
+];
+
+/** The order the page groups its rows in. Same list, kept separate so the page can't reorder SPORT_KEYS. */
+const SPORT_ORDER = SPORT_KEYS.slice();
+
+/** The page's own headings, emoji and all. Staff read these; nothing matches on them. */
+const SPORT_LABEL                         = {
+  pokemon: '⚡ Pokémon Slabs',
+  one_piece: '🏴‍☠️ One Piece Slabs',
+  dragon_ball: '🐉 Dragon Ball Slabs',
+  nba: '🏀 NBA Slabs',
+  nfl: '🏈 NFL Slabs',
+  mlb: '⚾ MLB Slabs',
+  nhl: '🏒 NHL Slabs',
+  soccer: '⚽ Soccer Slabs',
+  racing: '🏎️ Racing Slabs',
+  fighting: '🥊 Fighting Slabs',
+  golf: '⛳ Golf Slabs',
+  sports: '🏆 Sports (any league)',
+  other: '🃏 Other Slabs',
+  '*': '✨ Any Sport',
+};
+
+/** The same names with no emoji, for a narrow column, a Discord line or an error message. */
+const SPORT_SHORT                         = {
+  pokemon: 'Pokemon',
+  one_piece: 'One Piece',
+  dragon_ball: 'Dragon Ball',
+  nba: 'NBA',
+  nfl: 'NFL',
+  mlb: 'MLB',
+  nhl: 'NHL',
+  soccer: 'Soccer',
+  racing: 'Racing',
+  fighting: 'Fighting',
+  golf: 'Golf',
+  sports: 'Sports',
+  other: 'Other',
+  '*': 'Any sport',
+};
+
+/** What a row with sport 'sports' covers: every league, so one row can price all of them at once. */
+const SPORT_LEAGUES = ['nba', 'nfl', 'mlb', 'nhl', 'soccer', 'racing', 'fighting', 'golf', 'sports'];
+
+/** The bot never buys BGS or SGC, so they are not offered. '*' takes both of the ones we do buy. */
+const GRADER_KEYS = ['*', 'PSA', 'CGC'];
+
+const GRADER_LABEL                         = {
+  '*': 'Any grader',
+  PSA: 'PSA',
+  CGC: 'CGC',
+};
+
+/** Every grade a dropdown offers: whole and half steps, 1 through 10. */
+const GRADE_STEPS = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
+
+/** The four languages we buy. A row's list is a subset; all four means the row does not gate on language. */
+const LANGUAGE_KEYS = ['english', 'japanese', 'korean', 'chinese'];
+
+/** [short, long] per language: the short one fits a chip on the page, the long one a sentence. */
+const LANGUAGE_LABEL                           = {
+  english: ['EN', 'English'],
+  japanese: ['JP', 'Japanese'],
+  korean: ['KR', 'Korean'],
+  chinese: ['CN', 'Chinese'],
+};
 
 /** Payout basis keys. Same three the bot uses: rules.js BASIS_KEYS. */
 const BASIS_KEYS = ['clv', 'avg3', 'lowest'];
 
 /** Plain-English name per basis, used in both the page and the error messages. */
 const BASIS_LABEL                         = {
-  clv: 'CL value',
-  avg3: 'Avg of last 3',
-  lowest: 'Lowest of the two',
-};
-
-/** null category = any PSA game, but never CGC. A CGC slab only matches a 'cgc' row. */
-const CATEGORIES = ['pokemon', 'sports', 'onepiece', 'cgc'];
-
-const CATEGORY_LABEL                         = {
-  pokemon: 'Pokemon',
-  sports: 'Sports',
-  onepiece: 'One Piece',
-  cgc: 'CGC',
+  clv: 'CL Value',
+  avg3: 'Avg 3',
+  lowest: 'Lowest of 2',
 };
 
 const CERT_RULES = ['any', 'new'];
 
-/** 'any' takes every slab; one language takes only slabs read as exactly that language. */
-const LANGUAGES = ['any', 'English', 'Japanese', 'Chinese', 'Korean', 'Other'];
+const CERT_RULE_LABEL                         = {
+  any: 'Any cert',
+  new: 'New certs (7+)',
+};
+
+/** The confidence dropdown, blank meaning "don't care". */
+const CONFIDENCE_LABEL                         = {
+  '': 'Any conf',
+  1: '1+',
+  2: '2+',
+  3: '3+',
+  4: '4+',
+  5: '5',
+};
 
 /** Every hard limit in one place, so the page and the function cannot drift apart. */
 const LIMITS = {
   minRows: 1,
-  maxRows: 30,
+  maxRows: 60,
   maxLabel: 100,
   maxMoney: 1000000,
   moneyDecimals: 2,
@@ -523,6 +451,8 @@ const LIMITS = {
   maxGrade: 10,
   minConfidence: 1,
   maxConfidence: 5,
+  minSort: 0,
+  maxSort: 100000,
   minYear: 1990,
   maxYear: 2100,
   minSlabs: 1,
@@ -554,9 +484,9 @@ function decimalsOk(n        , places        )          {
   return Math.abs(scaled - Math.round(scaled)) < 1e-6;
 }
 
-/** True when `n` is a whole or half step (8, 8.5). */
-function halfStepOk(n        )          {
-  return Math.abs(n * 2 - Math.round(n * 2)) < 1e-9;
+/** True when `n` is one of the grade steps a dropdown offers (a whole or half step inside 1..10). */
+function gradeStepOk(n        )          {
+  return GRADE_STEPS.some((g) => Math.abs(g - n) < 1e-9);
 }
 
 function listNames(keys          , labels                        )         {
@@ -570,6 +500,16 @@ function money(n        )         {
   return '$' + n.toLocaleString('en-US');
 }
 
+/** The long name of every language we buy, for one error message. */
+function languageNames()         {
+  return listNames(LANGUAGE_KEYS, {
+    english: 'English',
+    japanese: 'Japanese',
+    korean: 'Korean',
+    chinese: 'Chinese',
+  });
+}
+
 // ── defaults ─────────────────────────────────────────────────────────────────
 
 /** A valid, deliberately bare settings object. The page starts here when nothing is saved. */
@@ -578,21 +518,25 @@ function defaults()           {
     schema: SCHEMA,
     rates: [
       {
-        label: 'Every slab, up to $100',
-        category: null,
+        sort: 0,
+        sport: '*',
+        grader: '*',
+        gradeMin: 1,
+        gradeMax: 10,
         from: 0,
         to: 100,
         pct: 90,
         basis: null,
-        minGrade: null,
+        label: 'Every slab, up to $100',
+        languages: null,
         minConfidence: null,
         certRule: 'any',
         vintage: false,
         special: false,
-        language: 'any',
       },
     ],
     defaultBasis: 'clv',
+    buyLanguages: LANGUAGE_KEYS.slice(),
     vintageMaxYear: DEFAULT_VINTAGE_YEAR,
     specialKeywords: [],
     maxSlabsPerComp: DEFAULT_MAX_SLABS,
@@ -604,14 +548,23 @@ function defaults()           {
 // ── normalize ────────────────────────────────────────────────────────────────
 
 /**
- * Coerce the strings a form posts into the types the schema wants. This only changes
- * TYPES, never values: "abc" in a number field stays "abc" so validateSettings can
- * complain about it by name. Anything it cannot read is passed through untouched.
+ * Coerce whatever arrived into the v2 shape validateSettings wants. Three kinds of input, detected
+ * in this order:
+ *   1. a v2 object, or a v2 form post (strings for numbers, "on" for booleans, a comma line for
+ *      keywords and languages),
+ *   2. a v1 object (schema 'iced-out-rates-v1', or no schema and rows carrying category/minGrade/
+ *      language) -> migrated row by row, see migrateRow,
+ *   3. anything else -> passed through, so validateSettings can complain about it by name.
+ * A `{ settings: {...} }` wrapper (what the function answers a GET with) is unwrapped either way.
+ *
+ * It only changes TYPES, never values: "abc" in a number field stays "abc".
  */
 function normalize(raw         )          {
   if (!isObject(raw)) return raw;
   const r = raw                           ;
   const src = isObject(r.settings) ? (r.settings                           ) : r;
+
+  if (looksV1(src)) return migrateV1(src);
 
   const out                          = {
     schema: SCHEMA,
@@ -620,6 +573,7 @@ function normalize(raw         )          {
       src.defaultBasis == null || src.defaultBasis === ''
         ? 'clv'
         : normBasis(src.defaultBasis) || src.defaultBasis,
+    buyLanguages: normLanguages(src.buyLanguages) ?? LANGUAGE_KEYS.slice(),
     vintageMaxYear: normNumber(src.vintageMaxYear, DEFAULT_VINTAGE_YEAR),
     specialKeywords: normKeywords(src.specialKeywords),
     maxSlabsPerComp: normNumber(src.maxSlabsPerComp, DEFAULT_MAX_SLABS),
@@ -629,25 +583,170 @@ function normalize(raw         )          {
   return out;
 }
 
-function normalizeRow(raw         )          {
+/**
+ * Is this a v1 sheet? Its own schema string says so, and so does a row carrying a field only v1 had
+ * (`category`, `minGrade`, `language`) when no schema was saved at all. A v2 sheet, or a form post
+ * from the v2 page, says neither.
+ */
+function looksV1(src                         )          {
+  if (src.schema === SCHEMA) return false;
+  if (src.schema === 'iced-out-rates-v1') return true;
+  if (src.schema != null && src.schema !== '') return false;
+  if (!Array.isArray(src.rates)) return false;
+  return src.rates.some(
+    (row) =>
+      isObject(row) &&
+      ('category' in (row                           ) ||
+        'minGrade' in (row                           ) ||
+        'language' in (row                           )),
+  );
+}
+
+/** v1 `category` -> v2 sport + grader. "any" (null) meant any PSA game and never CGC. */
+const V1_CATEGORY                           = {
+  pokemon: ['pokemon', 'PSA'],
+  sports: ['sports', 'PSA'],
+  onepiece: ['one_piece', 'PSA'],
+  cgc: ['*', 'CGC'],
+};
+
+/** v1 `language` -> v2 `languages`. 'any' and 'Other' both mean "do not gate on language" (null). */
+const V1_LANGUAGE                                  = {
+  any: null,
+  Other: null,
+  English: ['english'],
+  Japanese: ['japanese'],
+  Korean: ['korean'],
+  Chinese: ['chinese'],
+};
+
+/**
+ * One v1 row as a v2 row. `sort` is filled in by migrateV1, which is where the ordering lives:
+ * v1 picked the highest-% matching row, v2 takes the first match, so the rows have to come out in
+ * descending pct for the prices to stay exactly the same.
+ */
+function migrateRow(raw         )          {
   if (!isObject(raw)) return raw;
   const r = raw                           ;
-  const lang = r.language == null || r.language === '' ? 'any' : r.language;
+  const cat = r.category == null || r.category === '' || r.category === 'any' ? null : String(r.category);
+  const mapped = cat != null && V1_CATEGORY[cat] ? V1_CATEGORY[cat] : ['*', 'PSA'];
+  const lang = r.language == null || r.language === '' ? 'any' : String(r.language);
+  const minGrade = r.minGrade === '' || r.minGrade == null ? null : normNumber(r.minGrade, r.minGrade);
   return {
-    label: r.label == null ? '' : String(r.label),
-    category: r.category === '' || r.category == null || r.category === 'any' ? null : r.category,
+    sort: 0,
+    sport: mapped[0],
+    grader: mapped[1],
+    gradeMin: minGrade == null ? LIMITS.minGrade : minGrade,
+    gradeMax: LIMITS.maxGrade,
     from: normMoney(r.from, 0),
     to: r.to === '' || r.to == null ? null : normMoney(r.to, r.to),
     pct: normMoney(r.pct, r.pct),
-    basis: r.basis === '' || r.basis == null ? null : (normBasis(r.basis) || r.basis),
-    minGrade: r.minGrade === '' || r.minGrade == null ? null : normNumber(r.minGrade, r.minGrade),
+    basis: r.basis === '' || r.basis == null ? null : normBasis(r.basis) || r.basis,
+    label: r.label == null ? '' : String(r.label),
+    languages: Object.prototype.hasOwnProperty.call(V1_LANGUAGE, lang) ? V1_LANGUAGE[lang] : [lang],
     minConfidence:
       r.minConfidence === '' || r.minConfidence == null ? null : normNumber(r.minConfidence, r.minConfidence),
     certRule: r.certRule === 'new' ? 'new' : r.certRule == null || r.certRule === '' ? 'any' : r.certRule,
     vintage: normBool(r.vintage),
     special: normBool(r.special),
-    language: lang,
   };
+}
+
+/**
+ * A whole v1 sheet as v2. The rows come back ordered by pct DESCENDING (stable, so two rows on the
+ * same pct keep the order they were saved in) with sort 10, 20, 30..., because first-match on that
+ * order is exactly what "highest matching pct wins" used to do. buyLanguages starts as all four:
+ * v1 had no such setting and gated language per row.
+ */
+function migrateV1(src                         )          {
+  const rows = Array.isArray(src.rates) ? src.rates.map(migrateRow) : src.rates;
+  if (Array.isArray(rows)) {
+    const withIndex = rows.map((row, i) => ({ row, i }));
+    withIndex.sort((a, b) => {
+      const pa = num((a.row                                  )?.pct);
+      const pb = num((b.row                                  )?.pct);
+      // a row whose pct is not a number keeps its place at the back; validateSettings names it
+      if (pa === null && pb === null) return a.i - b.i;
+      if (pa === null) return 1;
+      if (pb === null) return -1;
+      return pb === pa ? a.i - b.i : pb - pa;
+    });
+    for (let i = 0; i < withIndex.length; i++) {
+      const row = withIndex[i].row;
+      if (isObject(row)) (row                           ).sort = (i + 1) * 10;
+    }
+    rows.length = 0;
+    for (const entry of withIndex) rows.push(entry.row);
+  }
+  return {
+    schema: SCHEMA,
+    rates: rows,
+    defaultBasis:
+      src.defaultBasis == null || src.defaultBasis === ''
+        ? 'clv'
+        : normBasis(src.defaultBasis) || src.defaultBasis,
+    buyLanguages: LANGUAGE_KEYS.slice(),
+    vintageMaxYear: normNumber(src.vintageMaxYear, DEFAULT_VINTAGE_YEAR),
+    specialKeywords: normKeywords(src.specialKeywords),
+    maxSlabsPerComp: normNumber(src.maxSlabsPerComp, DEFAULT_MAX_SLABS),
+    paused: normBool(src.paused),
+    pausedMessage: src.pausedMessage == null ? '' : String(src.pausedMessage),
+  };
+}
+
+function normalizeRow(raw         )          {
+  if (!isObject(raw)) return raw;
+  const r = raw                           ;
+  return {
+    sort: normNumber(r.sort, 0),
+    sport: r.sport == null || r.sport === '' ? '*' : normKey(r.sport),
+    grader: r.grader == null || r.grader === '' ? '*' : normGrader(r.grader),
+    gradeMin: r.gradeMin === '' || r.gradeMin == null ? LIMITS.minGrade : normNumber(r.gradeMin, r.gradeMin),
+    gradeMax: r.gradeMax === '' || r.gradeMax == null ? LIMITS.maxGrade : normNumber(r.gradeMax, r.gradeMax),
+    from: normMoney(r.from, 0),
+    to: r.to === '' || r.to == null ? null : normMoney(r.to, r.to),
+    pct: normMoney(r.pct, r.pct),
+    basis: r.basis === '' || r.basis == null ? null : normBasis(r.basis) || r.basis,
+    label: r.label == null ? '' : String(r.label),
+    languages: normLanguages(r.languages),
+    minConfidence:
+      r.minConfidence === '' || r.minConfidence == null ? null : normNumber(r.minConfidence, r.minConfidence),
+    certRule: r.certRule === 'new' ? 'new' : r.certRule == null || r.certRule === '' ? 'any' : r.certRule,
+    vintage: normBool(r.vintage),
+    special: normBool(r.special),
+  };
+}
+
+/** A vocabulary key as the schema spells it: trimmed and lower case ('Pokemon' -> 'pokemon'). */
+function normKey(x         )          {
+  return typeof x === 'string' ? x.trim().toLowerCase() : x;
+}
+
+/** The grader keys are the only upper-case vocabulary, so 'psa' typed by hand still lands on 'PSA'. */
+function normGrader(x         )          {
+  if (typeof x !== 'string') return x;
+  const s = x.trim();
+  const hit = GRADER_KEYS.find((k) => k.toLowerCase() === s.toLowerCase());
+  return hit || s;
+}
+
+/**
+ * A row's (or the sheet's) language list: null when nothing was picked (the row inherits), else an
+ * array of trimmed lower-case keys with the duplicates dropped. A comma line is what a plain form
+ * posts; an array is what the page and the JSON API send.
+ */
+function normLanguages(x         )                  {
+  let list           ;
+  if (x == null || x === '') return null;
+  if (typeof x === 'string') list = x.split(',');
+  else if (Array.isArray(x)) list = x;
+  else return null;
+  const out           = [];
+  for (const item of list) {
+    const key = typeof item === 'string' ? item.trim().toLowerCase() : String(item);
+    if (key !== '' && out.indexOf(key) < 0) out.push(key);
+  }
+  return out.length ? out : null;
 }
 
 /** Numbers that may arrive as "$1,200.50" or "85%" from a text input. */
@@ -707,8 +806,8 @@ function normKeywords(x         )          {
 
 /**
  * Check `raw` against the schema. On success the returned settings are a fresh,
- * fully-populated object (never the caller's); on failure every problem is listed
- * in plain English, rows prefixed "Row N: ".
+ * fully-populated object (never the caller's), with the rows ordered by `sort`; on failure every
+ * problem is listed in plain English, rows prefixed "Row N: ".
  */
 function validateSettings(raw         )                 {
   const errors           = [];
@@ -736,6 +835,9 @@ function validateSettings(raw         )                 {
     const row = validateRow(s.rates[i], i + 1, errors);
     if (row) rates.push(row);
   }
+  // Pricing reads the rows in this order and stops at the first match, so the stored sheet is stored
+  // in that order too: what staff see on the page is what the bot walks.
+  sortRows(rates);
 
   // defaultBasis
   let defaultBasis        = 'clv';
@@ -746,6 +848,17 @@ function validateSettings(raw         )                 {
     defaultBasis = db         ;
   } else {
     errors.push('Default basis must be one of: ' + listNames(BASIS_KEYS, BASIS_LABEL) + '.');
+  }
+
+  // buyLanguages — the sheet-wide default every row inherits unless it names its own
+  let buyLanguages           = LANGUAGE_KEYS.slice();
+  if (s.buyLanguages != null && s.buyLanguages !== '') {
+    if (!Array.isArray(s.buyLanguages)) {
+      errors.push('Languages must be a list.');
+    } else {
+      const picked = checkLanguages(s.buyLanguages, '', errors);
+      if (picked) buyLanguages = picked;
+    }
   }
 
   // vintageMaxYear
@@ -826,6 +939,7 @@ function validateSettings(raw         )                 {
       schema: SCHEMA,
       rates,
       defaultBasis,
+      buyLanguages,
       vintageMaxYear,
       specialKeywords,
       maxSlabsPerComp,
@@ -833,6 +947,32 @@ function validateSettings(raw         )                 {
       pausedMessage,
     },
   };
+}
+
+/** Ascending `sort`, stable on a tie, so two rows on the same number keep the order they were saved in. */
+function sortRows(rows           )            {
+  const withIndex = rows.map((row, i) => ({ row, i }));
+  withIndex.sort((a, b) => (a.row.sort === b.row.sort ? a.i - b.i : a.row.sort - b.row.sort));
+  for (let i = 0; i < withIndex.length; i++) rows[i] = withIndex[i].row;
+  return rows;
+}
+
+/** A list of language keys, or null when one of them is not a language we buy. `at` prefixes the error. */
+function checkLanguages(list           , at        , errors          )                  {
+  const out           = [];
+  for (const item of list) {
+    if (typeof item !== 'string' || LANGUAGE_KEYS.indexOf(item.trim().toLowerCase()) < 0) {
+      errors.push(at + 'Language must be ' + languageNames() + '.');
+      return null;
+    }
+    const key = item.trim().toLowerCase();
+    if (out.indexOf(key) < 0) out.push(key);
+  }
+  if (!out.length) {
+    errors.push(at + 'Pick at least one language.');
+    return null;
+  }
+  return out;
 }
 
 function validateRow(raw         , n        , errors          )                 {
@@ -844,6 +984,17 @@ function validateRow(raw         , n        , errors          )                 
   const r = raw                           ;
   const before = errors.length;
 
+  // sort — the order the bot tries the rows in, first match wins
+  let sort = 0;
+  if (r.sort != null && r.sort !== '') {
+    const o = num(r.sort);
+    if (o === null || !Number.isInteger(o) || o < LIMITS.minSort || o > LIMITS.maxSort) {
+      errors.push(
+        at + 'Sort order must be a whole number between ' + LIMITS.minSort + ' and ' + LIMITS.maxSort + '.',
+      );
+    } else sort = o;
+  }
+
   // label
   let label = '';
   if (r.label != null && r.label !== '') {
@@ -853,12 +1004,44 @@ function validateRow(raw         , n        , errors          )                 
     } else label = r.label;
   }
 
-  // category
-  let category           = null;
-  if (r.category != null && r.category !== '') {
-    if (typeof r.category !== 'string' || CATEGORIES.indexOf(r.category) < 0) {
-      errors.push(at + 'Category must be Any PSA, ' + listNames(CATEGORIES, CATEGORY_LABEL) + '.');
-    } else category = r.category            ;
+  // sport
+  let sport = '*';
+  if (r.sport != null && r.sport !== '') {
+    if (typeof r.sport !== 'string' || SPORT_KEYS.indexOf(r.sport) < 0) {
+      errors.push(at + 'Sport must be one of: ' + SPORT_KEYS.map((k) => SPORT_SHORT[k]).join(', ') + '.');
+    } else sport = r.sport;
+  }
+
+  // grader
+  let grader = '*';
+  if (r.grader != null && r.grader !== '') {
+    if (typeof r.grader !== 'string' || GRADER_KEYS.indexOf(r.grader) < 0) {
+      errors.push(at + 'Grader must be ' + listNames(GRADER_KEYS, GRADER_LABEL) + '.');
+    } else grader = r.grader;
+  }
+
+  // gradeMin / gradeMax
+  let gradeMin = LIMITS.minGrade;
+  if (r.gradeMin != null && r.gradeMin !== '') {
+    const g = num(r.gradeMin);
+    if (g === null || !gradeStepOk(g)) {
+      errors.push(
+        at + 'Grade min must be between ' + LIMITS.minGrade + ' and ' + LIMITS.maxGrade +
+          ', in halves like 8 or 8.5.',
+      );
+    } else gradeMin = g;
+  }
+  let gradeMax = LIMITS.maxGrade;
+  if (r.gradeMax != null && r.gradeMax !== '') {
+    const g = num(r.gradeMax);
+    if (g === null || !gradeStepOk(g)) {
+      errors.push(
+        at + 'Grade max must be between ' + LIMITS.minGrade + ' and ' + LIMITS.maxGrade +
+          ', in halves like 8 or 8.5.',
+      );
+    } else if (g < gradeMin) {
+      errors.push(at + 'Grade max must be at least the grade min.');
+    } else gradeMax = g;
   }
 
   // from
@@ -918,16 +1101,14 @@ function validateRow(raw         , n        , errors          )                 
     else basis = b         ;
   }
 
-  // minGrade
-  let minGrade                = null;
-  if (r.minGrade != null && r.minGrade !== '') {
-    const g = num(r.minGrade);
-    if (g === null || g < LIMITS.minGrade || g > LIMITS.maxGrade || !halfStepOk(g)) {
-      errors.push(
-        at + 'Min grade must be between ' + LIMITS.minGrade + ' and ' + LIMITS.maxGrade +
-          ', in halves like 8 or 8.5.',
-      );
-    } else minGrade = g;
+  // languages — null means "inherit the sheet's buyLanguages"
+  let languages                  = null;
+  if (r.languages != null && r.languages !== '') {
+    if (!Array.isArray(r.languages)) {
+      errors.push(at + 'Languages must be a list.');
+    } else {
+      languages = checkLanguages(r.languages, at, errors);
+    }
   }
 
   // minConfidence
@@ -962,47 +1143,51 @@ function validateRow(raw         , n        , errors          )                 
     else special = r.special;
   }
 
-  // language
-  let language           = 'any';
-  const rawLang = r.language == null || r.language === '' ? 'any' : r.language;
-  if (typeof rawLang !== 'string' || LANGUAGES.indexOf(rawLang) < 0) {
-    errors.push(at + 'Language must be Any, English, Japanese, Chinese, Korean or Other.');
-  } else {
-    language = rawLang            ;
-  }
-
   if (errors.length > before) return null;
 
   return {
-    label,
-    category,
+    sort,
+    sport,
+    grader,
+    gradeMin,
+    gradeMax,
     from,
     to,
     pct,
     basis,
-    minGrade,
+    label,
+    languages,
     minConfidence,
     certRule,
     vintage,
     special,
-    language,
   };
 }
 
 window.RatesValidate = {
   SCHEMA: SCHEMA,
+  SPORT_KEYS: SPORT_KEYS,
+  SPORT_ORDER: SPORT_ORDER,
+  SPORT_LABEL: SPORT_LABEL,
+  SPORT_SHORT: SPORT_SHORT,
+  SPORT_LEAGUES: SPORT_LEAGUES,
+  GRADER_KEYS: GRADER_KEYS,
+  GRADER_LABEL: GRADER_LABEL,
+  GRADE_STEPS: GRADE_STEPS,
+  LANGUAGE_KEYS: LANGUAGE_KEYS,
+  LANGUAGE_LABEL: LANGUAGE_LABEL,
   BASIS_KEYS: BASIS_KEYS,
   BASIS_LABEL: BASIS_LABEL,
-  CATEGORIES: CATEGORIES,
-  CATEGORY_LABEL: CATEGORY_LABEL,
   CERT_RULES: CERT_RULES,
-  LANGUAGES: LANGUAGES,
+  CERT_RULE_LABEL: CERT_RULE_LABEL,
+  CONFIDENCE_LABEL: CONFIDENCE_LABEL,
   LIMITS: LIMITS,
   DEFAULT_VINTAGE_YEAR: DEFAULT_VINTAGE_YEAR,
   DEFAULT_MAX_SLABS: DEFAULT_MAX_SLABS,
   defaults: defaults,
   normalize: normalize,
   validateSettings: validateSettings,
+  sortRows: sortRows,
 };
 })();
 /* VALIDATE-CORE:END */
@@ -1012,9 +1197,80 @@ window.RatesValidate = {
 (function () {
   'use strict';
 
-  var V = window.RatesValidate;
+  var V = window.RatesValidate || {};
   var KEY_STORE = 'iopRatesEditKey';
 
+  // ── vocabulary ─────────────────────────────────────────────────────────────
+  // Schema v2 publishes all of this on window.RatesValidate. The fallbacks below
+  // only matter in the window between editing this page and re-running
+  // build-portal.js (the generated block above is still schema v1 until then):
+  // without them the page would not render at all.
+  var FALLBACK = {
+    SPORT_ORDER: ['pokemon','one_piece','dragon_ball','nba','nfl','mlb','nhl','soccer','racing','fighting','golf','sports','other','*'],
+    SPORT_LABEL: {
+      pokemon:'⚡ Pokémon Slabs', one_piece:'🏴‍☠️ One Piece Slabs', dragon_ball:'🐉 Dragon Ball Slabs',
+      nba:'🏀 NBA Slabs', nfl:'🏈 NFL Slabs', mlb:'⚾ MLB Slabs', nhl:'🏒 NHL Slabs',
+      soccer:'⚽ Soccer Slabs', racing:'🏎️ Racing Slabs', fighting:'🥊 Fighting Slabs',
+      golf:'⛳ Golf Slabs', sports:'🏆 Other Sports', other:'🃏 Other Slabs', '*':'✨ Any Sport'
+    },
+    GRADER_KEYS: ['*','PSA','CGC'],
+    GRADER_LABEL: { '*':'Any grader', PSA:'PSA', CGC:'CGC' },
+    GRADE_STEPS: [1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,8.5,9,9.5,10],
+    LANGUAGE_KEYS: ['english','japanese','korean','chinese'],
+    LANGUAGE_LABEL: { english:['EN','English'], japanese:['JP','Japanese'], korean:['KR','Korean'], chinese:['CN','Chinese'] },
+    BASIS_KEYS: ['clv','avg3','lowest'],
+    BASIS_LABEL: { clv:'CL Value', avg3:'Avg 3', lowest:'Lowest of 2' },
+    CERT_RULES: ['any','new'],
+    CERT_RULE_LABEL: { any:'Any cert', 'new':'New certs (7+)' },
+    CONFIDENCE_LABEL: { '1':'1+', '2':'2+', '3':'3+', '4':'4+', '5':'5' },
+    LIMITS: { maxRows: 60 }
+  };
+  function vocab(name) {
+    var v = V[name];
+    if (v == null) return FALLBACK[name];
+    if (Array.isArray(v)) return v.length ? v : FALLBACK[name];
+    if (typeof v === 'object') return Object.keys(v).length ? v : FALLBACK[name];
+    return v;
+  }
+  var SPORT_LABEL  = vocab('SPORT_LABEL');
+  var SPORT_SHORT  = V.SPORT_SHORT || null;
+  var SPORT_ORDER  = vocab('SPORT_ORDER');
+  var SPORT_KEYS   = (V.SPORT_KEYS && V.SPORT_KEYS.length) ? V.SPORT_KEYS : Object.keys(SPORT_LABEL);
+  var GRADER_KEYS  = vocab('GRADER_KEYS');
+  var GRADER_LABEL = vocab('GRADER_LABEL');
+  var GRADE_STEPS  = vocab('GRADE_STEPS');
+  var LANG_KEYS    = vocab('LANGUAGE_KEYS');
+  var LANG_LABEL   = vocab('LANGUAGE_LABEL');
+  var BASIS_KEYS   = vocab('BASIS_KEYS');
+  var BASIS_LABEL  = vocab('BASIS_LABEL');
+  var CERT_RULES   = vocab('CERT_RULES');
+  var CERT_LABEL   = vocab('CERT_RULE_LABEL');
+  var CONF_LABEL   = vocab('CONFIDENCE_LABEL');
+  var MAX_ROWS     = (V.LIMITS && V.LIMITS.maxRows) || FALLBACK.LIMITS.maxRows;
+
+  // The sports a row may be moved to, in the app's display order first.
+  var SPORTS = (function () {
+    var out = [];
+    SPORT_ORDER.forEach(function (k) { if (SPORT_KEYS.indexOf(k) >= 0 && out.indexOf(k) < 0) out.push(k); });
+    SPORT_KEYS.forEach(function (k) { if (out.indexOf(k) < 0) out.push(k); });
+    return out;
+  })();
+  function sportRank(k) { var i = SPORTS.indexOf(k); return i < 0 ? SPORTS.length + 1 : i; }
+  function sportLabel(k) { return SPORT_LABEL[k] || String(k).toUpperCase(); }
+  function sportShort(k) {
+    if (SPORT_SHORT && SPORT_SHORT[k]) return SPORT_SHORT[k];
+    return sportLabel(k).replace(/^\S+\s/, '');
+  }
+  function langPair(k) {
+    var l = LANG_LABEL[k];
+    if (Array.isArray(l)) return [l[0] || k, l[1] || k];
+    if (typeof l === 'string') return [l, l];
+    return [String(k).slice(0, 2).toUpperCase(), String(k)];
+  }
+  function langAb(k) { return langPair(k)[0]; }
+  function langFull(k) { return langPair(k)[1]; }
+
+  // ── api ────────────────────────────────────────────────────────────────────
   // The function is served at .../functions/v1/slab-rates with no trailing slash, so a
   // literal "./settings" would resolve one level too high. Build the sibling path from
   // whatever path this page was loaded at; still host-relative, works behind any domain.
@@ -1024,74 +1280,95 @@ window.RatesValidate = {
     return base.replace(new RegExp('[/]+$'), '') + '/' + name;
   }
 
-  // ── state: raw form values, coerced only at save time ──────────────────────
-  var state = null;        // { defaultBasis, vintageMaxYear, ..., rates: [rowOfStrings] }
+  // ── state ──────────────────────────────────────────────────────────────────
+  var state = null;        // form values (strings), never coerced until save time
+  var baseline = null;     // snapshot of the last loaded/saved sheet, for the dirty count
   var savedAt = null;      // ISO string of the last save
   var botSeenAt = null;    // ISO string of the bot's last check in
+  var apiUp = true;
   var busy = false;
+  var justSaved = false;
+  var uidSeq = 0;
 
   var el = {
-    bands: document.getElementById('bands'),
+    rulesList: document.getElementById('wtb-rules-list'),
+    buyLang: document.getElementById('wtb-buylang'),
     errors: document.getElementById('errors'),
     errorsList: document.getElementById('errors-list'),
     msg: document.getElementById('msg'),
     save: document.getElementById('save'),
-    addRow: document.getElementById('addRow'),
     reload: document.getElementById('reload'),
     stSaved: document.getElementById('st-saved'),
-    stBot: document.getElementById('st-bot'),
+    botPill: document.getElementById('bot-pill'),
+    dirtyHint: document.getElementById('dirty-hint'),
     paused: document.getElementById('paused'),
     pausedWrap: document.getElementById('pausedWrap'),
+    defaultBasis: document.getElementById('defaultBasis'),
+    foot: document.getElementById('foot')
   };
 
   var TOP_FIELDS = ['defaultBasis', 'vintageMaxYear', 'maxSlabsPerComp', 'specialKeywords', 'pausedMessage'];
 
-  var CATEGORY_OPTIONS = [
-    ['', 'Any PSA'],
-    ['pokemon', 'Pokemon'],
-    ['sports', 'Sports'],
-    ['onepiece', 'One Piece'],
-    ['cgc', 'CGC'],
-  ];
-  var BASIS_OPTIONS = [
-    ['', 'Use default'],
-    ['clv', 'CL value'],
-    ['avg3', 'Avg of last 3'],
-    ['lowest', 'Lowest of the two'],
-  ];
-  var CERT_OPTIONS = [['any', 'Any'], ['new', 'New certs 7+']];
-  var LANG_OPTIONS = [
-    ['any', 'Any'], ['English', 'English'], ['Japanese', 'Japanese'],
-    ['Chinese', 'Chinese'], ['Korean', 'Korean'], ['Other', 'Other'],
-  ];
-
   // ── settings <-> form values ───────────────────────────────────────────────
   function str(v) { return v === null || v === undefined ? '' : String(v); }
 
+  function toFormRow(r) {
+    r = r || {};
+    return {
+      _uid: 'r' + (++uidSeq),
+      sort: str(r.sort == null ? 0 : r.sort),
+      sport: str(r.sport || '*'),
+      grader: str(r.grader || '*'),
+      gradeMin: str(r.gradeMin == null ? 1 : r.gradeMin),
+      gradeMax: str(r.gradeMax == null ? 10 : r.gradeMax),
+      from: str(r.from == null ? 0 : r.from),
+      to: r.to == null ? '' : str(r.to),
+      pct: str(r.pct == null ? '' : r.pct),
+      basis: r.basis == null ? '' : str(r.basis),
+      label: str(r.label),
+      languages: (Array.isArray(r.languages) && r.languages.length) ? r.languages.slice() : null,
+      minConfidence: r.minConfidence == null ? '' : str(r.minConfidence),
+      certRule: r.certRule === 'new' ? 'new' : 'any',
+      vintage: !!r.vintage,
+      special: !!r.special
+    };
+  }
+
   function toForm(settings) {
+    settings = settings || {};
+    var langs = (Array.isArray(settings.buyLanguages) && settings.buyLanguages.length)
+      ? settings.buyLanguages.filter(function (k) { return LANG_KEYS.indexOf(k) >= 0; })
+      : [];
     return {
       defaultBasis: str(settings.defaultBasis || 'clv'),
+      buyLanguages: langs.length ? langs : LANG_KEYS.slice(),
       vintageMaxYear: str(settings.vintageMaxYear),
-      maxSlabsPerComp: str(settings.maxSlabsPerComp),
       specialKeywords: (settings.specialKeywords || []).join(', '),
+      maxSlabsPerComp: str(settings.maxSlabsPerComp),
       paused: !!settings.paused,
       pausedMessage: str(settings.pausedMessage),
-      rates: (settings.rates || []).map(function (r) {
-        return {
-          label: str(r.label),
-          category: str(r.category),
-          from: str(r.from),
-          to: str(r.to),
-          pct: str(r.pct),
-          basis: str(r.basis),
-          minGrade: str(r.minGrade),
-          minConfidence: str(r.minConfidence),
-          certRule: r.certRule === 'new' ? 'new' : 'any',
-          vintage: !!r.vintage,
-          special: !!r.special,
-          language: str(r.language) || 'any',
-        };
-      }),
+      rates: (settings.rates || []).map(toFormRow)
+    };
+  }
+
+  /** The row as the schema wants it: no _uid, strings left for normalize() to coerce. */
+  function plainRow(r) {
+    return {
+      sort: r.sort,
+      sport: r.sport,
+      grader: r.grader,
+      gradeMin: r.gradeMin,
+      gradeMax: r.gradeMax,
+      from: r.from,
+      to: r.to,
+      pct: r.pct,
+      basis: r.basis,
+      label: r.label,
+      languages: r.languages ? r.languages.slice() : null,
+      minConfidence: r.minConfidence,
+      certRule: r.certRule,
+      vintage: r.vintage,
+      special: r.special
     };
   }
 
@@ -1099,102 +1376,240 @@ window.RatesValidate = {
     return {
       schema: V.SCHEMA,
       defaultBasis: state.defaultBasis,
+      buyLanguages: state.buyLanguages.slice(),
       vintageMaxYear: state.vintageMaxYear,
-      maxSlabsPerComp: state.maxSlabsPerComp,
       specialKeywords: state.specialKeywords,
+      maxSlabsPerComp: state.maxSlabsPerComp,
       paused: state.paused,
       pausedMessage: state.paused ? state.pausedMessage : '',
-      rates: state.rates.map(function (r) {
-        var copy = {};
-        for (var k in r) if (Object.prototype.hasOwnProperty.call(r, k)) copy[k] = r[k];
-        return copy;
-      }),
+      rates: state.rates.map(plainRow)
     };
   }
 
-  function blankRow() {
-    return {
-      label: '', category: '', from: '0', to: '', pct: '90', basis: '',
-      minGrade: '', minConfidence: '', certRule: 'any',
-      vintage: false, special: false, language: 'any',
+  function blankRow(sport, sort) {
+    return toFormRow({
+      sort: sort, sport: sport || '*', grader: '*',
+      gradeMin: 1, gradeMax: 10, from: 0, to: null,
+      pct: '', basis: null, label: '', languages: null,
+      minConfidence: null, certRule: 'any', vintage: false, special: false
+    });
+  }
+
+  // ── dirty tracking ─────────────────────────────────────────────────────────
+  function captureBaseline() {
+    var rows = {};
+    state.rates.forEach(function (r) { rows[r._uid] = JSON.stringify(plainRow(r)); });
+    baseline = {
+      rows: rows,
+      top: {
+        defaultBasis: state.defaultBasis,
+        vintageMaxYear: state.vintageMaxYear,
+        specialKeywords: state.specialKeywords,
+        maxSlabsPerComp: state.maxSlabsPerComp,
+        pausedMessage: state.pausedMessage,
+        paused: !!state.paused,
+        buyLanguages: state.buyLanguages.slice().sort().join(',')
+      }
     };
   }
 
-  // ── rendering ──────────────────────────────────────────────────────────────
+  function countChanges() {
+    if (!baseline || !state) return 0;
+    var n = 0;
+    ['defaultBasis', 'vintageMaxYear', 'specialKeywords', 'maxSlabsPerComp', 'pausedMessage'].forEach(function (k) {
+      if (str(state[k]) !== str(baseline.top[k])) n++;
+    });
+    if (!!state.paused !== !!baseline.top.paused) n++;
+    if (state.buyLanguages.slice().sort().join(',') !== baseline.top.buyLanguages) n++;
+    var seen = {};
+    state.rates.forEach(function (r) {
+      seen[r._uid] = true;
+      var was = baseline.rows[r._uid];
+      if (was === undefined || was !== JSON.stringify(plainRow(r))) n++;
+    });
+    Object.keys(baseline.rows).forEach(function (uid) { if (!seen[uid]) n++; });
+    return n;
+  }
+
+  function markDirty() { justSaved = false; updateDirty(); }
+
+  function updateDirty() {
+    var n = countChanges();
+    el.dirtyHint.hidden = n === 0;
+    if (busy) { el.save.disabled = true; el.save.textContent = 'Saving…'; return; }
+    if (n > 0) {
+      el.save.disabled = false;
+      el.save.textContent = '💾 Save (' + n + ' change' + (n === 1 ? '' : 's') + ')';
+    } else if (justSaved) {
+      el.save.disabled = true;
+      el.save.textContent = '✓ Saved';
+    } else {
+      el.save.disabled = false;
+      el.save.textContent = '💾 Save';
+    }
+  }
+
+  // ── html helpers ───────────────────────────────────────────────────────────
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
 
-  function options(list, value) {
-    return list.map(function (o) {
-      return '<option value="' + esc(o[0]) + '"' + (o[0] === value ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+  function opts(pairs, value) {
+    return pairs.map(function (p) {
+      return '<option value="' + esc(p[0]) + '"' + (String(p[0]) === String(value) ? ' selected' : '') + '>' + esc(p[1]) + '</option>';
     }).join('');
   }
 
-  function summary(r) {
-    if (r.label) return r.label;
-    var lo = r.from === '' ? '0' : r.from;
-    var hi = r.to === '' ? 'no limit' : '$' + r.to;
-    return '$' + lo + ' to ' + hi + ', pays ' + (r.pct || '?') + '%';
+  function sportOptions(sel) {
+    return opts(SPORTS.map(function (k) { return [k, sportShort(k)]; }), sel);
   }
-
-  function field(i, key, label, html) {
-    return '<label class="f" data-f="' + key + '"><span class="f-l">' + esc(label) + '</span>' + html + '</label>';
+  function graderOptions(sel) {
+    return opts(GRADER_KEYS.map(function (k) { return [k, GRADER_LABEL[k] || k]; }), sel || '*');
   }
-
-  function textIn(i, key, value, extra) {
-    return '<input type="text" data-i="' + i + '" data-k="' + key + '" value="' + esc(value) + '" ' + (extra || '') + '>';
-  }
-
-  function selectIn(i, key, list, value) {
-    return '<select data-i="' + i + '" data-k="' + key + '">' + options(list, value) + '</select>';
-  }
-
-  function checkIn(i, key, value, label) {
-    return '<label class="check"><input type="checkbox" data-i="' + i + '" data-k="' + key + '"' +
-      (value ? ' checked' : '') + '><span>' + esc(label) + '</span></label>';
-  }
-
-  function render() {
-    var n = state.rates.length;
-    el.bands.innerHTML = state.rates.map(function (r, i) {
-      return '<section class="band" data-row="' + (i + 1) + '">' +
-        '<div class="band-top">' +
-          '<span class="band-n">' + (i + 1) + '</span>' +
-          '<span class="band-sum">' + esc(summary(r)) + '</span>' +
-          '<span class="band-ctl">' +
-            '<button type="button" class="icon" data-act="up" data-i="' + i + '" title="Move up"' +
-              (i === 0 ? ' disabled' : '') + ' aria-label="Move band ' + (i + 1) + ' up">&uarr;</button>' +
-            '<button type="button" class="icon" data-act="down" data-i="' + i + '" title="Move down"' +
-              (i === n - 1 ? ' disabled' : '') + ' aria-label="Move band ' + (i + 1) + ' down">&darr;</button>' +
-            '<button type="button" class="icon danger" data-act="remove" data-i="' + i + '" title="Remove"' +
-              ' aria-label="Remove band ' + (i + 1) + '">&times;</button>' +
-          '</span>' +
-        '</div>' +
-        '<div class="fields">' +
-          '<label class="f f-wide" data-f="label"><span class="f-l">Label</span>' +
-            textIn(i, 'label', r.label, 'maxlength="100" placeholder="What staff and sellers see"') + '</label>' +
-          field(i, 'category', 'Category', selectIn(i, 'category', CATEGORY_OPTIONS, r.category)) +
-          field(i, 'from', 'From $', textIn(i, 'from', r.from, 'inputmode="decimal" class="num" placeholder="0"')) +
-          field(i, 'to', 'To $', textIn(i, 'to', r.to, 'inputmode="decimal" class="num" placeholder="no limit"')) +
-          field(i, 'pct', 'Pays %', textIn(i, 'pct', r.pct, 'inputmode="decimal" class="num" placeholder="90"')) +
-          field(i, 'basis', 'Basis', selectIn(i, 'basis', BASIS_OPTIONS, r.basis)) +
-          field(i, 'minGrade', 'Min grade', textIn(i, 'minGrade', r.minGrade, 'inputmode="decimal" class="num" placeholder="any"')) +
-          field(i, 'minConfidence', 'Min confidence', textIn(i, 'minConfidence', r.minConfidence, 'inputmode="numeric" class="num" placeholder="any"')) +
-          field(i, 'certRule', 'Cert rule', selectIn(i, 'certRule', CERT_OPTIONS, r.certRule)) +
-          field(i, 'language', 'Language', selectIn(i, 'language', LANG_OPTIONS, r.language)) +
-        '</div>' +
-        '<div class="band-checks">' +
-          checkIn(i, 'vintage', r.vintage, 'Vintage holo only') +
-          checkIn(i, 'special', r.special, 'Special or WOTC only') +
-        '</div>' +
-      '</section>';
+  function gradeOptions(sel) {
+    return GRADE_STEPS.map(function (g) {
+      return '<option value="' + g + '"' + (Number(sel) === g ? ' selected' : '') + '>' + g + '</option>';
     }).join('');
+  }
+  function basisOptions(sel) {
+    return opts([['', 'Default']].concat(BASIS_KEYS.map(function (k) { return [k, BASIS_LABEL[k] || k]; })), sel);
+  }
+  function defaultBasisOptions(sel) {
+    return opts(BASIS_KEYS.map(function (k) { return [k, BASIS_LABEL[k] || k]; }), sel);
+  }
+  function certOptions(sel) {
+    return opts(CERT_RULES.map(function (k) { return [k, CERT_LABEL[k] || k]; }), sel || 'any');
+  }
+  function confOptions(sel) {
+    var pairs = [['', CONF_LABEL[''] || 'Any conf']];
+    ['1', '2', '3', '4', '5'].forEach(function (k) { pairs.push([k, CONF_LABEL[k] || (k === '5' ? '5' : k + '+')]); });
+    return opts(pairs, sel);
+  }
+
+  /** Per-tier language chips. Dashed + dim while the tier inherits the global list. */
+  function langChips(r) {
+    var overridden = Array.isArray(r.languages) && r.languages.length > 0;
+    var eff = overridden ? r.languages : state.buyLanguages;
+    var chips = LANG_KEYS.map(function (k) {
+      var tip = langFull(k) + (overridden ? '' : ' (global default; click to customize this tier)');
+      return '<button type="button" class="rl' + (eff.indexOf(k) >= 0 ? ' on' : '') + '"' +
+        ' data-act="lang" data-lang="' + esc(k) + '" title="' + esc(tip) + '"' +
+        ' aria-pressed="' + (eff.indexOf(k) >= 0) + '">' + esc(langAb(k)) + '</button>';
+    }).join('');
+    var reset = overridden
+      ? '<button type="button" class="rl-reset" data-act="lang-reset" title="Reset to the global default" aria-label="Reset this tier to the global buy languages">↺</button>'
+      : '';
+    var tip = 'Languages this tier buys' + (overridden ? '' : ' (following your global default)');
+    return '<span class="rule-lang' + (overridden ? '' : ' inherit') + '" title="' + esc(tip) + '">' + chips + reset + '</span>';
+  }
+
+  // ── rendering: the global buy-language toggle ──────────────────────────────
+  function renderBuyLangToggle() {
+    var chips = LANG_KEYS.map(function (k) {
+      var on = state.buyLanguages.indexOf(k) >= 0;
+      return '<button type="button" class="lang-chip' + (on ? ' on' : '') + '"' +
+        ' data-act="buylang" data-lang="' + esc(k) + '" title="' + esc(langFull(k)) + '"' +
+        ' aria-pressed="' + on + '">' + esc(langAb(k)) + '</button>';
+    }).join('');
+    var off = LANG_KEYS.filter(function (k) { return state.buyLanguages.indexOf(k) < 0; }).map(langFull);
+    var hint = off.length ? off.join(' & ') + ' skipped' : 'all languages bought';
+    el.buyLang.innerHTML =
+      '<span class="buylang-label" id="buylang-label">Buy languages:</span>' +
+      '<div class="lang-toggle" role="group" aria-labelledby="buylang-label">' + chips + '</div>' +
+      '<span class="buylang-hint">· ' + esc(hint) + '</span>';
+  }
+
+  // ── rendering: the tier table ──────────────────────────────────────────────
+  /** Keep state.rates in display order, so "Row N" in an error is the row you see. */
+  function reorder() {
+    state.rates = state.rates
+      .map(function (r, i) { return { r: r, i: i }; })
+      .sort(function (a, b) {
+        var sa = sportRank(a.r.sport), sb = sportRank(b.r.sport);
+        if (sa !== sb) return sa - sb;
+        var oa = Number(a.r.sort) || 0, ob = Number(b.r.sort) || 0;
+        if (oa !== ob) return oa - ob;
+        return a.i - b.i;
+      })
+      .map(function (x) { return x.r; });
+  }
+
+  function tierHtml(r, idx) {
+    var sep = '<span class="sep">·</span>';
+    return '' +
+      '<div class="wtb-tier" data-row="' + (idx + 1) + '" data-uid="' + esc(r._uid) + '">' +
+        '<div class="range">' +
+          '<input type="number" step="0.01" min="0" data-k="from" value="' + esc(r.from) + '" placeholder="0" title="Min market $" aria-label="Min market dollars">' +
+          '<span class="dash">–</span>' +
+          '<input type="number" step="0.01" min="0" data-k="to" value="' + esc(r.to) + '" placeholder="∞" title="Max market $ (blank = no cap)" aria-label="Max market dollars, blank for no cap">' +
+        '</div>' +
+        '<div class="meta">' +
+          '<select data-k="sport" title="Sport" aria-label="Sport">' + sportOptions(r.sport) + '</select>' +
+          sep +
+          '<select data-k="grader" title="Grading company this tier applies to. Lets you pay a different % for CGC than PSA" aria-label="Grading company">' + graderOptions(r.grader) + '</select>' +
+          sep +
+          '<select data-k="gradeMin" title="Min grade" aria-label="Min grade">' + gradeOptions(r.gradeMin) + '</select>' +
+          '<span class="dash">–</span>' +
+          '<select data-k="gradeMax" title="Max grade" aria-label="Max grade">' + gradeOptions(r.gradeMax) + '</select>' +
+          sep +
+          '<input class="label-input" type="text" data-k="label" maxlength="100" placeholder="note (optional)" value="' + esc(r.label) + '" style="width:140px" title="Note (optional). Staff and sellers see this." aria-label="Note">' +
+          sep +
+          '<select data-k="basis" title="What this tier\'s percent is taken from. Default follows the sheet setting below." aria-label="Basis">' + basisOptions(r.basis) + '</select>' +
+          sep +
+          langChips(r) +
+          sep +
+          '<select data-k="certRule" title="Which cert numbers this tier takes. New certs means a PSA cert of 70,000,000 or higher." aria-label="Cert rule">' + certOptions(r.certRule) + '</select>' +
+          sep +
+          '<select data-k="minConfidence" title="Lowest read confidence this tier accepts" aria-label="Min confidence">' + confOptions(r.minConfidence) + '</select>' +
+          sep +
+          '<button type="button" class="tgl' + (r.vintage ? ' on' : '') + '" data-act="vintage" aria-pressed="' + !!r.vintage + '"' +
+            ' title="Vintage only: WOTC-era holo. The card year is at or under the vintage year below and the name contains holo.">VINTAGE</button>' +
+          '<button type="button" class="tgl' + (r.special ? ' on' : '') + '" data-act="special" aria-pressed="' + !!r.special + '"' +
+            ' title="Special only: a special set or WOTC era. The card year is at or under the vintage year below, or the name contains one of the special keywords.">SPECIAL</button>' +
+        '</div>' +
+        '<input class="sort" type="number" step="1" data-k="sort" value="' + esc(r.sort) + '" title="Sort order: lower = checked first" aria-label="Sort order, lower is checked first">' +
+        '<div class="pct">' +
+          '<input type="number" step="0.01" min="0" max="100" data-k="pct" value="' + esc(r.pct) + '" title="Percent of market value this tier pays" aria-label="Percent of market value paid"><span class="pct-sign">%</span>' +
+        '</div>' +
+        '<button type="button" class="del" data-act="del" title="Delete tier" aria-label="Delete this tier">✕</button>' +
+      '</div>';
+  }
+
+  function renderRules() {
+    reorder();
+    var sports = [];
+    state.rates.forEach(function (r) { if (sports.indexOf(r.sport) < 0) sports.push(r.sport); });
+
+    var html = sports.map(function (sport) {
+      var rows = '';
+      state.rates.forEach(function (r, idx) { if (r.sport === sport) rows += tierHtml(r, idx); });
+      return '' +
+        '<section class="wtb-group" data-sport="' + esc(sport) + '">' +
+          '<div class="wtb-group-header">' +
+            '<h3>' + esc(sportLabel(sport)) + '</h3>' +
+            '<div class="right">% of market value</div>' +
+          '</div>' +
+          rows +
+          '<button type="button" class="wtb-add-tier" data-act="add-tier" data-sport="' + esc(sport) + '"' +
+            ' title="Add another tier to ' + esc(sportShort(sport)) + '">＋ Add tier</button>' +
+        '</section>';
+    }).join('');
+
+    if (!state.rates.length) {
+      html = '<div class="card empty-rules">No tiers yet. Add one below and the bot starts quoting it.</div>';
+    }
+
+    html += '<div class="new-group-row">' +
+      '<button type="button" class="btn btn-sm new-group" data-act="add-group" title="Add a tier that matches any sport">＋ New group / rule</button>' +
+      '</div>';
+
+    el.rulesList.innerHTML = html;
   }
 
   function renderTop() {
+    el.defaultBasis.innerHTML = defaultBasisOptions(state.defaultBasis);
     TOP_FIELDS.forEach(function (k) {
       var node = document.getElementById(k);
       if (node) node.value = state[k];
@@ -1203,24 +1618,36 @@ window.RatesValidate = {
     el.pausedWrap.hidden = !state.paused;
   }
 
+  // ── status line ────────────────────────────────────────────────────────────
   function fmtTime(iso) {
     if (!iso) return null;
     var d = new Date(iso);
     if (isNaN(d.getTime())) return null;
-    return d.toLocaleString(undefined, {
-      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-    });
+    var now = new Date();
+    var sameDay = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+    return d.toLocaleString(undefined, sameDay
+      ? { hour: 'numeric', minute: '2-digit' }
+      : { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   }
 
   function renderStatus() {
     var saved = fmtTime(savedAt);
-    el.stSaved.innerHTML = saved
-      ? 'Last saved <b>' + esc(saved) + '</b>'
-      : 'Nothing saved yet';
+    el.stSaved.textContent = saved ? 'Last saved ' + saved : 'Nothing saved yet';
+
     var seen = fmtTime(botSeenAt);
-    el.stBot.innerHTML = seen
-      ? 'Bot last checked in <b>' + esc(seen) + '</b>'
-      : "The bot hasn't checked in yet";
+    if (!apiUp) {
+      el.botPill.className = 'helper-pill down';
+      el.botPill.textContent = '🔴 Rates API unreachable';
+      el.botPill.title = 'The page could not reach the rates API';
+    } else if (seen) {
+      el.botPill.className = 'helper-pill up';
+      el.botPill.textContent = '🟢 Bot checked in ' + seen;
+      el.botPill.title = 'When the bot last read these rates';
+    } else {
+      el.botPill.className = 'helper-pill';
+      el.botPill.textContent = '⚪ Bot: not seen yet';
+      el.botPill.title = 'The bot has not read these rates yet';
+    }
   }
 
   function setMsg(text, kind) {
@@ -1229,8 +1656,8 @@ window.RatesValidate = {
   }
 
   function showErrors(list) {
-    Array.prototype.forEach.call(el.bands.querySelectorAll('.band.bad'), function (b) {
-      b.classList.remove('bad');
+    Array.prototype.forEach.call(el.rulesList.querySelectorAll('.wtb-tier.bad'), function (t) {
+      t.classList.remove('bad');
     });
     if (!list || !list.length) {
       el.errors.hidden = true;
@@ -1240,76 +1667,151 @@ window.RatesValidate = {
     el.errorsList.innerHTML = list.map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('');
     el.errors.hidden = false;
     list.forEach(function (e) {
-      var m = /^Row (\d+):/.exec(e);
+      var m = /^Row (\d+)[:.]/.exec(e);
       if (!m) return;
-      var band = el.bands.querySelector('.band[data-row="' + m[1] + '"]');
-      if (band) band.classList.add('bad');
+      var tier = el.rulesList.querySelector('.wtb-tier[data-row="' + m[1] + '"]');
+      if (tier) tier.classList.add('bad');
     });
     el.errors.scrollIntoView({ block: 'nearest' });
   }
 
-  // ── input wiring ───────────────────────────────────────────────────────────
-  el.bands.addEventListener('input', onRowInput);
-  el.bands.addEventListener('change', onRowInput);
-
-  function onRowInput(ev) {
-    var t = ev.target;
-    if (!t || t.dataset.i === undefined || !t.dataset.k) return;
-    var row = state.rates[Number(t.dataset.i)];
-    if (!row) return;
-    row[t.dataset.k] = t.type === 'checkbox' ? t.checked : t.value;
-    if (t.dataset.k === 'label' || t.dataset.k === 'from' || t.dataset.k === 'to' || t.dataset.k === 'pct') {
-      var band = t.closest('.band');
-      if (band) band.querySelector('.band-sum').textContent = summary(row);
-    }
+  // ── row editing ────────────────────────────────────────────────────────────
+  function rowOf(node) {
+    var tier = node.closest ? node.closest('.wtb-tier') : null;
+    if (!tier) return null;
+    var uid = tier.getAttribute('data-uid');
+    for (var i = 0; i < state.rates.length; i++) if (state.rates[i]._uid === uid) return state.rates[i];
+    return null;
   }
 
-  el.bands.addEventListener('click', function (ev) {
-    var btn = ev.target.closest('button[data-act]');
-    if (!btn) return;
-    var i = Number(btn.dataset.i);
-    var act = btn.dataset.act;
-    if (act === 'remove') {
-      if (state.rates.length === 1) { setMsg('Keep at least one band.', 'err'); return; }
-      state.rates.splice(i, 1);
-    } else if (act === 'up' && i > 0) {
-      state.rates.splice(i - 1, 0, state.rates.splice(i, 1)[0]);
-    } else if (act === 'down' && i < state.rates.length - 1) {
-      state.rates.splice(i + 1, 0, state.rates.splice(i, 1)[0]);
-    } else {
-      return;
-    }
-    render();
-    setMsg('Not saved yet.');
+  function readField(t) {
+    var r = rowOf(t);
+    if (!r || !t.dataset.k) return null;
+    r[t.dataset.k] = t.value;
+    markDirty();
+    return r;
+  }
+
+  el.rulesList.addEventListener('input', function (ev) {
+    var t = ev.target;
+    if (!t.dataset || !t.dataset.k) return;
+    readField(t);
   });
 
+  // Structural fields only re-group / re-order once the edit is committed, so a
+  // half-typed sort order does not yank the row out from under the cursor.
+  el.rulesList.addEventListener('change', function (ev) {
+    var t = ev.target;
+    if (!t.dataset || !t.dataset.k) return;
+    var r = readField(t);
+    if (!r) return;
+    if (t.dataset.k === 'sport' || t.dataset.k === 'sort') renderRules();
+  });
+
+  el.rulesList.addEventListener('click', function (ev) {
+    var btn = ev.target.closest('[data-act]');
+    if (!btn) return;
+    var act = btn.dataset.act;
+
+    if (act === 'add-tier' || act === 'add-group') {
+      if (state.rates.length >= MAX_ROWS) { setMsg(MAX_ROWS + ' tiers is the limit.', 'err'); return; }
+      var sport = act === 'add-tier' ? btn.dataset.sport : '*';
+      var peers = state.rates.filter(function (r) { return r.sport === sport; });
+      var pool = (act === 'add-tier' && peers.length) ? peers : state.rates;
+      var max = 0;
+      pool.forEach(function (r) { max = Math.max(max, Number(r.sort) || 0); });
+      state.rates.push(blankRow(sport, max + 10));
+      markDirty();
+      renderRules();
+      setMsg('Tier added. Not saved yet.');
+      return;
+    }
+
+    var row = rowOf(btn);
+    if (!row) return;
+
+    if (act === 'del') {
+      if (!window.confirm('Delete this tier?')) return;
+      state.rates = state.rates.filter(function (r) { return r !== row; });
+      markDirty();
+      renderRules();
+      setMsg('Tier deleted. Not saved yet.');
+      return;
+    }
+
+    if (act === 'vintage' || act === 'special') {
+      row[act] = !row[act];
+      btn.classList.toggle('on', row[act]);
+      btn.setAttribute('aria-pressed', String(!!row[act]));
+      markDirty();
+      return;
+    }
+
+    if (act === 'lang' || act === 'lang-reset') {
+      if (act === 'lang-reset') {
+        row.languages = null;
+      } else {
+        var key = btn.dataset.lang;
+        var base = (Array.isArray(row.languages) && row.languages.length) ? row.languages.slice() : state.buyLanguages.slice();
+        var at = base.indexOf(key);
+        if (at >= 0) base.splice(at, 1); else base.push(key);
+        // Emptied → back to inheriting the global default.
+        row.languages = base.length ? LANG_KEYS.filter(function (k) { return base.indexOf(k) >= 0; }) : null;
+      }
+      var span = btn.closest('.rule-lang');
+      if (span) span.outerHTML = langChips(row);
+      markDirty();
+      return;
+    }
+  });
+
+  // ── global buy languages ───────────────────────────────────────────────────
+  el.buyLang.addEventListener('click', function (ev) {
+    var btn = ev.target.closest('[data-act="buylang"]');
+    if (!btn) return;
+    var key = btn.dataset.lang;
+    var next = state.buyLanguages.slice();
+    var at = next.indexOf(key);
+    if (at >= 0) {
+      if (next.length === 1) { setMsg('Keep at least one buy language.', 'err'); return; }
+      next.splice(at, 1);
+    } else {
+      next.push(key);
+    }
+    state.buyLanguages = LANG_KEYS.filter(function (k) { return next.indexOf(k) >= 0; });
+    setMsg('');
+    markDirty();
+    renderBuyLangToggle();
+    renderRules();   // inheriting tiers show the new default
+  });
+
+  // ── sheet settings ─────────────────────────────────────────────────────────
   TOP_FIELDS.forEach(function (k) {
     var node = document.getElementById(k);
-    if (node) node.addEventListener('input', function () { state[k] = node.value; });
+    if (!node) return;
+    node.addEventListener('input', function () { state[k] = node.value; markDirty(); });
+    node.addEventListener('change', function () { state[k] = node.value; markDirty(); });
   });
   el.paused.addEventListener('change', function () {
     state.paused = el.paused.checked;
     el.pausedWrap.hidden = !state.paused;
+    markDirty();
   });
-
-  el.addRow.addEventListener('click', function () {
-    if (state.rates.length >= V.LIMITS.maxRows) {
-      setMsg(V.LIMITS.maxRows + ' bands is the limit.', 'err');
-      return;
-    }
-    state.rates.push(blankRow());
-    render();
-    setMsg('Not saved yet.');
-    var last = el.bands.lastElementChild;
-    if (last) last.scrollIntoView({ block: 'nearest' });
-  });
-
-  el.reload.addEventListener('click', function () { load(true); });
 
   // ── load ───────────────────────────────────────────────────────────────────
+  function applySettings(settings) {
+    state = toForm(settings);
+    captureBaseline();
+    renderTop();
+    renderBuyLangToggle();
+    renderRules();
+    updateDirty();
+  }
+
   function load(announce) {
+    if (announce && countChanges() > 0 && !window.confirm('Throw away your unsaved edits and reload the saved sheet?')) return;
     setBusy(true);
-    setMsg(announce ? 'Reloading...' : '');
+    setMsg(announce ? 'Reloading…' : '');
     Promise.all([
       fetch(api('settings'), { headers: { accept: 'application/json' } })
         .then(function (res) {
@@ -1319,21 +1821,23 @@ window.RatesValidate = {
         }),
       fetch(api('status'), { headers: { accept: 'application/json' } })
         .then(function (res) { return res.ok ? res.json() : null; })
-        .catch(function () { return null; }),
+        .catch(function () { return null; })
     ]).then(function (out) {
       var body = out[0];
       var status = out[1];
-      var settings = body && body.settings ? body.settings : V.defaults();
+      apiUp = true;
       savedAt = body ? body.updatedAt : null;
       botSeenAt = status ? status.botSeenAt : null;
-      state = toForm(settings);
-      renderTop();
-      render();
+      // The saved sheet may still be a v1 one. normalize() migrates it.
+      applySettings(V.normalize(body && body.settings ? body.settings : V.defaults()));
+      justSaved = false;
+      updateDirty();
       renderStatus();
       showErrors(null);
       setMsg(body ? (announce ? 'Reloaded.' : '') : 'Nothing saved yet. This is a starter sheet.');
     }).catch(function (err) {
-      if (!state) { state = toForm(V.defaults()); renderTop(); render(); }
+      apiUp = false;
+      if (!state) applySettings(V.normalize(V.defaults()));
       renderStatus();
       setMsg('Could not load the saved sheet: ' + err.message, 'err');
     }).then(function () { setBusy(false); });
@@ -1359,10 +1863,8 @@ window.RatesValidate = {
 
   function setBusy(on) {
     busy = on;
-    el.save.disabled = on;
-    el.addRow.disabled = on;
     el.reload.disabled = on;
-    el.save.textContent = on ? 'Saving...' : 'Save';
+    updateDirty();
   }
 
   el.save.addEventListener('click', function () {
@@ -1380,16 +1882,17 @@ window.RatesValidate = {
     if (!key) { setMsg('Save cancelled, no edit key.', 'err'); return; }
 
     setBusy(true);
-    setMsg('Saving...');
+    setMsg('Saving…');
     fetch(api('settings'), {
       method: 'PUT',
       headers: { 'content-type': 'application/json', 'x-edit-key': key },
-      body: JSON.stringify(checked.settings),
+      body: JSON.stringify(checked.settings)
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (body) {
         return { status: res.status, body: body };
       });
     }).then(function (out) {
+      apiUp = true;
       if (out.status === 401) {
         forgetKey();
         setMsg('That edit key is wrong. Press Save again to enter another one.', 'err');
@@ -1405,18 +1908,28 @@ window.RatesValidate = {
         return;
       }
       savedAt = out.body.updatedAt || new Date().toISOString();
-      if (out.body.settings) { state = toForm(out.body.settings); renderTop(); render(); }
+      applySettings(out.body.settings ? V.normalize(out.body.settings) : V.normalize(checked.settings));
+      justSaved = true;
+      updateDirty();
       renderStatus();
       setMsg('Saved ' + (fmtTime(savedAt) || 'just now'), 'ok');
     }).catch(function (err) {
+      apiUp = false;
+      renderStatus();
       setMsg('Save failed: ' + err.message, 'err');
     }).then(function () { setBusy(false); });
   });
 
+  el.reload.addEventListener('click', function () { load(true); });
+
   // ── go ─────────────────────────────────────────────────────────────────────
-  state = toForm(V.defaults());
-  renderTop();
-  render();
+  (function footer() {
+    var host = 'the rates API';
+    try { host = new URL(api('settings'), location.href).host; } catch (e) { /* keep the fallback */ }
+    el.foot.textContent = 'Saved to ' + host + '. The bot reads /settings on its own, usually within a minute.';
+  })();
+
+  applySettings(V.normalize(V.defaults()));
   renderStatus();
   load(false);
 })();
