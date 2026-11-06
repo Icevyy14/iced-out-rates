@@ -1,0 +1,1972 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex, nofollow">
+<meta name="rates-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/slab-rates">
+<meta name="ledger-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/slab-ledger">
+<meta name="triumph-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/triumph-sourcer">
+<meta name="supabase-url" content="https://ppfhgrurquvlyabtymbq.supabase.co">
+<meta name="supabase-anon-key" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwZmhncnVycXV2bHlhYnR5bWJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MjYyNjcsImV4cCI6MjA5MTEwMjI2N30.ZcEPKRHI3kb3aA6iXmf1Mo42Dyqj9fx1I9ZMT2xk0fg">
+<title>Iced Out Penguin · Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   Iced Out Penguin rates — skinned to match the owner app's 💰 Pricing tab.
+   Theme: Synthwave, re-coloured blue / black / red (owner's call, 2026-11-04)
+   — same techniques (gradient-clipped numbers, glow, diagonal card
+   gradients) as icevyy-tcg.html's Synthwave, different palette. Dark only.
+   Everything between the two "PORTED" banners started lifted verbatim from
+   icevyy-tcg.html; selectors still match, colors now diverge on purpose.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root{
+  /* Synthwave — blue / black / red */
+  --bg:#040308;
+  --s1:#0a0912;
+  --s2:#100e1c;
+  --s3:#171428;
+  --border:#2a2447;
+  --buy:#3fa9ff;
+  --sell:#ff2a55;
+  --text:#eef3ff;
+  --dim:#8d97c4;
+  --muted:#5a6191;
+  --red:#ff2a55;
+  --yellow:#ff4d6d;
+  --purple:#7c5cff;
+
+  --font-ui:'Rajdhani','Segoe UI',system-ui,-apple-system,sans-serif;
+  --font-display:'Orbitron','Rajdhani','Segoe UI',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
+
+  /* Radius scale (DESIGN.md §3) — deliberately varied, NOT one value everywhere. */
+  --r-slab: 3px;    /* cert chips, stat cells — crisp graded-slab feel */
+  --r: 8px;         /* buttons, inputs, small cards */
+  --r-lg: 14px;     /* large panels */
+  --r-pill: 999px;  /* status pills / segmented controls only */
+
+  /* Micro-label ink, one step dimmer than --dim; derived so it tracks the theme. */
+  --faint: color-mix(in srgb, var(--dim) 62%, var(--bg));
+  --hairline: color-mix(in srgb, var(--border) 70%, var(--bg));
+}
+
+/* ── PORTED from icevyy-tcg.html — same selectors, same values ──────────── */
+
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-ui);min-height:100vh;overflow-x:hidden;}
+::-webkit-scrollbar{width:6px;} ::-webkit-scrollbar-track{background:var(--s1);} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* page glow */
+html::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(120% 60% at 12% -10%, rgba(63,169,255,.18), transparent 62%),
+    radial-gradient(110% 70% at 100% 112%, rgba(255,42,85,.16), transparent 60%);
+  animation:bgDrift 12s ease-in-out infinite alternate;
+}
+html::after{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:repeating-linear-gradient(0deg, transparent 0 28px, rgba(63,169,255,.05) 28px 29px);
+  -webkit-mask-image:linear-gradient(180deg, transparent 0 60%, #000 100%);
+  mask-image:linear-gradient(180deg, transparent 0 60%, #000 100%);
+}
+@keyframes bgDrift{from{background-position:0 0, 0 0;}to{background-position:-3% -2%, 3% 2%;}}
+
+/* NAV */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--s1);position:sticky;top:0;z-index:100;backdrop-filter:blur(10px);}
+.logo{font-size:22px;font-weight:800;letter-spacing:-0.5px;}
+.logo span{color:var(--sell);}
+.logo em{font-style:normal;}
+
+/* WTB rules — grouped tiers, styled to look like a printed price chart */
+.wtb-group{background:linear-gradient(165deg, var(--s2), var(--s1));border:1px solid color-mix(in srgb, var(--buy) 28%, var(--border));border-radius:14px;padding:18px 22px;margin-bottom:14px;position:relative;box-shadow:inset 0 1px 0 rgba(63,169,255,.10);}
+.wtb-group-header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:10px;}
+.wtb-group-header h3{font-size:15px;font-weight:900;color:var(--text);letter-spacing:1px;display:flex;align-items:center;gap:8px;}
+.wtb-group-header h3::before{content:'';width:4px;height:18px;background:var(--yellow);border-radius:2px;}
+.wtb-group-header .right{font-size:10px;color:color-mix(in srgb, var(--buy) 45%, var(--dim));font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;}
+.wtb-group .desc{font-size:12px;color:var(--dim);margin-bottom:10px;}
+.wtb-group .desc input{background:transparent;border:none;color:var(--dim);width:100%;font-size:12px;outline:none;}
+.wtb-tier{display:grid;grid-template-columns:170px 1fr 50px 110px 30px;gap:14px;align-items:center;padding:11px 6px;border-bottom:1px solid var(--border);font-size:14px;font-weight:600;color:var(--text);}
+.wtb-tier:last-child{border-bottom:none;}
+.wtb-tier .range input{background:transparent;border:none;color:var(--text);font-weight:600;font-size:14px;width:65px;outline:none;text-align:left;}
+.wtb-tier .range .dash{color:var(--dim);}
+.wtb-tier .meta{font-size:11px;color:var(--dim);display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.wtb-tier .meta select{background:transparent;border:1px solid transparent;color:var(--dim);font-size:11px;padding:2px 4px;border-radius:4px;outline:none;}
+.wtb-tier .meta select:focus,.wtb-tier .meta select:hover{border-color:var(--border);background:var(--s1);}
+.wtb-tier .pct{font-size:24px;font-weight:900;color:var(--yellow);text-align:right;font-family:var(--font-ui);letter-spacing:-0.5px;}
+.wtb-tier .pct input{background:transparent;border:none;background-image:linear-gradient(90deg, var(--buy), var(--red));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;caret-color:var(--buy);filter:drop-shadow(0 0 6px rgba(255,42,85,.4));font-size:22px;font-weight:900;width:65px;text-align:right;outline:none;font-family:var(--font-ui);}
+.wtb-tier .pct input:focus{background-image:none;-webkit-text-fill-color:var(--buy);color:var(--buy);filter:none;}
+.wtb-tier .pct .pct-sign{background-image:linear-gradient(90deg, var(--buy), var(--red));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;filter:drop-shadow(0 0 4px rgba(255,42,85,.35));}
+.wtb-tier .label-input{background:transparent;border:none;color:var(--dim);font-size:11px;width:100%;outline:none;font-style:italic;}
+.wtb-tier .del{background:transparent;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:4px;opacity:0.4;transition:opacity .15s,text-shadow .15s;}
+.wtb-tier:hover .del{opacity:1;}
+.wtb-tier .del:hover{text-shadow:0 0 8px color-mix(in srgb, var(--red) 70%, transparent);}
+.wtb-tier .sort{background:transparent;border:none;color:var(--dim);font-size:10px;width:40px;text-align:center;font-family:var(--font-mono);outline:none;}
+.wtb-tier .sort:focus{border:1px solid var(--border);border-radius:3px;}
+.wtb-add-tier{display:flex;align-items:center;gap:6px;background:transparent;border:1.5px dashed color-mix(in srgb, var(--buy) 45%, var(--border));color:var(--dim);cursor:pointer;font-size:12px;padding:9px 14px;border-radius:9px;width:100%;margin-top:10px;font-family:var(--font-ui);font-weight:700;transition:all 0.15s;}
+.wtb-add-tier:hover{border-color:var(--red);color:var(--red);}
+
+/* HELPER PILL */
+.helper-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid var(--border);background:var(--s2);color:var(--dim);font-family:var(--font-mono);letter-spacing:0.3px;}
+.helper-pill.up{border-color:var(--buy);color:var(--buy);background:var(--s2);}
+.helper-pill.down{border-color:var(--red);color:var(--red);background:#1a0808;}
+
+/* LAYOUT */
+.main{padding:24px 28px;max-width:1400px;margin:0 auto;}
+.tab{display:none;animation:fadeUp 0.25s ease;}
+.tab.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* CARDS */
+.card{background:linear-gradient(165deg, var(--s2), var(--s1));border:1px solid color-mix(in srgb, var(--buy) 24%, var(--border));border-radius:16px;padding:20px;box-shadow:inset 0 1px 0 rgba(63,169,255,.08);}
+
+/* BUTTONS */
+.btn{padding:11px 22px;border-radius:10px;border:none;cursor:pointer;font-family:var(--font-ui);font-weight:700;font-size:13px;transition:all 0.15s;white-space:nowrap;}
+.btn-buy{background:var(--buy);color:var(--bg);box-shadow:0 0 14px rgba(63,169,255,.4);}
+.btn-buy:hover{opacity:0.85;transform:translateY(-1px);}
+.btn-sell{background:var(--sell);color:#fff;}
+.btn-sell:hover{opacity:0.85;transform:translateY(-1px);}
+.btn-ghost{background:transparent;border:1.5px solid color-mix(in srgb, var(--buy) 35%, var(--border));color:var(--dim);}
+.btn-ghost:hover{border-color:var(--dim);color:var(--text);}
+.btn-danger{background:transparent;border:1.5px solid var(--red);color:var(--red);}
+.btn-danger:hover{background:var(--red);color:#fff;}
+.btn-sm{padding:6px 14px;font-size:12px;}
+
+/* FORM */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.form-group{margin-bottom:14px;}
+.form-label{font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);display:block;margin-bottom:7px;}
+.form-input,.form-select,.form-textarea{width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:var(--font-ui);font-size:13px;outline:none;transition:border-color 0.2s;}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--buy);}
+.form-input::placeholder{color:var(--muted);}
+.form-textarea{resize:vertical;min-height:70px;}
+.form-select{cursor:pointer;}
+
+/* FILTER CHIPS / language filter — global toggle + per-rule override */
+.filter-group{display:flex;background:var(--s2);border-radius:10px;padding:3px;gap:2px;}
+.lang-toggle{display:inline-flex;gap:5px}
+.lang-chip{padding:4px 10px;border-radius:7px;border:1px solid var(--border);background:var(--s2);color:var(--dim);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-ui);letter-spacing:.4px;transition:all .12s}
+.lang-chip:hover{color:var(--text)}
+.lang-chip.on{background:var(--buy);color:var(--bg);border-color:var(--buy)}
+.rule-lang{display:inline-flex;gap:3px;align-items:center;margin-left:2px;vertical-align:middle}
+.rule-lang .rl{padding:2px 6px;border-radius:5px;font-size:10px;font-weight:800;cursor:pointer;font-family:var(--font-mono);border:1px solid var(--border);color:var(--dim);background:transparent;letter-spacing:.5px}
+.rule-lang .rl.on{background:var(--buy);color:var(--bg);border-color:var(--buy)}
+.rule-lang.inherit .rl{opacity:.65}
+.rule-lang.inherit .rl.on{background:transparent;color:var(--buy);border-color:var(--buy);border-style:dashed}
+.rule-lang .rl-reset{cursor:pointer;color:var(--dim);font-size:11px;padding:0 2px}
+.rule-lang .rl-reset:hover{color:var(--text)}
+
+/* ── END PORTED ─────────────────────────────────────────────────────────── */
+
+
+/* ── PORTED from the owner app's nav — same selectors, same values ──────── */
+.nav-tabs{display:flex;flex-wrap:wrap;gap:4px;background:var(--bg);padding:4px;border-radius:12px}
+.nav-tab{padding:8px 20px;border:none;border-radius:9px;cursor:pointer;font-family:var(--font-ui);font-size:13px;font-weight:700;transition:all .2s;background:transparent;color:var(--dim)}
+.nav-tab:hover{color:var(--red)}
+.nav-tab.active{background:var(--buy);color:var(--bg);box-shadow:0 0 18px rgba(63,169,255,.45)}
+.nav-tab.active:hover{color:var(--bg)}
+/* ── END PORTED ─────────────────────────────────────────────────────────── */
+
+/* ── PORTED from ledger-portal/page.html — same selectors, same values, now the Consignors tab ── */
+.wtb-table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--font-ui);table-layout:fixed;}
+.wtb-table td, .wtb-table th{overflow:hidden;}
+.wtb-table td.wtb-name{white-space:nowrap;text-overflow:ellipsis;}
+.wtb-table th{text-align:left;padding:9px 10px;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:color-mix(in srgb, var(--buy) 40%, var(--dim));}
+.wtb-table td{padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px;}
+.wtb-table td.cert{font-family:var(--font-mono);font-weight:700;}
+.wtb-table td.num{text-align:right;font-family:var(--font-mono);font-weight:700;}
+.wtb-table .bucket{display:inline-block;padding:3px 9px;border-radius:6px;font-weight:800;font-size:11px;color:#000;}
+.wtb-totals{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;}
+.wtb-total-card{background:linear-gradient(165deg, var(--s2), var(--s1));border:1px solid color-mix(in srgb, var(--buy) 24%, var(--border));border-radius:12px;padding:16px 18px;text-align:center;box-shadow:inset 0 1px 0 rgba(63,169,255,.08);}
+.wtb-total-card .lbl{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:6px;}
+.wtb-total-card .val{font-size:22px;font-weight:900;text-shadow:0 0 12px color-mix(in srgb, var(--buy) 40%, transparent);}
+.filter-chip{padding:6px 12px;border-radius:8px;border:none;background:transparent;color:var(--dim);font-family:var(--font-ui);font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;}
+.filter-chip:hover{color:var(--text);}
+.filter-chip.active{background:var(--buy);color:var(--bg);}
+/* ── END PORTED ─────────────────────────────────────────────────────────── */
+
+/* ── CONSIGNORS TAB — page additions on top of the ported table/pill rules ── */
+.stat-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:18px;}
+.stat-strip .wtb-total-card.owed{border-color:var(--red);box-shadow:0 0 16px rgba(255,42,85,.3), inset 0 1px 0 rgba(63,169,255,.08);}
+.stat-strip .wtb-total-card.owed .val{color:var(--red);text-shadow:0 0 12px color-mix(in srgb, var(--red) 55%, transparent);}
+.partner-strip{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
+.partner-card{background:linear-gradient(165deg, var(--s2), var(--s1));border:1px solid var(--border);border-top:3px solid var(--border);border-radius:14px;padding:16px 18px;box-shadow:inset 0 1px 0 rgba(63,169,255,.08);}
+.partner-card.p-josh{border-top-color:var(--buy);box-shadow:0 -2px 16px rgba(63,169,255,.18), inset 0 1px 0 rgba(63,169,255,.08);}
+.partner-card.p-penguin{border-top-color:var(--sell);box-shadow:0 -2px 16px rgba(255,42,85,.18), inset 0 1px 0 rgba(63,169,255,.08);}
+.partner-card h4{font-size:14px;font-weight:800;margin-bottom:12px;}
+.partner-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.pg-cell{text-align:center;}
+.pg-lbl{font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-bottom:4px;}
+.pg-val{font-size:16px;font-weight:800;}
+.unknown-warning{font-size:11px;color:var(--yellow);margin:0 4px 14px;}
+.table-wrap{overflow-x:auto;}
+.wtb-table.owed-tbl{min-width:860px;}
+.wtb-table.sellers-tbl{min-width:980px;}
+.wtb-table.master-tbl{min-width:1120px;}
+.status-pill{display:inline-block;padding:3px 10px;border-radius:var(--r-pill);font-size:10px;font-weight:800;font-family:var(--font-mono);letter-spacing:.5px;text-transform:uppercase;border:1px solid var(--border);color:var(--dim);white-space:nowrap;background:transparent;}
+.status-pill.st-quoted{border-color:var(--border);color:var(--dim);}
+.status-pill.st-accepted{border-color:var(--buy);color:var(--buy);}
+.status-pill.st-received{background:color-mix(in srgb, var(--buy) 22%, transparent);border-color:var(--buy);color:var(--buy);}
+.status-pill.st-locked{background:color-mix(in srgb, var(--purple) 45%, transparent);border-color:var(--purple);color:var(--text);}
+.status-pill.st-paid{background:#2fd38a;border-color:#2fd38a;color:var(--bg);}
+.status-pill.st-cancelled{background:color-mix(in srgb, var(--red) 18%, transparent);border-color:var(--red);color:var(--red);}
+.status-pill.st-unknown{border-color:var(--border);color:var(--muted);}
+.src-pill{display:inline-block;padding:3px 9px;border-radius:var(--r-pill);font-size:10px;font-weight:800;font-family:var(--font-mono);letter-spacing:.5px;border:1px solid var(--border);white-space:nowrap;background:transparent;}
+.src-pill.src-josh{border-color:var(--buy);color:var(--buy);background:color-mix(in srgb, var(--buy) 12%, transparent);}
+.src-pill.src-penguin{border-color:var(--sell);color:var(--sell);background:color-mix(in srgb, var(--sell) 12%, transparent);}
+.src-pill.src-unknown{border-color:var(--border);color:var(--muted);}
+.wtb-table th.sortable{cursor:pointer;user-select:none;}
+.wtb-table th.sortable:hover{color:var(--text);}
+.wtb-table th.sortable:focus-visible{outline:2px solid var(--purple);outline-offset:-2px;}
+.wtb-table th .arrow{margin-left:4px;color:var(--buy);}
+.exp-toggle{background:transparent;border:1px solid var(--border);color:var(--dim);border-radius:6px;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;margin-right:8px;padding:0;vertical-align:middle;}
+.exp-toggle:hover{border-color:var(--buy);color:var(--buy);}
+.owed-row{cursor:pointer;}
+.owed-row:hover{background:var(--s2);}
+.owed-row .handle{color:var(--dim);font-size:11px;display:inline-block;margin-left:6px;}
+.owed-detail td{background:var(--s2);padding:14px;}
+.cons-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 0;border-bottom:1px solid var(--border);font-size:12px;}
+.cons-row:last-child{border-bottom:none;}
+.cons-row .cr-pay{font-family:var(--font-mono);font-weight:700;}
+.cr-links a{color:var(--buy);text-decoration:none;font-size:11px;margin-right:10px;}
+.cr-links a:hover{text-decoration:underline;}
+.cons-actions{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;}
+.cons-actions .btn{padding:4px 10px;font-size:11px;}
+.recent-list{display:flex;flex-direction:column;margin-bottom:18px;}
+.recent-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 4px;border-bottom:1px solid var(--border);font-size:12px;}
+.recent-row:last-child{border-bottom:none;}
+.rr-ticket{font-weight:700;min-width:140px;}
+.rr-seller{color:var(--dim);min-width:110px;}
+.rr-pay{font-family:var(--font-mono);font-weight:700;margin-left:auto;}
+.rr-links a{color:var(--buy);text-decoration:none;font-size:11px;margin-left:8px;}
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+.toolbar .form-input{max-width:240px;}
+.count-line{font-size:11px;color:var(--dim);margin:4px 4px 10px;font-family:var(--font-mono);}
+.loading-row td, .empty-row td{color:var(--dim);text-align:center;padding:18px;font-style:italic;}
+.wtb-table tbody tr:not(.loading-row):not(.empty-row):hover{background:linear-gradient(90deg, color-mix(in srgb, var(--buy) 10%, transparent), transparent);}
+
+/* ── SINGLES TAB — reuses .tgl (the slab tab's vintage/special toggle) for era/kind/printing chips ── */
+.chipgroup{display:inline-flex;gap:3px;align-items:center;flex-wrap:wrap;}
+
+/* ── SINGLES TAB — per-row exclusions (NOT-taking conditions) ───────────── */
+.wtb-tier .wtb-excl{grid-column:1 / -1;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);}
+.excl-toggle{background:transparent;border:1px solid var(--border);color:var(--dim);border-radius:6px;padding:4px 10px;font-size:11px;font-family:var(--font-mono);letter-spacing:.5px;cursor:pointer;}
+.excl-toggle:hover{border-color:var(--red);color:var(--red);}
+.excl-list{margin-top:10px;display:flex;flex-direction:column;gap:10px;}
+.excl-item{position:relative;background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:8px;padding:10px 34px 10px 12px;}
+.excl-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.excl-field{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.excl-field.wide{grid-column:1 / -1;}
+.excl-field label{font-family:var(--font-mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);}
+.excl-input{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-family:var(--font-ui);font-size:12px;outline:none;width:100%;}
+.excl-input:focus{border-color:var(--buy);}
+.excl-textarea{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-family:var(--font-ui);font-size:12px;outline:none;resize:vertical;min-height:46px;width:100%;line-height:1.45;white-space:pre-wrap;}
+.excl-textarea:focus{border-color:var(--buy);}
+.excl-item .del{position:absolute;top:8px;right:8px;background:transparent;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:4px;opacity:.55;}
+.excl-item .del:hover{opacity:1;}
+.excl-empty{font-size:11px;color:var(--muted);font-style:italic;padding:4px 0 2px;}
+.excl-add{margin-top:2px;}
+
+/* ── SINGLES TAB — the exclude-group LIBRARY (sheet-level, named + toggleable) ───────── */
+.xg-list{display:flex;flex-direction:column;gap:10px;margin-bottom:10px;}
+.xg-item{position:relative;background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--border);border-radius:8px;padding:10px 34px 10px 12px;}
+.xg-item.on{border-left-color:var(--red);}
+.xg-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.xg-head .check{flex:none;}
+.xg-name{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-family:var(--font-ui);font-size:13px;font-weight:700;outline:none;flex:1 1 160px;min-width:120px;}
+.xg-name:focus{border-color:var(--buy);}
+.xg-id{font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:.5px;}
+.xg-toggle{background:transparent;border:none;color:var(--dim);font-size:11px;cursor:pointer;text-align:left;flex:1 1 100%;padding:2px 0 0;}
+.xg-toggle:hover{color:var(--text);}
+.xg-body{margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);}
+.xg-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.xg-item .del{position:absolute;top:8px;right:8px;background:transparent;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:4px;opacity:.55;}
+.xg-item .del:hover{opacity:1;}
+.xg-empty{text-align:center;color:var(--muted);font-size:12px;padding:10px 0;}
+.xg-add{margin-top:2px;}
+.xg-item.bad{box-shadow:inset 3px 0 0 var(--red);background:color-mix(in srgb, var(--red) 8%, transparent);}
+
+/* ── SINGLES TAB — banned cards (flat, always-applied, no toggle) ───────────────────── */
+.banned-box textarea{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--font-mono);font-size:12px;outline:none;resize:vertical;min-height:70px;width:100%;line-height:1.5;}
+.banned-box textarea:focus{border-color:var(--buy);}
+.banned-count{font-size:11px;color:var(--dim);margin-top:6px;font-family:var(--font-mono);}
+
+/* ── PAGE ADDITIONS — only what this standalone editor needs on top ──────── */
+
+/* keep everything above the html::before glow */
+body>*{position:relative;z-index:1;}
+
+/* the app's own comment calls flex-wrap on the nav a bug fix, not styling */
+.nav{flex-wrap:wrap;gap:12px 16px;}
+.logo{font-family:var(--font-display);font-size:17px;background:linear-gradient(90deg, var(--buy), var(--red));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;filter:drop-shadow(0 0 10px rgba(255,42,85,.35));display:inline-block;}
+.logo-sub{font-size:11px;color:var(--dim);margin-top:3px;}
+.nav-left{min-width:0;}
+.nav-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
+.saved{font-size:11px;color:var(--dim);font-family:var(--font-mono);}
+.msg{font-size:11px;color:var(--dim);max-width:300px;}
+.msg.ok{color:var(--buy);}
+.msg.err{color:var(--red);}
+.btn-save{background:var(--buy);color:var(--bg);box-shadow:0 0 14px rgba(63,169,255,.4);}
+.btn:disabled{opacity:.5;cursor:default;transform:none;}
+.btn:disabled:hover{opacity:.5;transform:none;}
+
+/* section header, matching the app's "⚙️ Pricing Rules" block */
+.sec-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;padding:0 4px;}
+.sec-title{font-size:16px;font-weight:800;}
+.sec-sub{font-size:11px;color:var(--dim);}
+.dirty-hint{font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--yellow);white-space:nowrap;padding-top:4px;}
+code{font-family:var(--font-mono);font-size:.92em;}
+
+/* global buy-language row */
+#wtb-buylang{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:2px 4px 14px;}
+.buylang-label{font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);}
+.buylang-hint{font-size:11px;color:var(--dim);}
+
+/* VINTAGE / SPECIAL toggles — same chip treatment as .rule-lang .rl */
+.wtb-tier .tgl{padding:2px 6px;border-radius:5px;font-size:10px;font-weight:800;cursor:pointer;font-family:var(--font-mono);border:1px solid var(--border);color:var(--dim);background:transparent;letter-spacing:.5px;}
+.wtb-tier .tgl:hover{color:var(--text);}
+.wtb-tier .tgl.on{background:var(--red);color:var(--bg);border-color:var(--red);}
+
+/* a row the server or the validator named in an error */
+.wtb-tier.bad{box-shadow:inset 3px 0 0 var(--red);background:color-mix(in srgb, var(--red) 8%, transparent);}
+.wtb-tier .del:focus-visible{opacity:1;}
+.wtb-tier .meta .sep{color:var(--muted);}
+
+.new-group-row{display:flex;gap:8px;justify-content:center;margin-top:6px;margin-bottom:18px;}
+.btn.new-group{background:var(--buy);color:var(--bg);}
+.empty-rules{text-align:center;color:var(--muted);font-size:13px;margin-bottom:12px;}
+
+/* sheet-settings card */
+.card-head{margin-bottom:14px;}
+.card-title{font-size:16px;font-weight:800;}
+.card-sub{font-size:11px;color:var(--dim);}
+.form-group.wide{grid-column:1 / -1;}
+.form-group:last-child{margin-bottom:0;}
+.pause-row{padding:12px 14px;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;margin-bottom:14px;}
+.check{display:inline-flex;align-items:center;gap:9px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;}
+.check input{width:17px;height:17px;accent-color:var(--buy);cursor:pointer;flex:none;}
+
+/* errors panel */
+.errors-card{border-color:var(--red);margin-top:16px;}
+.errors-card .card-title{color:var(--red);}
+.errors-card ul{margin:10px 0 0;padding-left:18px;font-size:12px;line-height:1.55;}
+.errors-card li{margin-bottom:4px;}
+
+/* edit-key lock card */
+#lock-card{margin-bottom:18px;border-color:var(--red);box-shadow:0 0 22px rgba(255,42,85,.3), inset 0 1px 0 rgba(63,169,255,.08);}
+.lock-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;}
+.lock-row .form-input{max-width:260px;}
+.lock-hint{font-size:11px;color:var(--dim);margin-top:10px;}
+.lock-err{font-size:12px;color:var(--red);margin-top:8px;}
+.change-key{font-size:11px;color:var(--dim);text-decoration:underline;cursor:pointer;}
+.change-key:hover{color:var(--text);}
+.editor-fieldset{display:block;border:0;margin:0;padding:0;min-width:0;}
+/* A class rule that sets `display` outbeats the browser's own `[hidden]{display:none}`, so a
+   fieldset carrying the hidden attribute still rendered: the locked Consignors page leaked every
+   seller name, partner name and column header to anyone with the URL. Caught live 2026-11-05 after
+   a source-only test passed. This wins for every element on the page, not just that fieldset. */
+[hidden]{display:none !important;}
+
+.foot{margin:18px 4px 40px;font-size:11px;color:var(--muted);font-family:var(--font-mono);}
+
+:focus-visible{outline:2px solid var(--purple);outline-offset:2px;}
+
+@media (max-width:768px){
+  .main{padding:16px;}
+  .nav{padding:12px 16px;}
+  .nav-right{justify-content:flex-start;}
+  .wtb-group{padding:14px 15px;}
+  /* collapse the 5-column grid into: range / meta / sort+pct+del on one line */
+  .wtb-tier{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 2px;}
+  .wtb-tier .range{flex:1 1 100%;}
+  .wtb-tier .meta{flex:1 1 100%;}
+  .wtb-tier .sort{flex:0 0 auto;text-align:left;}
+  .wtb-tier .pct{flex:0 0 auto;}
+  .wtb-tier .del{flex:0 0 auto;margin-left:auto;opacity:1;}
+  .wtb-tier .wtb-excl{flex:1 1 100%;}
+  .excl-grid{grid-template-columns:1fr;}
+  .form-row{grid-template-columns:1fr;}
+  .msg{max-width:100%;}
+  .nav-tabs{order:3;flex-basis:100%;justify-content:center;margin-top:4px;}
+  .stat-strip{grid-template-columns:repeat(2,1fr);}
+  .partner-strip{grid-template-columns:1fr;}
+  .partner-grid{grid-template-columns:repeat(2,1fr);}
+  .toolbar{flex-direction:column;align-items:stretch;}
+  .toolbar .form-input{max-width:none;}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+    scroll-behavior:auto!important;
+  }
+}
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="nav-left">
+    <div class="logo">Iced Out <em>Penguin</em></div>
+    <div class="logo-sub">Scanner · scan a cert at a show</div>
+  </div>
+<nav class="nav-tabs" aria-label="Sections">
+    <a class="nav-tab" href="index.html">💰 Pricing Rules</a>
+    <a class="nav-tab" href="singles.html">🃏 Singles</a>
+    <a class="nav-tab" href="consignors.html">📦 Consignors</a>
+    <a class="nav-tab active" href="scanner.html">📷 Scanner</a>
+  </nav>
+  <div class="nav-right">
+    <span class="msg" id="msg" role="status" aria-live="polite"></span>
+<span hidden>
+    <span class="helper-pill" id="bot-pill" title="When the bot last read these rates">⚪ Bot: not seen yet</span>
+</span>
+    <span class="saved" id="st-saved">Loading the sheet…</span>
+    <a href="#" class="change-key" id="change-key" hidden title="Forget the saved edit key on this browser">Change key</a>
+<span hidden>
+    <button type="button" class="btn btn-ghost btn-sm" id="reload" title="Throw away unsaved edits and reload the saved sheet">↻ Reload</button>
+    <button type="button" class="btn btn-sm btn-save" id="save" title="Save the sheet. Asks for the edit key the first time.">💾 Save</button>
+</span>
+  </div>
+</header>
+
+<main class="main">
+
+<style>
+  /* Scoped to this panel on purpose, same reasoning as PANEL:consignors' own <style>: only
+     scanner.html ships this markup, so it stays out of the shared head CSS every page carries.
+     One-handed at 375px wide, standing up at a show: one column, big tap targets, big numbers.
+     Blue/black/red only (DESIGN.md / the owner's call) - no green was added for "good", CL value
+     uses --buy the same way the rest of the app uses it for a number that matters. */
+  #tab-scanner .scanner-layout{display:flex;flex-direction:column;gap:14px;max-width:520px;margin:0 auto;}
+  #tab-scanner .card{padding:16px;}
+
+  #tab-scanner .sc-vf-wrap{min-width:0;}
+  #tab-scanner .sc-vf{
+    position:relative;overflow:hidden;height:clamp(240px,46vh,440px);
+    border-radius:var(--r-lg);border:1px solid var(--border);background:#000;
+    touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+    -webkit-tap-highlight-color:transparent;cursor:crosshair;
+  }
+  #tab-scanner .sc-vf-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+  #tab-scanner .sc-vf-marks{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+  #tab-scanner .sc-mark{fill:rgba(63,169,255,.14);stroke:var(--buy);stroke-width:3;stroke-linejoin:round;filter:drop-shadow(0 0 3px rgba(0,0,0,.8));}
+  #tab-scanner .sc-mark-taken{fill:rgba(63,169,255,.4);stroke:var(--buy);stroke-width:4;stroke-linejoin:round;}
+  #tab-scanner .sc-vf-top{position:absolute;top:10px;left:10px;right:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  #tab-scanner .sc-vf-round{display:grid;place-items:center;width:42px;height:42px;padding:0;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(0,0,0,.5);color:#fff;font-size:16px;cursor:pointer;}
+  #tab-scanner .sc-vf-round.on{background:var(--buy);border-color:var(--buy);color:var(--bg);}
+  #tab-scanner .sc-vf-round-space{width:42px;}
+  #tab-scanner .sc-vf-pill{padding:5px 12px;border-radius:var(--r-pill);background:rgba(0,0,0,.6);color:#fff;font-size:12px;white-space:nowrap;}
+  #tab-scanner .sc-vf-bottom{position:absolute;left:0;right:0;bottom:12px;display:flex;flex-direction:column;align-items:center;gap:10px;}
+  #tab-scanner .sc-vf-hint{max-width:calc(100% - 24px);padding:4px 11px;border-radius:var(--r-pill);background:rgba(0,0,0,.55);color:rgba(255,255,255,.92);font-size:11.5px;text-align:center;}
+  #tab-scanner .sc-vf-shutter{width:64px;height:64px;padding:4px;border-radius:50%;border:4px solid rgba(255,255,255,.95);background:rgba(0,0,0,.15);cursor:pointer;}
+  #tab-scanner .sc-vf-shutter span{display:block;width:100%;height:100%;border-radius:50%;background:#fff;transition:transform .1s;}
+  #tab-scanner .sc-vf-shutter:active span{transform:scale(.86);}
+  #tab-scanner .sc-vf-off{display:flex;flex-direction:column;align-items:center;gap:12px;padding:28px 18px;text-align:center;}
+  #tab-scanner .sc-vf-off-icon{font-size:32px;}
+  #tab-scanner .sc-vf-off-text{max-width:360px;font-size:12.5px;line-height:1.5;color:var(--dim);}
+
+  #tab-scanner .sc-box{display:flex;gap:8px;align-items:stretch;min-width:0;}
+  #tab-scanner .sc-box .form-input{flex:1 1 auto;min-width:0;font-size:17px;}
+  #tab-scanner .sc-box .btn{flex:none;min-height:46px;}
+  #tab-scanner .sc-box-err,#tab-scanner .sc-signin-err{margin-top:10px;font-size:12px;color:var(--red);}
+
+  #tab-scanner .sc-sub{font-size:12px;line-height:1.5;color:var(--dim);margin:4px 0 12px;}
+
+  #tab-scanner .sc-result-head{display:flex;flex-direction:column;gap:6px;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+  #tab-scanner .sc-result-name{font:700 16px/1.3 var(--font-display);overflow-wrap:anywhere;}
+  #tab-scanner .sc-result-id{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:12px;color:var(--dim);}
+  #tab-scanner .sc-result-id .sc-result-cert{font-family:var(--font-mono);color:var(--text);}
+
+  #tab-scanner .sc-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+  #tab-scanner .sc-tile{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:var(--r);background:var(--s2);border:1px solid var(--border);min-width:0;}
+  #tab-scanner .sc-tile-green{grid-column:1 / -1;background:linear-gradient(165deg, var(--s3), var(--s2));border-color:color-mix(in srgb, var(--buy) 45%, var(--border));box-shadow:inset 0 1px 0 rgba(63,169,255,.12);container-type:inline-size;}
+  #tab-scanner .sc-money{font-family:var(--font-display);font-weight:800;letter-spacing:-0.3px;}
+  #tab-scanner .sc-tile .sc-money{font-size:20px;}
+  #tab-scanner .sc-tile-green .sc-money{font-size:min(40px, 18cqi);color:var(--buy);text-shadow:0 0 16px rgba(63,169,255,.45);white-space:nowrap;}
+  #tab-scanner .sc-tile-pending .sc-money{color:var(--dim);font-size:14px;}
+
+  #tab-scanner .sc-rate-row{padding:12px 14px;border-radius:var(--r);background:var(--s2);border:1px solid var(--border);margin-bottom:12px;}
+  #tab-scanner .sc-rate-line{margin-top:4px;font-size:15px;font-weight:700;}
+  #tab-scanner .sc-rate-line .status-pill{margin-left:8px;}
+
+  #tab-scanner .sc-note{font-size:12px;line-height:1.5;color:var(--dim);padding-top:4px;border-top:1px dashed var(--border);margin-top:4px;}
+  #tab-scanner .sc-note.warn{color:var(--yellow);}
+
+  #tab-scanner .sc-earlier-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:9px 2px;border-bottom:1px solid var(--border);background:none;border-left:0;border-right:0;border-top:0;color:inherit;font:inherit;text-align:left;cursor:pointer;}
+  #tab-scanner .sc-earlier-row:last-child{border-bottom:0;}
+  #tab-scanner .sc-earlier-row .cert{font-family:var(--font-mono);color:var(--dim);font-size:11px;}
+  #tab-scanner .sc-earlier-row .name{font-size:13px;}
+  #tab-scanner .sc-earlier-row .val{font-family:var(--font-display);font-weight:700;color:var(--buy);}
+
+  @media (max-width:420px){
+    #tab-scanner .sc-tile-green .sc-money{font-size:min(34px, 20cqi);}
+  }
+</style>
+<div class="tab active" id="tab-scanner">
+<div class="scanner-layout">
+
+  <section class="card sc-vf-wrap" id="sc-vf-wrap">
+    <div class="sc-vf" id="sc-vf" hidden>
+      <video class="sc-vf-video" id="sc-video" autoplay playsinline muted></video>
+      <svg class="sc-vf-marks" id="sc-marks"></svg>
+      <div class="sc-vf-top">
+        <button type="button" class="sc-vf-round" id="sc-torch" title="Flashlight" hidden>🔦</button>
+        <span class="sc-vf-pill" id="sc-vf-status">Starting camera…</span>
+        <span class="sc-vf-round-space"></span>
+      </div>
+      <div class="sc-vf-bottom">
+        <div class="sc-vf-hint" id="sc-vf-hint">Tap a barcode's outline to read it</div>
+        <button type="button" class="sc-vf-shutter" id="sc-shutter" title="Read the most central barcode"><span></span></button>
+      </div>
+    </div>
+    <div class="sc-vf-off" id="sc-vf-off">
+      <div class="sc-vf-off-icon">📷</div>
+      <div class="sc-vf-off-text" id="sc-vf-off-text">Tap to scan a slab's barcode or QR code. One tap reads it - it never grabs a code on its own.</div>
+      <button type="button" class="btn btn-buy" id="sc-start">Start camera</button>
+    </div>
+  </section>
+
+  <section class="card" id="sc-box-card">
+    <div class="form-label">Cert number</div>
+    <div class="sc-box">
+      <input class="form-input" id="sc-cert-input" type="text" inputmode="numeric" autocomplete="off"
+             placeholder="Type or paste a cert, or a PSA/CGC cert link" aria-label="Cert number">
+      <button type="button" class="btn btn-buy" id="sc-cert-go">Price it</button>
+    </div>
+    <div class="sc-box-err" id="sc-box-err" hidden></div>
+  </section>
+
+  <section class="card sc-signin" id="sc-signin" hidden>
+    <div class="card-title">🔒 Sign in for live pricing</div>
+    <p class="sc-sub">CL value comes from Josh's Triumph account through the sourcer bridge, which needs
+       its own login - not the rates edit key. Ask Josh if you don't have one.</p>
+    <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="sc-email" type="email" autocomplete="username"></div>
+    <div class="form-group"><label class="form-label">Password</label><input class="form-input" id="sc-password" type="password" autocomplete="current-password"></div>
+    <button type="button" class="btn btn-buy" id="sc-signin-go">Sign in</button>
+    <span class="sc-sub" id="sc-signed-in-as" style="display:block;margin-top:10px;"></span>
+    <div class="sc-signin-err" id="sc-signin-err" hidden></div>
+  </section>
+
+  <section class="card scanner-result" id="sc-result" hidden>
+    <div class="sc-result-head">
+      <div class="sc-result-name" id="sc-name">—</div>
+      <div class="sc-result-id">
+        <span class="sc-result-cert" id="sc-cert">—</span>
+        <span id="sc-grader">—</span>
+        <span id="sc-grade">—</span>
+      </div>
+    </div>
+
+    <div class="sc-tiles">
+      <div class="sc-tile sc-tile-green" id="sc-clv-tile">
+        <div class="sc-stat-label">CL value</div>
+        <div class="sc-money" id="sc-clv">—</div>
+      </div>
+    </div>
+
+    <div class="sc-rate-row" id="sc-rate-row">
+      <div class="sc-stat-label">Rules default</div>
+      <div class="sc-rate-line" id="sc-rate-line">—</div>
+    </div>
+
+    <div class="sc-tiles">
+      <div class="sc-tile" id="sc-avg3-tile"><div class="sc-stat-label">Avg of 3</div><div class="sc-money" id="sc-avg3">—</div></div>
+      <div class="sc-tile" id="sc-avg5-tile"><div class="sc-stat-label">Avg of 5</div><div class="sc-money" id="sc-avg5">—</div></div>
+    </div>
+
+    <div class="sc-note" id="sc-note" hidden></div>
+  </section>
+
+  <section class="card scanner-earlier" id="sc-earlier" hidden>
+    <div class="sec-head"><div class="sec-title">This visit</div></div>
+    <div id="sc-earlier-list"></div>
+  </section>
+
+</div>
+</div>
+
+</main>
+
+<script>
+/* SCANNER-CORE:START - generated from money.js + certs.js + triumph.js + rules.js + scanner/scanPick.js by build-portal.js, do not edit by hand */
+(function () {
+'use strict';
+// All money is integer CENTS. Round half up, PER ITEM, then sum. Never round a total.
+// This module is the single source of truth for money math — every other module imports it.
+
+// Parse a dollar value (number or string like "$1,234.56") to integer cents, half up. null if blank/NaN.
+function toCents(v) {
+  if (v == null || v === '') return null;
+  const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/[$,\s]/g, ''));
+  if (!isFinite(n)) return null;
+  return Math.round(n * 100 + (n >= 0 ? Number.EPSILON : -Number.EPSILON));
+}
+
+// Integer cents -> number of dollars (for rendering only).
+function toDollars(cents) {
+  if (cents == null) return null;
+  return cents / 100;
+}
+
+// Payout = value * pct%, rounded half up to the cent. e.g. pctOf(1300, 90) === 1170 ($11.70).
+function pctOf(valueCents, pct) {
+  if (valueCents == null || pct == null) return null;
+  return Math.round((valueCents * pct) / 100 + Number.EPSILON);
+}
+
+// Average of the first n sale-cents, half up. null if fewer than n sales.
+function avgCents(salesCents, n) {
+  if (!Array.isArray(salesCents)) return null;
+  const slice = salesCents.filter(c => c != null).slice(0, n);
+  if (slice.length < n) return null;
+  return Math.round(slice.reduce((a, b) => a + b, 0) / n + Number.EPSILON);
+}
+
+// Lowest of the given cent values, ignoring null/undefined. null if none.
+function lowestOf(...cents) {
+  const vals = cents.flat().filter(c => c != null);
+  return vals.length ? Math.min(...vals) : null;
+}
+
+// Owner's rule (2026-11-05): "if sales are like 500, 500, 800, 500, it should put averages as 500 -
+// disregarding the super high sales." A single freak sale must never drag a sale average up.
+//
+// 1.5x the MEDIAN of the n sales being averaged, not the project's usual 1.75x-of-CL-value cap (the
+// bot's recentSales-outlier filter elsewhere compares a sale to Card Ladder's own modeled value, an
+// INDEPENDENT reference that can legitimately run higher than recent comps). Here the reference is
+// the median of the very sales being averaged - a far tighter, self-consistent number - so the same
+// 1.75x slack would miss the flier this exists to catch: the owner's own example is only 1.6x its
+// median (800 vs 500), which a 1.75x band would wave through. 1.5x is the tightest round multiplier
+// that drops that flier while still tolerating ordinary day-to-day spread (a sale 20-40% over its
+// peers stays in). Only HIGH outliers are dropped - a genuinely cheap sale below the median is real
+// information, and dropping it would only inflate what we pay, never protect against it.
+const AVG_OUTLIER_MULTIPLIER = 1.5;
+
+/**
+ * An outlier-safe version of avgCents: same contract (first n non-null sale-cents, half up, null if
+ * fewer than n) but a sale far above the pack never drags the number up.
+ *   1. median of the n most-recent sales (median, not mean - the mean is the thing an outlier poisons).
+ *   2. any sale over AVG_OUTLIER_MULTIPLIER x that median is dropped.
+ *   3. average of what is left, half up.
+ * The median value itself is always <= the threshold (the multiplier is >= 1), so step 3 always has at
+ * least one sale to average - `kept` is never empty when the function returns a non-null `cents`.
+ *
+ * With only 1 sale there is nothing to compare it to (median = itself = never flagged). With exactly 2,
+ * the median is their mean, so only a wildly disparate pair (the higher more than 3x the lower) can
+ * ever trip the threshold - an appropriately conservative bar, since with just two points there is no
+ * third one to say which is "normal". Never silently used without a caller checking `flagged`: a
+ * flagged result still returns the cleaned `cents` (the caller decides whether to also surface it).
+ *
+ * Returns `{ cents, flagged, dropped, kept, medianCents, beforeCents }`: `cents` is the final
+ * (cleaned) average; `beforeCents` is the naive average of the same n sales with nothing dropped, for
+ * a "before/after" note; `dropped`/`kept` are the sale-cents arrays that did/didn't survive.
+ */
+function avgCentsClean(salesCents, n) {
+  const empty = { cents: null, flagged: false, dropped: [], kept: [], medianCents: null, beforeCents: null };
+  if (!Array.isArray(salesCents) || !Number.isFinite(n) || n <= 0) return empty;
+  const slice = salesCents.filter(c => c != null).slice(0, n);
+  if (slice.length < n) return empty;
+
+  const sorted = [...slice].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  const medianCents = sorted.length % 2
+    ? sorted[mid]
+    : Math.round((sorted[mid - 1] + sorted[mid]) / 2 + Number.EPSILON);
+  const beforeCents = Math.round(slice.reduce((a, b) => a + b, 0) / slice.length + Number.EPSILON);
+
+  const threshold = medianCents * AVG_OUTLIER_MULTIPLIER;
+  const kept = slice.filter(c => c <= threshold);
+  const dropped = slice.filter(c => c > threshold);
+  const cents = Math.round(kept.reduce((a, b) => a + b, 0) / kept.length + Number.EPSILON);
+
+  return { cents, flagged: dropped.length > 0, dropped, kept, medianCents, beforeCents };
+}
+
+// Sum of already-rounded cent values (the comp total).
+function sumCents(arr) {
+  return (arr || []).reduce((a, b) => a + (b || 0), 0);
+}
+
+// Render integer cents as "$1,234.56".
+function fmt(cents) {
+  if (cents == null) return '';
+  const neg = cents < 0;
+  const abs = Math.abs(cents);
+  const s = (abs / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (neg ? '-$' : '$') + s;
+}
+
+window.Money = {
+  toCents: toCents,
+  toDollars: toDollars,
+  pctOf: pctOf,
+  avgCents: avgCents,
+  avgCentsClean: avgCentsClean,
+  AVG_OUTLIER_MULTIPLIER: AVG_OUTLIER_MULTIPLIER,
+  lowestOf: lowestOf,
+  sumCents: sumCents,
+  fmt: fmt,
+};
+})();
+
+(function () {
+'use strict';
+// Cert parser: turn whatever a seller pastes into clean buckets.
+//   certs       -> slabs we price (grader in buyGraders, default PSA + CGC)
+//   notBought   -> a grader we don't buy (e.g. BGS/SGC/TAG)
+//   unreadable  -> looked like a cert but can't be trusted (bad length, ambiguous grader)
+//   repeats     -> already on the list this paste
+// Conventions (from Icevyy): grader by cert length (>=10 digits = CGC, else PSA); dedup ignores
+// leading zeros; a 7-digit PSA is an 8-digit cert that lost a leading zero in a spreadsheet, so we
+// look it up with the digits as written but dedupe on the zero-stripped key.
+
+const GRADER_WORDS = { psa: 'psa', cgc: 'cgc', bgs: 'bgs', beckett: 'bgs', sgc: 'sgc', tag: 'tag' };
+
+const certKey = d => String(d).replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+const graderByLength = digits => (certKey(digits).length >= 10 ? 'cgc' : 'psa');
+
+// Lines that are clearly conversation, not cert lists, so we don't try to parse them as certs.
+function isChatLine(line) {
+  const t = line.trim();
+  if (!t) return true;
+  if (/https?:\/\//i.test(t)) return true;
+  if (/tracking|usps|u\.?p\.?s|fedex|\b1z[0-9a-z]{6}/i.test(t)) return true;
+  if (/\b(street|ave|avenue|road|\brd\b|drive|\bdr\b|lane|\bln\b|blvd|suite|\bapt\b|\bzip\b)\b/i.test(t) && /\d/.test(t)) return true;
+  const words = t.split(/\s+/);
+  const hasCertish = words.some(w => w.replace(/\D/g, '').length >= 7);
+  if (words.length >= 8 && !hasCertish) return true; // long prose, no cert-shaped number
+  return false;
+}
+
+function parseCerts(input, opts = {}) {
+  const buyGraders = (opts.buyGraders || ['psa', 'cgc']).map(s => s.toLowerCase());
+  const seen = opts.seen instanceof Set ? opts.seen : new Set(); // pass a Set to dedupe across pastes
+  const out = { certs: [], notBought: [], unreadable: [], repeats: [] };
+
+  for (const rawLine of String(input || '').split(/\r?\n/)) {
+    if (isChatLine(rawLine)) continue;
+
+    const lower = rawLine.toLowerCase();
+    const named = [...new Set(
+      Object.keys(GRADER_WORDS).filter(w => new RegExp('\\b' + w + '\\b').test(lower)).map(w => GRADER_WORDS[w])
+    )];
+    const tokens = rawLine.split(/[\s,;|]+/).filter(Boolean);
+
+    for (let i = 0; i < tokens.length; i++) {
+      const tok = tokens[i];
+      const digits = tok.replace(/\D/g, '');
+      if (!digits) continue;
+
+      // Resolve this token's grader, and whether a grader was *explicitly* tied to it.
+      let grader = null, explicit = false;
+      const pre = tok.toLowerCase().match(/^(psa|cgc|bgs|beckett|sgc|tag)/);
+      if (pre) { grader = GRADER_WORDS[pre[1]]; explicit = true; }
+      if (!grader && i > 0 && GRADER_WORDS[tokens[i - 1].toLowerCase()]) { grader = GRADER_WORDS[tokens[i - 1].toLowerCase()]; explicit = true; }
+      if (!grader && named.length === 1) { grader = named[0]; explicit = true; }
+      const ambiguousLine = !grader && named.length >= 2;
+
+      const key = certKey(digits);
+
+      // Length gates.
+      if (key.length < 7) {
+        if (explicit) out.unreadable.push({ text: tok, why: 'too short to be a cert' });
+        continue; // otherwise it's a year / card number / stray digits -> ignore silently
+      }
+      if (key.length > 12) { out.unreadable.push({ text: tok, why: 'too long to be a cert' }); continue; }
+      if (/^0+$/.test(digits)) { out.unreadable.push({ text: tok, why: 'all zeros' }); continue; }
+      if (ambiguousLine) { out.unreadable.push({ text: tok, why: 'line names more than one grader; one slab per line' }); continue; }
+
+      if (!grader) grader = graderByLength(digits);
+
+      const dedupKey = grader + ':' + key;
+      if (seen.has(dedupKey)) { out.repeats.push({ cert: digits, grader }); continue; }
+      seen.add(dedupKey);
+
+      if (buyGraders.includes(grader)) out.certs.push({ cert: digits, certKey: key, grader });
+      else out.notBought.push({ cert: digits, grader, why: grader.toUpperCase() + ' not bought' });
+    }
+  }
+  return out;
+}
+
+window.Certs = {
+  parseCerts: parseCerts,
+  certKey: certKey,
+  graderByLength: graderByLength,
+  isChatLine: isChatLine,
+  GRADER_WORDS: GRADER_WORDS,
+};
+})();
+
+(function () {
+'use strict';
+const YEAR_RE = /\b(19\d{2}|20\d{2})\b/;
+
+/**
+ * Text -> one of the rate sheet's SPORT_KEYS. Checked in this order, first hit wins, so the named
+ * TCGs beat the league words and the league words beat the "it is some sport" catch-all. Triumph's
+ * raw `category` is a single lowercase word ("pokemon", "football"), but the same list reads a card
+ * TITLE, which is all we have when the field is missing.
+ */
+const SPORT_WORDS = [
+  [/one\s*piece/i, 'one_piece'],
+  [/dragon\s*ball/i, 'dragon_ball'],
+  [/pok[eé]mon/i, 'pokemon'],
+  [/\b(nfl|football)\b/i, 'nfl'],
+  [/\b(nba|basketball)\b/i, 'nba'],
+  [/\b(mlb|baseball)\b/i, 'mlb'],
+  [/\b(nhl|hockey)\b/i, 'nhl'],
+  [/\b(soccer|fifa)\b|premier\s*league/i, 'soccer'],
+  [/\b(racing|nascar|indycar|f1)\b|formula\s*1\b/i, 'racing'],
+  [/\b(wrestling|boxing|ufc|mma|wwe|wwf|fighting)\b/i, 'fighting'],
+  [/\b(golf|pga)\b/i, 'golf'],
+  [/\bsports?\b/i, 'sports'],
+];
+
+/**
+ * Brands that only ever print sports cards. A title naming one but no league is still a sports slab,
+ * which is what the rate sheet's 'sports' umbrella row is for.
+ */
+const SPORTS_BRANDS = /\b(panini|topps|prizm|donruss|mosaic|select|optic|bowman|fleer|upper\s*deck)\b/i;
+
+function yearFromTitle(title) {
+  const m = YEAR_RE.exec(String(title || ''));
+  if (!m) return null;
+  const y = Number(m[1]);
+  return y >= 1900 && y <= new Date().getFullYear() + 1 ? y : null;
+}
+
+function sportFromText(text) {
+  for (const [re, key] of SPORT_WORDS) if (re.test(text)) return key;
+  return null;
+}
+
+/** Triumph's own category word. A word we don't recognise is still a real category, so it is 'other'. */
+function sportFromCategory(value) {
+  const s = value == null ? '' : String(value).trim();
+  if (!s) return null;
+  return sportFromText(s) || 'other';
+}
+
+/** A card title. Nothing recognisable is null — "other" would be a guess, and the bot never guesses. */
+function sportFromTitle(title) {
+  const t = title == null ? '' : String(title);
+  if (!t.trim()) return null;
+  return sportFromText(t) || (SPORTS_BRANDS.test(t) ? 'sports' : null);
+}
+
+// Triumph's own category/game field, under whatever name it shows up as, else read off the title.
+function mapSport(raw, cardTitle) {
+  const explicit = raw.category ?? raw.cardCategory ?? raw.productCategory ?? raw.game ?? raw.sport ?? raw.tcg ?? null;
+  return sportFromCategory(explicit) || sportFromTitle(cardTitle);
+}
+
+function mapYear(raw, cardTitle) {
+  const explicit = raw.year ?? raw.cardYear ?? raw.releaseYear ?? null;
+  if (explicit != null && isFinite(Number(explicit))) return Number(explicit);
+  return yearFromTitle(cardTitle);
+}
+
+window.SportCore = {
+  yearFromTitle: yearFromTitle,
+  sportFromText: sportFromText,
+  sportFromCategory: sportFromCategory,
+  sportFromTitle: sportFromTitle,
+  mapSport: mapSport,
+  mapYear: mapYear,
+};
+})();
+
+(function () {
+'use strict';
+var money = window.Money;
+
+const NEW_CERT_FROM = 70_000_000; // PSA cert# >= this is a "new" cert
+const SCHEMA = 'iced-out-rates-v2';
+const SCHEMA_V1 = 'iced-out-rates-v1';
+
+/** Every basis, with the wording staff read when they pick one (the ephemeral menu, the staff sheet). */
+const BASIS_LABEL = {
+  clv: 'CL value',
+  avg3: 'Avg of last 3 sales',
+  lowest: 'Lowest of CL value & 3-avg',
+};
+/** The same keys, short enough for the staff sheet's narrow "Paid on" column. */
+const BASIS_SHORT = {
+  clv: 'CLV',
+  avg3: '3 avg',
+  lowest: 'lowest',
+};
+const BASIS_KEYS = Object.keys(BASIS_LABEL);
+const isBasis = b => typeof b === 'string' && Object.prototype.hasOwnProperty.call(BASIS_LABEL, b);
+
+// ── the v2 vocabulary (mirrors rates-portal/validate.ts; keep the two in step) ─
+/** Every sport/game a row can ask for. '*' is "any sport". */
+const SPORT_KEYS = Object.freeze([
+  'pokemon', 'one_piece', 'dragon_ball',
+  'nba', 'nfl', 'mlb', 'nhl', 'soccer', 'racing', 'fighting', 'golf',
+  'sports', 'other', '*',
+]);
+/** What a row with sport 'sports' covers: every league, so one row can price all of them at once. */
+const SPORT_LEAGUES = Object.freeze(['nba', 'nfl', 'mlb', 'nhl', 'soccer', 'racing', 'fighting', 'golf', 'sports']);
+/** Plain names, no emoji: the staff sheet's column and the /rates lines read these. */
+const SPORT_SHORT = Object.freeze({
+  pokemon: 'Pokemon', one_piece: 'One Piece', dragon_ball: 'Dragon Ball',
+  nba: 'NBA', nfl: 'NFL', mlb: 'MLB', nhl: 'NHL', soccer: 'Soccer',
+  racing: 'Racing', fighting: 'Fighting', golf: 'Golf',
+  sports: 'Sports', other: 'Other', '*': 'Any sport',
+});
+/** The bot never buys BGS or SGC, so a row can only ask for PSA, CGC or both. */
+const GRADER_KEYS = Object.freeze(['*', 'PSA', 'CGC']);
+const GRADER_SHORT = Object.freeze({ '*': 'Any grader', PSA: 'PSA', CGC: 'CGC' });
+/** The four languages we buy. A row listing all four does not gate on language at all. */
+const LANGUAGE_KEYS = Object.freeze(['english', 'japanese', 'korean', 'chinese']);
+const MIN_GRADE = 1;
+const MAX_GRADE = 10;
+
+/**
+ * What a seller is told about a slab we do not want. A slab whose value IS known but fits no rate
+ * band is REJECTED, not quoted: anything outside the ranges in the portal is not priced by us at
+ * all. comp.js builds the row note from this and sheet.js prints it on BOTH sheets, in red — one
+ * wording, in one place, so the two sheets can never drift apart.
+ */
+const REJECT_TEXT = "We're not buying this right now";
+/** The machine half of the same outcome: priceSlab's `why` on a rejected slab. */
+const REJECT_WHY = 'outside our current ranges';
+
+/**
+ * A saved basis key as one of today's keys, or null when it isn't one. The bot used to offer a
+ * 5-sale average and four "lowest of" combinations; tickets, rate rows and settings saved back then
+ * still carry those keys, so they are translated here instead of blowing up: the old two-way
+ * "lowest of CL value & 3-avg" IS today's `lowest`, and every key built on the 5-avg is simply gone
+ * (null -> the caller falls back to its own default, and the menu reopens on that default).
+ */
+const LEGACY_BASIS = {
+  low_clv_avg3: 'lowest',
+  avg5: null,
+  low_clv_avg5: null,
+  low_avg3_avg5: null,
+};
+function normalizeBasis(key) {
+  if (isBasis(key)) return key;
+  return (typeof key === 'string' && Object.prototype.hasOwnProperty.call(LEGACY_BASIS, key))
+    ? LEGACY_BASIS[key]
+    : null;
+}
+
+let cache = { settings: null, at: 0 };
+let source = null;          // which place the cached settings came from (settingsSource())
+let keyRejectedLogged = false; // the 401 line is printed once per process, not once per comp
+
+// ── plain-English matching helpers (title words, year) ─────────────────────────
+function plainWords(s) {
+  return String(s ?? '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+function hasWord(text, word) {
+  return !!word && (' ' + text + ' ').includes(' ' + word);
+}
+
+// ── language (ported from the app's web/src/lib/slabBot.ts, which the portal's rows are built on) ──
+/** Every language a slab can be in, read from its title. 'Other' = any language not listed. */
+const SLAB_LANGUAGES = Object.freeze(['English', 'Japanese', 'Chinese', 'Korean', 'Other']);
+
+/** The words in a title that say its language, checked in this order (the first language found wins). */
+const LANGUAGE_WORDS = Object.freeze([
+  ['Japanese', ['japanese', 'jpn']],
+  ['Chinese', ['chinese']],
+  ['Korean', ['korean']],
+  ['Other', ['german', 'french', 'spanish', 'italian', 'portuguese', 'thai', 'indonesian', 'dutch', 'polish', 'russian']],
+]);
+
+/**
+ * A card's language from its title, as whole words in any capitals: "japanese" or "jpn" is Japanese,
+ * "chinese" Chinese, "korean" Korean, "german", "french", "spanish", "italian", "portuguese", "thai",
+ * "indonesian", "dutch", "polish" or "russian" Other; any other title is English. A title with no
+ * letters or digits (null, empty, only spaces or marks) says nothing: null. Two-letter codes ("JP",
+ * "DE", "IT") don't count: they are too often something else.
+ */
+function languageOf(title) {
+  const t = plainWords(title);
+  if (!t) return null;
+  const words = ` ${t} `;
+  for (const [language, list] of LANGUAGE_WORDS) {
+    if (list.some(w => words.includes(` ${w} `))) return language;
+  }
+  return 'English';
+}
+
+/** A slab's language as the rows read it: one of SLAB_LANGUAGES, else null (not known). */
+const slabLanguage = language => (SLAB_LANGUAGES.includes(language) ? language : null);
+
+/** A slab language as a v2 key ('English' -> 'english'); null for 'Other' and anything unreadable. */
+function languageKeyOf(language) {
+  const key = typeof language === 'string' ? language.trim().toLowerCase() : null;
+  return key && LANGUAGE_KEYS.includes(key) ? key : null;
+}
+
+/**
+ * Whether a row's effective language list takes a slab's language. The list is the row's own
+ * `languages` when it has one, else the sheet's `buyLanguages`. A list naming all four languages
+ * does not restrict anything; any shorter list takes only slabs read as exactly one of them, so
+ * 'Other' and a language we could not read are both turned away — the bot never guesses.
+ */
+function languagesFit(list, language) {
+  if (!Array.isArray(list) || !list.length) return true;
+  if (LANGUAGE_KEYS.every(k => list.includes(k))) return true;
+  const key = languageKeyOf(language);
+  return key != null && list.includes(key);
+}
+
+/**
+ * Whether a row's sport takes a slab's. '*' takes everything, including a slab we could not
+ * classify; 'sports' is the umbrella over every league (SPORT_LEAGUES); anything else is an exact
+ * match. A slab with no sport fits ONLY a '*' row — never a guess.
+ */
+function sportFits(rowSport, slabSport) {
+  if (rowSport == null || rowSport === '*') return true;
+  if (slabSport == null) return false;
+  if (rowSport === 'sports') return SPORT_LEAGUES.includes(slabSport);
+  return rowSport === slabSport;
+}
+
+/** Whether a row's grader takes a slab's: '*' both, 'PSA' only psa, 'CGC' only cgc, unknown neither. */
+function graderFits(rowGrader, slabGrader) {
+  if (rowGrader == null || rowGrader === '*') return true;
+  return typeof slabGrader === 'string' && slabGrader.toLowerCase() === rowGrader.toLowerCase();
+}
+
+/**
+ * Whether a slab's grade is inside the row's range. A slab with no grade at all fits only a row that
+ * asks for the whole 1-10 range: the moment a row narrows the grade, an unknown grade is a guess.
+ */
+function gradeFits(row, grade) {
+  const min = row.gradeMin == null ? MIN_GRADE : row.gradeMin;
+  const max = row.gradeMax == null ? MAX_GRADE : row.gradeMax;
+  if (grade == null) return min === MIN_GRADE && max === MAX_GRADE;
+  return grade >= min && grade <= max;
+}
+
+function isNewCert(cert) {
+  const digits = String(cert ?? '').replace(/\D/g, '');
+  if (!digits) return false;
+  const n = Number(digits.replace(/^0+(?=\d)/, '') || '0');
+  return n >= NEW_CERT_FROM;
+}
+
+/** Vintage holo: year known and WOTC-era (<= vintageMaxYear) AND the title says "holo" (not "non-holo"). */
+function isVintage(slab, settings) {
+  const year = slab.year ?? null;
+  if (year == null || year > settings.vintageMaxYear) return false;
+  const t = plainWords(slab.title);
+  return hasWord(t, 'holo') && !hasWord(t, 'non holo') && !hasWord(t, 'nonholo');
+}
+
+/** Special set: WOTC-era by year alone (any name), OR the title names one of the special keywords. */
+function isSpecial(slab, settings) {
+  const year = slab.year ?? null;
+  if (year != null && year <= settings.vintageMaxYear) return true;
+  const t = plainWords(slab.title);
+  return (settings.specialKeywords || []).some(w => hasWord(t, plainWords(w)));
+}
+
+/**
+ * The cents a basis is worth for one slab, or null when it can't be worked out. `lowest` ignores the
+ * input it doesn't have (money.lowestOf drops nulls), so it is null only when BOTH are missing — a
+ * slab with no 3-avg is still paid on its CL value under "lowest of CL value & 3-avg".
+ */
+function resolveBasisCents(basis, slab) {
+  const clv = slab.clvCents ?? null;
+  const avg3 = slab.avg3Cents ?? null;
+  switch (basis) {
+    case 'clv': return clv;
+    case 'avg3': return avg3;
+    case 'lowest': return money.lowestOf(clv, avg3);
+    default: return null;
+  }
+}
+
+function rowMatches(row, slab, basisCents, settings) {
+  const fromCents = money.toCents(row.from) ?? 0;
+  const toCents = row.to == null ? null : money.toCents(row.to);
+  if (!(basisCents > fromCents && (toCents == null || basisCents <= toCents))) return false;
+  if (!sportFits(row.sport, slab.sport)) return false;
+  if (!graderFits(row.grader, slab.grader)) return false;
+  if (!gradeFits(row, slab.grade)) return false;
+  // The row's own language list when it has one, else the sheet-wide one every row inherits.
+  if (!languagesFit(row.languages || settings.buyLanguages, slabLanguage(slab.language))) return false;
+  if (row.minConfidence != null && !(slab.confidence != null && slab.confidence >= row.minConfidence)) return false;
+  if (row.certRule === 'new' && !isNewCert(slab.cert)) return false;
+  if (row.vintage && !isVintage(slab, settings)) return false;
+  if (row.special && !isSpecial(slab, settings)) return false;
+  return true;
+}
+
+/** Ascending `sort`, stable on a tie: a copy, so priceSlab never reorders the caller's settings. */
+function orderedRates(rates) {
+  return (Array.isArray(rates) ? rates : [])
+    .map((row, i) => ({ row, i }))
+    .sort((a, b) => ((a.row.sort || 0) === (b.row.sort || 0) ? a.i - b.i : (a.row.sort || 0) - (b.row.sort || 0)))
+    .map(x => x.row);
+}
+
+/**
+ * slab = { clvCents, avg3Cents, grade, confidence, cert, title, year, sport, grader, language }
+ * opts.basis = the ticket's Market override (staff's per-seller choice). When it is a known basis it
+ * is used for EVERY row, ignoring row.basis (and the settings.defaultBasis escape hatch below); the
+ * band range is still checked against that basis's value, exactly as it is for a row's own basis. A key saved under the
+ * old basis list is translated first (normalizeBasis), so an old ticket prices instead of failing.
+ * Rows are walked in ascending `sort` and the FIRST one that takes the slab wins — the same rule the
+ * owner's app uses, so a sheet reads top to bottom like a price list. Three outcomes, and only the
+ * first is a price:
+ *   1. a row takes the slab -> { row, rateName, pct, basis, basisCents, payoutCents }
+ *   2. the slab HAS a value (some row's basis resolved) but NO row takes it -> { rejected: true, why }.
+ *      Out of range, outside the grade range, under a minimum confidence, the wrong cert rule, not
+ *      vintage/special, the wrong language, the wrong sport or grader: all of it means we are not
+ *      buying this slab, so it is never quoted and never totalled.
+ *   3. no value could be worked out at all -> { staffPrice: true, why }. Staff price that one by
+ *      hand because we do not know what it is worth, NOT because we don't want it.
+ */
+function priceSlab(slab, settings, opts = {}) {
+  const override = normalizeBasis(opts && opts.basis);
+  let sawAnyValue = false;
+  for (const row of orderedRates(settings.rates)) {
+    // settings.defaultBasis is a defensive last resort only: a validated settings object never has
+    // one (see the file header), so row.basis alone decides for every real rate sheet.
+    const basis = override || row.basis || settings.defaultBasis;
+    const basisCents = resolveBasisCents(basis, slab);
+    if (basisCents != null) sawAnyValue = true;
+    if (basisCents == null) continue; // this row can't be evaluated without its basis value
+    if (!rowMatches(row, slab, basisCents, settings)) continue;
+    return {
+      row, rateName: row.label, pct: row.pct, basis, basisCents,
+      payoutCents: money.pctOf(basisCents, row.pct),
+    };
+  }
+  if (!sawAnyValue) return { staffPrice: true, why: 'no CLV, average, or sale value known for this slab' };
+  return { rejected: true, why: REJECT_WHY };
+}
+
+window.PriceCore = {
+  priceSlab: priceSlab,
+  resolveBasisCents: resolveBasisCents,
+  rowMatches: rowMatches,
+  isNewCert: isNewCert,
+  isVintage: isVintage,
+  isSpecial: isSpecial,
+  sportFits: sportFits,
+  graderFits: graderFits,
+  gradeFits: gradeFits,
+  languagesFit: languagesFit,
+  languageOf: languageOf,
+  slabLanguage: slabLanguage,
+  languageKeyOf: languageKeyOf,
+  normalizeBasis: normalizeBasis,
+  isBasis: isBasis,
+  orderedRates: orderedRates,
+  BASIS_LABEL: BASIS_LABEL,
+  BASIS_SHORT: BASIS_SHORT,
+  BASIS_KEYS: BASIS_KEYS,
+  SPORT_KEYS: SPORT_KEYS,
+  SPORT_LEAGUES: SPORT_LEAGUES,
+  SPORT_SHORT: SPORT_SHORT,
+  GRADER_KEYS: GRADER_KEYS,
+  GRADER_SHORT: GRADER_SHORT,
+  LANGUAGE_KEYS: LANGUAGE_KEYS,
+  SLAB_LANGUAGES: SLAB_LANGUAGES,
+  NEW_CERT_FROM: NEW_CERT_FROM,
+  REJECT_TEXT: REJECT_TEXT,
+  REJECT_WHY: REJECT_WHY,
+  money: money,
+};
+})();
+
+(function () {
+'use strict';
+// Which barcode a tap means, and where the camera's barcodes are on screen. The camera sees every
+// barcode in the picture; a tap takes the one under the finger, or else the nearest one, and the big
+// round button takes the most central, largest one. Pure geometry, so it's tested on its own.
+//
+// Ported from Penguin's web/src/lib/scanPick.ts (josh-scanner-parts), types stripped — same
+// behaviour, verbatim formulas, plain CommonJS so this page's Scanner module (and build-portal.js,
+// which embeds this file into the page as window.ScanPick) can run it with no build step. See
+// scanPick.test.js, ported from their scanPick.test.ts, for the pinned behaviour.
+'use strict';
+
+function centerOf(poly) {
+  if (!poly.length) return { x: 0, y: 0 };
+  let x = 0, y = 0;
+  for (const p of poly) { x += p.x; y += p.y; }
+  return { x: x / poly.length, y: y / poly.length };
+}
+
+/** The polygon's area (any winding). */
+function areaOf(poly) {
+  let a = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const p = poly[i], q = poly[(i + 1) % poly.length];
+    a += p.x * q.y - q.x * p.y;
+  }
+  return Math.abs(a) / 2;
+}
+
+function inside(pt, poly) {
+  let hit = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i], b = poly[j];
+    if ((a.y > pt.y) !== (b.y > pt.y) && pt.x < ((b.x - a.x) * (pt.y - a.y)) / (b.y - a.y) + a.x) hit = !hit;
+  }
+  return hit;
+}
+
+function toSegment(p, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const len = dx * dx + dy * dy;
+  const t = len ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len)) : 0;
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+
+/** How far a point is from the polygon: 0 on or inside it. A barcode read as a line (two corners) works too. */
+function distanceTo(pt, poly) {
+  if (!poly.length) return Infinity;
+  if (poly.length >= 3 && inside(pt, poly)) return 0;
+  if (poly.length === 1) return Math.hypot(pt.x - poly[0].x, pt.y - poly[0].y);
+  let d = Infinity;
+  for (let i = 0; i < poly.length; i++) d = Math.min(d, toSegment(pt, poly[i], poly[(i + 1) % poly.length]));
+  return d;
+}
+
+/**
+ * The barcode a tap means: the one under the finger (the smallest, when they overlap), else the one
+ * nearest to it, wherever it is. Corners and the tap must be in the same units.
+ */
+function nearestTo(items, tap) {
+  let best;
+  let bestD = Infinity, bestArea = Infinity, bestC = Infinity;
+  for (const it of items) {
+    const d = distanceTo(tap, it.corners);
+    const area = areaOf(it.corners);
+    const c = Math.hypot(tap.x - centerOf(it.corners).x, tap.y - centerOf(it.corners).y);
+    const better = d < bestD - 0.5 || (Math.abs(d - bestD) <= 0.5 && (d === 0 ? area < bestArea : c < bestC));
+    if (!best || better) { best = it; bestD = d; bestArea = area; bestC = c; }
+  }
+  return best;
+}
+
+/**
+ * What the round button takes: the most central barcode, with big ones counting as nearer the middle,
+ * so a close-up slab wins over a small label at the edge. `view` is the part of the picture on screen.
+ */
+function mostCentral(items, view) {
+  const mid = { x: view.x + view.w / 2, y: view.y + view.h / 2 };
+  const half = Math.hypot(view.w, view.h) / 2 || 1;
+  const full = Math.sqrt(Math.max(1, view.w * view.h));
+  let best;
+  let bestScore = -Infinity;
+  for (const it of items) {
+    const c = centerOf(it.corners);
+    const near = 1 - Math.min(1, Math.hypot(c.x - mid.x, c.y - mid.y) / half);
+    const size = Math.min(1, Math.sqrt(areaOf(it.corners)) / full);
+    const score = near * 0.6 + size * 0.4;
+    if (score > bestScore) { best = it; bestScore = score; }
+  }
+  return best;
+}
+
+// ── Picture <-> screen ──────────────────────────────────────────────────────
+
+/**
+ * How the camera's picture sits in its box: filling it (object-fit: cover), centred, and `zoom` times
+ * bigger when zoomed in on screen. A point on screen is picture * scale + (dx, dy).
+ */
+function coverMap(videoW, videoH, boxW, boxH, zoom) {
+  if (zoom == null) zoom = 1;
+  if (!(videoW > 0 && videoH > 0 && boxW > 0 && boxH > 0)) return { scale: 1, dx: 0, dy: 0 };
+  const scale = Math.max(boxW / videoW, boxH / videoH) * Math.max(1, zoom);
+  return { scale, dx: (boxW - videoW * scale) / 2, dy: (boxH - videoH * scale) / 2 };
+}
+
+const toScreen = (m, p) => ({ x: p.x * m.scale + m.dx, y: p.y * m.scale + m.dy });
+const toPicture = (m, p) => ({ x: (p.x - m.dx) / m.scale, y: (p.y - m.dy) / m.scale });
+
+/** The part of the picture that's on screen, in picture pixels. */
+function visibleRect(m, videoW, videoH, boxW, boxH) {
+  const a = toPicture(m, { x: 0, y: 0 });
+  const b = toPicture(m, { x: boxW, y: boxH });
+  const x = Math.max(0, Math.min(videoW, a.x));
+  const y = Math.max(0, Math.min(videoH, a.y));
+  return { x, y, w: Math.max(0, Math.min(videoW, b.x) - x), h: Math.max(0, Math.min(videoH, b.y) - y) };
+}
+
+/** A square of the picture around a point, `size` picture pixels wide, kept inside `within`. */
+function around(p, size, within) {
+  const w = Math.min(size, within.w), h = Math.min(size, within.h);
+  const x = Math.max(within.x, Math.min(within.x + within.w - w, p.x - w / 2));
+  const y = Math.max(within.y, Math.min(within.y + within.h - h, p.y - h / 2));
+  return { x, y, w, h };
+}
+
+/**
+ * A 1D barcode read on only a few lines comes back as a thin sliver; give it some height (a fifth of
+ * its width) so its outline is visible and easy to tap.
+ */
+function fatten(corners, ratio) {
+  if (ratio == null) ratio = 0.2;
+  if (corners.length !== 4) return corners;
+  const [tl, tr, br, bl] = corners;
+  const w = Math.hypot(tr.x - tl.x, tr.y - tl.y);
+  const h = Math.hypot(bl.x - tl.x, bl.y - tl.y);
+  const want = w * ratio;
+  if (!(w > 0) || h >= want) return corners;
+  // the unit normal to the top edge
+  const nx = -(tr.y - tl.y) / w, ny = (tr.x - tl.x) / w;
+  const grow = (want - h) / 2;
+  const mv = (p, s) => ({ x: p.x + nx * grow * s, y: p.y + ny * grow * s });
+  return [mv(tl, -1), mv(tr, -1), mv(br, 1), mv(bl, 1)];
+}
+
+window.ScanPick = {
+  centerOf: centerOf,
+  areaOf: areaOf,
+  inside: inside,
+  distanceTo: distanceTo,
+  nearestTo: nearestTo,
+  mostCentral: mostCentral,
+  coverMap: coverMap,
+  toScreen: toScreen,
+  toPicture: toPicture,
+  visibleRect: visibleRect,
+  around: around,
+  fatten: fatten,
+};
+})();
+/* SCANNER-CORE:END */
+</script>
+
+<script>
+(function () {
+'use strict';
+  var activeTab = 'scanner';
+
+  var el = {
+    msg: document.getElementById('msg'),
+    save: document.getElementById('save'),
+    reload: document.getElementById('reload'),
+    stSaved: document.getElementById('st-saved'),
+    botPill: document.getElementById('bot-pill')
+  };
+
+
+  var KEY_STORE = 'iopRatesEditKey';
+  
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  
+
+  function fmtTime(iso) {
+    if (!iso) return null;
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    var now = new Date();
+    var sameDay = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+    return d.toLocaleString(undefined, sameDay
+      ? { hour: 'numeric', minute: '2-digit' }
+      : { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  }
+  
+
+  // The function is served at .../functions/v1/slab-rates with no trailing slash, so a
+  // literal "./settings" would resolve one level too high. Build the sibling path from
+  // whatever path this page was loaded at; still host-relative, works behind any domain.
+  function api(name) {
+    var meta = document.querySelector('meta[name="rates-api"]');
+    var base = meta && meta.content ? meta.content : location.pathname;
+    return base.replace(new RegExp('[/]+$'), '') + '/' + name;
+  }
+  
+
+  function getStoredKey() {
+    try { return localStorage.getItem(KEY_STORE); } catch (e) { return null; }
+  }
+
+  function storeKey(k) {
+    try { localStorage.setItem(KEY_STORE, k); } catch (e) { /* private mode: key lives for this load only */ }
+  }
+
+  function forgetKey() {
+    try { localStorage.removeItem(KEY_STORE); } catch (e) { /* nothing to forget */ }
+  }
+  
+
+  var lockEl = {
+    card: document.getElementById('lock-card'),
+    input: document.getElementById('lock-key'),
+    unlock: document.getElementById('lock-unlock'),
+    err: document.getElementById('lock-err'),
+    changeKey: document.getElementById('change-key')
+  };
+  var keyUnlocked = false;
+  var unlockWaiters = [];
+
+  function ledgerApiBase() {
+    var meta = document.querySelector('meta[name="ledger-api"]');
+    return meta && meta.content ? meta.content.replace(/\/+$/, '') : '';
+  }
+
+  /** Checks a key against the ledger API without writing anything: 'ok' | 'bad' | 'error'. */
+  function checkKey(key) {
+    return fetch(ledgerApiBase() + '/consignments?limit=1', {
+      headers: { accept: 'application/json', 'x-edit-key': key }
+    }).then(function (res) {
+      if (res.status === 200) return 'ok';
+      if (res.status === 401) return 'bad';
+      return 'error';
+    }, function () { return 'error'; });
+  }
+
+  function setFormDisabled(disabled) {
+    var list = document.querySelectorAll('.editor-fieldset');
+    for (var i = 0; i < list.length; i++) list[i].disabled = disabled;
+  }
+
+  function updateSaveReloadVisibility() {
+    var hide = !keyUnlocked || activeTab === 'consignors' || activeTab === 'scanner';
+    if (el.save) el.save.hidden = hide;
+    if (el.reload) el.reload.hidden = !keyUnlocked;
+  }
+
+  function showLock(message) {
+    keyUnlocked = false;
+    if (lockEl.card) lockEl.card.hidden = false;
+    if (lockEl.err) { lockEl.err.textContent = message || ''; lockEl.err.hidden = !message; }
+    if (lockEl.changeKey) lockEl.changeKey.hidden = true;
+    setFormDisabled(true);
+    updateSaveReloadVisibility();
+  }
+
+  function hideLock() {
+    keyUnlocked = true;
+    if (lockEl.card) lockEl.card.hidden = true;
+    if (lockEl.err) { lockEl.err.textContent = ''; lockEl.err.hidden = true; }
+    if (lockEl.changeKey) lockEl.changeKey.hidden = false;
+    setFormDisabled(false);
+    updateSaveReloadVisibility();
+    var waiters = unlockWaiters;
+    unlockWaiters = [];
+    waiters.forEach(function (fn) { fn(); });
+  }
+
+  /** Runs fn once a verified key is in hand - right away if one already is. */
+  function whenUnlocked(fn) {
+    if (keyUnlocked) fn(); else unlockWaiters.push(fn);
+  }
+
+  function attemptUnlock() {
+    var key = (lockEl.input && lockEl.input.value || '').trim();
+    if (!key) return;
+    if (lockEl.unlock) lockEl.unlock.disabled = true;
+    if (lockEl.err) { lockEl.err.hidden = true; lockEl.err.textContent = ''; }
+    checkKey(key).then(function (result) {
+      if (lockEl.unlock) lockEl.unlock.disabled = false;
+      if (result === 'ok') {
+        storeKey(key);
+        if (lockEl.input) lockEl.input.value = '';
+        hideLock();
+      } else if (result === 'bad') {
+        showLock('That key is not right');
+      } else {
+        showLock('Could not check the key, try again');
+      }
+    });
+  }
+
+  if (lockEl.unlock) lockEl.unlock.addEventListener('click', attemptUnlock);
+  if (lockEl.input) {
+    lockEl.input.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') { ev.preventDefault(); attemptUnlock(); }
+    });
+  }
+  if (lockEl.changeKey) {
+    lockEl.changeKey.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      forgetKey();
+      showLock('');
+    });
+  }
+
+  (function initLock() {
+    var stored = getStoredKey();
+    showLock('');
+    if (!stored) return;
+    checkKey(stored).then(function (result) {
+      if (result === 'ok') hideLock();
+      else if (result === 'bad') { forgetKey(); showLock('The key stopped working, enter it again'); }
+      else showLock('Could not check the key, try again');
+    });
+  })();
+  
+
+
+  var ScannerTab = (function () {
+    function isActive() { return activeTab === 'scanner'; }
+
+    var dom = {
+      vf: document.getElementById('sc-vf'),
+      video: document.getElementById('sc-video'),
+      marks: document.getElementById('sc-marks'),
+      vfStatus: document.getElementById('sc-vf-status'),
+      shutter: document.getElementById('sc-shutter'),
+      vfOff: document.getElementById('sc-vf-off'),
+      vfOffText: document.getElementById('sc-vf-off-text'),
+      start: document.getElementById('sc-start'),
+      certInput: document.getElementById('sc-cert-input'),
+      certGo: document.getElementById('sc-cert-go'),
+      boxErr: document.getElementById('sc-box-err'),
+      signin: document.getElementById('sc-signin'),
+      email: document.getElementById('sc-email'),
+      password: document.getElementById('sc-password'),
+      signinGo: document.getElementById('sc-signin-go'),
+      signinErr: document.getElementById('sc-signin-err'),
+      result: document.getElementById('sc-result'),
+      name: document.getElementById('sc-name'),
+      cert: document.getElementById('sc-cert'),
+      grader: document.getElementById('sc-grader'),
+      grade: document.getElementById('sc-grade'),
+      clv: document.getElementById('sc-clv'),
+      rateLine: document.getElementById('sc-rate-line'),
+      avg3: document.getElementById('sc-avg3'),
+      avg5: document.getElementById('sc-avg5'),
+      note: document.getElementById('sc-note'),
+      earlier: document.getElementById('sc-earlier'),
+      earlierList: document.getElementById('sc-earlier-list')
+    };
+
+    function metaContent(name) {
+      var m = document.querySelector('meta[name="' + name + '"]');
+      return m && m.content ? m.content : '';
+    }
+    var SB_URL = metaContent('supabase-url');
+    var SB_ANON = metaContent('supabase-anon-key');
+    var TRIUMPH_URL = metaContent('triumph-api');
+
+    // ── a Supabase session for triumph-sourcer. Separate from KEY_STORE/iopRatesEditKey on
+    // purpose: the edit key gates the rate SHEET, this gates Josh's own Triumph credential, which
+    // triumph-sourcer only hands market-value answers to a signed-in owner or active sourcer. ──
+    var AUTH_KEY = 'iopScannerAuth';
+    function loadSession() { try { return JSON.parse(localStorage.getItem(AUTH_KEY) || 'null'); } catch (e) { return null; } }
+    function saveSession(s) { try { if (s) localStorage.setItem(AUTH_KEY, JSON.stringify(s)); else localStorage.removeItem(AUTH_KEY); } catch (e) { /* private mode: session lives for this visit only */ } }
+    var session = loadSession();
+
+    function authFetch(url, opts) {
+      opts = opts || {};
+      var headers = Object.assign({ 'content-type': 'application/json' }, opts.headers || {});
+      return fetch(url, Object.assign({}, opts, { headers: headers }));
+    }
+
+    function doSignIn() {
+      var email = (dom.email.value || '').trim();
+      var password = dom.password.value || '';
+      dom.signinErr.hidden = true;
+      if (!email || !password) { dom.signinErr.textContent = 'Enter an email and password.'; dom.signinErr.hidden = false; return; }
+      dom.signinGo.disabled = true;
+      authFetch(SB_URL + '/auth/v1/token?grant_type=password', {
+        method: 'POST', headers: { apikey: SB_ANON }, body: JSON.stringify({ email: email, password: password })
+      }).then(function (res) { return res.json().then(function (j) { return { ok: res.ok, body: j }; }); })
+        .then(function (r) {
+          dom.signinGo.disabled = false;
+          if (r.ok && r.body && r.body.access_token) {
+            session = { access_token: r.body.access_token, refresh_token: r.body.refresh_token, email: email };
+            saveSession(session);
+            dom.password.value = '';
+            renderAuthState();
+          } else {
+            dom.signinErr.textContent = String((r.body && (r.body.error_description || r.body.msg || r.body.error)) || 'Sign-in failed.');
+            dom.signinErr.hidden = false;
+          }
+        }, function () {
+          dom.signinGo.disabled = false;
+          dom.signinErr.textContent = 'Could not reach Supabase. Check your connection.';
+          dom.signinErr.hidden = false;
+        });
+    }
+
+    function refreshSession() {
+      if (!session || !session.refresh_token) return Promise.resolve(false);
+      return authFetch(SB_URL + '/auth/v1/token?grant_type=refresh_token', {
+        method: 'POST', headers: { apikey: SB_ANON }, body: JSON.stringify({ refresh_token: session.refresh_token })
+      }).then(function (res) { return res.json(); }).then(function (j) {
+        if (!j || !j.access_token) return false;
+        session = { access_token: j.access_token, refresh_token: j.refresh_token || session.refresh_token, email: session.email };
+        saveSession(session);
+        return true;
+      }).catch(function () { return false; });
+    }
+
+    function renderAuthState() {
+      dom.signin.hidden = !!session;
+    }
+
+    // ── rate bands: the same public GET Pricing Rules reads, then the bot's own priceSlab ──────
+    var settings = null;
+    var settingsLoaded = false;
+    function ensureSettings() {
+      if (settingsLoaded) return Promise.resolve();
+      return fetch(api('settings')).then(function (res) {
+        if (res.status === 404) return null;
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      }).then(function (j) { settings = (j && j.settings) || null; settingsLoaded = true; })
+        .catch(function () { settingsLoaded = true; }); // one try per page load; priceCert() copes with settings===null
+    }
+
+    // ── Card Ladder's sales averages: STUBBED. triumph-sourcer only forwards Triumph's own
+    // market value (see its source: marketValue/confidence/takeable/reason, nothing else is
+    // allow-listed) - it never asks Card Ladder for recent sales the way triumph.js's own
+    // clHelper.js does from the LAN-only psa-comp-helper, so there is no live source for avg3/avg5
+    // on a phone today. THE ONE PLACE to wire a future proxy: replace this function's body with a
+    // real call returning { avg3Cents, avg5Cents } (or recentSalesCents, and let SalesAvgs.salesAvgs
+    // below do the arithmetic exactly as the bot does in clHelper.js's toClResult).
+    function fetchSalesAverages(cert, grader) {
+      return Promise.resolve({ avg3Cents: null, avg5Cents: null, stubbed: true });
+    }
+
+    // ── pricing one cert ─────────────────────────────────────────────────────────────────────
+    var busy = false;
+    var history = [];
+
+    function gradeNum(g) {
+      if (g == null) return null;
+      var m = String(g).match(/\d+(?:\.\d+)?/);
+      return m ? parseFloat(m[0]) : null;
+    }
+
+    function certFromLink(text) {
+      var m = String(text || '').match(/\/cert\/(\d{5,15})\b/i);
+      return m ? m[1] : text;
+    }
+
+    /** Typed/pasted/scanned text -> one cert, using the bot's own parser (certs.js via window.Certs)
+        so a typed cert is read exactly as a ticket paste would be - no separate rules to drift. */
+    function parseOneCert(raw) {
+      var text = certFromLink(String(raw || '').trim());
+      var found = Certs.parseCerts(text);
+      if (found.certs.length) return { ok: true, cert: found.certs[0].cert, grader: found.certs[0].grader };
+      if (found.notBought.length) return { ok: false, why: found.notBought[0].grader.toUpperCase() + ' is not a grader we buy.' };
+      if (found.unreadable.length) return { ok: false, why: 'That cert ' + found.unreadable[0].why + '.' };
+      return { ok: false, why: "That doesn't look like a cert number." };
+    }
+
+    function money(cents) { return PriceCore.money.fmt(cents); }
+
+    function showNote(text, warn) {
+      dom.note.textContent = text || '';
+      dom.note.hidden = !text;
+      dom.note.className = 'sc-note' + (warn ? ' warn' : '');
+    }
+
+    function renderLoading(cert, grader) {
+      dom.result.hidden = false;
+      dom.name.textContent = grader.toUpperCase() + ' ' + cert;
+      dom.cert.textContent = cert;
+      dom.grader.textContent = grader.toUpperCase();
+      dom.grade.textContent = '—';
+      dom.clv.textContent = 'Looking up…';
+      dom.rateLine.textContent = '—';
+      dom.avg3.textContent = '—';
+      dom.avg5.textContent = '—';
+      showNote('');
+    }
+
+    function renderNotSignedIn(cert, grader) {
+      dom.result.hidden = false;
+      dom.name.textContent = grader.toUpperCase() + ' ' + cert;
+      dom.cert.textContent = cert; dom.grader.textContent = grader.toUpperCase(); dom.grade.textContent = '—';
+      dom.clv.textContent = 'Sign in to price';
+      dom.rateLine.textContent = '—'; dom.avg3.textContent = '—'; dom.avg5.textContent = '—';
+      showNote('Sign in above for a live CL value - this needs your own Triumph-bridge login, not the rates edit key.', true);
+      renderAuthState();
+    }
+
+    function renderError(cert, grader, msg) {
+      dom.result.hidden = false;
+      dom.clv.textContent = 'Error';
+      showNote(msg, true);
+    }
+
+    function renderPriced(cert, grader, lookup, avgs) {
+      var card = lookup.card || (grader.toUpperCase() + ' ' + cert);
+      dom.name.textContent = card;
+      dom.cert.textContent = cert;
+      dom.grader.textContent = lookup.grader || grader.toUpperCase();
+      dom.grade.textContent = lookup.grade ? ('Grade ' + lookup.grade) : '—';
+
+      var clvCents = lookup.marketValue != null ? Math.round(Number(lookup.marketValue) * 100) : null;
+      dom.clv.textContent = clvCents != null ? money(clvCents) : 'No value';
+
+      dom.avg3.textContent = avgs.avg3Cents != null ? money(avgs.avg3Cents) : 'Not available';
+      dom.avg5.textContent = avgs.avg5Cents != null ? money(avgs.avg5Cents) : 'Not available';
+
+      if (!settings) {
+        dom.rateLine.innerHTML = '<span class="status-pill st-unknown">No rate sheet</span>';
+        showNote('The live rate sheet could not be loaded, so nothing was matched against a band.', true);
+        return;
+      }
+
+      // Same fallback the bot itself uses when Triumph gives no explicit category/year
+      // (triumph.js's mapSport/mapYear): read it off the card title. SportCore IS that code.
+      var sport = SportCore.sportFromTitle(card);
+      var year = SportCore.yearFromTitle(card);
+      var language = PriceCore.languageOf(card);
+
+      var slab = {
+        clvCents: clvCents, avg3Cents: avgs.avg3Cents, grade: gradeNum(lookup.grade),
+        confidence: lookup.confidence != null ? lookup.confidence : null,
+        cert: cert, title: card, year: year, sport: sport, grader: grader, language: language
+      };
+      var priced = PriceCore.priceSlab(slab, settings, {});
+
+      if (priced.rejected) {
+        dom.rateLine.innerHTML = esc(PriceCore.REJECT_TEXT) + ' <span class="status-pill st-cancelled">Rejected</span>';
+        showNote('Out of range for every band on the live sheet (' + priced.why + ').', true);
+      } else if (priced.staffPrice) {
+        dom.rateLine.innerHTML = 'Staff will price this one <span class="status-pill st-unknown">No value</span>';
+        showNote('No CL value, average, or sale value known for this slab.', true);
+      } else {
+        var pctTxt = priced.pct + '% of ' + (PriceCore.BASIS_SHORT[priced.basis] || priced.basis);
+        dom.rateLine.innerHTML = money(priced.payoutCents) + ' <span class="status-pill st-accepted">' + esc(priced.rateName || pctTxt) + '</span>';
+        var extra = (sport ? ' · ' + esc(sport) : '') + (lookup.takeable === false ? ' · Triumph: ' + esc(lookup.reason || 'not accepted') : '');
+        showNote(pctTxt + extra);
+      }
+    }
+
+    function addHistory(cert, grader, clvCents) {
+      history = [{ cert: cert, grader: grader, clvCents: clvCents }]
+        .concat(history.filter(function (h) { return !(h.cert === cert && h.grader === grader); }))
+        .slice(0, 30);
+      renderHistory();
+    }
+
+    function renderHistory() {
+      dom.earlier.hidden = history.length === 0;
+      dom.earlierList.innerHTML = history.map(function (h) {
+        return '<button type="button" class="sc-earlier-row" data-cert="' + esc(h.cert) + '" data-grader="' + esc(h.grader) + '">' +
+          '<span class="name"><span class="cert">' + esc(h.grader.toUpperCase()) + ' ' + esc(h.cert) + '</span></span>' +
+          '<span class="val">' + (h.clvCents != null ? money(h.clvCents) : '—') + '</span></button>';
+      }).join('');
+    }
+
+    function priceCert(cert, grader) {
+      if (busy) return;
+      busy = true;
+      renderLoading(cert, grader);
+      ensureSettings().then(function () {
+        if (!session) { busy = false; renderNotSignedIn(cert, grader); return; }
+
+        function lookupOnce() {
+          return authFetch(TRIUMPH_URL, {
+            method: 'POST', headers: { authorization: 'Bearer ' + session.access_token },
+            body: JSON.stringify({ action: 'lookup', certs: [cert] })
+          });
+        }
+
+        return lookupOnce().then(function (res) {
+          if (res.status !== 401) return res;
+          return refreshSession().then(function (ok) {
+            if (!ok) {
+              session = null; saveSession(null);
+              var e = new Error('signed out'); e.signedOut = true; throw e;
+            }
+            return lookupOnce();
+          });
+        }).then(function (res) {
+          return res.json().then(function (j) { return { res: res, body: j }; });
+        }).then(function (r) {
+          busy = false;
+          if (!r.res.ok) { renderError(cert, grader, (r.body && r.body.error) || ('Lookup failed (HTTP ' + r.res.status + ').')); return; }
+          var lookup = (r.body.results && r.body.results[0]) || { cert: cert, error: 'no answer' };
+          if (lookup.error) { renderError(cert, grader, 'Triumph: ' + lookup.error); return; }
+          return fetchSalesAverages(cert, grader).then(function (avgs) {
+            renderPriced(cert, grader, lookup, avgs);
+            addHistory(cert, grader, lookup.marketValue != null ? Math.round(Number(lookup.marketValue) * 100) : null);
+          });
+        }, function (e) {
+          busy = false;
+          if (e && e.signedOut) { renderNotSignedIn(cert, grader); return; }
+          renderError(cert, grader, 'Could not reach the pricing proxy.');
+        });
+      });
+    }
+
+    function submitTyped() {
+      var parsed = parseOneCert(dom.certInput.value);
+      dom.boxErr.hidden = true;
+      if (!parsed.ok) { dom.boxErr.textContent = parsed.why; dom.boxErr.hidden = false; return; }
+      dom.certInput.value = '';
+      priceCert(parsed.cert, parsed.grader);
+    }
+
+    // ── camera: BarcodeDetector only - see the build report for why zxing-wasm was not ported.
+    // Tap to read, never continuous: the detect loop only draws outlines on screen, a tap on one
+    // (or the shutter, for the most central) is what actually prices a cert. ──────────────────────
+    function CameraEngine() {
+      var stream = null, timer = null, detector = null;
+      var found = []; // [{ value, corners }] currently on screen
+
+      function supported() {
+        return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && typeof window.BarcodeDetector === 'function';
+      }
+
+      function helpFor(err) {
+        if (err && err.name === 'NotAllowedError') return "The camera is blocked for this site. Allow it in your browser's settings, then tap Start camera.";
+        if (err && err.name === 'NotFoundError') return 'No camera found on this device. Type the cert below instead.';
+        if (err && err.name === 'NotReadableError') return 'Another app is using the camera. Close it, then tap Start camera.';
+        return "The camera didn't start. Tap Start camera to try again, or type the cert below.";
+      }
+
+      function start() {
+        if (!supported()) {
+          dom.vfOffText.textContent = "This browser can't scan with the camera here (no BarcodeDetector - notably Safari/iPhone). Type or paste the cert below instead.";
+          return Promise.reject(new Error('unsupported'));
+        }
+        return navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+          .then(function (s) {
+            stream = s;
+            dom.video.srcObject = s;
+            return dom.video.play();
+          })
+          .then(function () {
+            var want = ['code_128', 'code_39', 'ean_13', 'upc_a', 'upc_e', 'qr_code', 'pdf417', 'data_matrix', 'itf'];
+            return (window.BarcodeDetector.getSupportedFormats ? window.BarcodeDetector.getSupportedFormats() : Promise.resolve(null))
+              .then(function (formats) {
+                var use = formats ? want.filter(function (f) { return formats.indexOf(f) >= 0; }) : want;
+                detector = new window.BarcodeDetector({ formats: use.length ? use : want });
+              });
+          })
+          .then(function () {
+            dom.vf.hidden = false;
+            dom.vfOff.hidden = true;
+            dom.vfStatus.textContent = 'Point at a barcode';
+            loop();
+          })
+          .catch(function (err) {
+            stop();
+            dom.vfOffText.textContent = helpFor(err);
+            throw err;
+          });
+      }
+
+      function stop() {
+        if (timer) clearTimeout(timer);
+        timer = null;
+        if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+        stream = null;
+        found = [];
+        dom.vf.hidden = true;
+        dom.vfOff.hidden = false;
+      }
+
+      function loop() {
+        if (!stream) return;
+        detector.detect(dom.video).then(function (codes) {
+          found = codes.map(function (c) {
+            return { value: c.rawValue, corners: (c.cornerPoints || []).map(function (p) { return { x: p.x, y: p.y }; }) };
+          }).filter(function (c) { return c.corners.length; });
+          drawMarks();
+        }).catch(function () { /* one bad frame is not fatal */ })
+          .then(function () { timer = setTimeout(loop, 180); }); // ~5/s: plenty for a still slab, spares the battery
+      }
+
+      function box() {
+        var r = dom.vf.getBoundingClientRect();
+        return { w: r.width, h: r.height };
+      }
+
+      function mapOf() {
+        var b = box();
+        return ScanPick.coverMap(dom.video.videoWidth || b.w, dom.video.videoHeight || b.h, b.w, b.h, 1);
+      }
+
+      function drawMarks() {
+        var m = mapOf();
+        var b = box();
+        dom.marks.setAttribute('viewBox', '0 0 ' + b.w + ' ' + b.h);
+        dom.marks.innerHTML = found.map(function (f) {
+          var pts = ScanPick.fatten(f.corners).map(function (p) { return ScanPick.toScreen(m, p); });
+          return '<polygon class="sc-mark" points="' + pts.map(function (p) { return p.x + ',' + p.y; }).join(' ') + '"></polygon>';
+        }).join('');
+      }
+
+      function take(f) {
+        if (!f) { dom.vfStatus.textContent = 'Nothing found - try again or type it below'; return; }
+        var parsed = parseOneCert(f.value);
+        if (!parsed.ok) { dom.vfStatus.textContent = parsed.why; return; }
+        dom.vfStatus.textContent = 'Read ' + parsed.grader.toUpperCase() + ' ' + parsed.cert;
+        priceCert(parsed.cert, parsed.grader);
+      }
+
+      function onTap(ev) {
+        if (!found.length) { take(null); return; }
+        var rect = dom.vf.getBoundingClientRect();
+        var pic = ScanPick.toPicture(mapOf(), { x: ev.clientX - rect.left, y: ev.clientY - rect.top });
+        take(ScanPick.nearestTo(found, pic));
+      }
+
+      function onShutter(ev) {
+        ev.stopPropagation();
+        if (!found.length) { take(null); return; }
+        var b = box();
+        var view = ScanPick.visibleRect(mapOf(), dom.video.videoWidth || b.w, dom.video.videoHeight || b.h, b.w, b.h);
+        take(ScanPick.mostCentral(found, view));
+      }
+
+      dom.vf.addEventListener('click', onTap);
+      dom.shutter.addEventListener('click', onShutter);
+
+      return { start: start, stop: stop, supported: supported };
+    }
+
+    var camera = null;
+    var wired = false;
+    function wireOnce() {
+      if (wired) return;
+      wired = true;
+      camera = CameraEngine();
+      dom.start.addEventListener('click', function () {
+        dom.start.disabled = true;
+        camera.start().catch(function () { /* message already set inside start() */ }).then(function () { dom.start.disabled = false; });
+      });
+      if (!camera.supported()) { dom.start.textContent = 'Camera not available here'; dom.start.disabled = true; }
+      dom.certGo.addEventListener('click', submitTyped);
+      dom.certInput.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); submitTyped(); } });
+      dom.signinGo.addEventListener('click', doSignIn);
+      dom.password.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); doSignIn(); } });
+      dom.earlierList.addEventListener('click', function (ev) {
+        var btn = ev.target.closest('.sc-earlier-row');
+        if (btn) priceCert(btn.getAttribute('data-cert'), btn.getAttribute('data-grader'));
+      });
+      renderAuthState();
+    }
+
+    function activate() { wireOnce(); ensureSettings(); }
+    function isBusy() { return busy; }
+    function deactivate() { if (camera) camera.stop(); }
+
+    return { activate: activate, isBusy: isBusy, deactivate: deactivate };
+  })();
+  
+
+  ScannerTab.activate();
+})();
+</script>
+</body>
+</html>

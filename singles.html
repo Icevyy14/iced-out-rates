@@ -7,6 +7,9 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="rates-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/slab-rates">
 <meta name="ledger-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/slab-ledger">
+<meta name="triumph-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/triumph-sourcer">
+<meta name="supabase-url" content="https://ppfhgrurquvlyabtymbq.supabase.co">
+<meta name="supabase-anon-key" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwZmhncnVycXV2bHlhYnR5bWJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MjYyNjcsImV4cCI6MjA5MTEwMjI2N30.ZcEPKRHI3kb3aA6iXmf1Mo42Dyqj9fx1I9ZMT2xk0fg">
 <title>Iced Out Penguin · Singles</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -417,6 +420,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
     <a class="nav-tab" href="index.html">💰 Pricing Rules</a>
     <a class="nav-tab active" href="singles.html">🃏 Singles</a>
     <a class="nav-tab" href="consignors.html">📦 Consignors</a>
+    <a class="nav-tab" href="scanner.html">📷 Scanner</a>
   </nav>
   <div class="nav-right">
     <span class="msg" id="msg" role="status" aria-live="polite"></span>
@@ -1891,7 +1895,7 @@ window.SinglesValidate = {
   }
 
   function updateSaveReloadVisibility() {
-    var hide = !keyUnlocked || activeTab === 'consignors';
+    var hide = !keyUnlocked || activeTab === 'consignors' || activeTab === 'scanner';
     if (el.save) el.save.hidden = hide;
     if (el.reload) el.reload.hidden = !keyUnlocked;
   }
