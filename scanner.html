@@ -464,6 +464,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-vf-round-space{width:42px;}
   #tab-scanner .sc-vf-pill{padding:5px 12px;border-radius:var(--r-pill);background:rgba(0,0,0,.6);color:#fff;font-size:12px;white-space:nowrap;}
   #tab-scanner .sc-vf-bottom{position:absolute;left:0;right:0;bottom:12px;display:flex;flex-direction:column;align-items:center;gap:10px;}
+  #tab-scanner .sc-vf-zoom-wrap{width:min(220px,70%);padding:6px 12px;border-radius:var(--r-pill);background:rgba(0,0,0,.45);}
+  #tab-scanner .sc-vf-zoom{display:block;width:100%;accent-color:var(--buy);}
   #tab-scanner .sc-vf-hint{max-width:calc(100% - 24px);padding:4px 11px;border-radius:var(--r-pill);background:rgba(0,0,0,.55);color:rgba(255,255,255,.92);font-size:11.5px;text-align:center;}
   #tab-scanner .sc-vf-shutter{width:64px;height:64px;padding:4px;border-radius:50%;border:4px solid rgba(255,255,255,.95);background:rgba(0,0,0,.15);cursor:pointer;}
   #tab-scanner .sc-vf-shutter span{display:block;width:100%;height:100%;border-radius:50%;background:#fff;transition:transform .1s;}
@@ -499,11 +501,30 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-note{font-size:12px;line-height:1.5;color:var(--dim);padding-top:4px;border-top:1px dashed var(--border);margin-top:4px;}
   #tab-scanner .sc-note.warn{color:var(--yellow);}
 
-  #tab-scanner .sc-earlier-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:9px 2px;border-bottom:1px solid var(--border);background:none;border-left:0;border-right:0;border-top:0;color:inherit;font:inherit;text-align:left;cursor:pointer;}
+  #tab-scanner .sc-retry{margin-top:10px;}
+  #tab-scanner .sc-retry .btn{min-width:120px;min-height:40px;}
+
+  #tab-scanner .sc-pile-count{font-size:12px;color:var(--dim);margin-bottom:8px;font-family:var(--font-mono);letter-spacing:.3px;}
+  #tab-scanner .sc-pile-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+  #tab-scanner .sc-pile-tile{padding:12px 14px;border-radius:var(--r);background:var(--s2);border:1px solid var(--border);min-width:0;}
+  #tab-scanner .sc-pile-tile-buy{border-color:color-mix(in srgb, var(--buy) 45%, var(--border));}
+  #tab-scanner .sc-pile-tile .sc-money{font-size:19px;}
+  #tab-scanner .sc-pile-unknown{font-size:11px;color:var(--yellow);margin-top:4px;line-height:1.4;}
+  #tab-scanner .sc-pile-sub{font-size:11px;color:var(--dim);margin-top:4px;}
+
+  #tab-scanner .sc-clear-confirm{display:flex;flex-direction:column;gap:10px;padding:12px 14px;margin-bottom:12px;border-radius:var(--r);background:color-mix(in srgb, var(--red) 10%, var(--s2));border:1px solid var(--red);}
+  #tab-scanner .sc-clear-confirm-text{font-size:12.5px;line-height:1.5;color:var(--text);}
+  #tab-scanner .sc-clear-confirm-btns{display:flex;gap:10px;}
+  #tab-scanner .sc-clear-confirm-btns .btn{flex:1 1 auto;min-height:42px;}
+
+  #tab-scanner .sc-earlier-row{display:flex;align-items:center;gap:8px;width:100%;padding:7px 2px;border-bottom:1px solid var(--border);}
   #tab-scanner .sc-earlier-row:last-child{border-bottom:0;}
+  #tab-scanner .sc-earlier-main{flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 2px;background:none;border:0;color:inherit;font:inherit;text-align:left;cursor:pointer;}
   #tab-scanner .sc-earlier-row .cert{font-family:var(--font-mono);color:var(--dim);font-size:11px;}
-  #tab-scanner .sc-earlier-row .name{font-size:13px;}
-  #tab-scanner .sc-earlier-row .val{font-family:var(--font-display);font-weight:700;color:var(--buy);}
+  #tab-scanner .sc-earlier-row .name{font-size:13px;overflow-wrap:anywhere;}
+  #tab-scanner .sc-earlier-row .val{font-family:var(--font-display);font-weight:700;color:var(--buy);white-space:nowrap;}
+  #tab-scanner .sc-earlier-remove{flex:none;width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:var(--s2);color:var(--red);font-size:16px;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0;}
+  #tab-scanner .sc-earlier-remove:hover{background:var(--red);color:#fff;border-color:var(--red);}
 
   @media (max-width:420px){
     #tab-scanner .sc-tile-green .sc-money{font-size:min(34px, 20cqi);}
@@ -517,11 +538,14 @@ code{font-family:var(--font-mono);font-size:.92em;}
       <video class="sc-vf-video" id="sc-video" autoplay playsinline muted></video>
       <svg class="sc-vf-marks" id="sc-marks"></svg>
       <div class="sc-vf-top">
-        <button type="button" class="sc-vf-round" id="sc-torch" title="Flashlight" hidden>🔦</button>
+        <button type="button" class="sc-vf-round" id="sc-torch" title="Flashlight" aria-pressed="false" hidden>🔦</button>
         <span class="sc-vf-pill" id="sc-vf-status">Starting camera…</span>
-        <span class="sc-vf-round-space"></span>
+        <button type="button" class="sc-vf-round" id="sc-sound" title="Sound" aria-pressed="true">🔊</button>
       </div>
       <div class="sc-vf-bottom">
+        <div class="sc-vf-zoom-wrap" id="sc-zoom-wrap" hidden>
+          <input type="range" class="sc-vf-zoom" id="sc-zoom" min="1" max="1" step="0.1" value="1" aria-label="Zoom">
+        </div>
         <div class="sc-vf-hint" id="sc-vf-hint">Tap a barcode's outline to read it</div>
         <button type="button" class="sc-vf-shutter" id="sc-shutter" title="Read the most central barcode"><span></span></button>
       </div>
@@ -561,6 +585,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
         <span class="sc-result-cert" id="sc-cert">—</span>
         <span id="sc-grader">—</span>
         <span id="sc-grade">—</span>
+        <span class="status-pill st-accepted" id="sc-rescan-badge" hidden>Already in pile - updated</span>
       </div>
     </div>
 
@@ -582,10 +607,41 @@ code{font-family:var(--font-mono);font-size:.92em;}
     </div>
 
     <div class="sc-note" id="sc-note" hidden></div>
+    <div class="sc-retry" id="sc-retry" hidden>
+      <button type="button" class="btn btn-ghost btn-sm" id="sc-retry-btn">Retry</button>
+    </div>
   </section>
 
   <section class="card scanner-earlier" id="sc-earlier" hidden>
-    <div class="sec-head"><div class="sec-title">This visit</div></div>
+    <div class="sec-head">
+      <div class="sec-title">This visit</div>
+      <button type="button" class="btn btn-ghost btn-sm" id="sc-clear">New seller</button>
+    </div>
+
+    <div class="sc-pile-totals" id="sc-pile-totals" hidden>
+      <div class="sc-pile-count" id="sc-pile-count">0 cards</div>
+      <div class="sc-pile-tiles">
+        <div class="sc-pile-tile">
+          <div class="sc-stat-label">Pile value</div>
+          <div class="sc-money" id="sc-pile-market">—</div>
+          <div class="sc-pile-unknown" id="sc-pile-unknown" hidden></div>
+        </div>
+        <div class="sc-pile-tile sc-pile-tile-buy">
+          <div class="sc-stat-label">You'd pay</div>
+          <div class="sc-money" id="sc-pile-payout">—</div>
+          <div class="sc-pile-sub" id="sc-pile-buy-count"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sc-clear-confirm" id="sc-clear-confirm" hidden>
+      <div class="sc-clear-confirm-text">Clear all <span id="sc-clear-count">0</span> cards and start a new seller? This can't be undone.</div>
+      <div class="sc-clear-confirm-btns">
+        <button type="button" class="btn btn-danger btn-sm" id="sc-clear-yes">Yes, clear it</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="sc-clear-no">Cancel</button>
+      </div>
+    </div>
+
     <div id="sc-earlier-list"></div>
   </section>
 
@@ -1153,6 +1209,105 @@ function priceSlab(slab, settings, opts = {}) {
   return { rejected: true, why: REJECT_WHY };
 }
 
+// ── deciding whether a cert needs Card Ladder at all (app.js's two-pass comp) ───────────────────
+// Triumph is a direct ~73ms HTTPS call that already IS the Card Ladder value; the helper behind
+// clHelper.js is slow browser automation whose only job, once Triumph has a value, is the sale
+// averaging (avg3Cents) that an `avg3`/`lowest`-basis band prices on. app.js runs Triumph for every
+// cert first, then calls needsCardLadder per cert (using ONLY what Triumph told us) to decide
+// whether the second, slow pass is worth running at all. Never used for pricing itself — priceSlab
+// above is untouched and still the only thing that prices anything.
+
+/**
+ * The margin `avgRowCouldMatch` widens an `avg3` row's [from, to] by, on both sides, before deciding
+ * whether a cert could plausibly land on it. Which band a card matches depends on its value, and for
+ * an `avg3` band the value IS the average — something we only learn by calling Card Ladder — so a
+ * card whose Triumph (CL) value sits just outside a band on paper can still really belong inside it
+ * once the actual last-3-sales average is known, and the reverse. A FLAT PERCENTAGE of each boundary
+ * keeps the safety margin proportionate at every band size (a flat few dollars would swallow the $75
+ * floor whole and do nothing at the $2,000 ceiling). 25% is comfortably wider than the single-sale
+ * spread money.js's own outlier filter already tolerates before flagging a sale (`AVG_OUTLIER_MULTIPLIER`
+ * 1.5 = 50% over the sales median) while still being a real, named number instead of "wide enough to
+ * never matter" — see rules.test.js / CONTRACT.md for the worst case this still leaves open.
+ */
+const CL_RANGE_MARGIN_PCT = 0.25;
+
+/**
+ * vintage/special, read ONLY off what Triumph told us (year + its own terse title) — an "unknown
+ * leans in" twin of isVintage/isSpecial above: a year or title Triumph did not give us is never used
+ * to rule a row OUT, only ever to rule it in, because Card Ladder's fuller title/year could still
+ * turn out to satisfy it. Only a year Triumph DID give us, confidently past vintageMaxYear, with a
+ * title Triumph DID give us that names no holo/special wording, counts as a confident "no."
+ */
+function vintageOrSpecialCouldMatch(row, hint, settings) {
+  if (!row.vintage && !row.special) return true;
+  const { year, title } = hint;
+  if (year == null) return true;
+  if (year <= settings.vintageMaxYear) return true;
+  if (title == null) return true;
+  const t = plainWords(title);
+  if (row.vintage && hasWord(t, 'holo') && !hasWord(t, 'non holo') && !hasWord(t, 'nonholo')) return true;
+  if (row.special && (settings.specialKeywords || []).some(w => hasWord(t, plainWords(w)))) return true;
+  return false;
+}
+
+/**
+ * Whether ONE `avg3`/`lowest` rate row could plausibly take a slab we only know from Triumph so far
+ * (pass 1) — used only to decide whether Card Ladder (pass 2) is worth calling, never to price
+ * anything. Every gate Triumph can answer with certainty (grader and certRule come straight off the
+ * cert/item, never from Triumph, so they are always certain) is checked exactly as rowMatches would;
+ * a gate Triumph left unknown (null) is treated as "could still match" rather than ruled out, so a
+ * terse or partial Triumph record can never talk this check out of a call rowMatches itself would
+ * have wanted.
+ *
+ * `lowest` ignores the value entirely once the other gates fit: it needs BOTH numbers to compute the
+ * right PAYOUT wherever in its range the value falls (`lowestOf` may pick avg3 under clv even deep
+ * inside the range), so there is no safe boundary to margin around the way there is for `avg3` —
+ * skipping Card Ladder here risks silently overpaying, not just mis-routing a band. `avg3` only has a
+ * band-SELECTION risk, so its own [from, to] is simply widened by CL_RANGE_MARGIN_PCT on both sides.
+ */
+function avgRowCouldMatch(row, hint, settings, triumphValueCents) {
+  if (!graderFits(row.grader, hint.grader)) return false;
+  if (row.certRule === 'new' && !isNewCert(hint.cert)) return false;
+  if (hint.sport != null && !sportFits(row.sport, hint.sport)) return false;
+  if (hint.grade != null && !gradeFits(row, hint.grade)) return false;
+  if (hint.confidence != null && row.minConfidence != null && hint.confidence < row.minConfidence) return false;
+  if (hint.language != null && !languagesFit(row.languages || settings.buyLanguages, slabLanguage(hint.language))) return false;
+  if (!vintageOrSpecialCouldMatch(row, hint, settings)) return false;
+
+  if (row.basis === 'lowest') return true;
+
+  const fromCents = money.toCents(row.from) ?? 0;
+  const toCents = row.to == null ? null : money.toCents(row.to);
+  const widen = c => Math.round(c * CL_RANGE_MARGIN_PCT);
+  const lo = fromCents - widen(fromCents);
+  const hi = toCents == null ? null : toCents + widen(toCents);
+  return triumphValueCents > lo && (hi == null || triumphValueCents <= hi);
+}
+
+/**
+ * Whether a cert should be sent to Card Ladder at all. `hint` = { cert, grader, triumphValueCents,
+ * grade, confidence, sport, year, title }, built from the ListItem + its TriumphResult alone (app.js
+ * — see triumphHint there); `marketBasis` is the ticket's Market override, same meaning as
+ * priceSlab's opts.basis (it beats every row's own basis):
+ *   - a cert Triumph itself could not value at all (`triumphValueCents` null) -> ALWAYS needed: Card
+ *     Ladder's own clValueCents may be the only source of a value for this cert, override or not.
+ *   - override 'avg3' or 'lowest' -> ALWAYS needed: every row's basis becomes that one, for every
+ *     cert on the ticket, regardless of what row.basis says.
+ *   - override 'clv' -> never needed beyond the fallback above: no row ever reads avg3Cents under
+ *     this override, so there is nothing for Card Ladder to add.
+ *   - no override (each row keeps its own basis) -> needed when at least one `avg3`/`lowest` row
+ *     could plausibly take this slab (avgRowCouldMatch).
+ */
+function needsCardLadder(hint, settings, marketBasis) {
+  if (hint.triumphValueCents == null) return true;
+  const override = normalizeBasis(marketBasis);
+  if (override === 'avg3' || override === 'lowest') return true;
+  if (override === 'clv') return false;
+  const rows = ((settings && settings.rates) || []).filter(r => r.basis === 'avg3' || r.basis === 'lowest');
+  if (!rows.length) return false;
+  return rows.some(row => avgRowCouldMatch(row, hint, settings, hint.triumphValueCents));
+}
+
 window.PriceCore = {
   priceSlab: priceSlab,
   resolveBasisCents: resolveBasisCents,
@@ -1183,6 +1338,9 @@ window.PriceCore = {
   NEW_CERT_FROM: NEW_CERT_FROM,
   REJECT_TEXT: REJECT_TEXT,
   REJECT_WHY: REJECT_WHY,
+  needsCardLadder: needsCardLadder,
+  avgRowCouldMatch: avgRowCouldMatch,
+  CL_RANGE_MARGIN_PCT: CL_RANGE_MARGIN_PCT,
   money: money,
 };
 })();
@@ -1344,6 +1502,939 @@ window.ScanPick = {
   visibleRect: visibleRect,
   around: around,
   fatten: fatten,
+};
+})();
+
+(function () {
+'use strict';
+// How the camera reads a barcode beyond what BarcodeDetector can do: zxing-cpp (the zxing-wasm
+// package, reader build, vendored under rates-portal/vendor/zxing/ - see that folder's own note for
+// the pinned version) as the fallback, chosen by FEATURE, never by sniffing the browser. Ported from
+// Penguin's web/src/lib/scanDecode.ts (josh-scanner-parts), types stripped: same format lists, same
+// reader tuning, so this page's Scanner module (and build-portal.js, which embeds this file as
+// window.ScanDecode) never drifts from the settings he already proved out. The part of his stack that
+// is NOT here - scanWorker.ts's own body, scanCamera.ts's Grabber/SlabCamera class - stays page-side
+// JS inline in page.html, since his is a bundler + TypeScript build and ours is one HTML file with no
+// build step; only the pure, framework-free logic was worth lifting out to a shared, testable module.
+'use strict';
+
+/** Slab labels: PSA, CGC and BGS print the cert as a 1D barcode, newer PSA labels add a QR link. */
+var ZXING_FORMATS = ['Code128', 'Code39', 'Code93', 'ITF', 'EANUPC', 'QRCode', 'DataMatrix'];
+
+/** The same list in BarcodeDetector's own names. */
+var DETECTOR_FORMATS = ['code_128', 'code_39', 'code_93', 'itf', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'qr_code', 'data_matrix'];
+
+/**
+ * A label always carries one of these two. Ported straight off scanCamera.ts's pickDecoder gate:
+ * BarcodeDetector is only worth using over zxing when it covers BOTH, not merely "has some formats" -
+ * a BarcodeDetector that reads neither a 1D cert barcode nor the newer QR link would just send every
+ * slab down the "nothing found" path while claiming to be the fast one.
+ */
+var REQUIRED_DETECTOR_FORMATS = ['code_128', 'qr_code'];
+
+/**
+ * Which engine reads the camera. `hasDetector` = `typeof window.BarcodeDetector === 'function'`.
+ * `supported` = what `BarcodeDetector.getSupportedFormats()` resolved to, or null when this browser's
+ * BarcodeDetector has no such method (then every format on our wanted list is trusted, same as
+ * scanCamera.ts does for that case) - this never reads the user agent, only what the browser actually
+ * answers. Three outcomes this is built to tell apart: present and usable -> detector; present but
+ * covering none of what a slab needs -> zxing; absent entirely -> zxing.
+ */
+function chooseEngine(hasDetector, supported) {
+  if (!hasDetector) return { engine: 'zxing', formats: null };
+  var formats = supported
+    ? DETECTOR_FORMATS.filter(function (f) { return supported.indexOf(f) >= 0; })
+    : DETECTOR_FORMATS.slice();
+  var hasRequired = REQUIRED_DETECTOR_FORMATS.every(function (f) { return formats.indexOf(f) >= 0; });
+  if (!hasRequired) return { engine: 'zxing', formats: null };
+  return { engine: 'detector', formats: formats };
+}
+
+/**
+ * Watching (`hard` false): every barcode in the picture, tried rotated too, quickly. Looking hard
+ * (`hard` true, used when a tap/shutter press finds nothing in view): every trick zxing-cpp has,
+ * alternating how it turns grey into black and white across passes. Identical tuning to
+ * scanDecode.ts's readerOptions.
+ */
+function readerOptions(hard, pass) {
+  pass = pass || 0;
+  return {
+    formats: ZXING_FORMATS,
+    tryHarder: true,
+    tryRotate: true,
+    tryInvert: !!(hard || pass % 4 === 3),
+    tryDownscale: true,
+    tryDenoise: !!(hard && pass % 2 === 1),
+    binarizer: hard && pass % 2 === 1 ? 'GlobalHistogram' : 'LocalAverage',
+    maxNumberOfSymbols: 12,
+    minLineCount: 2,
+    textMode: 'HRI'
+  };
+}
+
+/** zxing's answers as `{ text, format, corners }`, corners clockwise from top-left in the pixels of
+    whatever image it was given. Unreadable and empty results are dropped. */
+function toFound(results) {
+  return (results || []).filter(function (r) { return r && r.isValid && r.text; }).map(function (r) {
+    var p = r.position;
+    return {
+      text: r.text,
+      format: String(r.format),
+      corners: [p.topLeft, p.topRight, p.bottomRight, p.bottomLeft].map(function (pt) { return { x: pt.x, y: pt.y }; })
+    };
+  });
+}
+
+window.ScanDecode = {
+  ZXING_FORMATS: ZXING_FORMATS,
+  DETECTOR_FORMATS: DETECTOR_FORMATS,
+  REQUIRED_DETECTOR_FORMATS: REQUIRED_DETECTOR_FORMATS,
+  chooseEngine: chooseEngine,
+  readerOptions: readerOptions,
+  toFound: toFound,
+};
+})();
+
+(function () {
+'use strict';
+// Beep + vibrate on a scan, so the owner knows what happened without looking at the phone - he's
+// looking at the card in his other hand. Ported from Penguin's
+// web/src/lib/scanFeedback.ts (josh-scanner-parts): same tone table (a scanner's high "got it", a
+// soft low "nothing there", a buzzy low "that's not a cert"), same vibration patterns, same "an
+// AudioContext starts suspended and only resumes inside a user gesture" handling. ADAPTED into a
+// pure, dependency-free module (CommonJS, no DOM, no requires, no fs/network/timers) matching
+// scanner/scanPick.js, scanner/salesAvgs.js, scanner/scanDecode.js and scanner/signal.js in style,
+// so build-portal.js's embedWholeFile can drop it into the page unchanged as window.ScanFeedback.
+//
+// Every browser fact is injected rather than read off a global here:
+//   audio   - { tone(spec), unlock() } wired to a real (Web Audio) AudioContext by the page (see
+//             rates-portal/page.html's ScannerTab) - creating the context, resuming a suspended one,
+//             and building the oscillator/gain nodes is all DOM-only work that cannot run in Node,
+//             so it stays on the page side; this module only decides WHICH tone to ask for and
+//             WHETHER to ask at all.
+//   vibrate - navigator.vibrate.bind(navigator), or omitted entirely - iOS Safari has no vibrate API
+//             at all, which is a normal, silent absence to feature-detect, never an error to report.
+//   storage - localStorage (or a test double) for the one new thing Penguin's version didn't have: a
+//             persisted on/off switch for sound, because a beeping phone at a quiet show table is
+//             rude and Josh asked to be able to turn it off and have that stick.
+'use strict';
+
+/** The localStorage key the sound on/off preference is saved under. */
+var STORE_KEY = 'iopScannerSound';
+
+/** ok = a barcode was read and parsed as a cert; nothing = the tap/shutter found no barcode at all;
+    bad = a barcode was read but didn't parse as a cert we'd buy (wrong grader, unreadable, etc). The
+    same three outcomes CameraEngine's take() already tells apart - feedback just has to sound
+    different for each one, so a miss and a genuine read are never confused by ear. */
+var KINDS = ['ok', 'nothing', 'bad'];
+
+/** Tone table, ported verbatim from scanFeedback.ts's TONES. */
+var TONES = {
+  ok: { hz: 1760, ms: 70, type: 'square', gain: 0.045 },
+  nothing: { hz: 330, ms: 90, type: 'sine', gain: 0.08 },
+  bad: { hz: 220, ms: 180, type: 'square', gain: 0.07 }
+};
+
+/** Vibration patterns, ported verbatim from scanFeedback.ts's buzz(): a short tap for a good read, a
+    double blip for nothing found, a longer buzz for "not a cert". Only ever reaches a real device
+    through navigator.vibrate where that exists (Android Chrome) - see the module header. */
+var VIBES = {
+  ok: 35,
+  nothing: [20, 60, 20],
+  bad: 180
+};
+
+function normKind(kind) {
+  return KINDS.indexOf(kind) >= 0 ? kind : 'ok';
+}
+
+/**
+ * Reads the saved sound on/off preference. `storage` is an injected { getItem(key) } - wrapped in
+ * try/catch because some privacy modes throw outright on a storage READ, not just a write. Defaults
+ * to ON (true) when nothing is saved yet or storage is unreachable: a scanner that's silent by
+ * default would be a worse surprise mid-show than a beeping one at a quiet table, and the owner can
+ * turn it off once and have it stick from here on.
+ */
+function loadSoundOn(storage) {
+  if (!storage || typeof storage.getItem !== 'function') return true;
+  var raw;
+  try {
+    raw = storage.getItem(STORE_KEY);
+  } catch (e) {
+    return true;
+  }
+  if (raw == null) return true;
+  return raw !== '0' && raw !== 'false';
+}
+
+/** Saves the sound on/off preference. `storage` is an injected { setItem(key, value) }. Swallows a
+    throw the same way loadSoundOn does - a failed save just means the choice won't survive a reload
+    this one time, not a crash mid-scan. */
+function saveSoundOn(storage, on) {
+  if (!storage || typeof storage.setItem !== 'function') return;
+  try {
+    storage.setItem(STORE_KEY, on ? '1' : '0');
+  } catch (e) {
+    /* private mode, or storage full: not persisted this visit */
+  }
+}
+
+/**
+ * Builds the feedback controller the page wires to its real browser APIs.
+ *   opts.audio    - { tone(spec), unlock() } or omitted/null (no Web Audio in this browser, or the
+ *                   page chose not to wire one). Every call is defensive, so a missing audio object
+ *                   behaves exactly like sound being turned off for this session.
+ *   opts.vibrate  - a function(pattern), or omitted/null when this browser has none.
+ *   opts.storage  - { getItem, setItem }, or omitted/null (preference just won't persist).
+ */
+function createFeedback(opts) {
+  opts = opts || {};
+  var audio = opts.audio || null;
+  var vibrate = typeof opts.vibrate === 'function' ? opts.vibrate : null;
+  var storage = opts.storage || null;
+  var soundOn = loadSoundOn(storage);
+
+  function isSoundOn() { return soundOn; }
+
+  function setSoundOn(on) {
+    soundOn = !!on;
+    saveSoundOn(storage, soundOn);
+  }
+
+  function vibrateSupported() { return !!vibrate; }
+
+  /** Call from inside a user gesture (the Start camera tap already is one) so a later beep is
+      allowed to play at all on iOS - a context that is never unlocked inside a gesture stays
+      suspended forever and every beep silently does nothing. Safe to call again on every later tap
+      too, since a backgrounded tab can re-suspend the context in between (see tone() below, which
+      also tries a resume on every play as a second line of defense). */
+  function unlock() {
+    if (audio && typeof audio.unlock === 'function') {
+      try { audio.unlock(); } catch (e) { /* audio blocked */ }
+    }
+  }
+
+  /** The one thing a caller needs after a scan: play the right tone (unless sound is off) and
+      vibrate (unless this device can't) - a bad audio/vibrate call never throws out to the caller,
+      since a feedback failure must never interrupt the actual scan it's reporting on. */
+  function play(kind) {
+    kind = normKind(kind);
+    if (soundOn && audio && typeof audio.tone === 'function') {
+      try { audio.tone(TONES[kind]); } catch (e) { /* audio blocked or context gone - stay silent */ }
+    }
+    if (vibrate) {
+      try { vibrate(VIBES[kind]); } catch (e) { /* not supported on this device after all */ }
+    }
+  }
+
+  return {
+    play: play,
+    unlock: unlock,
+    isSoundOn: isSoundOn,
+    setSoundOn: setSoundOn,
+    vibrateSupported: vibrateSupported
+  };
+}
+
+window.ScanFeedback = {
+  STORE_KEY: STORE_KEY,
+  KINDS: KINDS,
+  TONES: TONES,
+  VIBES: VIBES,
+  loadSoundOn: loadSoundOn,
+  saveSoundOn: saveSoundOn,
+  createFeedback: createFeedback,
+};
+})();
+
+(function () {
+'use strict';
+// A scan SESSION is one seller's pile at a card show: every slab scanned, its pricing result (the
+// shape rules.js's priceSlab returns - read that first), and the running totals Josh reads off his
+// phone while he's standing at the table deciding what to offer. Pure data + arithmetic only - no
+// DOM, no network, no timers - so this file embeds into the single-file Scanner page the same way
+// scanPick.js/salesAvgs.js/scanDecode.js already do (rates-portal/build-portal.js's embedWholeFile)
+// and is unit-tested on its own, with no dependency on anything outside this file.
+//
+// MARKET VALUE vs PRICING BASIS - these are two different numbers and this file used to conflate
+// them. A card's MARKET VALUE (what it's actually worth - Triumph/Card Ladder's own number, the
+// Scanner page's own `clvCents`, comp.js's `clvCents`/`base.clvCents`) is a property of the SLAB,
+// independent of how it gets priced. rules.priceSlab's own `basisCents` is a property of the PRICE:
+// whatever number the matching row actually paid a percentage OF. On a `clv` row those are the same
+// number. On an `avg3` row (or a `lowest` row that resolves to avg3) `basisCents` is the average of
+// the card's last 3 sales - a different, usually lower, number that happens to share a unit with
+// market value. Five of the thirteen live bands are `avg3` today. The old version of this file built
+// its "market value" total by summing `price.basisCents`, which is wrong on every avg3 card and
+// silently mixes two different kinds of number into one total. It also meant a `rejected` card (no
+// row took it, so no basisCents) contributed nothing to that total, even though a rejected slab still
+// sits on the table and still has a real market value Josh can quote back to the seller ("about $300
+// of this I can't take").
+//
+// The fix: `addCard` now takes the card's market value as its own explicit argument rather than
+// inferring it from a priceSlab result, and `totals()` keeps it as its own field (`marketValueCents`)
+// built only from that argument, never from `price.basisCents`. `price.basisCents` still gets its own
+// aggregate (`buyBasisCents`, see totals() below) so the two can never be confused again.
+//
+// Money: every cents value here is already an integer - `marketValueCents` comes straight from
+// Triumph/Card Ladder (already rounded there), and `payoutCents`/`basisCents` already came out of
+// rules.priceSlab, which already did the one-and-only rounding (money.pctOf rounds half up once, per
+// money.js's own "never round a total" rule). The totals below only ever SUM those already-rounded
+// integers - plain integer addition needs no rounding logic of its own - so unlike salesAvgs.js this
+// file has nothing to ask money.js for and takes no `money` argument. If a future total here ever
+// needs real money math (a multiply, a divide, a new average), thread `money` through as an argument
+// the way salesAvgs.js does rather than `require('./money')` - this file stays dependency-free like
+// its scanner/ siblings.
+'use strict';
+
+/**
+ * certs.js's own zero-stripped dedupe key (`const certKey = d => String(d).replace(/\D/g, '')
+ * .replace(/^0+(?=\d)/, '')`), duplicated here rather than required (see file header) so a session
+ * keys a card exactly the way a ticket's cert list already does: "090123456" and "90123456" are the
+ * same slab here too.
+ */
+function normalizeCertKey(cert) {
+  return String(cert == null ? '' : cert).replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+}
+
+/**
+ * The identity of one scanned slab. certs.js dedupes a ticket's cert list on `grader + ':' + certKey`
+ * (its own `dedupKey`) - reusing that exact key here means a cert that would collide on a ticket
+ * collides in a session too, and the two can never disagree about what counts as "the same slab".
+ * Keying on grader as well as certKey also means a (vanishingly unlikely, but cheap to rule out)
+ * same-digits PSA/CGC pair are never confused for a re-scan of each other.
+ */
+function keyFor(certKey, grader) {
+  return String(grader || '').toLowerCase() + ':' + certKey;
+}
+
+/** Rebuild the key->index map after a splice shifts every later index down by one. */
+function reindex(list) {
+  const m = new Map();
+  list.forEach((c, i) => m.set(keyFor(c.certKey, c.grader), i));
+  return m;
+}
+
+// v1 had no `marketValueCents` field at all (see fromJSON's migration of a v1 snapshot below); v2
+// adds it. toJSON always stamps the current version; fromJSON's top-level gate below never actually
+// branches on this string (see its own comment) - it exists for anyone eyeballing a stored blob.
+const SCHEMA = 'scan-session-v2';
+
+/**
+ * One seller's pile. Cards live in an array (scan order - the order Josh wants them listed and later
+ * exported in) plus a Map from identity key -> index, so add/re-scan/remove are O(1) instead of
+ * re-scanning the whole pile on every tap.
+ */
+function createSession() {
+  let cards = [];
+  let byKey = new Map();
+
+  /**
+   * Add a scanned card, or handle a RE-SCAN of one already in the pile.
+   *
+   * `marketValueCents` is the card's actual market value, supplied by the caller rather than read off
+   * `price` - the Scanner page already has this number before it ever calls rules.priceSlab (see
+   * rates-portal/page.html's ScannerTab, where it's the local `clvCents` built from Triumph's
+   * `marketValue`, and comp.js's own slab-building, where it's `clvCents` again). The natural call
+   * site reads `session.addCard(cert, grader, clvCents, priced)` right after `priced =
+   * PriceCore.priceSlab(slab, settings, {})` - both `clvCents` and `priced` are already sitting in
+   * scope there under those exact names, so this signature needs no renaming at the call site. Pass
+   * `null` when the market value itself is unknown (Triumph and Card Ladder both came up empty) -
+   * `null` here means "unknown", never "zero"; see totals() for how that distinction survives into
+   * the running totals.
+   *
+   * At a show Josh will absolutely scan the same slab twice - a slow camera read, a seller shuffling
+   * the pile, a deliberate "price that one again". Two bad outcomes to avoid:
+   *   - silently APPENDING a second entry: the card counts twice in every total, quietly inflating
+   *     the offer he gives the seller.
+   *   - silently DROPPING the second scan with no sign anything happened: Josh can't tell a real
+   *     duplicate from a scan that just failed to register, so the obvious thing he does next is scan
+   *     it again, and again.
+   *
+   * The fix: a re-scan UPDATES the existing entry in place (same slot, so the list doesn't reorder
+   * under him) with the new market value and price, and the return value says `rescanned: true` so
+   * the caller can show something ("already have this one - price updated") instead of nothing
+   * happening. Overwriting rather than ignoring also makes a re-scan the natural way to retry a card
+   * whose first pricing attempt came back `staffPrice`/`rejected`, had no market value yet, or missed
+   * the network - scan it again and the new result wins, still in its original spot in the list.
+   */
+  function addCard(cert, grader, marketValueCents, price) {
+    const certKey = normalizeCertKey(cert);
+    const g = String(grader || '').toLowerCase();
+    const key = keyFor(certKey, g);
+    const entry = {
+      cert: String(cert == null ? '' : cert),
+      certKey,
+      grader: g,
+      marketValueCents: marketValueCents == null ? null : marketValueCents,
+      price: price == null ? null : price,
+    };
+    if (byKey.has(key)) {
+      const index = byKey.get(key);
+      cards[index] = entry;
+      return { rescanned: true, index };
+    }
+    const index = cards.length;
+    cards.push(entry);
+    byKey.set(key, index);
+    return { rescanned: false, index };
+  }
+
+  /**
+   * Remove one card - a mis-scan, or a card the seller pulls back out of the pile mid-negotiation.
+   * Same identity as addCard (grader + certKey). Returns whether anything was actually removed, so
+   * removing a cert that was never there (a double-tap on Remove, a stale button after a re-render) is
+   * a harmless no-op the caller can tell apart from a real removal.
+   */
+  function removeCard(cert, grader) {
+    const key = keyFor(normalizeCertKey(cert), grader);
+    if (!byKey.has(key)) return false;
+    const index = byKey.get(key);
+    cards.splice(index, 1);
+    byKey = reindex(cards);
+    return true;
+  }
+
+  /** Start the next seller: drop every card, keep the same session object (and its callers' reference to it). */
+  function clear() {
+    cards = [];
+    byKey = new Map();
+  }
+
+  /** Every scanned card, in scan order. Returns copies - the caller can't mutate session state through them. */
+  function list() {
+    return cards.map(c => Object.assign({}, c));
+  }
+
+  /**
+   * Running totals, recomputed from `cards` on every call rather than maintained incrementally - with
+   * at most a few dozen cards in a show pile the O(n) pass costs nothing, and it rules out an entire
+   * class of bug where an incremental running total drifts from what's actually on the list after an
+   * add/re-scan/remove.
+   *
+   *   - `count` / `buyCount` - every scanned card, and the subset Josh would actually pay for (a real
+   *     `payoutCents`). A `rejected` or `staffPrice` result carries no `payoutCents` at all - rules.js
+   *     never sets it to 0 for those, it's simply absent - so neither counts as a buy and neither adds
+   *     anything to `buyPayoutCents`. `count` includes everything regardless, because a rejected or
+   *     not-yet-priced slab is still part of the pile Josh is standing over and needs to see.
+   *
+   *   - `marketValueCents` - the real market value of the WHOLE pile, summed from each card's own
+   *     `marketValueCents` (the argument addCard was given, never `price.basisCents` - see the file
+   *     header for why those two numbers are not interchangeable). This INCLUDES rejected and
+   *     staffPrice cards on purpose: "you have about $300 of stuff here I can't take" needs exactly
+   *     this number. `buyMarketValueCents` is the same sum restricted to cards with a real
+   *     `payoutCents` - what Josh would actually be buying.
+   *
+   *   - `buyPayoutCents` - what Josh would actually pay, summed over the same buy-only subset.
+   *
+   *   - `buyBasisCents` - a SEPARATE total of `price.basisCents` over the buy-only subset: what each
+   *     bought card's payout was actually computed as a percentage OF. Named `buyBasisCents`, not
+   *     `marketValueCents` or anything "market"-flavoured, because on an avg3/lowest-resolved-to-avg3
+   *     row it is a sale average, not a market value, and a pile can freely mix clv-priced and
+   *     avg3-priced cards (see session.test.js for a worked example where this total and
+   *     `buyMarketValueCents` come out different on purpose). Treat it as payout-accounting only - e.g.
+   *     `buyPayoutCents / buyBasisCents` is the blended rate Josh is paying - never as a market value.
+   *
+   *   - `marketValueUnknownCount` / `buyMarketValueUnknownCount` - a card's market value can be
+   *     genuinely unknown (Triumph and Card Ladder both had nothing for it) even when it WAS priced or
+   *     rejected off an avg3 band's sale average - "priced" does not imply "market value known". Each
+   *     card's `marketValueCents` is `null` for unknown and a number (0 included - a slab is never
+   *     really worth nothing, so a literal 0 always means a real value was supplied) when known; the
+   *     sums above only add the cards where it's a number. Reading `marketValueCents` alone, a caller
+   *     cannot tell "the pile is worth $340" from "the pile is worth AT LEAST $340, and 3 of these
+   *     cards aren't counted". These two counts say exactly how many cards were left out of each sum -
+   *     zero means the total is complete, nonzero means read it as a floor, not a figure.
+   */
+  function totals() {
+    let count = 0, marketValueCents = 0, marketValueUnknownCount = 0;
+    let buyCount = 0, buyPayoutCents = 0, buyMarketValueCents = 0, buyMarketValueUnknownCount = 0, buyBasisCents = 0;
+    for (const c of cards) {
+      count++;
+      const hasMarketValue = typeof c.marketValueCents === 'number';
+      if (hasMarketValue) marketValueCents += c.marketValueCents;
+      else marketValueUnknownCount++;
+
+      const p = c.price || {};
+      const hasPayout = typeof p.payoutCents === 'number';
+      if (hasPayout) {
+        buyCount++;
+        buyPayoutCents += p.payoutCents;
+        if (hasMarketValue) buyMarketValueCents += c.marketValueCents;
+        else buyMarketValueUnknownCount++;
+        if (typeof p.basisCents === 'number') buyBasisCents += p.basisCents;
+      }
+    }
+    return {
+      count, marketValueCents, marketValueUnknownCount,
+      buyCount, buyPayoutCents, buyMarketValueCents, buyMarketValueUnknownCount,
+      buyBasisCents,
+    };
+  }
+
+  /** A plain, JSON.stringify-able snapshot of the whole pile. Stringify the RESULT yourself before
+   *  handing it to localStorage - see fromJSON below for the other half of the round trip. */
+  function toJSON() {
+    return { schema: SCHEMA, cards: cards.map(c => Object.assign({}, c)) };
+  }
+
+  /**
+   * Everything the Discord bot's ticket side already holds a cert list as: `ticket.list` (store.js /
+   * app.js) is `{ certs: [{cert, certKey, grader}], notBought: [] }` - exactly certs.js's own ListItem
+   * shape. Exporting into that shape means "send this pile to a ticket" is later just
+   * `ticket.list.certs.push(...session.exportList().certs)`, not a rewrite.
+   *
+   * Only cards Josh isn't passing on go out: a `rejected` slab was explicitly declined at the table
+   * ("I'm passing on these four") and has no business being priced again inside a ticket. Everything
+   * else rides along - priced cards AND `staffPrice` ones that still need a human to price - because a
+   * ticket with staff watching is exactly where an unpriced slab gets sorted out. `notBought` is always
+   * `[]`: every card that reaches a session already cleared certs.js's grader gate (a BGS/SGC/TAG slab
+   * is never priced in the first place), so a session has nothing of its own to put there; the key
+   * stays only so the shape matches `ticket.list` exactly.
+   */
+  function exportList() {
+    const certs = cards
+      .filter(c => !(c.price && c.price.rejected))
+      .map(c => ({ cert: c.cert, certKey: c.certKey, grader: c.grader }));
+    return { certs, notBought: [] };
+  }
+
+  return { addCard, removeCard, clear, list, totals, toJSON, exportList };
+}
+
+/**
+ * Restore a session from whatever `toJSON()` + `JSON.stringify` last wrote to localStorage - or from
+ * garbage, which a phone browser WILL hand back: a reload mid-write can truncate the string, a
+ * private-mode quota can silently keep a stale blob, a bug upstream could hand this a plain array or
+ * an object missing everything it needs. Strict on purpose at the TOP level: anything that isn't
+ * recognizably "our shape" (a parseable object carrying a `cards` array) throws the whole blob away
+ * and hands back an EMPTY session rather than guess - a wrong total built from half-trusted data is
+ * worse than Josh noticing the pile is gone and rescanning. A single bad CARD inside an otherwise-good
+ * array is handled more gently: that one entry is dropped and the rest of the pile is kept, because
+ * losing 1 of 40 real scans to one corrupt row is a far smaller disaster than losing all 40 to it.
+ *
+ * MIGRATING a v1 snapshot (schema 'scan-session-v1', written before `marketValueCents` existed, so
+ * every card is simply missing that key): the top-level gate below never actually reads `data.schema`
+ * - it only cares whether `data.cards` is an array - so a v1 blob passes it exactly like a v2 one
+ * always has. Per-card, `marketValueCents` is read defensively (present AND a finite number, else
+ * `null`), so a v1 card with no such key at all comes back with `marketValueCents: null` - "unknown",
+ * the same value a v2 card gets when its market value genuinely couldn't be found. That is a
+ * deliberate MIGRATE, not a discard: the real cert/grader/price data a v1 snapshot carries (a phone
+ * could have one sitting in localStorage right now) is not thrown away, but nothing is invented for
+ * the market value it never recorded - totals() then reports every migrated card via
+ * `marketValueUnknownCount` instead of quietly presenting a confident $0 pile value. Discarding the
+ * whole snapshot instead would have been strictly worse: Josh would lose a real, re-priced pile for a
+ * problem (one missing number, already representable as "unknown") this file already has to handle
+ * for brand-new cards anyway.
+ *
+ * Accepts a JSON string (the normal `localStorage.getItem` case, including its `null` for "nothing
+ * saved yet"), or an already-parsed value for a caller that did its own JSON.parse.
+ */
+function fromJSON(raw) {
+  const session = createSession();
+  let data = raw;
+  if (typeof raw === 'string') {
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      return session; // not even valid JSON ("not json", a truncated write) - empty session
+    }
+  }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return session; // null, or a bare JSON array
+  if (!Array.isArray(data.cards)) return session; // right-shaped object, wrong-typed (or missing) `cards`
+
+  for (const c of data.cards) {
+    if (!c || typeof c !== 'object') continue; // e.g. a number or string sitting in the array
+    if (typeof c.cert !== 'string' && typeof c.cert !== 'number') continue;
+    if (c.grader !== 'psa' && c.grader !== 'cgc') continue; // the only two graders a session ever holds
+    if (!normalizeCertKey(c.cert)) continue; // no digits at all - not a cert
+    // Present and a real, finite number -> trust it. Anything else (missing entirely - a v1 snapshot;
+    // null; a corrupt non-number) -> null, i.e. "unknown", never a guessed 0. See the migration note above.
+    const marketValueCents = (typeof c.marketValueCents === 'number' && Number.isFinite(c.marketValueCents))
+      ? c.marketValueCents
+      : null;
+    const price = c.price && typeof c.price === 'object' ? c.price : null;
+    session.addCard(String(c.cert), c.grader, marketValueCents, price);
+  }
+  return session;
+}
+
+window.ScanSession = {
+  createSession: createSession,
+  fromJSON: fromJSON,
+};
+})();
+
+(function () {
+'use strict';
+// Telling "no signal" apart from every other failure, so the Scanner page can say "try again in a
+// second" instead of the browser's own wording. A convention hall's cellular signal drops constantly;
+// every network call the page makes (Triumph through triumph-sourcer, the rate bands, and the sale-
+// averages bridge) can fail that way, and it must never read like "this cert is bad" or "you are
+// signed out" when it was really just the room.
+//
+// Ported from Penguin's web/src/lib/signal.ts (josh-scanner-parts): same browser phrasings, same
+// "server turned us away because the sign-in had lapsed" logic, types stripped. ADAPTED because our
+// page is plain fetch, not supabase-js, and keeps its own session under the `iopScannerAuth`
+// localStorage key (see rates-portal/page.html's ScannerTab) instead of Supabase's own
+// `sb-<project>-auth-token` — and that key stores only `{ access_token, refresh_token, email }`, no
+// expires_at of its own, so signInLapsed here reads the expiry out of the access_token's JWT payload
+// instead of a stored field. Pure, dependency-free, no DOM/network/timers/requires, same shape as
+// scanPick.js/salesAvgs.js/scanDecode.js so build-portal.js's embedWholeFile can drop it straight into
+// the page as window.Signal.
+'use strict';
+
+/** How each browser words a request that never reached the server (supabase-js adds "TypeError: "),
+ *  plus our own NO_SIGNAL_ERROR sentinel so code that throws it is recognised on the way back round.
+ *  Kept to EXACTLY the phrasings Penguin's version collected from real shows — not padded out with
+ *  guesses, because a phrase that's too eager to match would dress up a genuine server error as "no
+ *  signal" and have Josh retrying forever on something that can never succeed. The trailing negative
+ *  lookahead excludes "Failed to fetch dynamically imported module" (a stale page-chunk problem, not
+ *  a signal one) — we have no dynamic imports on this page, but the exclusion is free to keep. */
+var NO_SIGNAL = new RegExp(
+  '^(?:\\w*Error: )?(?:No signal$|Failed to fetch|Load failed|NetworkError when attempting to fetch resource'
+  + '|Network request failed|The network connection was lost|The Internet connection appears to be offline'
+  + '|A server with the specified hostname could not be found)'
+  + '(?! dynamically)',
+  'i'
+);
+
+/** How the server turns away a request that went out unsigned. */
+var TURNED_AWAY = /permission denied|row-level security/i;
+
+function messageOf(e) {
+  if (e instanceof Error) return e.message;
+  if (e == null) return '';
+  return String(e);
+}
+
+/** Our own word for it: code that wants to throw/compare rather than branch on a caught message
+ *  keeps this exact string, and NO_SIGNAL above recognises it coming back round. */
+var NO_SIGNAL_ERROR = 'No signal';
+
+/** The key the Scanner page saves its session under (rates-portal/page.html's ScannerTab, AUTH_KEY).
+ *  Named here too so a caller doesn't have to repeat the literal. */
+var SCANNER_AUTH_KEY = 'iopScannerAuth';
+
+/** Clock-skew allowance for signInLapsed, below. */
+var DEFAULT_SKEW_MS = 60 * 1000;
+
+function base64UrlDecode(segment) {
+  var s = String(segment).replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return atob(s);
+}
+
+/**
+ * The JWT's own expiry (`exp`, seconds since epoch) in milliseconds, or null when the token is
+ * missing, truncated, not actually a JWT, or carries no exp claim. Decoded defensively on purpose —
+ * a half-written localStorage value or a non-JWT string must read as "unknown", never throw and never
+ * crash the caller.
+ */
+function decodeJwtExpMs(token) {
+  if (typeof token !== 'string') return null;
+  var parts = token.split('.');
+  if (parts.length < 2) return null;
+  try {
+    var payload = JSON.parse(base64UrlDecode(parts[1]));
+    var exp = payload && payload.exp;
+    return typeof exp === 'number' && isFinite(exp) ? exp * 1000 : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * True when the session saved under iopScannerAuth has an access_token whose own expiry has passed,
+ * or is close enough that a slow or skewed clock could already have tipped it over. Supabase only
+ * renews a token once it can reach the server; a renewal that failed for want of signal leaves the
+ * old, now-expired token in place while every request keeps going out unsigned, and the server turns
+ * all of them away as "permission denied" even though the owner never signed out.
+ *
+ * `getItem` is injected rather than read off a global `localStorage`, so this stays a pure function —
+ * pass `localStorage.getItem.bind(localStorage)` (the page already wraps its own reads the same way,
+ * see page.html's loadSession). Every read here is wrapped again regardless, because localStorage
+ * throws outright in some privacy modes instead of returning null.
+ *
+ * Clock skew: a device's clock can run slow, fast, or just be wrong, and there is no way to check it
+ * without the very network call that is failing. A SLOW clock is the dangerous direction — the device
+ * would believe a token still has time left after the server has already rejected it — so `skewMs`
+ * pads the comparison forward: a token expiring within the next `skewMs` already counts as lapsed. A
+ * FAST clock only makes this fire a little early, which is the safe side to err on: see isNoSignal's
+ * comment for why calling something "lapsed" too eagerly can only ever turn an ambiguous permission
+ * error into a harmless "no signal, try again" — it can never by itself tell anyone they're signed
+ * out. That only ever happens after a real, failed refresh call to the server (see page.html's
+ * refreshSession/renderNotSignedIn), never from a client-side clock guess.
+ */
+function signInLapsed(opts) {
+  opts = opts || {};
+  var getItem = opts.getItem;
+  if (typeof getItem !== 'function') return false;
+  var key = opts.storageKey || SCANNER_AUTH_KEY;
+  var now = typeof opts.now === 'number' ? opts.now : Date.now();
+  var skewMs = typeof opts.skewMs === 'number' ? opts.skewMs : DEFAULT_SKEW_MS;
+
+  var raw;
+  try {
+    raw = getItem(key);
+  } catch (e) {
+    return false; // storage blocked or unreadable: nothing to go on
+  }
+  if (!raw) return false;
+
+  var session;
+  try {
+    session = JSON.parse(raw);
+  } catch (e) {
+    return false;
+  }
+
+  var expMs = decodeJwtExpMs(session && session.access_token);
+  if (expMs == null) return false;
+  return expMs <= now + skewMs;
+}
+
+/**
+ * True when a request failed for want of signal, not because the server said no.
+ *
+ * `opts.lapsed`: pass true when the caller already knows the sign-in had lapsed as the request went
+ * out (Supabase/our own refresh may have fixed it since — see signInLapsed's own comment on why that
+ * only ever leans the result toward "no signal", never toward "signed out"). Leave it unset to have
+ * this check storage itself via `opts.getItem`/`opts.storageKey`/`opts.now`/`opts.skewMs`.
+ *
+ * `opts.online`: the caller's own `navigator.onLine` reading, if it has one. This module never reads
+ * a browser global itself — no DOM, same pattern scanPick.js/scanDecode.js use for every other browser
+ * fact (passed in as plain data, never sniffed). Treated as a hint, never the answer: `onLine === true`
+ * proves nothing (a dead wifi network still reports "online", so it's never even consulted) and
+ * `onLine === false` only breaks a tie on a message this function doesn't otherwise recognise as
+ * either a signal phrase or a turned-away one — it can never override a message that already reads as
+ * a specific, genuine server error, which is the one thing this must never dress up as "no signal".
+ */
+function isNoSignal(e, opts) {
+  opts = opts || {};
+  var m = messageOf(e);
+  if (NO_SIGNAL.test(m)) return true;
+  if (TURNED_AWAY.test(m)) {
+    return opts.lapsed ? true : signInLapsed(opts);
+  }
+  if (opts.online === false) return true; // unrecognised message, device confidently offline
+  return false;
+}
+
+// ── retry policy: kept HERE so the page never invents its own ──────────────────────────────────
+var RETRY_BASE_MS = 2000;
+var RETRY_MAX_MS = 30000;
+var RETRY_FACTOR = 2;
+
+/**
+ * How long to wait before trying again after a no-signal failure, given how many tries have already
+ * failed this round (0 = about to make the first retry). Doubles each time, capped at RETRY_MAX_MS —
+ * a dead network gets asked less and less often, never hammered on a fixed short interval forever.
+ */
+function retryDelayMs(attempt) {
+  var n = typeof attempt === 'number' && isFinite(attempt) && attempt > 0 ? Math.floor(attempt) : 0;
+  return Math.min(RETRY_MAX_MS, RETRY_BASE_MS * Math.pow(RETRY_FACTOR, n));
+}
+
+/** Shown instead of the browser's own wording when a request failed for want of signal. The card is
+ *  fine; the phone just couldn't reach anything. No em dash — this is on-screen copy. */
+var NO_SIGNAL_MESSAGE = 'No signal. The card is fine, try again in a second.';
+
+/** Shown when the server turned a request away and it was NOT just a stale, unrenewed sign-in — the
+ *  owner (or sourcer) genuinely needs to sign back in. No em dash — this is on-screen copy. */
+var SIGNED_OUT_MESSAGE = 'Signed out. Sign in again to keep pricing.';
+
+/**
+ * The one call a page needs: what happened, what to show, and whether to try again by itself.
+ * `opts` is passed straight through to isNoSignal/signInLapsed (lapsed/getItem/storageKey/now/skewMs/
+ * online), plus `attempt` (how many tries have already failed this round) for the retry delay.
+ *
+ * Three outcomes, never a fourth: a no-signal failure (retry-worthy, with a backed-off delay), a
+ * genuine sign-out (not retry-worthy — nothing changes until the owner signs in again), or a real
+ * error (not retry-worthy — auto-retrying something that will never succeed is the exact failure mode
+ * this module exists to prevent).
+ */
+function classifyError(e, opts) {
+  opts = opts || {};
+  if (isNoSignal(e, opts)) {
+    return { noSignal: true, signedOut: false, message: NO_SIGNAL_MESSAGE, retry: true, retryAfterMs: retryDelayMs(opts.attempt) };
+  }
+  if (TURNED_AWAY.test(messageOf(e))) {
+    return { noSignal: false, signedOut: true, message: SIGNED_OUT_MESSAGE, retry: false, retryAfterMs: null };
+  }
+  return { noSignal: false, signedOut: false, message: messageOf(e) || 'Something went wrong.', retry: false, retryAfterMs: null };
+}
+
+window.Signal = {
+  NO_SIGNAL_ERROR: NO_SIGNAL_ERROR,
+  NO_SIGNAL_MESSAGE: NO_SIGNAL_MESSAGE,
+  SIGNED_OUT_MESSAGE: SIGNED_OUT_MESSAGE,
+  SCANNER_AUTH_KEY: SCANNER_AUTH_KEY,
+  DEFAULT_SKEW_MS: DEFAULT_SKEW_MS,
+  RETRY_BASE_MS: RETRY_BASE_MS,
+  RETRY_MAX_MS: RETRY_MAX_MS,
+  messageOf: messageOf,
+  decodeJwtExpMs: decodeJwtExpMs,
+  signInLapsed: signInLapsed,
+  isNoSignal: isNoSignal,
+  classifyError: classifyError,
+  retryDelayMs: retryDelayMs,
+};
+})();
+
+(function () {
+'use strict';
+// Scanner-page client for the Card Ladder sales-average queue/cache (see
+// supabase/migrations/20261106000000_scanner_avg_requests.sql), fulfilled server-side by the bot's
+// avgQueue.js. Pure: no DOM, no fs, no `require` of anything else in this repo — so it can be
+// embedded into rates-portal/page.html whole, the same way scanner/salesAvgs.js and
+// scanner/scanPick.js already are (see rates-portal/build-portal.js's embedWholeFile). A LATER
+// change swaps page.html's stubbed `fetchSalesAverages(cert, grader)` for a thin wrapper around
+// `getSalesAverages` below — see this file's own doc comment on the function for the exact shape.
+'use strict';
+
+// Keep this in step with avgQueue.js's own AVG_STALE_MS. The two are deliberately NOT shared code
+// (this file ships standalone into the page) but must agree on how long an answer is trusted, or
+// the phone could keep showing "pending" on an answer the bot already considers fresh, or re-ask
+// for one the bot is still happy to serve from cache. 24h: see avgQueue.js's comment for the
+// reasoning (a full card-show weekend without re-asking Card Ladder for the same cert, but never a
+// week-old number served as "current").
+const DEFAULT_STALE_MS = 24 * 60 * 60 * 1000;
+
+// A 'pending' row older than this is assumed abandoned (the bot was down) and is safe to ask again.
+// Keep in step with avgQueue.js's PENDING_TIMEOUT_MS for the same reason as DEFAULT_STALE_MS.
+const DEFAULT_PENDING_TIMEOUT_MS = 10 * 60 * 1000;
+
+// Same rule as certs.js's certKey (duplicated here, not required, to stay dependency-free): dedupe
+// on the zero-stripped digits, since a cert can be read/typed with or without a leading zero.
+function certKeyOf(cert) {
+  return String(cert == null ? '' : cert)
+    .replace(/\D/g, '')
+    .replace(/^0+(?=\d)/, '');
+}
+
+/**
+ * getSalesAverages({ cert, grader, supabaseUrl, supabaseAnonKey, accessToken, fetchImpl, now,
+ * staleMs, pendingTimeoutMs })
+ *
+ *   cert/grader:      the slab being checked (grader 'psa'|'cgc').
+ *   supabaseUrl:      the project's REST base, e.g. "https://xxxx.supabase.co".
+ *   supabaseAnonKey:  the project's public anon key (never a secret — safe in the page).
+ *   accessToken:      the signed-in owner's or active sourcer's Supabase JWT. Required: RLS refuses
+ *                     an anonymous request outright (see the migration's policies), so without one
+ *                     this resolves `{ status: 'error', reason: 'not configured' }` rather than
+ *                     making a request that could only ever be refused.
+ *   fetchImpl/now:    injected for tests; default to the real `fetch` / `Date.now` in a browser.
+ *   staleMs/pendingTimeoutMs: override the defaults above (tests only — a real page should leave
+ *                     these alone so it agrees with avgQueue.js).
+ *
+ * Resolves to exactly one of:
+ *   { status: 'done',    avg3Cents, avg5Cents }   -- avg3Cents/avg5Cents may each still be null:
+ *                                                     Card Ladder found the card but it has fewer
+ *                                                     than 3/5 sales to average — a true answer.
+ *   { status: 'pending' }                         -- queued, not fulfilled yet; ask again later.
+ *   { status: 'failed',  reason }                 -- Card Ladder could not answer at all; `reason`
+ *                                                     is avgQueue.js's own plain-text explanation.
+ *   { status: 'error',   reason }                 -- could not even reach Supabase (network/auth/
+ *                                                     misconfiguration) — distinct from 'failed',
+ *                                                     which means Card Ladder itself was asked.
+ * Never throws — a caller never needs its own try/catch around this.
+ *
+ * A future `fetchSalesAverages(cert, grader)` (rates-portal/page.html) is a thin wrapper: call this
+ * with the page's own Supabase config + the signed-in user's token, and map the result to the shape
+ * renderPriced already expects (`{ avg3Cents, avg5Cents }`, using nulls for 'pending'/'failed'/
+ * 'error' — or, if staff want a "averages pending, check back" note, branch on `status` instead).
+ */
+async function getSalesAverages({
+  cert,
+  grader,
+  supabaseUrl,
+  supabaseAnonKey,
+  accessToken,
+  fetchImpl,
+  now,
+  staleMs,
+  pendingTimeoutMs,
+} = {}) {
+  const doFetch = fetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
+  const getNow = now || (() => Date.now());
+  const STALE_MS = staleMs == null ? DEFAULT_STALE_MS : staleMs;
+  const PENDING_MS = pendingTimeoutMs == null ? DEFAULT_PENDING_TIMEOUT_MS : pendingTimeoutMs;
+
+  const key = certKeyOf(cert);
+  const g = grader === 'cgc' ? 'cgc' : 'psa';
+  if (!key || !supabaseUrl || !supabaseAnonKey || !accessToken || !doFetch) {
+    return { status: 'error', reason: 'not configured' };
+  }
+
+  const base = String(supabaseUrl).replace(/\/+$/, '');
+  const table = `${base}/rest/v1/scanner_avg_requests`;
+  const headers = {
+    apikey: supabaseAnonKey,
+    authorization: `Bearer ${accessToken}`,
+    'content-type': 'application/json',
+  };
+
+  let row = null;
+  try {
+    const res = await doFetch(`${table}?cert_key=eq.${encodeURIComponent(key)}&grader=eq.${g}&select=*`, { headers });
+    if (!res.ok) return { status: 'error', reason: `HTTP ${res.status}` };
+    const rows = await res.json();
+    row = (Array.isArray(rows) && rows[0]) || null;
+  } catch (e) {
+    return { status: 'error', reason: (e && e.message) || 'network error' };
+  }
+
+  const t = getNow();
+  if (row) {
+    const filledAt = row.filled_at ? Date.parse(row.filled_at) : NaN;
+    const requestedAt = row.requested_at ? Date.parse(row.requested_at) : NaN;
+
+    if (row.status === 'done' && Number.isFinite(filledAt) && t - filledAt < STALE_MS) {
+      return {
+        status: 'done',
+        avg3Cents: row.avg3_cents == null ? null : Number(row.avg3_cents),
+        avg5Cents: row.avg5_cents == null ? null : Number(row.avg5_cents),
+      };
+    }
+    if (row.status === 'failed' && Number.isFinite(filledAt) && t - filledAt < STALE_MS) {
+      return { status: 'failed', reason: row.error || 'Card Ladder could not answer' };
+    }
+    if (row.status === 'pending' && Number.isFinite(requestedAt) && t - requestedAt < PENDING_MS) {
+      return { status: 'pending' };
+    }
+    // else: aged out in whatever status it was in (including an abandoned pending) — fall through
+    // and (re)enqueue below, same as a cert we have never seen.
+  }
+
+  try {
+    const stamp = new Date(t).toISOString();
+    const ins = await doFetch(`${table}?on_conflict=cert_key,grader`, {
+      method: 'POST',
+      headers: { ...headers, Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({
+        cert_key: key,
+        grader: g,
+        cert: String(cert),
+        status: 'pending',
+        avg3_cents: null,
+        avg5_cents: null,
+        error: null,
+        filled_at: null,
+        requested_at: stamp,
+        updated_at: stamp,
+      }),
+    });
+    if (!ins.ok) return { status: 'error', reason: `HTTP ${ins.status}` };
+  } catch (e) {
+    return { status: 'error', reason: (e && e.message) || 'network error' };
+  }
+  return { status: 'pending' };
+}
+
+window.AvgClient = {
+  getSalesAverages: getSalesAverages,
+  certKeyOf: certKeyOf,
+  DEFAULT_STALE_MS: DEFAULT_STALE_MS,
+  DEFAULT_PENDING_TIMEOUT_MS: DEFAULT_PENDING_TIMEOUT_MS,
 };
 })();
 /* SCANNER-CORE:END */
@@ -1526,6 +2617,10 @@ window.ScanPick = {
       marks: document.getElementById('sc-marks'),
       vfStatus: document.getElementById('sc-vf-status'),
       shutter: document.getElementById('sc-shutter'),
+      torch: document.getElementById('sc-torch'),
+      sound: document.getElementById('sc-sound'),
+      zoomWrap: document.getElementById('sc-zoom-wrap'),
+      zoom: document.getElementById('sc-zoom'),
       vfOff: document.getElementById('sc-vf-off'),
       vfOffText: document.getElementById('sc-vf-off-text'),
       start: document.getElementById('sc-start'),
@@ -1547,8 +2642,22 @@ window.ScanPick = {
       avg3: document.getElementById('sc-avg3'),
       avg5: document.getElementById('sc-avg5'),
       note: document.getElementById('sc-note'),
+      rescanBadge: document.getElementById('sc-rescan-badge'),
+      retry: document.getElementById('sc-retry'),
+      retryBtn: document.getElementById('sc-retry-btn'),
       earlier: document.getElementById('sc-earlier'),
-      earlierList: document.getElementById('sc-earlier-list')
+      earlierList: document.getElementById('sc-earlier-list'),
+      pileTotals: document.getElementById('sc-pile-totals'),
+      pileCount: document.getElementById('sc-pile-count'),
+      pileMarket: document.getElementById('sc-pile-market'),
+      pileUnknown: document.getElementById('sc-pile-unknown'),
+      pilePayout: document.getElementById('sc-pile-payout'),
+      pileBuyCount: document.getElementById('sc-pile-buy-count'),
+      clearBtn: document.getElementById('sc-clear'),
+      clearConfirm: document.getElementById('sc-clear-confirm'),
+      clearCount: document.getElementById('sc-clear-count'),
+      clearYes: document.getElementById('sc-clear-yes'),
+      clearNo: document.getElementById('sc-clear-no')
     };
 
     function metaContent(name) {
@@ -1566,6 +2675,72 @@ window.ScanPick = {
     function loadSession() { try { return JSON.parse(localStorage.getItem(AUTH_KEY) || 'null'); } catch (e) { return null; } }
     function saveSession(s) { try { if (s) localStorage.setItem(AUTH_KEY, JSON.stringify(s)); else localStorage.removeItem(AUTH_KEY); } catch (e) { /* private mode: session lives for this visit only */ } }
     var session = loadSession();
+
+    // ── the pile: one seller's cards at the table, as far as the Scanner page is concerned. The
+    // actual add/remove/totals math is scanner/session.js (window.ScanSession, unit-tested on its
+    // own) - this page only owns persisting it to localStorage and drawing it. A tiny side table,
+    // `pileMeta`, carries the one thing a session entry does NOT (see session.js's own ListItem-
+    // shaped fields): the card's display name/grade, keyed the same way the pile itself dedupes
+    // (grader + the already-normalized certKey session.list() hands back - never recomputed here,
+    // so this can never disagree with the pile about what counts as "the same slab"). ─────────────
+    var PILE_KEY = 'iopScanPile';
+    function pileMetaKey(grader, certKey) { return String(grader || '').toLowerCase() + ':' + certKey; }
+    function loadPileBlob() {
+      try {
+        var raw = localStorage.getItem(PILE_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) { return null; } // corrupt/blocked storage - start from an empty pile, not a crash
+    }
+    var pileBlob = loadPileBlob();
+    var pile = ScanSession.fromJSON(pileBlob && pileBlob.session);
+    var pileMeta = (pileBlob && pileBlob.meta && typeof pileBlob.meta === 'object' && !Array.isArray(pileBlob.meta)) ? pileBlob.meta : {};
+    function savePile() {
+      try { localStorage.setItem(PILE_KEY, JSON.stringify({ session: pile.toJSON(), meta: pileMeta })); } catch (e) { /* private mode / quota: pile lives for this visit only */ }
+    }
+
+    // ── scan feedback: a beep + buzz so Josh knows a cert was read without looking at the screen
+    // (ScanFeedback.js owns WHICH tone/pattern per outcome and the persisted sound on/off switch -
+    // see that file's header). Only the real browser primitives live here: lazily creating one
+    // AudioContext (iOS refuses a second one cheaply), resuming it on unlock()/every tone() the way
+    // Penguin's scanFeedback.ts's beep() does, and reading navigator.vibrate/localStorage, neither of
+    // which exist in scanner/feedback.js's own Node-testable world. ──────────────────────────────────
+    var FeedbackAudio = (function () {
+      var ctx = null;
+      function get() {
+        if (ctx) return ctx;
+        try {
+          var C = window.AudioContext || window.webkitAudioContext;
+          ctx = C ? new C() : null;
+        } catch (e) { ctx = null; }
+        return ctx;
+      }
+      return {
+        unlock: function () { var a = get(); if (a && a.resume) { try { a.resume(); } catch (e) { /* audio blocked */ } } },
+        tone: function (spec) {
+          var a = get();
+          if (!a) return;
+          if (a.state === 'suspended') { try { a.resume(); } catch (e) { /* stays suspended - this tone is silent, not fatal */ } }
+          var osc = a.createOscillator();
+          var gain = a.createGain();
+          osc.type = spec.type;
+          osc.frequency.value = spec.hz;
+          var now = a.currentTime;
+          gain.gain.setValueAtTime(0, now);
+          gain.gain.linearRampToValueAtTime(spec.gain, now + 0.005);
+          gain.gain.setValueAtTime(spec.gain, now + spec.ms / 1000 - 0.01);
+          gain.gain.linearRampToValueAtTime(0, now + spec.ms / 1000);
+          osc.connect(gain).connect(a.destination);
+          osc.start(now);
+          osc.stop(now + spec.ms / 1000 + 0.02);
+        }
+      };
+    })();
+    function safeLocalStorage() { try { return window.localStorage; } catch (e) { return null; } }
+    var feedback = ScanFeedback.createFeedback({
+      audio: FeedbackAudio,
+      vibrate: (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') ? navigator.vibrate.bind(navigator) : null,
+      storage: safeLocalStorage()
+    });
 
     function authFetch(url, opts) {
       opts = opts || {};
@@ -1600,16 +2775,30 @@ window.ScanPick = {
         });
     }
 
+    function authGetItem(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+    function onlineHint() {
+      return (typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean') ? navigator.onLine : undefined;
+    }
+
+    /**
+     * Returns `{ ok, noSignal }` instead of a bare boolean - this is the one spot that can tell apart
+     * "the refresh token really is no good any more" from "we couldn't even reach Supabase to ask",
+     * and that distinction must survive out of here. A fetch() that throws (no signal) is NOT evidence
+     * the token is bad, so it must never be treated as a sign-out - see signal.js's own header on why
+     * a quietly-lapsed token must never read as "permission denied" to the owner.
+     */
     function refreshSession() {
-      if (!session || !session.refresh_token) return Promise.resolve(false);
+      if (!session || !session.refresh_token) return Promise.resolve({ ok: false, noSignal: false });
       return authFetch(SB_URL + '/auth/v1/token?grant_type=refresh_token', {
         method: 'POST', headers: { apikey: SB_ANON }, body: JSON.stringify({ refresh_token: session.refresh_token })
       }).then(function (res) { return res.json(); }).then(function (j) {
-        if (!j || !j.access_token) return false;
+        if (!j || !j.access_token) return { ok: false, noSignal: false };
         session = { access_token: j.access_token, refresh_token: j.refresh_token || session.refresh_token, email: session.email };
         saveSession(session);
-        return true;
-      }).catch(function () { return false; });
+        return { ok: true, noSignal: false };
+      }).catch(function (e) {
+        return { ok: false, noSignal: Signal.isNoSignal(e, { online: onlineHint() }) };
+      });
     }
 
     function renderAuthState() {
@@ -1629,20 +2818,49 @@ window.ScanPick = {
         .catch(function () { settingsLoaded = true; }); // one try per page load; priceCert() copes with settings===null
     }
 
-    // ── Card Ladder's sales averages: STUBBED. triumph-sourcer only forwards Triumph's own
-    // market value (see its source: marketValue/confidence/takeable/reason, nothing else is
-    // allow-listed) - it never asks Card Ladder for recent sales the way triumph.js's own
-    // clHelper.js does from the LAN-only psa-comp-helper, so there is no live source for avg3/avg5
-    // on a phone today. THE ONE PLACE to wire a future proxy: replace this function's body with a
-    // real call returning { avg3Cents, avg5Cents } (or recentSalesCents, and let SalesAvgs.salesAvgs
-    // below do the arithmetic exactly as the bot does in clHelper.js's toClResult).
+    // ── Card Ladder's sales averages: live, via the PC bot's avgQueue.js (see avgQueue.js's,
+    // avg-portal/'s and scanner/avgClient.js's own headers). AvgClient (window.AvgClient) is
+    // scanner/avgClient.js embedded whole by build-portal.js - never hand-copied - so this tab reads
+    // exactly the same scanner_avg_requests cache/queue row the PC bot itself writes, the same way,
+    // with this tab's OWN signed-in session (the same one TRIUMPH_URL already uses - the migration's
+    // RLS allows the owner or an active sourcer either way, so no separate credential is needed here).
     function fetchSalesAverages(cert, grader) {
-      return Promise.resolve({ avg3Cents: null, avg5Cents: null, stubbed: true });
+      return AvgClient.getSalesAverages({
+        cert: cert,
+        grader: grader,
+        supabaseUrl: SB_URL,
+        supabaseAnonKey: SB_ANON,
+        accessToken: session && session.access_token
+      });
     }
+
+    // How often to re-check a still-'pending' average, and how long to keep checking before giving up
+    // and saying so plainly instead of spinning forever.
+    //   AVG_POLL_MS (5s) - short enough that an answer the PC bot already has feels instant to someone
+    //     standing at a table; long enough that a room full of phones polling at a show is not
+    //     meaningfully more Supabase load than one.
+    //   AVG_POLL_TIMEOUT_MS (2min) - avgQueue.js only ticks every 15s AND yields to a live Discord
+    //     comp before it will even claim a request (see avgQueue.js's own header), so a comp already
+    //     running can make the PC bot wait before it starts on this cert at all - and a real Card
+    //     Ladder lookup on top of that takes real time too. Two minutes comfortably covers that
+    //     ordinary case while still being a real, bounded number: past it something is actually wrong
+    //     (the PC bot is down or badly backed up), and Josh needs to be told that plainly, not left
+    //     staring at "Checking..." forever.
+    var AVG_POLL_MS = 5000;
+    var AVG_POLL_TIMEOUT_MS = 2 * 60 * 1000;
 
     // ── pricing one cert ─────────────────────────────────────────────────────────────────────
     var busy = false;
-    var history = [];
+
+    // ── a sales-average check in flight for the card currently on screen. `avgPollToken` is bumped
+    // every time a NEW lookup starts (a fresh scan, a retry, a re-typed cert) so a still-ticking poll
+    // from a card Josh has already moved past can never land its answer over whatever is on screen
+    // (or in the pile) by the time it resolves - see priceCertResult/stopAveragePoll below. ──────────
+    var avgPollTimer = null;
+    var avgPollToken = 0;
+    function stopAveragePoll() {
+      if (avgPollTimer) { clearTimeout(avgPollTimer); avgPollTimer = null; }
+    }
 
     function gradeNum(g) {
       if (g == null) return null;
@@ -1674,6 +2892,50 @@ window.ScanPick = {
       dom.note.className = 'sc-note' + (warn ? ' warn' : '');
     }
 
+    // ── retry: a cert that couldn't be looked up for want of signal must be retryable without
+    // retyping it. One slot is all this page ever needs - only one lookup runs at a time (see `busy`
+    // below) - holding the countdown timer so a fresh attempt (or a fresh scan) can always cancel a
+    // stale one rather than leaving two running. ─────────────────────────────────────────────────────
+    var retryTimer = null;
+    function hideRetry() {
+      if (retryTimer) { clearInterval(retryTimer); retryTimer = null; }
+      dom.retry.hidden = true;
+      dom.retryBtn.onclick = null;
+    }
+    function showRetry(cert, grader, attempt, retryAfterMs) {
+      var remaining = Math.max(1, Math.ceil((retryAfterMs || 0) / 1000));
+      dom.retry.hidden = false;
+      dom.retryBtn.disabled = true;
+      dom.retryBtn.textContent = 'Retry (' + remaining + 's)';
+      if (retryTimer) clearInterval(retryTimer);
+      retryTimer = setInterval(function () {
+        remaining--;
+        if (remaining <= 0) {
+          clearInterval(retryTimer);
+          retryTimer = null;
+          dom.retryBtn.disabled = false;
+          dom.retryBtn.textContent = 'Retry';
+        } else {
+          dom.retryBtn.textContent = 'Retry (' + remaining + 's)';
+        }
+      }, 1000);
+      dom.retryBtn.onclick = function () { hideRetry(); priceCert(cert, grader, attempt + 1); };
+    }
+
+    /** Every network failure in this tab reads through here, never through the browser's own wording -
+        see scanner/signal.js's own header for why a dropped signal must never look like a bad cert or
+        a bad sign-in. `errLike` is an Error, or anything Signal.messageOf can read a message off. */
+    function describeFailure(errLike, attempt) {
+      var err = errLike instanceof Error ? errLike : new Error(errLike == null ? '' : String(errLike));
+      return Signal.classifyError(err, { attempt: attempt, getItem: authGetItem, online: onlineHint() });
+    }
+
+    function applyFailure(cert, grader, attempt, info) {
+      if (info.signedOut) { renderNotSignedIn(cert, grader, info.message); return; }
+      renderError(cert, grader, info.message);
+      if (info.retry) showRetry(cert, grader, attempt, info.retryAfterMs); else hideRetry();
+    }
+
     function renderLoading(cert, grader) {
       dom.result.hidden = false;
       dom.name.textContent = grader.toUpperCase() + ' ' + cert;
@@ -1684,16 +2946,18 @@ window.ScanPick = {
       dom.rateLine.textContent = '—';
       dom.avg3.textContent = '—';
       dom.avg5.textContent = '—';
+      dom.rescanBadge.hidden = true;
+      hideRetry();
       showNote('');
     }
 
-    function renderNotSignedIn(cert, grader) {
+    function renderNotSignedIn(cert, grader, message) {
       dom.result.hidden = false;
       dom.name.textContent = grader.toUpperCase() + ' ' + cert;
       dom.cert.textContent = cert; dom.grader.textContent = grader.toUpperCase(); dom.grade.textContent = '—';
       dom.clv.textContent = 'Sign in to price';
       dom.rateLine.textContent = '—'; dom.avg3.textContent = '—'; dom.avg5.textContent = '—';
-      showNote('Sign in above for a live CL value - this needs your own Triumph-bridge login, not the rates edit key.', true);
+      showNote(message || 'Sign in above for a live CL value - this needs your own Triumph-bridge login, not the rates edit key.', true);
       renderAuthState();
     }
 
@@ -1703,7 +2967,13 @@ window.ScanPick = {
       showNote(msg, true);
     }
 
-    function renderPriced(cert, grader, lookup, avgs) {
+    /**
+     * `avgState` is AvgClient's own result shape, plus two states this tab adds: `{ status: 'skipped' }`
+     * (PriceCore.needsCardLadder said no avg3/lowest band could plausibly need an average for this
+     * slab, so none was ever requested) and `{ status: 'timeout' }` (polled past AVG_POLL_TIMEOUT_MS
+     * with no answer). See priceCertResult below for who decides which of these to pass in.
+     */
+    function renderPriced(cert, grader, lookup, avgState) {
       var card = lookup.card || (grader.toUpperCase() + ' ' + cert);
       dom.name.textContent = card;
       dom.cert.textContent = cert;
@@ -1713,12 +2983,18 @@ window.ScanPick = {
       var clvCents = lookup.marketValue != null ? Math.round(Number(lookup.marketValue) * 100) : null;
       dom.clv.textContent = clvCents != null ? money(clvCents) : 'No value';
 
-      dom.avg3.textContent = avgs.avg3Cents != null ? money(avgs.avg3Cents) : 'Not available';
-      dom.avg5.textContent = avgs.avg5Cents != null ? money(avgs.avg5Cents) : 'Not available';
+      // Only a 'done' answer is ever trusted as a real average - 'pending'/'failed'/'error'/'timeout'
+      // all price as if no average exists at all (null), never as a guess and never as market value
+      // standing in for it (see the header on AVG_POLL_TIMEOUT_MS and renderAwaitingAverage below).
+      var avg3Cents = avgState.status === 'done' ? avgState.avg3Cents : null;
+      var avg5Cents = avgState.status === 'done' ? avgState.avg5Cents : null;
+      dom.avg3.textContent = avg3Cents != null ? money(avg3Cents) : (avgState.status === 'pending' ? 'Checking…' : 'Not available');
+      dom.avg5.textContent = avg5Cents != null ? money(avg5Cents) : (avgState.status === 'pending' ? 'Checking…' : 'Not available');
 
       if (!settings) {
         dom.rateLine.innerHTML = '<span class="status-pill st-unknown">No rate sheet</span>';
         showNote('The live rate sheet could not be loaded, so nothing was matched against a band.', true);
+        recordInPile(cert, grader, card, lookup, clvCents, null);
         return;
       }
 
@@ -1728,14 +3004,34 @@ window.ScanPick = {
       var year = SportCore.yearFromTitle(card);
       var language = PriceCore.languageOf(card);
 
-      var slab = {
-        clvCents: clvCents, avg3Cents: avgs.avg3Cents, grade: gradeNum(lookup.grade),
+      var hint = {
+        cert: cert, grader: grader, triumphValueCents: clvCents, grade: gradeNum(lookup.grade),
         confidence: lookup.confidence != null ? lookup.confidence : null,
-        cert: cert, title: card, year: year, sport: sport, grader: grader, language: language
+        sport: sport, year: year, title: card
+      };
+      // Could SOME avg3/lowest band still take this slab once an average is known - the exact same
+      // call app.js makes before ever running Card Ladder (rules.js's needsCardLadder). Used here only
+      // to word a REJECTED outcome honestly: see the branch below.
+      var avgNeeded = PriceCore.needsCardLadder(hint, settings, null);
+
+      var slab = {
+        clvCents: clvCents, avg3Cents: avg3Cents, grade: hint.grade,
+        confidence: hint.confidence, cert: cert, title: card, year: year,
+        sport: sport, grader: grader, language: language
       };
       var priced = PriceCore.priceSlab(slab, settings, {});
+      // What actually reaches the pile - see pillFor below for why a merely-ambiguous rejection must
+      // never carry the same bare `rejected` shape a genuine one does onto the pile list's own pill.
+      var pileRecord = priced;
 
-      if (priced.rejected) {
+      if (priced.rejected && avgNeeded && avgState.status !== 'done') {
+        // Rejected on CL value alone, but an average that could still change that has not actually
+        // come back yet - see renderAwaitingAverage's own header for why this must never read as a
+        // pass. Once avgState itself settles into 'done' (even a 'done' with no average to report),
+        // this falls through to the plain rejected branch below instead - a real answer, not a wait.
+        renderAwaitingAverage(avgState);
+        pileRecord = Object.assign({}, priced, { awaitingAverage: true });
+      } else if (priced.rejected) {
         dom.rateLine.innerHTML = esc(PriceCore.REJECT_TEXT) + ' <span class="status-pill st-cancelled">Rejected</span>';
         showNote('Out of range for every band on the live sheet (' + priced.why + ').', true);
       } else if (priced.staffPrice) {
@@ -1747,27 +3043,145 @@ window.ScanPick = {
         var extra = (sport ? ' · ' + esc(sport) : '') + (lookup.takeable === false ? ' · Triumph: ' + esc(lookup.reason || 'not accepted') : '');
         showNote(pctTxt + extra);
       }
+      recordInPile(cert, grader, card, lookup, clvCents, pileRecord);
     }
 
-    function addHistory(cert, grader, clvCents) {
-      history = [{ cert: cert, grader: grader, clvCents: clvCents }]
-        .concat(history.filter(function (h) { return !(h.cert === cert && h.grader === grader); }))
-        .slice(0, 30);
-      renderHistory();
+    /**
+     * priceSlab rejected a slab on CL value alone, but PriceCore.needsCardLadder says a sales-average
+     * band could still take it once the PC bot answers - the exact gap that let a real buyable card
+     * read as "pass" at a show. Never shows the Rejected pill or PriceCore.REJECT_TEXT for this case;
+     * a seller/staff reading this must come away thinking "not decided yet", never "declined".
+     */
+    function renderAwaitingAverage(avgState) {
+      if (avgState.status === 'pending') {
+        dom.rateLine.innerHTML = 'Waiting on a sales average <span class="status-pill st-unknown">Checking…</span>';
+        showNote('Does not fit a band on CL value alone, but a sales-average band might still take it - not a pass yet. Checking with the PC bot now.', true);
+      } else if (avgState.status === 'failed') {
+        dom.rateLine.innerHTML = 'Could not get a sales average <span class="status-pill st-unknown">Needs average</span>';
+        showNote('Card Ladder could not answer (' + (avgState.reason || 'no reason given') + '). Not confirmed as a pass - it may still fit a sales-average band once one is available.', true);
+      } else if (avgState.status === 'timeout') {
+        dom.rateLine.innerHTML = 'Still waiting on a sales average <span class="status-pill st-unknown">Needs average</span>';
+        showNote('No answer from the PC bot after ' + Math.round(AVG_POLL_TIMEOUT_MS / 60000) + ' minutes. Not confirmed as a pass - rescan this cert to check again.', true);
+      } else {
+        // 'error' (or anything else unrecognised) - could not even reach Supabase to ask. Routed
+        // through the same Signal logic every other failure on this tab uses, never the raw fetch text.
+        var info = describeFailure(avgState.reason || 'Could not reach the averages service.', 0);
+        dom.rateLine.innerHTML = 'Could not check a sales average <span class="status-pill st-unknown">Needs average</span>';
+        showNote(info.message + ' Not confirmed as a pass - this card may still fit a sales-average band.', true);
+      }
     }
 
-    function renderHistory() {
-      dom.earlier.hidden = history.length === 0;
-      dom.earlierList.innerHTML = history.map(function (h) {
-        return '<button type="button" class="sc-earlier-row" data-cert="' + esc(h.cert) + '" data-grader="' + esc(h.grader) + '">' +
-          '<span class="name"><span class="cert">' + esc(h.grader.toUpperCase()) + ' ' + esc(h.cert) + '</span></span>' +
-          '<span class="val">' + (h.clvCents != null ? money(h.clvCents) : '—') + '</span></button>';
+    /**
+     * Decides whether this slab could need a sales average at all (PriceCore.needsCardLadder - the
+     * same two-pass check app.js makes before ever calling Card Ladder), and only asks AvgClient when
+     * it can. A card that does not need one prices and renders immediately, no network round trip
+     * spent. A card that does is rendered once right away with whatever AvgClient already has (a
+     * cache hit, a fresh 'pending' enqueue, or a 'failed'/'error' answer) and, while still 'pending',
+     * polled every AVG_POLL_MS until it resolves or AVG_POLL_TIMEOUT_MS runs out. Never touches `busy`
+     * - the next scan is never held up behind an average still in flight for a PREVIOUS card; `token`
+     * (captured from the counter priceCert bumps on every new lookup) is what stops a stale poll from
+     * landing its answer over a card Josh has since scanned past.
+     */
+    function priceCertResult(cert, grader, lookup) {
+      if (!settings) { renderPriced(cert, grader, lookup, { status: 'skipped' }); return; }
+
+      var card = lookup.card || (grader.toUpperCase() + ' ' + cert);
+      var clvCents = lookup.marketValue != null ? Math.round(Number(lookup.marketValue) * 100) : null;
+      var hint = {
+        cert: cert, grader: grader, triumphValueCents: clvCents, grade: gradeNum(lookup.grade),
+        confidence: lookup.confidence != null ? lookup.confidence : null,
+        sport: SportCore.sportFromTitle(card), year: SportCore.yearFromTitle(card), title: card
+      };
+      var avgNeeded = PriceCore.needsCardLadder(hint, settings, null);
+      if (!avgNeeded) { renderPriced(cert, grader, lookup, { status: 'skipped' }); return; }
+
+      var token = avgPollToken; // bumped by priceCert when this lookup started
+      var startedAt = Date.now();
+      function check() {
+        fetchSalesAverages(cert, grader).then(function (avgState) {
+          if (token !== avgPollToken) return; // a newer scan has already taken over the screen/pile
+          if (avgState.status === 'pending' && Date.now() - startedAt < AVG_POLL_TIMEOUT_MS) {
+            renderPriced(cert, grader, lookup, avgState);
+            avgPollTimer = setTimeout(check, AVG_POLL_MS);
+            return;
+          }
+          renderPriced(cert, grader, lookup, avgState.status === 'pending' ? { status: 'timeout' } : avgState);
+        });
+      }
+      check();
+    }
+
+    /** The one place a priced (or looked-up-but-unpriced, `priced === null`) cert reaches the pile.
+        Adds/updates it, remembers its display name/grade in pileMeta (session.js's own entry shape has
+        no room for either - see the pileMeta comment above), persists, redraws the pile, and shows the
+        "already had this one" badge on a re-scan (addCard's own `rescanned` flag - never guessed from
+        whether the cert was already on screen, see session.js's header on why that matters). */
+    function recordInPile(cert, grader, card, lookup, clvCents, priced) {
+      var g = String(grader || '').toLowerCase();
+      var r = pile.addCard(cert, g, clvCents, priced);
+      var entry = pile.list()[r.index];
+      pileMeta[pileMetaKey(g, entry.certKey)] = { card: card || null, grade: lookup && lookup.grade ? String(lookup.grade) : null };
+      savePile();
+      renderPile();
+      dom.rescanBadge.hidden = !r.rescanned;
+    }
+
+    function pillFor(price) {
+      if (!price) return ' <span class="status-pill st-unknown">Unpriced</span>';
+      // Ambiguous, not declined - never the same red "Rejected" pill a genuine out-of-range slab gets
+      // (see renderAwaitingAverage's own header for why reading this as a pass would be the mistake).
+      if (price.awaitingAverage) return ' <span class="status-pill st-unknown">Needs average</span>';
+      if (price.rejected) return ' <span class="status-pill st-cancelled">Rejected</span>';
+      if (price.staffPrice) return ' <span class="status-pill st-unknown">No value</span>';
+      return '';
+    }
+
+    /** Redraws the whole pile from `pile`/`pileMeta` - called after every add/remove/clear, and once
+        at startup to restore whatever a phone reload (or just backgrounding) left in localStorage.
+        Totals come straight from pile.totals(): see session.js's own header for why market value and
+        pricing basis are kept as two separate numbers, and why "unknown" must never read as "$0". */
+    function renderPile() {
+      var entries = pile.list();
+      var t = pile.totals();
+      dom.earlier.hidden = entries.length === 0;
+      if (!entries.length) { dom.earlierList.innerHTML = ''; return; }
+
+      dom.pileTotals.hidden = false;
+      dom.pileCount.textContent = t.count + (t.count === 1 ? ' card scanned' : ' cards scanned');
+      dom.pileMarket.textContent = money(t.marketValueCents) + (t.marketValueUnknownCount > 0 ? '+' : '');
+      dom.pileUnknown.hidden = t.marketValueUnknownCount === 0;
+      if (t.marketValueUnknownCount > 0) {
+        dom.pileUnknown.textContent = t.marketValueUnknownCount +
+          (t.marketValueUnknownCount === 1 ? ' card has' : ' cards have') +
+          ' no known value yet - the real pile is worth more than this.';
+      }
+      dom.pilePayout.textContent = money(t.buyPayoutCents);
+      dom.pileBuyCount.textContent = 'for ' + t.buyCount + ' of ' + t.count + (t.count === 1 ? ' card' : ' cards');
+      dom.clearCount.textContent = String(entries.length);
+
+      dom.earlierList.innerHTML = entries.slice().reverse().map(function (c) {
+        var meta = pileMeta[pileMetaKey(c.grader, c.certKey)] || {};
+        var title = meta.card || (c.grader.toUpperCase() + ' ' + c.cert);
+        var valueText = c.price && typeof c.price.payoutCents === 'number'
+          ? money(c.price.payoutCents)
+          : (typeof c.marketValueCents === 'number' ? money(c.marketValueCents) : '—');
+        var key = pileMetaKey(c.grader, c.certKey);
+        return '<div class="sc-earlier-row">' +
+          '<button type="button" class="sc-earlier-main" data-cert="' + esc(c.cert) + '" data-grader="' + esc(c.grader) + '">' +
+            '<span class="name"><span class="cert">' + esc(c.grader.toUpperCase()) + ' ' + esc(c.cert) + '</span> ' + esc(title) + '</span>' +
+            '<span class="val">' + valueText + pillFor(c.price) + '</span>' +
+          '</button>' +
+          '<button type="button" class="sc-earlier-remove" data-cert="' + esc(c.cert) + '" data-grader="' + esc(c.grader) + '" data-key="' + esc(key) + '" aria-label="Remove ' + esc(c.cert) + '">✕</button>' +
+        '</div>';
       }).join('');
     }
 
-    function priceCert(cert, grader) {
+    function priceCert(cert, grader, attempt) {
+      attempt = attempt || 0;
       if (busy) return;
       busy = true;
+      stopAveragePoll();
+      avgPollToken++; // invalidate any still-ticking poll from a card Josh has moved past
       renderLoading(cert, grader);
       ensureSettings().then(function () {
         if (!session) { busy = false; renderNotSignedIn(cert, grader); return; }
@@ -1781,28 +3195,32 @@ window.ScanPick = {
 
         return lookupOnce().then(function (res) {
           if (res.status !== 401) return res;
-          return refreshSession().then(function (ok) {
-            if (!ok) {
-              session = null; saveSession(null);
-              var e = new Error('signed out'); e.signedOut = true; throw e;
-            }
-            return lookupOnce();
+          return refreshSession().then(function (r) {
+            if (r.ok) return lookupOnce();
+            if (r.noSignal) { var eSig = new Error(Signal.NO_SIGNAL_ERROR); eSig.noSignal = true; throw eSig; }
+            session = null; saveSession(null);
+            var eOut = new Error('signed out'); eOut.signedOut = true; throw eOut;
           });
         }).then(function (res) {
           return res.json().then(function (j) { return { res: res, body: j }; });
         }).then(function (r) {
           busy = false;
-          if (!r.res.ok) { renderError(cert, grader, (r.body && r.body.error) || ('Lookup failed (HTTP ' + r.res.status + ').')); return; }
+          if (!r.res.ok) {
+            var httpMsg = (r.body && r.body.error) || ('Lookup failed (HTTP ' + r.res.status + ').');
+            applyFailure(cert, grader, attempt, describeFailure(httpMsg, attempt));
+            return;
+          }
           var lookup = (r.body.results && r.body.results[0]) || { cert: cert, error: 'no answer' };
-          if (lookup.error) { renderError(cert, grader, 'Triumph: ' + lookup.error); return; }
-          return fetchSalesAverages(cert, grader).then(function (avgs) {
-            renderPriced(cert, grader, lookup, avgs);
-            addHistory(cert, grader, lookup.marketValue != null ? Math.round(Number(lookup.marketValue) * 100) : null);
-          });
+          if (lookup.error) {
+            applyFailure(cert, grader, attempt, describeFailure('Triumph: ' + lookup.error, attempt));
+            return;
+          }
+          priceCertResult(cert, grader, lookup);
         }, function (e) {
           busy = false;
-          if (e && e.signedOut) { renderNotSignedIn(cert, grader); return; }
-          renderError(cert, grader, 'Could not reach the pricing proxy.');
+          if (e && e.signedOut) { renderNotSignedIn(cert, grader, Signal.SIGNED_OUT_MESSAGE); return; }
+          if (e && e.noSignal) { applyFailure(cert, grader, attempt, describeFailure(Signal.NO_SIGNAL_ERROR, attempt)); return; }
+          applyFailure(cert, grader, attempt, describeFailure(e, attempt));
         });
       });
     }
@@ -1815,27 +3233,294 @@ window.ScanPick = {
       priceCert(parsed.cert, parsed.grader);
     }
 
-    // ── camera: BarcodeDetector only - see the build report for why zxing-wasm was not ported.
-    // Tap to read, never continuous: the detect loop only draws outlines on screen, a tap on one
-    // (or the shutter, for the most central) is what actually prices a cert. ──────────────────────
-    function CameraEngine() {
-      var stream = null, timer = null, detector = null;
-      var found = []; // [{ value, corners }] currently on screen
+    // ── the self-hosted zxing-wasm reader (see rates-portal/vendor/zxing/README.md): resolved to an
+    // absolute URL up front, against THIS page's own address, never a CDN - this page is published
+    // to our own GitHub Pages origin, not rendered as a Claude Artifact, which is the only reason a
+    // CDN restriction was ever relevant here. An absolute URL (not a relative one) is what lets a
+    // dynamically created Worker's blob: URL, which has no reliable base of its own, and the on-page
+    // fallback both import the exact same file the exact same way. ──────────────────────────────────
+    var ZXING_READER_URL = new URL('vendor/zxing/reader/index.js', document.baseURI).href;
+    var ZXING_WASM_URL = new URL('vendor/zxing/zxing_reader.wasm', document.baseURI).href;
 
-      function supported() {
-        return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && typeof window.BarcodeDetector === 'function';
+    // ── camera: BarcodeDetector where this browser has one and it covers what a slab label needs -
+    // native, so cheaper than WASM, mainly Android Chrome today - else the self-hosted zxing-wasm
+    // reader, which is what makes this work on an iPhone at all: iOS Safari has no BarcodeDetector.
+    // Feature-detected (ScanDecode.chooseEngine), never read off the user agent. Tap to read, never
+    // continuous: the detect loop only draws outlines on screen, a tap on one (or the shutter, for
+    // the most central) is what actually prices a cert. ──────────────────────────────────────────
+    function CameraEngine() {
+      var stream = null, timer = null, engine = null, grabCanvas = null;
+      var found = []; // [{ value, corners }] currently on screen
+      var troubleStreak = 0;
+      var torchOn = false;
+
+      function cameraSupported() {
+        return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+      }
+
+      function trackOf() {
+        return stream ? stream.getVideoTracks()[0] : null;
+      }
+
+      // ── torch (flashlight): Android Chrome supports applyConstraints({advanced:[{torch}]}) on the
+      // video track; iOS Safari has never implemented it (and has no ImageCapture either), so this
+      // MUST be feature-detected off the real track's own getCapabilities() rather than assumed from
+      // the platform - a canvas-captured track (this repo's own e2e fake camera) or a future browser
+      // that changes its mind both fall out of this the same way, with no special-casing needed. A
+      // dead button is worse than no button, so dom.torch stays `hidden` whenever this says no. ──────
+      function torchCapable() {
+        var t = trackOf();
+        if (!t || typeof t.getCapabilities !== 'function') return false;
+        try {
+          var caps = t.getCapabilities();
+          return !!(caps && caps.torch);
+        } catch (e) {
+          return false; // a browser that throws on getCapabilities() gets treated as "no torch"
+        }
+      }
+
+      function applyTorch(on) {
+        var t = trackOf();
+        if (!t || typeof t.applyConstraints !== 'function') return Promise.resolve(false);
+        return t.applyConstraints({ advanced: [{ torch: on }] }).then(function () { return true; }).catch(function () { return false; });
+      }
+
+      function setTorchUi(on) {
+        torchOn = on;
+        dom.torch.classList.toggle('on', on);
+        dom.torch.setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+
+      function toggleTorch() {
+        if (!torchCapable()) return;
+        applyTorch(!torchOn).then(function (ok) { if (ok) setTorchUi(!torchOn); });
+      }
+
+      /** Leaving a phone's torch burning in a pocket after the camera stops (or the tab goes to the
+          background mid-show) is a real way to lose a battery - called from stop() and from the
+          page's visibilitychange listener below. A no-op when the torch was never on or isn't
+          supported, so it is always safe to call defensively. */
+      function torchOff() {
+        if (!torchOn) return;
+        applyTorch(false);
+        setTorchUi(false);
+      }
+
+      // ── zoom: the track's OWN zoom capability (min/max/step), never a CSS transform - a CSS scale
+      // just stretches the same pixels the decoder already failed to read at the smaller size, while
+      // applyConstraints({advanced:[{zoom}]}) asks the camera hardware for more real pixels on a slab
+      // label. iPhone's camera tracks report no zoom capability at all (confirmed by the same
+      // getCapabilities().zoom feature-detect used here, not assumed) - this is the end of it, no CSS
+      // fallback is faked in to compensate; the slider simply never shows there. ─────────────────────
+      function zoomRange() {
+        var t = trackOf();
+        if (!t || typeof t.getCapabilities !== 'function') return null;
+        var caps;
+        try { caps = t.getCapabilities(); } catch (e) { return null; }
+        var z = caps && caps.zoom;
+        if (!z || typeof z.min !== 'number' || typeof z.max !== 'number' || !(z.max > z.min)) return null;
+        var step = typeof z.step === 'number' && z.step > 0 ? z.step : (z.max - z.min) / 100;
+        return { min: z.min, max: z.max, step: step };
+      }
+
+      function currentZoom(range) {
+        var t = trackOf();
+        if (t && typeof t.getSettings === 'function') {
+          try {
+            var s = t.getSettings();
+            if (typeof s.zoom === 'number') return s.zoom;
+          } catch (e) { /* fall through to the range minimum */ }
+        }
+        return range.min;
+      }
+
+      function setZoom(value) {
+        var t = trackOf();
+        var range = zoomRange();
+        if (!t || !range || typeof t.applyConstraints !== 'function') return Promise.resolve(false);
+        var clamped = Math.min(range.max, Math.max(range.min, value));
+        return t.applyConstraints({ advanced: [{ zoom: clamped }] }).then(function () { return clamped; }).catch(function () { return false; });
+      }
+
+      function setupZoom() {
+        var range = zoomRange();
+        if (!range) { dom.zoomWrap.hidden = true; return; }
+        dom.zoomWrap.hidden = false;
+        dom.zoom.min = String(range.min);
+        dom.zoom.max = String(range.max);
+        dom.zoom.step = String(range.step);
+        dom.zoom.value = String(currentZoom(range));
+      }
+
+      function zoomOff() {
+        dom.zoomWrap.hidden = true;
       }
 
       function helpFor(err) {
-        if (err && err.name === 'NotAllowedError') return "The camera is blocked for this site. Allow it in your browser's settings, then tap Start camera.";
+        if (err && err.name === 'NotAllowedError') return "The camera is blocked for this site. Allow it in your browser's settings (iPhone: Settings, then Safari, then Camera), then tap Start camera.";
         if (err && err.name === 'NotFoundError') return 'No camera found on this device. Type the cert below instead.';
         if (err && err.name === 'NotReadableError') return 'Another app is using the camera. Close it, then tap Start camera.';
         return "The camera didn't start. Tap Start camera to try again, or type the cert below.";
       }
 
+      /** BarcodeDetector where it's usable, else zxing. Picks once per camera session. */
+      function pickDecoder() {
+        var hasDetector = typeof window.BarcodeDetector === 'function';
+        var formatsP = hasDetector && window.BarcodeDetector.getSupportedFormats
+          ? window.BarcodeDetector.getSupportedFormats()
+          : Promise.resolve(null);
+        return formatsP.then(function (supported) {
+          var choice = ScanDecode.chooseEngine(hasDetector, supported);
+          return choice.engine === 'detector' ? detectorEngine(choice.formats) : zxingEngine();
+        });
+      }
+
+      function detectorEngine(formats) {
+        var detector = new window.BarcodeDetector({ formats: formats });
+        return {
+          name: 'detector',
+          detect: function () {
+            return detector.detect(dom.video).then(function (codes) {
+              return codes.map(function (c) {
+                return { value: c.rawValue, corners: (c.cornerPoints || []).map(function (p) { return { x: p.x, y: p.y }; }) };
+              }).filter(function (c) { return c.corners.length; });
+            });
+          },
+          close: function () {}
+        };
+      }
+
+      /** Grabs the current frame into an offscreen canvas, downscaled to at most `maxSide` on its
+          long side - full camera resolution is far more than a barcode needs and would be slow to
+          decode in WASM on a phone. Returns the pixels and the scale `k`, so a found barcode's
+          corners can be divided back up to real video pixels (ported from scanCamera.ts's
+          Grabber/back(), the class dropped since this engine never crops to a region). */
+      function grabFrame(maxSide) {
+        var vw = dom.video.videoWidth, vh = dom.video.videoHeight;
+        if (!vw || !vh) return null;
+        var k = Math.min(1, maxSide / Math.max(vw, vh));
+        var w = Math.max(1, Math.round(vw * k)), h = Math.max(1, Math.round(vh * k));
+        if (!grabCanvas) grabCanvas = document.createElement('canvas');
+        if (grabCanvas.width !== w) grabCanvas.width = w;
+        if (grabCanvas.height !== h) grabCanvas.height = h;
+        var ctx = grabCanvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(dom.video, 0, 0, w, h);
+        return { imageData: ctx.getImageData(0, 0, w, h), k: k };
+      }
+
+      function zxingEngine() {
+        var TRACK_SIDE = 960; // small enough to decode well under one frame interval on a mid phone
+        var runner = null; // { run(imageData, hard, pass) -> Promise<[{value,corners}]>, close() }
+
+        /** Decode in a Worker so the viewfinder stays smooth while zxing-cpp works through a frame -
+            same reasoning as scanWorker.ts. Built from a Blob so no separate worker file is needed
+            in a page that ships as one HTML file plus its vendored assets; the module import inside
+            uses the absolute ZXING_READER_URL (a blob: URL has no base of its own to resolve a
+            relative one against). toFound() is inlined rather than pulled from scanDecode.js: a
+            worker built from a Blob has no access to this page's own script scope or its CommonJS
+            modules, and it is six lines - not worth a build step we deliberately don't have. */
+        function makeWorkerRunner() {
+          var worker;
+          try {
+            var code =
+              'import { prepareZXingModule, readBarcodes, purgeZXingModule } from ' + JSON.stringify(ZXING_READER_URL) + ';\n' +
+              "var preparedFor = '', ready = null;\n" +
+              'function prepare(wasm) {\n' +
+              '  if (ready && preparedFor === wasm) return ready;\n' +
+              '  preparedFor = wasm;\n' +
+              "  ready = prepareZXingModule({ overrides: { locateFile: function (p, prefix) { return /\\.wasm$/.test(p) ? wasm : prefix + p; } }, fireImmediately: true });\n" +
+              '  return ready;\n' +
+              '}\n' +
+              'function toFound(results) {\n' +
+              '  return (results || []).filter(function (r) { return r && r.isValid && r.text; }).map(function (r) {\n' +
+              '    var p = r.position;\n' +
+              '    return { value: r.text, corners: [p.topLeft, p.topRight, p.bottomRight, p.bottomLeft].map(function (pt) { return { x: pt.x, y: pt.y }; }) };\n' +
+              '  });\n' +
+              '}\n' +
+              'self.onmessage = function (e) {\n' +
+              '  var req = e.data;\n' +
+              '  prepare(req.wasm).then(function () {\n' +
+              '    var pixels = new Uint8ClampedArray(req.data);\n' +
+              "    var image = typeof ImageData === 'function' ? new ImageData(pixels, req.width, req.height) : { data: pixels, width: req.width, height: req.height };\n" +
+              '    return readBarcodes(image, req.options);\n' +
+              '  }).then(function (results) {\n' +
+              '    self.postMessage({ id: req.id, found: toFound(results) });\n' +
+              '  }).catch(function (err) {\n' +
+              '    purgeZXingModule(); ready = null;\n' +
+              "    self.postMessage({ id: req.id, error: err && err.message ? err.message : String(err) });\n" +
+              '  });\n' +
+              '};\n';
+            worker = new Worker(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })), { type: 'module' });
+          } catch (e) {
+            return null; // this browser can't start a module Worker - decode on the page instead
+          }
+          var seq = 0, waiting = {};
+          worker.onmessage = function (e) {
+            var w = waiting[e.data.id];
+            if (!w) return;
+            delete waiting[e.data.id];
+            if (e.data.error) w.fail(new Error(e.data.error)); else w.ok(e.data.found || []);
+          };
+          worker.onerror = function (e) {
+            for (var id in waiting) waiting[id].fail(new Error((e && e.message) || 'the barcode reader stopped'));
+            waiting = {};
+          };
+          return {
+            run: function (imageData, hard, pass) {
+              return new Promise(function (ok, fail) {
+                var id = ++seq;
+                waiting[id] = { ok: ok, fail: fail };
+                var req = {
+                  id: id, wasm: ZXING_WASM_URL, width: imageData.width, height: imageData.height,
+                  data: imageData.data.buffer, options: ScanDecode.readerOptions(hard, pass)
+                };
+                worker.postMessage(req, [req.data]);
+              });
+            },
+            close: function () { worker.terminate(); }
+          };
+        }
+
+        /** No Worker in this browser, or it failed to start: decode on the page itself rather than
+            failing outright - a slower viewfinder beats a dead one. */
+        function makeInlineRunner() {
+          var mod = null;
+          function load() {
+            if (!mod) {
+              mod = import(ZXING_READER_URL).then(function (m) {
+                m.prepareZXingModule({ overrides: { locateFile: function (p, prefix) { return /\.wasm$/.test(p) ? ZXING_WASM_URL : prefix + p; } } });
+                return m;
+              }).catch(function (e) { mod = null; throw e; });
+            }
+            return mod;
+          }
+          return {
+            run: function (imageData, hard, pass) {
+              return load().then(function (m) { return m.readBarcodes(imageData, ScanDecode.readerOptions(hard, pass)); })
+                .then(function (results) { return ScanDecode.toFound(results).map(function (f) { return { value: f.text, corners: f.corners }; }); });
+            },
+            close: function () {}
+          };
+        }
+
+        return {
+          name: 'zxing',
+          detect: function () {
+            var frame = grabFrame(TRACK_SIDE);
+            if (!frame) return Promise.resolve([]);
+            if (!runner) runner = makeWorkerRunner() || makeInlineRunner();
+            var k = frame.k;
+            return runner.run(frame.imageData, false, 0).then(function (list) {
+              return list.map(function (f) { return { value: f.value, corners: f.corners.map(function (p) { return { x: p.x / k, y: p.y / k }; }) }; });
+            });
+          },
+          close: function () { if (runner) runner.close(); runner = null; }
+        };
+      }
+
       function start() {
-        if (!supported()) {
-          dom.vfOffText.textContent = "This browser can't scan with the camera here (no BarcodeDetector - notably Safari/iPhone). Type or paste the cert below instead.";
+        if (!cameraSupported()) {
+          dom.vfOffText.textContent = 'No camera on this device or browser. Type or paste the cert below instead.';
           return Promise.reject(new Error('unsupported'));
         }
         return navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
@@ -1844,18 +3529,16 @@ window.ScanPick = {
             dom.video.srcObject = s;
             return dom.video.play();
           })
-          .then(function () {
-            var want = ['code_128', 'code_39', 'ean_13', 'upc_a', 'upc_e', 'qr_code', 'pdf417', 'data_matrix', 'itf'];
-            return (window.BarcodeDetector.getSupportedFormats ? window.BarcodeDetector.getSupportedFormats() : Promise.resolve(null))
-              .then(function (formats) {
-                var use = formats ? want.filter(function (f) { return formats.indexOf(f) >= 0; }) : want;
-                detector = new window.BarcodeDetector({ formats: use.length ? use : want });
-              });
-          })
-          .then(function () {
+          .then(pickDecoder)
+          .then(function (chosen) {
+            engine = chosen;
             dom.vf.hidden = false;
             dom.vfOff.hidden = true;
             dom.vfStatus.textContent = 'Point at a barcode';
+            troubleStreak = 0;
+            dom.torch.hidden = !torchCapable();
+            setTorchUi(false);
+            setupZoom();
             loop();
           })
           .catch(function (err) {
@@ -1868,6 +3551,11 @@ window.ScanPick = {
       function stop() {
         if (timer) clearTimeout(timer);
         timer = null;
+        if (engine) engine.close();
+        engine = null;
+        torchOff(); // never leave the flashlight burning once the camera (or this track) is done
+        dom.torch.hidden = true;
+        zoomOff();
         if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
         stream = null;
         found = [];
@@ -1877,13 +3565,20 @@ window.ScanPick = {
 
       function loop() {
         if (!stream) return;
-        detector.detect(dom.video).then(function (codes) {
-          found = codes.map(function (c) {
-            return { value: c.rawValue, corners: (c.cornerPoints || []).map(function (p) { return { x: p.x, y: p.y }; }) };
-          }).filter(function (c) { return c.corners.length; });
+        engine.detect().then(function (codes) {
+          found = codes;
           drawMarks();
-        }).catch(function () { /* one bad frame is not fatal */ })
-          .then(function () { timer = setTimeout(loop, 180); }); // ~5/s: plenty for a still slab, spares the battery
+          if (troubleStreak) { troubleStreak = 0; dom.vfStatus.textContent = 'Point at a barcode'; }
+        }).catch(function () {
+          // One bad frame is not fatal; only say something once reading keeps failing (the WASM
+          // reader never downloaded, say - offline, or this origin blocked for some reason).
+          troubleStreak++;
+          if (troubleStreak === 3) dom.vfStatus.textContent = "Barcode reading isn't working here right now - type the cert below instead.";
+        }).then(function () {
+          // zxing spends real time decoding each frame already, so it needs less of a gap than the
+          // ~5/s BarcodeDetector polls at to spare the battery.
+          timer = setTimeout(loop, engine && engine.name === 'zxing' ? 120 : 180);
+        });
       }
 
       function box() {
@@ -1907,9 +3602,14 @@ window.ScanPick = {
       }
 
       function take(f) {
-        if (!f) { dom.vfStatus.textContent = 'Nothing found - try again or type it below'; return; }
+        // Every tap/shutter press is a user gesture, so this doubles as the "re-prime a context an
+        // iOS backgrounding re-suspended" hook feedback.js's own header calls for - cheap and safe to
+        // call on every single capture attempt, not just the first.
+        feedback.unlock();
+        if (!f) { feedback.play('nothing'); dom.vfStatus.textContent = 'Nothing found - try again or type it below'; return; }
         var parsed = parseOneCert(f.value);
-        if (!parsed.ok) { dom.vfStatus.textContent = parsed.why; return; }
+        if (!parsed.ok) { feedback.play('bad'); dom.vfStatus.textContent = parsed.why; return; }
+        feedback.play('ok');
         dom.vfStatus.textContent = 'Read ' + parsed.grader.toUpperCase() + ' ' + parsed.cert;
         priceCert(parsed.cert, parsed.grader);
       }
@@ -1931,8 +3631,17 @@ window.ScanPick = {
 
       dom.vf.addEventListener('click', onTap);
       dom.shutter.addEventListener('click', onShutter);
+      dom.torch.addEventListener('click', function (ev) { ev.stopPropagation(); toggleTorch(); });
+      dom.zoom.addEventListener('input', function () { setZoom(parseFloat(dom.zoom.value)); });
+      dom.zoom.addEventListener('click', function (ev) { ev.stopPropagation(); });
 
-      return { start: start, stop: stop, supported: supported };
+      // A backgrounded tab (owner switches apps, locks the phone, answers a text) must never leave a
+      // torch burning - same reasoning as stop(), triggered without the camera itself being stopped.
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) torchOff();
+      });
+
+      return { start: start, stop: stop, supported: cameraSupported };
     }
 
     var camera = null;
@@ -1942,24 +3651,69 @@ window.ScanPick = {
       wired = true;
       camera = CameraEngine();
       dom.start.addEventListener('click', function () {
+        // The Start camera tap is already a user gesture, which is the ONE thing iOS requires before
+        // it will ever let an AudioContext leave "suspended" - prime it here so the very first beep
+        // isn't silently swallowed (see feedback.js's header and FeedbackAudio above).
+        feedback.unlock();
         dom.start.disabled = true;
         camera.start().catch(function () { /* message already set inside start() */ }).then(function () { dom.start.disabled = false; });
       });
       if (!camera.supported()) { dom.start.textContent = 'Camera not available here'; dom.start.disabled = true; }
+      function renderSoundButton() {
+        var on = feedback.isSoundOn();
+        dom.sound.textContent = on ? '🔊' : '🔇';
+        dom.sound.setAttribute('aria-pressed', on ? 'true' : 'false');
+        dom.sound.title = on ? 'Sound on - tap to mute' : 'Sound off - tap to unmute';
+      }
+      dom.sound.addEventListener('click', function (ev) {
+        ev.stopPropagation(); // sits inside the tap-to-scan viewfinder - must not also read a barcode
+        feedback.setSoundOn(!feedback.isSoundOn());
+        renderSoundButton();
+      });
+      renderSoundButton();
       dom.certGo.addEventListener('click', submitTyped);
       dom.certInput.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); submitTyped(); } });
       dom.signinGo.addEventListener('click', doSignIn);
       dom.password.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); doSignIn(); } });
       dom.earlierList.addEventListener('click', function (ev) {
-        var btn = ev.target.closest('.sc-earlier-row');
-        if (btn) priceCert(btn.getAttribute('data-cert'), btn.getAttribute('data-grader'));
+        var rm = ev.target.closest('.sc-earlier-remove');
+        if (rm) {
+          pile.removeCard(rm.getAttribute('data-cert'), rm.getAttribute('data-grader'));
+          delete pileMeta[rm.getAttribute('data-key')];
+          savePile();
+          renderPile();
+          return;
+        }
+        var main = ev.target.closest('.sc-earlier-main');
+        if (main) priceCert(main.getAttribute('data-cert'), main.getAttribute('data-grader'));
+      });
+      // Starting a new seller must never be a single accidental tap - a 40-card pile lost mid-
+      // negotiation is the worst thing this tool can do - so "New seller" only opens a confirm row;
+      // nothing is cleared until that second, deliberate tap on "Yes, clear it".
+      dom.clearBtn.addEventListener('click', function () {
+        if (!pile.list().length) return; // nothing to lose, nothing to confirm
+        dom.clearCount.textContent = String(pile.list().length);
+        dom.clearConfirm.hidden = false;
+      });
+      dom.clearNo.addEventListener('click', function () { dom.clearConfirm.hidden = true; });
+      dom.clearYes.addEventListener('click', function () {
+        pile.clear();
+        pileMeta = {};
+        savePile();
+        dom.clearConfirm.hidden = true;
+        renderPile();
       });
       renderAuthState();
     }
 
+    // Restore whatever pile a reload, a backgrounding, or a dropped phone left behind - before
+    // wireOnce() even runs, so it's on screen the moment this tab is first shown, not only after the
+    // owner interacts with something.
+    renderPile();
+
     function activate() { wireOnce(); ensureSettings(); }
     function isBusy() { return busy; }
-    function deactivate() { if (camera) camera.stop(); }
+    function deactivate() { if (camera) camera.stop(); stopAveragePoll(); }
 
     return { activate: activate, isBusy: isBusy, deactivate: deactivate };
   })();
