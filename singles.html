@@ -701,6 +701,8 @@ const LIMITS = {
   maxGroupProductIds: 200,
   // bannedProductIds: the flat, always-applied, no-toggle ban list
   maxBannedProductIds: 2000,
+  // lotTiers: the lot-size pricing bands (see SinglesLotTier below)
+  maxLotTiers: 20,
 };
 
 const DEFAULT_MIN_MARKET_CENTS = 100;
@@ -750,12 +752,28 @@ const DEFAULT_MIN_LOT_MARKET = 2000;
  * SinglesExclude, except `productIds` ALSO counts here (a group may restrict on productIds alone).
  */
 
+/**
+ * One lot-size pricing band (`SinglesSettings.lotTiers`). NOT yet wired into the live bot's default
+ * sheet (see the deploy note at the end of this file) - this is the schema addition a lot-size rate
+ * card needs, so the page and the bot can agree on the shape the day it IS turned on.
+ *
+ * `from`/`to` are dollars, same convention as `SinglesRow`, but HALF-OPEN `[from, to)` rather than a
+ * row's `(from, to]`: the card's own wording ("under $5,000" / "$5,000 to $10,000") is inclusive-low,
+ * exclusive-high, so the boundary dollar belongs to the HIGHER tier, not the lower one. Tiers are
+ * tried in ascending `from` order - first match wins, same convention as everywhere else in this
+ * schema - and ONLY the LAST tier's `to` may be null (open-ended); every earlier tier needs a `to`
+ * so tiers can never silently overlap. A total past every tier's own range is still priced, at the
+ * LAST tier's pct, flagged for staff rather than refused - see singles/comp.js's applyLotTiers.
+ */
+
                                                              
                                                       
 
                                                    
 
                                                          
+
+                              
 
 // ── small helpers (no exports the page does not need) ────────────────────────
 
@@ -818,6 +836,7 @@ function defaults()                  {
     pausedMessage: '',
     excludeGroups: [],
     bannedProductIds: [],
+    lotTiers: [],
   };
 }
 
@@ -851,6 +870,18 @@ function normalize(raw         )          {
     pausedMessage: src.pausedMessage == null ? '' : String(src.pausedMessage),
     excludeGroups: Array.isArray(src.excludeGroups) ? src.excludeGroups.map(normalizeExcludeGroup) : src.excludeGroups,
     bannedProductIds: normIntList(src.bannedProductIds) || [],
+    lotTiers: Array.isArray(src.lotTiers) ? src.lotTiers.map(normalizeLotTier) : src.lotTiers,
+  };
+}
+
+/** Type-coerce one lot tier. Never validates ranges/ordering - validateLotTiers does that. */
+function normalizeLotTier(raw         )          {
+  if (!isObject(raw)) return raw;
+  const r = raw                           ;
+  return {
+    from: normMoney(r.from, 0),
+    to: r.to === '' || r.to == null ? null : normMoney(r.to, r.to),
+    pct: normMoney(r.pct, r.pct),
   };
 }
 
@@ -1128,6 +1159,9 @@ function validateSettings(raw         )                        {
   // bannedProductIds — flat, always-applied, no-toggle ban list
   const bannedProductIds = validateBannedProductIds(s.bannedProductIds, errors);
 
+  // lotTiers — lot-size pricing bands; empty/absent = legacy per-row pct mode
+  const lotTiers = validateLotTiers(s.lotTiers, errors);
+
   if (errors.length) return { ok: false, errors };
 
   return {
@@ -1143,6 +1177,7 @@ function validateSettings(raw         )                        {
       pausedMessage,
       excludeGroups,
       bannedProductIds,
+      lotTiers,
     },
   };
 }
@@ -1773,6 +1808,75 @@ function validateBannedProductIds(raw         , errors          )           {
   }
   if (bad) errors.push('Banned product ids must be a list of positive whole numbers.');
   return out;
+}
+
+/**
+ * Lot-size pricing bands (see SinglesLotTier). Empty/absent is valid and means legacy mode (every
+ * row's own `pct` decides). Tiers must be given in ascending `from` order starting at 0, each
+ * `to` strictly greater than its own `from` and equal to the NEXT tier's `from` (no gap, no overlap),
+ * and only the LAST tier may leave `to` null (open-ended) - every earlier one needs a real ceiling.
+ * Errors are prefixed "Lot tier N: " so the page can point at exactly which one is wrong.
+ */
+function validateLotTiers(raw         , errors          )                   {
+  if (raw == null || raw === '') return [];
+  if (!Array.isArray(raw)) {
+    errors.push('Lot tiers must be a list.');
+    return [];
+  }
+  if (raw.length > LIMITS.maxLotTiers) {
+    errors.push('Too many lot tiers: ' + LIMITS.maxLotTiers + ' is the limit, you have ' + raw.length + '.');
+  }
+  const count = Math.min(raw.length, LIMITS.maxLotTiers);
+  const tiers                   = [];
+  let prevTo                = 0;
+  for (let i = 0; i < count; i++) {
+    const at = 'Lot tier ' + (i + 1) + ': ';
+    const item = raw[i];
+    if (!isObject(item)) {
+      errors.push(at + 'this tier is not filled in.');
+      continue;
+    }
+    const r = item                           ;
+    const before = errors.length;
+
+    const f = num(r.from);
+    if (f === null || f < 0 || f > LIMITS.maxMoney) {
+      errors.push(at + 'From $ must be a number between $0 and ' + money(LIMITS.maxMoney) + '.');
+    } else if (!decimalsOk(f, LIMITS.moneyDecimals)) {
+      errors.push(at + 'From $ can have at most ' + LIMITS.moneyDecimals + ' decimal places.');
+    } else if (prevTo !== null && f !== prevTo) {
+      errors.push(at + 'From $ must pick up exactly where the previous tier\'s To $ left off (no gap, no overlap).');
+    }
+
+    let to                = null;
+    const isLast = i === count - 1;
+    if (r.to == null || r.to === '') {
+      if (!isLast) errors.push(at + 'only the LAST tier may leave To $ open-ended.');
+    } else {
+      const t = num(r.to);
+      if (t === null || t > LIMITS.maxMoney) {
+        errors.push(at + 'To $ must be a number, or blank on the last tier only.');
+      } else if (!decimalsOk(t, LIMITS.moneyDecimals)) {
+        errors.push(at + 'To $ can have at most ' + LIMITS.moneyDecimals + ' decimal places.');
+      } else if (f !== null && t <= f) {
+        errors.push(at + 'To $ must be more than From $.');
+      } else {
+        to = t;
+      }
+    }
+
+    const p = num(r.pct);
+    if (p === null || p < LIMITS.minPct || p > LIMITS.maxPct) {
+      errors.push(at + 'Pays % must be between ' + LIMITS.minPct + ' and ' + LIMITS.maxPct + '.');
+    } else if (!decimalsOk(p, LIMITS.pctDecimals)) {
+      errors.push(at + 'Pays % can have at most ' + LIMITS.pctDecimals + ' decimal places.');
+    }
+
+    if (errors.length > before) continue;
+    tiers.push({ from: f          , to, pct: p           });
+    prevTo = to;
+  }
+  return tiers;
 }
 
 window.SinglesValidate = {
