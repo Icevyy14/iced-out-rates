@@ -479,8 +479,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
         <input class="form-input" id="specialKeywords" type="text" placeholder="Expedition, Aquapolis, Skyridge" title="A card whose name contains one of these counts as special">
       </div>
       <div class="form-group">
-        <label class="form-label" for="minLotPayout">Minimum lot payout $ (0 = off)</label>
-        <input class="form-input" id="minLotPayout" type="number" inputmode="decimal" min="0" step="0.01" placeholder="2000" title="A comp whose accepted total falls under this is declined to the seller. 0 turns this off.">
+        <label class="form-label" for="minLotMarket">Minimum lot market value $ (0 = off)</label>
+        <input class="form-input" id="minLotMarket" type="number" inputmode="decimal" min="0" step="0.01" placeholder="2000" title="A comp whose accepted market value falls under this is declined to the seller. 0 turns this off.">
       </div>
     </div>
     <div class="pause-row">
@@ -735,10 +735,11 @@ const LIMITS = {
 
 const DEFAULT_VINTAGE_YEAR = 2003;
 const DEFAULT_MAX_SLABS = 200;
-/** The minimum total payout, across ACCEPTED rows only, a comp must reach before we buy it at all
- *  (owner's rule 2026-11-05: "minimum lot size of 2k"). 0 turns the floor off entirely. Dollars, same
- *  as a row's own from/to — not cents, unlike validate-singles.ts's unrelated minMarketCents. */
-const DEFAULT_MIN_LOT_PAYOUT = 2000;
+/** The minimum total MARKET VALUE, across ACCEPTED rows only, a comp must reach before we buy it at
+ *  all (owner's rule 2026-11-05: "the market has to be 2K, the payout doesn't matter"). 0 turns the
+ *  floor off entirely. Dollars, same as a row's own from/to — not cents, unlike validate-singles.ts's
+ *  unrelated minMarketCents. */
+const DEFAULT_MIN_LOT_MARKET = 2000;
 
 // KEEP IN SYNC BY HAND with ticketHours.js's DEFAULT_WINDOWS / DEFAULT_TIMEZONE — this file can't
 // import that module (see file header), so the literal is duplicated here on purpose.
@@ -746,6 +747,8 @@ const DEFAULT_TICKET_WINDOWS = [{ days: [5, 6, 0], from: '19:00', to: '23:00' }]
 const DEFAULT_TICKET_TIMEZONE = 'America/New_York';
 
 // ── shapes ───────────────────────────────────────────────────────────────────
+
+                                                             
 
        
 
@@ -821,7 +824,7 @@ function defaults()           {
     vintageMaxYear: DEFAULT_VINTAGE_YEAR,
     specialKeywords: [],
     maxSlabsPerComp: DEFAULT_MAX_SLABS,
-    minLotPayout: DEFAULT_MIN_LOT_PAYOUT,
+    minLotMarket: DEFAULT_MIN_LOT_MARKET,
     paused: false,
     pausedMessage: '',
     ticketsOpen: true,
@@ -866,7 +869,7 @@ function normalize(raw         )          {
     vintageMaxYear: normNumber(src.vintageMaxYear, DEFAULT_VINTAGE_YEAR),
     specialKeywords: normKeywords(src.specialKeywords),
     maxSlabsPerComp: normNumber(src.maxSlabsPerComp, DEFAULT_MAX_SLABS),
-    minLotPayout: normMoney(src.minLotPayout, DEFAULT_MIN_LOT_PAYOUT),
+    minLotMarket: normMoney(src.minLotMarket, DEFAULT_MIN_LOT_MARKET),
     paused: normBool(src.paused),
     pausedMessage: src.pausedMessage == null ? '' : String(src.pausedMessage),
     ticketsOpen: src.ticketsOpen == null || src.ticketsOpen === '' ? true : normBool(src.ticketsOpen),
@@ -984,7 +987,7 @@ function migrateV1(src                         )          {
     vintageMaxYear: normNumber(src.vintageMaxYear, DEFAULT_VINTAGE_YEAR),
     specialKeywords: normKeywords(src.specialKeywords),
     maxSlabsPerComp: normNumber(src.maxSlabsPerComp, DEFAULT_MAX_SLABS),
-    minLotPayout: normMoney(src.minLotPayout, DEFAULT_MIN_LOT_PAYOUT),
+    minLotMarket: normMoney(src.minLotMarket, DEFAULT_MIN_LOT_MARKET),
     paused: normBool(src.paused),
     pausedMessage: src.pausedMessage == null ? '' : String(src.pausedMessage),
     ticketsOpen: src.ticketsOpen == null || src.ticketsOpen === '' ? true : normBool(src.ticketsOpen),
@@ -1204,20 +1207,22 @@ function validateSettings(raw         )                 {
     }
   }
 
-  // minLotPayout — the minimum total payout, across ACCEPTED rows only, a comp must reach before we
-  // buy it at all (owner's rule 2026-11-05). Same dollar bounds as a row's own from/to (LIMITS.maxMoney
-  // / LIMITS.moneyDecimals): this is the same kind of value, just sheet-wide instead of per-row. 0 is
-  // a valid, deliberate value — it means the floor is off, not "use the default" — so it is checked
-  // the same way every other optional-but-zero-is-meaningful field here is (only null/'' fall back).
-  let minLotPayout = DEFAULT_MIN_LOT_PAYOUT;
-  if (s.minLotPayout != null && s.minLotPayout !== '') {
-    const m = num(s.minLotPayout);
+  // minLotMarket — the minimum total MARKET VALUE, across ACCEPTED rows only, a comp must reach before
+  // we buy it at all (owner's rule 2026-11-05: "the market has to be 2K, the payout doesn't matter" —
+  // this gates on what the cards are worth, never on what we'd actually pay). Same dollar bounds as a
+  // row's own from/to (LIMITS.maxMoney / LIMITS.moneyDecimals): this is the same kind of value, just
+  // sheet-wide instead of per-row. 0 is a valid, deliberate value — it means the floor is off, not "use
+  // the default" — so it is checked the same way every other optional-but-zero-is-meaningful field here
+  // is (only null/'' fall back).
+  let minLotMarket = DEFAULT_MIN_LOT_MARKET;
+  if (s.minLotMarket != null && s.minLotMarket !== '') {
+    const m = num(s.minLotMarket);
     if (m === null || m < 0 || m > LIMITS.maxMoney) {
-      errors.push('Minimum lot payout must be a number between $0 and ' + money(LIMITS.maxMoney) + '.');
+      errors.push('Minimum lot market value must be a number between $0 and ' + money(LIMITS.maxMoney) + '.');
     } else if (!decimalsOk(m, LIMITS.moneyDecimals)) {
-      errors.push('Minimum lot payout can have at most ' + LIMITS.moneyDecimals + ' decimal places.');
+      errors.push('Minimum lot market value can have at most ' + LIMITS.moneyDecimals + ' decimal places.');
     } else {
-      minLotPayout = m;
+      minLotMarket = m;
     }
   }
 
@@ -1306,7 +1311,7 @@ function validateSettings(raw         )                 {
       vintageMaxYear,
       specialKeywords,
       maxSlabsPerComp,
-      minLotPayout,
+      minLotMarket,
       paused,
       pausedMessage,
       ticketsOpen,
@@ -1606,7 +1611,7 @@ window.RatesValidate = {
   LIMITS: LIMITS,
   DEFAULT_VINTAGE_YEAR: DEFAULT_VINTAGE_YEAR,
   DEFAULT_MAX_SLABS: DEFAULT_MAX_SLABS,
-  DEFAULT_MIN_LOT_PAYOUT: DEFAULT_MIN_LOT_PAYOUT,
+  DEFAULT_MIN_LOT_MARKET: DEFAULT_MIN_LOT_MARKET,
   DEFAULT_TICKET_WINDOWS: DEFAULT_TICKET_WINDOWS,
   DEFAULT_TICKET_TIMEZONE: DEFAULT_TICKET_TIMEZONE,
   defaults: defaults,
@@ -1744,7 +1749,7 @@ window.RatesValidate = {
     botPill: document.getElementById('bot-pill')
   });
 
-  var TOP_FIELDS = ['vintageMaxYear', 'maxSlabsPerComp', 'minLotPayout', 'specialKeywords', 'pausedMessage',
+  var TOP_FIELDS = ['vintageMaxYear', 'maxSlabsPerComp', 'minLotMarket', 'specialKeywords', 'pausedMessage',
     'ticketTimeZone', 'ticketsClosedMessage'];
 
   // ── ticket opening ─────────────────────────────────────────────────────────
@@ -1848,7 +1853,7 @@ window.RatesValidate = {
       vintageMaxYear: str(settings.vintageMaxYear),
       specialKeywords: (settings.specialKeywords || []).join(', '),
       maxSlabsPerComp: str(settings.maxSlabsPerComp),
-      minLotPayout: str(settings.minLotPayout),
+      minLotMarket: str(settings.minLotMarket),
       paused: !!settings.paused,
       pausedMessage: str(settings.pausedMessage),
       ticketsOpen: settings.ticketsOpen !== false,
@@ -1901,7 +1906,7 @@ window.RatesValidate = {
       vintageMaxYear: state.vintageMaxYear,
       specialKeywords: state.specialKeywords,
       maxSlabsPerComp: state.maxSlabsPerComp,
-      minLotPayout: state.minLotPayout,
+      minLotMarket: state.minLotMarket,
       paused: state.paused,
       pausedMessage: state.paused ? state.pausedMessage : '',
       ticketsOpen: !!state.ticketsOpen,
@@ -1935,7 +1940,7 @@ window.RatesValidate = {
         vintageMaxYear: state.vintageMaxYear,
         specialKeywords: state.specialKeywords,
         maxSlabsPerComp: state.maxSlabsPerComp,
-        minLotPayout: state.minLotPayout,
+        minLotMarket: state.minLotMarket,
         pausedMessage: state.pausedMessage,
         paused: !!state.paused,
         ticketTimeZone: state.ticketTimeZone,
@@ -1950,7 +1955,7 @@ window.RatesValidate = {
   function countChanges() {
     if (!baseline || !state) return 0;
     var n = 0;
-    ['vintageMaxYear', 'specialKeywords', 'maxSlabsPerComp', 'minLotPayout', 'pausedMessage',
+    ['vintageMaxYear', 'specialKeywords', 'maxSlabsPerComp', 'minLotMarket', 'pausedMessage',
       'ticketTimeZone', 'ticketsClosedMessage'].forEach(function (k) {
       if (str(state[k]) !== str(baseline.top[k])) n++;
     });

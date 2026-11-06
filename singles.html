@@ -489,8 +489,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
         <input class="form-input" id="sg-maxCardsPerComp" type="number" inputmode="numeric" min="1" step="1" placeholder="500" title="How many cards the bot will price in one comp">
       </div>
       <div class="form-group">
-        <label class="form-label" for="sg-minLotPayout">Minimum lot payout $ (0 = off)</label>
-        <input class="form-input" id="sg-minLotPayout" type="number" inputmode="decimal" min="0" step="0.01" placeholder="2000" title="A comp whose accepted total falls under this is declined to the seller. 0 turns this off.">
+        <label class="form-label" for="sg-minLotMarket">Minimum lot market value $ (0 = off)</label>
+        <input class="form-input" id="sg-minLotMarket" type="number" inputmode="decimal" min="0" step="0.01" placeholder="2000" title="A comp whose accepted market value falls under this is declined to the seller. 0 turns this off.">
       </div>
     </div>
     <div class="form-row">
@@ -701,10 +701,11 @@ const LIMITS = {
 
 const DEFAULT_MIN_MARKET_CENTS = 100;
 const DEFAULT_MAX_CARDS_PER_COMP = 500;
-/** The minimum total payout, across ACCEPTED rows only, a comp must reach before we buy it at all
- *  (owner's rule 2026-11-05: "minimum lot size of 2k"). 0 turns the floor off entirely. Dollars, same
- *  as a row's own from/to — unlike minMarketCents above, this is NOT the one cents exception. */
-const DEFAULT_MIN_LOT_PAYOUT = 2000;
+/** The minimum total MARKET VALUE, across ACCEPTED rows only, a comp must reach before we buy it at
+ *  all (owner's rule 2026-11-05: "the market has to be 2K, the payout doesn't matter"). 0 turns the
+ *  floor off entirely. Dollars, same as a row's own from/to — unlike minMarketCents above, this is
+ *  NOT the one cents exception. */
+const DEFAULT_MIN_LOT_MARKET = 2000;
 
 // ── shapes ───────────────────────────────────────────────────────────────────
 
@@ -745,7 +746,8 @@ const DEFAULT_MIN_LOT_PAYOUT = 2000;
  * SinglesExclude, except `productIds` ALSO counts here (a group may restrict on productIds alone).
  */
 
-                                                                             
+                                                             
+                                                      
 
                                                    
 
@@ -807,7 +809,7 @@ function defaults()                  {
     buyConditions: { NM: 100, LP: null, MP: null, HP: null, DMG: null },
     minMarketCents: DEFAULT_MIN_MARKET_CENTS,
     maxCardsPerComp: DEFAULT_MAX_CARDS_PER_COMP,
-    minLotPayout: DEFAULT_MIN_LOT_PAYOUT,
+    minLotMarket: DEFAULT_MIN_LOT_MARKET,
     paused: false,
     pausedMessage: '',
     excludeGroups: [],
@@ -840,7 +842,7 @@ function normalize(raw         )          {
     buyConditions: normalizeBuyConditions(src.buyConditions),
     minMarketCents: normNumber(src.minMarketCents, DEFAULT_MIN_MARKET_CENTS),
     maxCardsPerComp: normNumber(src.maxCardsPerComp, DEFAULT_MAX_CARDS_PER_COMP),
-    minLotPayout: normMoney(src.minLotPayout, DEFAULT_MIN_LOT_PAYOUT),
+    minLotMarket: normMoney(src.minLotMarket, DEFAULT_MIN_LOT_MARKET),
     paused: normBool(src.paused),
     pausedMessage: src.pausedMessage == null ? '' : String(src.pausedMessage),
     excludeGroups: Array.isArray(src.excludeGroups) ? src.excludeGroups.map(normalizeExcludeGroup) : src.excludeGroups,
@@ -1080,19 +1082,20 @@ function validateSettings(raw         )                        {
     }
   }
 
-  // minLotPayout — the minimum total payout, across ACCEPTED rows only, a comp must reach before we
-  // buy it at all (owner's rule 2026-11-05). Same dollar bounds as a row's own from/to (LIMITS.maxMoney
-  // / LIMITS.moneyDecimals) — its own copy, separate from the slab sheet's. 0 is a valid, deliberate
-  // value (the floor is off, not "use the default"), so only null/'' fall back to the default.
-  let minLotPayout = DEFAULT_MIN_LOT_PAYOUT;
-  if (s.minLotPayout != null && s.minLotPayout !== '') {
-    const m = num(s.minLotPayout);
+  // minLotMarket — the minimum total MARKET VALUE, across ACCEPTED rows only, a comp must reach before
+  // we buy it at all (owner's rule 2026-11-05: "the market has to be 2K, the payout doesn't matter").
+  // Same dollar bounds as a row's own from/to (LIMITS.maxMoney / LIMITS.moneyDecimals) — its own copy,
+  // separate from the slab sheet's. 0 is a valid, deliberate value (the floor is off, not "use the
+  // default"), so only null/'' fall back to the default.
+  let minLotMarket = DEFAULT_MIN_LOT_MARKET;
+  if (s.minLotMarket != null && s.minLotMarket !== '') {
+    const m = num(s.minLotMarket);
     if (m === null || m < 0 || m > LIMITS.maxMoney) {
-      errors.push('Minimum lot payout must be a number between $0 and ' + money(LIMITS.maxMoney) + '.');
+      errors.push('Minimum lot market value must be a number between $0 and ' + money(LIMITS.maxMoney) + '.');
     } else if (!decimalsOk(m, LIMITS.moneyDecimals)) {
-      errors.push('Minimum lot payout can have at most ' + LIMITS.moneyDecimals + ' decimal places.');
+      errors.push('Minimum lot market value can have at most ' + LIMITS.moneyDecimals + ' decimal places.');
     } else {
-      minLotPayout = m;
+      minLotMarket = m;
     }
   }
 
@@ -1131,7 +1134,7 @@ function validateSettings(raw         )                        {
       buyConditions,
       minMarketCents,
       maxCardsPerComp,
-      minLotPayout,
+      minLotMarket,
       paused,
       pausedMessage,
       excludeGroups,
@@ -1787,7 +1790,7 @@ window.SinglesValidate = {
   LIMITS: LIMITS,
   DEFAULT_MIN_MARKET_CENTS: DEFAULT_MIN_MARKET_CENTS,
   DEFAULT_MAX_CARDS_PER_COMP: DEFAULT_MAX_CARDS_PER_COMP,
-  DEFAULT_MIN_LOT_PAYOUT: DEFAULT_MIN_LOT_PAYOUT,
+  DEFAULT_MIN_LOT_MARKET: DEFAULT_MIN_LOT_MARKET,
   defaults: defaults,
   normalize: normalize,
   validateSettings: validateSettings,
@@ -1983,7 +1986,7 @@ window.SinglesValidate = {
       pausedMessage: document.getElementById('sg-pausedMessage'),
       minMarketCents: document.getElementById('sg-minMarketCents'),
       maxCardsPerComp: document.getElementById('sg-maxCardsPerComp'),
-      minLotPayout: document.getElementById('sg-minLotPayout'),
+      minLotMarket: document.getElementById('sg-minLotMarket'),
       condLP: document.getElementById('sg-cond-LP'),
       condMP: document.getElementById('sg-cond-MP'),
       condHP: document.getElementById('sg-cond-HP'),
@@ -2078,7 +2081,7 @@ window.SinglesValidate = {
         },
         minMarketCents: centsToDollars(settings.minMarketCents != null ? settings.minMarketCents : (SV.DEFAULT_MIN_MARKET_CENTS || 100)),
         maxCardsPerComp: settings.maxCardsPerComp == null ? '' : str(settings.maxCardsPerComp),
-        minLotPayout: settings.minLotPayout == null ? '' : str(settings.minLotPayout),
+        minLotMarket: settings.minLotMarket == null ? '' : str(settings.minLotMarket),
         paused: !!settings.paused,
         pausedMessage: str(settings.pausedMessage),
         rates: (settings.rates || []).map(toFormRow),
@@ -2125,7 +2128,7 @@ window.SinglesValidate = {
         buyConditions: { NM: 100, LP: state.buyConditions.LP, MP: state.buyConditions.MP, HP: state.buyConditions.HP, DMG: state.buyConditions.DMG },
         minMarketCents: dollarsToCents(state.minMarketCents),
         maxCardsPerComp: state.maxCardsPerComp,
-        minLotPayout: state.minLotPayout,
+        minLotMarket: state.minLotMarket,
         paused: state.paused,
         pausedMessage: state.paused ? state.pausedMessage : '',
         excludeGroups: state.excludeGroups.map(plainGroup),
@@ -2170,7 +2173,7 @@ window.SinglesValidate = {
         top: {
           minMarketCents: state.minMarketCents,
           maxCardsPerComp: state.maxCardsPerComp,
-          minLotPayout: state.minLotPayout,
+          minLotMarket: state.minLotMarket,
           pausedMessage: state.pausedMessage,
           paused: !!state.paused,
           cond: JSON.stringify(state.buyConditions),
@@ -2182,7 +2185,7 @@ window.SinglesValidate = {
     function countChanges() {
       if (!baseline || !state) return 0;
       var n = 0;
-      ['minMarketCents', 'maxCardsPerComp', 'minLotPayout', 'pausedMessage', 'bannedProductIdsText'].forEach(function (k) {
+      ['minMarketCents', 'maxCardsPerComp', 'minLotMarket', 'pausedMessage', 'bannedProductIdsText'].forEach(function (k) {
         if (str(state[k]) !== str(baseline.top[k])) n++;
       });
       if (!!state.paused !== !!baseline.top.paused) n++;
@@ -2379,7 +2382,7 @@ window.SinglesValidate = {
     function renderTop() {
       dom.minMarketCents.value = state.minMarketCents;
       dom.maxCardsPerComp.value = state.maxCardsPerComp;
-      dom.minLotPayout.value = state.minLotPayout;
+      dom.minLotMarket.value = state.minLotMarket;
       dom.condLP.value = state.buyConditions.LP;
       dom.condMP.value = state.buyConditions.MP;
       dom.condHP.value = state.buyConditions.HP;
@@ -2775,7 +2778,7 @@ window.SinglesValidate = {
     });
 
     // ── sheet settings ───────────────────────────────────────────────────────
-    ['minMarketCents', 'maxCardsPerComp', 'minLotPayout', 'pausedMessage'].forEach(function (k) {
+    ['minMarketCents', 'maxCardsPerComp', 'minLotMarket', 'pausedMessage'].forEach(function (k) {
       var node = dom[k];
       if (!node) return;
       node.addEventListener('input', function () { state[k] = node.value; markDirty(); });
