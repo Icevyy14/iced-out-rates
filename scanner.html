@@ -705,6 +705,12 @@ function lowestOf(...cents) {
 // information, and dropping it would only inflate what we pay, never protect against it.
 const AVG_OUTLIER_MULTIPLIER = 1.5;
 
+// How many MADs above the median a sale may sit before it counts as a flier. Chosen against the
+// owner's own data: on cert 172886648 the bad sale is 15.4 MADs out and the worst legitimate one
+// is 4.28, so roughly 5 to 8 separates them. 6 sits in the middle of that gap with headroom on
+// both sides. Only used when the MAD is above zero; see avgCentsClean for the fallback.
+const AVG_OUTLIER_MADS = 6;
+
 /**
  * An outlier-safe version of avgCents: same contract (first n non-null sale-cents, half up, null if
  * fewer than n) but a sale far above the pack never drags the number up.
@@ -727,20 +733,62 @@ const AVG_OUTLIER_MULTIPLIER = 1.5;
 function avgCentsClean(salesCents, n) {
   const empty = { cents: null, flagged: false, dropped: [], kept: [], medianCents: null, beforeCents: null };
   if (!Array.isArray(salesCents) || !Number.isFinite(n) || n <= 0) return empty;
-  const slice = salesCents.filter(c => c != null).slice(0, n);
-  if (slice.length < n) return empty;
+  const all = salesCents.filter(c => c != null);
+  if (all.length < n) return empty;
 
-  const sorted = [...slice].sort((a, b) => a - b);
-  const mid = sorted.length >> 1;
-  const medianCents = sorted.length % 2
-    ? sorted[mid]
-    : Math.round((sorted[mid - 1] + sorted[mid]) / 2 + Number.EPSILON);
+  // What the naive answer WOULD have been, for the staff before/after note: the n most recent,
+  // nothing dropped. Unchanged.
+  const slice = all.slice(0, n);
   const beforeCents = Math.round(slice.reduce((a, b) => a + b, 0) / slice.length + Number.EPSILON);
 
-  const threshold = medianCents * AVG_OUTLIER_MULTIPLIER;
-  const kept = slice.filter(c => c <= threshold);
+  // Judge every sale against the WHOLE history given, not just the n being averaged. With n = 3
+  // the old code took the median of the same three sales it was averaging, so one flier dragged
+  // the median up with it and then hid behind it. Owner, 2026-11-06, cert 172886648 (sales 1300,
+  // 1335, 1725, 1325.92, 1215.09): the 1725 is only 1.29x the median of the first three, cleared
+  // the 1.5x bar, and the comp came out 1453 instead of ~1320.
+  const med = (xs) => {
+    const sorted = [...xs].sort((a, b) => a - b);
+    const mid = sorted.length >> 1;
+    return sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2 + Number.EPSILON);
+  };
+  const medianCents = med(all);
+
+  // MAD (median absolute deviation): how far out a sale sits in units of THIS card's own spread,
+  // rather than a fixed percentage that is far too loose on a tightly clustered card and too tight
+  // on a volatile one. On the example above the 1725 is 15.4 MADs out while every real sale is
+  // under 4.3, so it separates by a mile instead of by a hair.
+  const mad = med(all.map(c => Math.abs(c - medianCents)));
+
+  // MAD of 0 means most sales are identical, so every differing sale would be infinitely many MADs
+  // out and a pure MAD rule would drop real ones. Fall back to the proportional bar there.
+  // Take the STRICTER of the two bars, never the looser. Owner, 2026-11-06: "be conservative in
+  // averages". The MAD bar is the sharp one on a card with real history; the proportional bar is
+  // the only thing with any sense on a tiny sample, where the MAD is computed from so few points
+  // that it is nearly meaningless and can open the gate far too wide (with just two sales the MAD
+  // bar would wave through a pair differing by 5x). Whichever is tighter wins, so adding the MAD
+  // test can only ever drop MORE fliers than before, never fewer.
+  const madBar = mad > 0 ? medianCents + AVG_OUTLIER_MADS * mad : Infinity;
+  const pctBar = medianCents * AVG_OUTLIER_MULTIPLIER;
+  const threshold = Math.min(madBar, pctBar);
+
+  // ONLY high sales are dropped. A genuinely cheap sale is real information; dropping it would
+  // only inflate what the owner pays. Owner, 2026-11-06: "be conservative in averages", so where
+  // this has a choice it takes the lower number.
+  const survivors = all.filter(c => c <= threshold);
+
+  // dropped/flagged describe what happened to THE NUMBER, not to the history. A flier sitting
+  // past position n was never in the naive average, so excluding it changes nothing and must not
+  // raise a staff flag - that flag exists so staff re-check a figure that cleaning actually moved,
+  // and firing it on cards whose comp did not change is exactly the noise that gets a flag ignored.
   const dropped = slice.filter(c => c > threshold);
-  const cents = Math.round(kept.reduce((a, b) => a + b, 0) / kept.length + Number.EPSILON);
+
+  // Top up to n SURVIVING sales. The old code sliced to n and then filtered, so an average of 3
+  // silently became an average of 2 whenever a flier was dropped, even when the same history had
+  // a perfectly good sale one row further down.
+  const kept = survivors.slice(0, n);
+  const cents = kept.length
+    ? Math.round(kept.reduce((a, b) => a + b, 0) / kept.length + Number.EPSILON)
+    : null;
 
   return { cents, flagged: dropped.length > 0, dropped, kept, medianCents, beforeCents };
 }
@@ -766,6 +814,7 @@ window.Money = {
   avgCents: avgCents,
   avgCentsClean: avgCentsClean,
   AVG_OUTLIER_MULTIPLIER: AVG_OUTLIER_MULTIPLIER,
+  AVG_OUTLIER_MADS: AVG_OUTLIER_MADS,
   lowestOf: lowestOf,
   sumCents: sumCents,
   fmt: fmt,
