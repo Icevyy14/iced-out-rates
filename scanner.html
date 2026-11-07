@@ -1646,6 +1646,851 @@ window.ScanDecode = {
 
 (function () {
 'use strict';
+// The real camera engine for a card show, ported from Penguin's
+// web/src/lib/scanCamera.ts (josh-scanner-parts) - the engine he actually uses at shows. What we had
+// before this (page.html's own first-cut CameraEngine) only ported his DECODE SETTINGS
+// (scanner/scanDecode.js's format lists + reader tuning); the ENGINE around them - everything that
+// actually makes a small, far, or marginal label readable on a phone - was written fresh and naive:
+// grab a frame, run one decode pass, repeat, always the same size. This file is that missing engine.
+//
+// Like scanPick.js/scanDecode.js/session.js/signal.js, this stays CommonJS and framework-free: no
+// `import`, no `require()` of this repo's own files (every scanner/*.js module is embedded WHOLE into
+// the page by rates-portal/build-portal.js's embedWholeFile, each wrapped in its own IIFE - a file
+// that required a sibling could not be unwrapped that way). Where this file genuinely needs
+// scanPick.js's geometry (coverMap/toScreen/toPicture/visibleRect/fatten/nearestTo/mostCentral) or
+// scanDecode.js's format/tuning choices (chooseEngine/readerOptions/toFound), those are PASSED IN by
+// the caller (see createCamera's `opts.scanPick`/`opts.scanDecode` below) - the same "thread it
+// through as an argument instead of requiring it" pattern scanner/salesAvgs.js already uses for
+// `money` and scanner/feedback.js uses for `audio`/`vibrate`/`storage`. The page wires in the real
+// `window.ScanPick`/`window.ScanDecode` (both already embedded earlier in the same page); a test
+// wires in `require('./scanPick')`/`require('./scanDecode')` directly - either way this file never
+// hard-codes the dependency, so build-portal.js's embedWholeFile never has to understand it.
+//
+// Real browser globals (navigator.mediaDevices, document, window, Worker, Blob, URL) ARE read
+// directly where this needs them (getUserMedia, creating a <canvas>/Worker, listening for
+// visibilitychange) - there is no way to run a camera without them, and unlike ScanPick/ScanDecode
+// they are not "this repo's own code" that could drift from a required copy. Every call site that
+// touches one defaults it from the real global but accepts an override via `opts` (`opts.doc`,
+// `opts.win`, `opts.getUserMedia`), which is what lets rates-portal/e2e's fake-camera.mjs - which
+// monkeypatches `navigator.mediaDevices.getUserMedia`, `<video>.srcObject`/`.play`/`.videoWidth` and
+// `CanvasRenderingContext2D.drawImage` rather than providing a real camera - exercise this file
+// completely unmodified, the same way it already does for the page's current (naive) engine.
+//
+// What's genuinely new here versus the engine it replaces (see rates-portal/README.md and the task
+// that asked for this port for the full list):
+//   - the camera is asked for the BACK camera at its HIGHEST resolution, with progressively plainer
+//     fallback asks when a browser refuses (cameraAsks/openStream) - the old engine took whatever
+//     default `{video:{facingMode:{ideal:'environment'}}}` gave it, often 640x480 on a phone, which a
+//     small cert barcode simply is not resolvable at.
+//   - continuous autofocus where the track allows it, and tap-to-focus pointed at the tap.
+//   - the watching resolution ADAPTS to the device every frame (nextTrackSide): a fast phone decodes
+//     bigger frames (catching small/far barcodes), a slow one backs off to keep the viewfinder live.
+//   - a HARD LOOK after a tap/shutter finds nothing: ~1s alternating between a full-resolution crop
+//     around the tap and the whole frame at up to 2560px (hardLookPass) - the single biggest quality
+//     difference, and what makes a marginal label readable at all.
+//   - outlines PERSIST briefly after a barcode was last seen (mergeSeen/KEEP_MS), so they stop
+//     flickering, and a tap takes what was read recently (seenWithin/SEEN_MS) rather than only this
+//     exact frame.
+//   - reads are throttled while watching (minGapDelay/MIN_GAP_MS), to spare the battery.
+//   - camera zoom where the track has one, else digital zoom (a CSS scale) up to 4x - the old engine
+//     only ever supported hardware zoom and simply hid the slider on an iPhone, which has none.
+//   - Worker decode with a page-thread fallback when a Worker cannot start (ported from the existing
+//     zxingEngine in page.html, now with crop/maxSide support for the hard look above).
+'use strict';
+
+// ── Tuning, ported verbatim from scanCamera.ts's module-level constants ────────────────────────────
+/** How long an outline stays on screen after its barcode was last read, so it doesn't flicker. */
+var KEEP_MS = 450;
+/** A tap takes what was read this recently - not only the exact current frame. */
+var SEEN_MS = 700;
+/** How long a tap/shutter press that found nothing in view keeps looking hard. */
+var HARD_MS = 1000;
+/** At least this long between two reads while watching, to spare the battery. */
+var MIN_GAP_MS = 45;
+
+/** Watching starts at this frame size (long side, px) and adapts up/down from here - see nextTrackSide. */
+var INITIAL_TRACK_SIDE = 1280;
+var MIN_TRACK_SIDE = 960;
+var MAX_TRACK_SIDE = 1920;
+var TRACK_SIDE_STEP = 160;
+/** Below this decode time (ms) the frame was cheap: try a bigger one next time (catches smaller/farther labels). */
+var FAST_MS = 70;
+/** Above this decode time (ms) the frame was expensive: back off to keep the viewfinder live. */
+var SLOW_MS = 260;
+
+/** A hard-look CLOSE pass (odd pass numbers) reads a crop at up to this size - the camera's full resolution on
+    a small region, for a small or far barcode. A WIDE pass (even) reads the whole view at up to this size. */
+var HARD_CLOSE_MAX_SIDE = 4096;
+var HARD_WIDE_MAX_SIDE = 2560;
+/** The crop around a tap is at least this wide/tall (picture px), or half the view's longer side if bigger. */
+var HARD_CROP_MIN = 320;
+var HARD_CROP_VIEW_FRACTION = 0.5;
+
+/** Camera zoom when the track has none of its own: a CSS scale, up to this factor. */
+var DIGITAL_ZOOM_MAX = 4;
+/** Hardware zoom range is reported verbatim up to 10x its own minimum (a camera that claims e.g. 1-120x
+    is almost never usable much past a sane ceiling; this mirrors scanCamera.ts's own zoomRange getter). */
+var HW_ZOOM_MAX_FACTOR = 10;
+
+/** A worker that keeps failing to START (not merely a slow wasm download) this many times in a row is
+    given up on; decoding moves to the page thread instead of trying to restart it forever. */
+var WORKER_FAILURE_LIMIT = 3;
+
+// ── Plain words for why the camera didn't start, and what to do - verbatim from CAMERA_HELP. ───────
+var CAMERA_HELP = {
+  denied: "The camera is blocked for this site. Allow it in your browser's settings (iPhone: Settings, then Safari, then Camera), then tap Start camera.",
+  none: 'No camera found on this device. Type the cert or use the scanner gun below.',
+  busy: 'Another app is using the camera. Close it, then tap Start camera.',
+  unsupported: "This browser can't use the camera here. Type the cert below instead.",
+  failed: "The camera didn't start. Tap Start camera to try again."
+};
+
+function now() {
+  return (typeof performance !== 'undefined' && typeof performance.now === 'function') ? performance.now() : Date.now();
+}
+
+function sleep(ms) {
+  return new Promise(function (resolve) { setTimeout(resolve, ms); });
+}
+
+// ── Pure part 1: the fallback ladder of camera constraints ─────────────────────────────────────────
+/**
+ * The back camera at its highest resolution, then progressively plainer asks for a browser that
+ * refuses the first one. Pure data (no browser call here), so the ladder itself - what each ask ACTUALLY
+ * contains - is directly testable with no camera: see scanCamera.test.js.
+ */
+function cameraAsks() {
+  return [
+    { audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 3840 }, height: { ideal: 2160 }, frameRate: { ideal: 30 } } },
+    { audio: false, video: { facingMode: { ideal: 'environment' } } },
+    { audio: false, video: true }
+  ];
+}
+
+/**
+ * Maps a getUserMedia() rejection's `.name` onto one of the five plain-word problems CAMERA_HELP
+ * knows, same mapping as scanCamera.ts's failureFrom. Pure: takes anything with a `.name` (or
+ * nothing), never touches a browser API, so every branch is directly testable.
+ */
+function classifyCameraError(err) {
+  var name = (err && err.name) || '';
+  var problem = (name === 'NotAllowedError' || name === 'SecurityError' || name === 'PermissionDeniedError') ? 'denied'
+    : (name === 'NotFoundError' || name === 'DevicesNotFoundError' || name === 'OverconstrainedError') ? 'none'
+    : (name === 'NotReadableError' || name === 'TrackStartError' || name === 'AbortError') ? 'busy'
+    : 'failed';
+  return { problem: problem, message: CAMERA_HELP[problem] };
+}
+
+/** denied/busy will not be fixed by a plainer ask (a permission refusal, or the camera already taken
+    by someone else) - the ladder stops immediately rather than asking twice more for nothing. Every
+    other problem (an ask this device truly cannot satisfy, say) is worth retrying plainer. */
+function stopsLadder(problem) {
+  return problem === 'denied' || problem === 'busy';
+}
+
+/**
+ * Opens the back camera: works through cameraAsks() in order, stopping early on a denied/busy
+ * rejection, returning the first stream a browser grants. `getUserMedia` is injected (bound to
+ * `navigator.mediaDevices.getUserMedia` by the real caller) rather than read off a global here, so
+ * the ladder/early-stop LOGIC is testable with a fake rejecting/resolving function and no real camera
+ * or DOM at all - see scanCamera.test.js. Throws an Error carrying `.problem` (one of CAMERA_HELP's
+ * keys) and a plain-English `.message` on total failure.
+ */
+function openStream(getUserMedia) {
+  if (typeof getUserMedia !== 'function') {
+    var eUnsupported = new Error(CAMERA_HELP.unsupported);
+    eUnsupported.problem = 'unsupported';
+    return Promise.reject(eUnsupported);
+  }
+  var asks = cameraAsks();
+  var i = 0;
+  var lastErr = null;
+  function fail(err) {
+    var info = classifyCameraError(err);
+    var e = new Error(info.message);
+    e.problem = info.problem;
+    e.name = (err && err.name) || 'Error';
+    throw e;
+  }
+  function tryNext() {
+    if (i >= asks.length) return fail(lastErr);
+    var ask = asks[i++];
+    return Promise.resolve(getUserMedia(ask)).catch(function (err) {
+      lastErr = err;
+      var info = classifyCameraError(err);
+      if (stopsLadder(info.problem)) return fail(err);
+      return tryNext();
+    });
+  }
+  // Always a Promise, even if a future cameraAsks() ever returned zero asks - tryNext()'s own
+  // synchronous `fail()` throw would otherwise escape openStream() as a thrown error instead of a
+  // rejection on that (currently unreachable) edge.
+  return Promise.resolve().then(tryNext);
+}
+
+// ── Pure part 2: the hard-look pass schedule ────────────────────────────────────────────────────────
+/** A square of the picture around a point, kept inside `within` - duplicated from scanPick.js's
+    `around` (6 lines) rather than requiring it, so the hard-look SCHEDULE below needs no injected
+    dependency to be pure and unit-testable; scanPick.js stays the one source of truth for every OTHER
+    geometry calculation this file needs (see the file header), which is still passed in as `opts.scanPick`
+    by whoever drives this module for real. */
+function cropAround(p, size, within) {
+  var w = Math.min(size, within.w), h = Math.min(size, within.h);
+  var x = Math.max(within.x, Math.min(within.x + within.w - w, p.x - w / 2));
+  var y = Math.max(within.y, Math.min(within.y + within.h - h, p.y - h / 2));
+  return { x: x, y: y, w: w, h: h };
+}
+
+/**
+ * What one hard-look pass reads, given its index (0-based). Odd passes crop tightly around the tap
+ * (or the view's own centre, with no tap - the shutter button's hard look) and ask for the camera's
+ * full resolution there, since a small or far barcode needs every real pixel the camera has on it.
+ * Even passes fall back to the whole visible picture, still at a healthy resolution. Pure function of
+ * the pass number and the aim/view rectangles - ported verbatim from scanCamera.ts's take(), with the
+ * crop math (`around`) inlined (see cropAround above) so this needs no injected dependency either.
+ */
+function hardLookPass(pass, aim, view) {
+  var close = pass % 2 === 1;
+  var centre = aim || { x: view.x + view.w / 2, y: view.y + view.h / 2 };
+  var region = close ? cropAround(centre, Math.max(HARD_CROP_MIN, Math.max(view.w, view.h) * HARD_CROP_VIEW_FRACTION), view) : view;
+  return { close: close, region: region, maxSide: close ? HARD_CLOSE_MAX_SIDE : HARD_WIDE_MAX_SIDE };
+}
+
+// ── Pure part 3: outline persistence + "seen recently" ──────────────────────────────────────────────
+/**
+ * Merges this frame's freshly-found barcodes with whatever was already on screen: every fresh one
+ * (stamped with `at`), plus any earlier one that's still within `keepMs` of its own last sighting AND
+ * wasn't re-found this frame (by its decoded text) - so a barcode that's still there but missed one
+ * frame doesn't flicker out and back in. Pure: takes plain data in, returns plain data out, no timers
+ * of its own - the caller supplies "now" as `at`. Ported from scanCamera.ts's private `merge()`.
+ */
+function mergeSeen(prevTracks, freshFound, at, keepMs) {
+  keepMs = keepMs == null ? KEEP_MS : keepMs;
+  var fresh = (freshFound || []).map(function (f) {
+    return Object.assign({}, f, { at: at });
+  });
+  var kept = (prevTracks || []).filter(function (t) {
+    if (at - t.at >= keepMs) return false;
+    return !fresh.some(function (f) { return f.text === t.text; });
+  });
+  return fresh.concat(kept);
+}
+
+/** Barcodes still "in view" as far as a tap is concerned: read within the last `seenMs`. */
+function seenWithin(tracks, at, seenMs) {
+  seenMs = seenMs == null ? SEEN_MS : seenMs;
+  return (tracks || []).filter(function (t) { return at - t.at <= seenMs; });
+}
+
+// ── Pure part 4: read throttling + resolution adaptation ───────────────────────────────────────────
+/** How long to wait before the next watch-loop read, given this one took `spentMs` - never negative,
+    never more than needed to reach `minGapMs` total. Pure arithmetic, ported from the loop's own
+    `if (spent < MIN_GAP_MS) await sleep(MIN_GAP_MS - spent)`. */
+function minGapDelay(spentMs, minGapMs) {
+  minGapMs = minGapMs == null ? MIN_GAP_MS : minGapMs;
+  var spent = typeof spentMs === 'number' && isFinite(spentMs) ? spentMs : 0;
+  return Math.max(0, minGapMs - spent);
+}
+
+/**
+ * The next watch-loop frame size, given how long THIS one took to decode: a cheap read (< FAST_MS)
+ * grows the frame (bigger pictures catch smaller/farther barcodes) up to MAX_TRACK_SIDE; an expensive
+ * one (> SLOW_MS) shrinks it back down to MIN_TRACK_SIDE to keep the viewfinder live; anything in
+ * between is left alone. This is what makes a fast phone read bigger frames than a slow one without
+ * either of them ever being told which kind of phone they are. Ported verbatim from the loop's own
+ * step logic in scanCamera.ts.
+ */
+function nextTrackSide(trackSide, spentMs) {
+  var side = typeof trackSide === 'number' && isFinite(trackSide) ? trackSide : INITIAL_TRACK_SIDE;
+  var spent = typeof spentMs === 'number' && isFinite(spentMs) ? spentMs : 0;
+  if (spent < FAST_MS && side < MAX_TRACK_SIDE) return Math.min(MAX_TRACK_SIDE, side + TRACK_SIDE_STEP);
+  if (spent > SLOW_MS && side > MIN_TRACK_SIDE) return Math.max(MIN_TRACK_SIDE, side - TRACK_SIDE_STEP);
+  return side;
+}
+
+// ── Pure part 5: zoom range + clamp ─────────────────────────────────────────────────────────────────
+/**
+ * The zoom range to offer: the track's OWN capability when it reports one (capped at 10x its own
+ * minimum - scanCamera.ts's own ceiling, since a camera claiming e.g. 1-120x is not usable much past
+ * a sane point), else a plain digital range of 1-4x with `hardware:false` so the caller knows to use a
+ * CSS scale instead of `applyConstraints`. `caps` is whatever `track.getCapabilities().zoom` reported
+ * (or anything falsy/malformed), never read here - a pure mapping, independent of the real track.
+ */
+function zoomRangeFromCaps(caps) {
+  if (caps && typeof caps.min === 'number' && typeof caps.max === 'number' && caps.max > caps.min) {
+    return { min: caps.min, max: Math.min(caps.max, caps.min * HW_ZOOM_MAX_FACTOR), hardware: true };
+  }
+  return { min: 1, max: DIGITAL_ZOOM_MAX, hardware: false };
+}
+
+/** Keeps a wanted zoom value inside its range - the one place any zoom request (the slider, a pinch) is clamped. */
+function clampZoom(value, range) {
+  var v = typeof value === 'number' && isFinite(value) ? value : range.min;
+  return Math.max(range.min, Math.min(range.max, v));
+}
+
+// ── The real engine: everything above, wired to an actual <video>/MediaStream/Worker ───────────────
+/**
+ * Feature-detects a track capability function defensively: our own e2e fake camera (and a canvas-
+ * captured MediaStreamTrack in general) has no getCapabilities/getSettings/applyConstraints at all,
+ * so every call site here checks `typeof fn === 'function'` first rather than assuming a real camera
+ * track - the same defensive style page.html's own torchCapable()/zoomRange() already used, now
+ * shared by every capability check in this file instead of duplicated per-feature.
+ */
+function trackCaps(track) {
+  if (!track || typeof track.getCapabilities !== 'function') return {};
+  try { return track.getCapabilities() || {}; } catch (e) { return {}; }
+}
+function trackSettings(track) {
+  if (!track || typeof track.getSettings !== 'function') return {};
+  try { return track.getSettings() || {}; } catch (e) { return {}; }
+}
+function applyToTrack(track, advanced) {
+  if (!track || typeof track.applyConstraints !== 'function') return Promise.resolve(false);
+  return track.applyConstraints({ advanced: [advanced] }).then(function () { return true; }).catch(function () { return false; });
+}
+
+/**
+ * Draws part of the video into an offscreen canvas, downscaled so its longer side is at most
+ * `maxSide` - full camera resolution is far more than a barcode needs and would be slow to decode.
+ * Returns the scale `k` (so a found barcode's corners can be mapped back up to real video pixels) and
+ * the canvas context to read pixels from. Ported from scanCamera.ts's Grabber class, kept as a plain
+ * closure instead (one canvas, reused and resized as needed, same as Penguin's).
+ */
+function makeGrabber(doc) {
+  var canvas = null;
+  return {
+    draw: function (video, r, maxSide) {
+      if (r.w < 2 || r.h < 2) return null;
+      var k = Math.min(1, maxSide / Math.max(r.w, r.h));
+      var w = Math.max(1, Math.round(r.w * k)), h = Math.max(1, Math.round(r.h * k));
+      if (!canvas) canvas = doc.createElement('canvas');
+      if (canvas.width !== w) canvas.width = w;
+      if (canvas.height !== h) canvas.height = h;
+      var ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return null;
+      ctx.drawImage(video, r.x, r.y, r.w, r.h, 0, 0, w, h);
+      return { ctx: ctx, canvas: canvas, k: k, w: w, h: h };
+    }
+  };
+}
+
+/** Maps found corners (in a grabbed/cropped canvas's pixels) back to real video pixels. */
+function mapBack(found, r, k) {
+  return found.map(function (f) {
+    return Object.assign({}, f, { corners: f.corners.map(function (p) { return { x: r.x + p.x / k, y: r.y + p.y / k }; }) });
+  });
+}
+
+/**
+ * The self-hosted zxing-wasm reader, decoded in a Worker built from a Blob (so a page that ships as
+ * one HTML file with no build step needs no separate worker file) with a fallback to decoding on the
+ * page itself when a Worker can't start at all. The Blob's source is plain ES5-ish JS on purpose - it
+ * runs in a brand-new global scope with no access to this file's own closures, so nothing here can be
+ * shared into it except by value (the wasm/reader URLs and each decode request). Ported from the
+ * Worker template already proven out in page.html's own (pre-port) CameraEngine.zxingEngine, now
+ * parameterized on `hard`/`pass`/region/maxSide so the hard look above can drive it too, not just the
+ * fixed-size watch loop.
+ */
+function makeWorkerRunner(win, readerUrl, wasmUrl) {
+  var worker;
+  try {
+    var code =
+      'import { prepareZXingModule, readBarcodes, purgeZXingModule } from ' + JSON.stringify(readerUrl) + ';\n' +
+      "var preparedFor = '', ready = null;\n" +
+      'function prepare(wasm) {\n' +
+      '  if (ready && preparedFor === wasm) return ready;\n' +
+      '  preparedFor = wasm;\n' +
+      "  ready = prepareZXingModule({ overrides: { locateFile: function (p, prefix) { return /\\.wasm$/.test(p) ? wasm : prefix + p; } }, fireImmediately: true });\n" +
+      '  return ready;\n' +
+      '}\n' +
+      'function toFound(results) {\n' +
+      '  return (results || []).filter(function (r) { return r && r.isValid && r.text; }).map(function (r) {\n' +
+      '    var p = r.position;\n' +
+      '    return { text: r.text, format: String(r.format), corners: [p.topLeft, p.topRight, p.bottomRight, p.bottomLeft].map(function (pt) { return { x: pt.x, y: pt.y }; }) };\n' +
+      '  });\n' +
+      '}\n' +
+      'self.onmessage = function (e) {\n' +
+      '  var req = e.data;\n' +
+      '  prepare(req.wasm).then(function () {\n' +
+      '    var pixels = new Uint8ClampedArray(req.data);\n' +
+      "    var image = typeof ImageData === 'function' ? new ImageData(pixels, req.width, req.height) : { data: pixels, width: req.width, height: req.height };\n" +
+      '    return readBarcodes(image, req.options);\n' +
+      '  }).then(function (results) {\n' +
+      '    self.postMessage({ id: req.id, found: toFound(results) });\n' +
+      '  }).catch(function (err) {\n' +
+      '    purgeZXingModule(); ready = null;\n' +
+      "    self.postMessage({ id: req.id, error: err && err.message ? err.message : String(err) });\n" +
+      '  });\n' +
+      '};\n';
+    worker = new win.Worker(win.URL.createObjectURL(new win.Blob([code], { type: 'text/javascript' })), { type: 'module' });
+  } catch (e) {
+    return null; // this browser can't start a module Worker - decode on the page instead
+  }
+  var seq = 0, waiting = {};
+  worker.onmessage = function (e) {
+    var w = waiting[e.data.id];
+    if (!w) return;
+    delete waiting[e.data.id];
+    if (e.data.error) w.fail(new Error(e.data.error)); else w.ok(e.data.found || []);
+  };
+  worker.onerror = function (e) {
+    for (var id in waiting) waiting[id].fail(new Error((e && e.message) || 'the barcode reader stopped'));
+    waiting = {};
+  };
+  return {
+    run: function (image, options) {
+      return new Promise(function (ok, fail) {
+        var id = ++seq;
+        waiting[id] = { ok: ok, fail: fail };
+        var req = { id: id, wasm: wasmUrl, width: image.width, height: image.height, data: image.data.buffer, options: options };
+        worker.postMessage(req, [req.data]);
+      });
+    },
+    close: function () { worker.terminate(); for (var id in waiting) waiting[id].fail(new Error('stopped')); waiting = {}; }
+  };
+}
+
+/**
+ * zxing-cpp on the page itself, for a browser that can't run (or keeps failing to run) the worker.
+ * `scanDecode` (the real module, injected - see openCamera's own header) converts the raw
+ * zxing-wasm ReadResult[] to the same plain `{text, format, corners}` shape makeWorkerRunner's own
+ * inlined `toFound` already produces, so zxingEngine().find() below can treat either runner's
+ * output identically - no second conversion, no double-filtering a result that was already filtered.
+ */
+function makeInlineRunner(scanDecode, readerUrl, wasmUrl) {
+  var mod = null;
+  function load() {
+    if (!mod) {
+      mod = Promise.resolve()
+        .then(function () { return import(readerUrl); })
+        .then(function (m) {
+          m.prepareZXingModule({ overrides: { locateFile: function (p, prefix) { return /\.wasm$/.test(p) ? wasmUrl : prefix + p; } } });
+          return m;
+        })
+        .catch(function (e) { mod = null; throw e; });
+    }
+    return mod;
+  }
+  return {
+    run: function (image, options) {
+      return load().then(function (m) { return m.readBarcodes(image, options); })
+        .then(function (results) { return scanDecode.toFound(results); });
+    },
+    close: function () {}
+  };
+}
+
+/**
+ * Builds the camera. `video` is an <video> element already in the page; `opts`:
+ *   scanPick, scanDecode - REQUIRED, the two sibling modules' real exports (window.ScanPick/
+ *     window.ScanDecode in the page, or `require('./scanPick')`/`require('./scanDecode')` in a test).
+ *   events - { onSeen(seen), onTrouble(message|null), onEnded() }, all optional.
+ *   zxingReaderUrl, zxingWasmUrl - absolute URLs to the vendored reader module/wasm (see
+ *     rates-portal/page.html's ZXING_READER_URL/ZXING_WASM_URL) - only needed if zxing ends up chosen.
+ *   getUserMedia, doc, win - overridable for a test double; default to the real
+ *     navigator.mediaDevices.getUserMedia/document/window.
+ * Resolves to a camera control object once the stream is open and the first decoder is picked, or
+ * rejects with the Error openStream()/pickDecoder() threw (`.problem`/`.message` set).
+ */
+function openCamera(video, opts) {
+  opts = opts || {};
+  var scanPick = opts.scanPick;
+  var scanDecode = opts.scanDecode;
+  if (!scanPick || !scanDecode) throw new Error('scanCamera.openCamera: opts.scanPick and opts.scanDecode are required');
+  var events = opts.events || {};
+  var doc = opts.doc || (typeof document !== 'undefined' ? document : null);
+  var win = opts.win || (typeof window !== 'undefined' ? window : null);
+  var getUserMedia = opts.getUserMedia || ((typeof navigator !== 'undefined' && navigator.mediaDevices)
+    ? navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices) : null);
+
+  var tracks = []; // Seen[]: { text, format, corners, at }
+  var box = { w: 0, h: 0 };
+  var digitalZoom = 1, hwZoom = 1, zoomGoing = false, zoomWanted = null;
+  var stopped = false;
+  var hard = false;
+  var capturing = null;
+  var pass = 0;
+  var trackSide = INITIAL_TRACK_SIDE;
+  var failures = 0;
+  var caps = {};
+  var grabber = makeGrabber(doc);
+  var loopTimer = null;
+  var stream, decoder, track;
+
+  function currentTrack() { return stream ? stream.getVideoTracks()[0] : undefined; }
+
+  function onVisible() {
+    if (doc && doc.visibilityState === 'visible' && !stopped && video.paused) {
+      var p = video.play();
+      if (p && typeof p.catch === 'function') p.catch(function () {});
+    }
+  }
+
+  function nextFrame() {
+    return new Promise(function (resolve) {
+      var done = false;
+      function go() { if (!done) { done = true; resolve(); } }
+      if (typeof video.requestVideoFrameCallback === 'function') video.requestVideoFrameCallback(go);
+      else if (typeof requestAnimationFrame === 'function') requestAnimationFrame(go);
+      setTimeout(go, 120); // a paused/never-ready video never sends a frame of its own
+    });
+  }
+
+  // ── focus: continuous where the track allows it, tap-to-focus where it allows pointsOfInterest ──
+  function focusUp() {
+    if (!caps.focusMode || caps.focusMode.indexOf('continuous') < 0) return Promise.resolve(false);
+    return applyToTrack(track, { focusMode: 'continuous' });
+  }
+  function focusAt(p) {
+    if (!track || !p) return;
+    var settings = trackSettings(track);
+    if (!('pointsOfInterest' in settings)) return;
+    var vw = video.videoWidth, vh = video.videoHeight;
+    if (!vw || !vh) return;
+    var point = { x: Math.max(0, Math.min(1, p.x / vw)), y: Math.max(0, Math.min(1, p.y / vh)) };
+    applyToTrack(track, { pointsOfInterest: [point] });
+  }
+
+  // ── torch ─────────────────────────────────────────────────────────────────────────────────────
+  function torchAvailable() { return !!caps.torch; }
+  function setTorch(on) { return applyToTrack(track, { torch: !!on }); }
+
+  // ── zoom: hardware where the track has it, else a CSS scale on the <video> itself ───────────────
+  function zoomRange() { return zoomRangeFromCaps(caps.zoom); }
+  function getZoom() { return zoomRange().hardware ? hwZoom : digitalZoom; }
+  function setZoom(z) {
+    var range = zoomRange();
+    var v = clampZoom(z, range);
+    if (!range.hardware) {
+      digitalZoom = v;
+      if (video.style) video.style.transform = v > 1.001 ? 'scale(' + v + ')' : '';
+      return;
+    }
+    hwZoom = v;
+    zoomWanted = v;
+    if (zoomGoing) return;
+    zoomGoing = true;
+    (function pump() {
+      if (zoomWanted == null || stopped) { zoomGoing = false; return; }
+      var want = zoomWanted;
+      zoomWanted = null;
+      applyToTrack(track, { zoom: want }).then(pump);
+    })();
+  }
+
+  // ── box/mapping: where the picture sits on screen, for drawing outlines and reading taps ────────
+  function setBox(w, h) { box = { w: w, h: h }; }
+  function mapping() {
+    var vw = video.videoWidth, vh = video.videoHeight;
+    return scanPick.coverMap(vw, vh, box.w || vw, box.h || vh, zoomRange().hardware ? 1 : digitalZoom);
+  }
+  function view() {
+    var vw = video.videoWidth, vh = video.videoHeight;
+    if (!box.w || !box.h) return { x: 0, y: 0, w: vw, h: vh };
+    return scanPick.visibleRect(mapping(), vw, vh, box.w, box.h);
+  }
+  function seen(at) {
+    return seenWithin(tracks, at == null ? now() : at, SEEN_MS);
+  }
+  /** Where a barcode is on screen, box CSS pixels - a thin 1D read gets some height so it's visible/tappable. */
+  function onScreen(s, m) {
+    m = m || mapping();
+    return scanPick.fatten(s.corners.map(function (p) { return scanPick.toScreen(m, p); }));
+  }
+
+  // ── trouble reporting: one bad frame is not news, three in a row is ─────────────────────────────
+  function trouble(e) {
+    failures++;
+    if (failures === 3) {
+      var msg = e instanceof Error ? e.message : String(e);
+      events.onTrouble && events.onTrouble(msg.indexOf('load:') === 0
+        ? "The barcode reader didn't download. Check the signal; it keeps trying."
+        : "The barcode reader isn't working on this browser. Type the cert below instead.");
+    }
+  }
+  function fine() {
+    if (failures >= 3) events.onTrouble && events.onTrouble(null);
+    failures = 0;
+  }
+
+  function merge(found) {
+    var at = now();
+    tracks = mergeSeen(tracks, found, at, KEEP_MS);
+    events.onSeen && events.onSeen(seen(at));
+  }
+
+  // ── decoders ──────────────────────────────────────────────────────────────────────────────────
+  function detectorEngine(detector) {
+    return {
+      name: 'detector',
+      find: function (region, maxSide, isHard) {
+        if (!isHard) {
+          // The whole frame at full native resolution; keep only what's actually on screen.
+          return Promise.resolve(detector.detect(video)).then(function (all) {
+            return (all || []).map(function (b) {
+              return { text: b.rawValue, format: b.format, corners: (b.cornerPoints || []).map(function (p) { return { x: p.x, y: p.y }; }) };
+            }).filter(function (f) {
+              if (!f.text) return false;
+              var c = scanPick.centerOf(f.corners);
+              return c.x >= region.x && c.x <= region.x + region.w && c.y >= region.y && c.y <= region.y + region.h;
+            });
+          });
+        }
+        var grabbed = grabber.draw(video, region, maxSide);
+        if (!grabbed) return Promise.resolve([]);
+        return Promise.resolve(detector.detect(grabbed.canvas)).then(function (found) {
+          var mapped = (found || []).filter(function (b) { return b.rawValue; }).map(function (b) {
+            return { text: b.rawValue, format: b.format, corners: (b.cornerPoints || []).map(function (p) { return { x: p.x, y: p.y }; }) };
+          });
+          return mapBack(mapped, region, grabbed.k);
+        });
+      },
+      close: function () {}
+    };
+  }
+
+  function zxingEngine() {
+    var runner = null;
+    var workerFailures = 0;
+    var viaWorker = true;
+    function ensureRunner() {
+      if (runner) return runner;
+      var made = viaWorker ? makeWorkerRunner(win, opts.zxingReaderUrl, opts.zxingWasmUrl) : null;
+      if (made) { runner = made; return runner; }
+      viaWorker = false;
+      runner = makeInlineRunner(scanDecode, opts.zxingReaderUrl, opts.zxingWasmUrl);
+      return runner;
+    }
+    return {
+      name: 'zxing',
+      find: function (region, maxSide, isHard, passNum) {
+        var grabbed = grabber.draw(video, region, maxSide);
+        if (!grabbed) return Promise.resolve([]);
+        var image = grabbed.ctx.getImageData(0, 0, grabbed.w, grabbed.h);
+        var options = scanDecode.readerOptions(!!isHard, passNum || 0);
+        var r = ensureRunner();
+        // Both runners already resolve to the same plain {text, format, corners} shape (the worker's
+        // own inlined toFound, or makeInlineRunner's scanDecode.toFound) - found here is never raw
+        // zxing ReadResult[], so it must NOT be run through scanDecode.toFound() again: doing that
+        // once filtered out every real result (an already-converted object has no `.isValid`/
+        // `.position`, which toFound requires, so a second pass silently dropped everything - the
+        // camera decoded every frame correctly and still never showed an outline).
+        return Promise.resolve(r.run(image, options)).then(function (found) {
+          workerFailures = 0;
+          return mapBack(found, region, grabbed.k);
+        }).catch(function (e) {
+          // A worker that keeps failing to START (not a slow download - makeWorkerRunner's own
+          // code never sends an error prefixed "load:" for that) gets closed and replaced with the
+          // on-page fallback, same recovery as the engine this replaces already had.
+          var msg = e instanceof Error ? e.message : String(e);
+          if (viaWorker && runner && String(msg).indexOf('load:') !== 0 && ++workerFailures >= WORKER_FAILURE_LIMIT) {
+            runner.close();
+            runner = null;
+            viaWorker = false;
+          }
+          throw e;
+        });
+      },
+      close: function () { if (runner) runner.close(); runner = null; }
+    };
+  }
+
+  /** BarcodeDetector where this browser has one and it covers what a slab label needs, else zxing -
+      feature-detected via scanDecode.chooseEngine, never the user agent. */
+  function pickDecoder() {
+    var BD = win && win.BarcodeDetector;
+    var hasDetector = typeof BD === 'function';
+    var formatsP = (hasDetector && typeof BD.getSupportedFormats === 'function')
+      ? Promise.resolve(BD.getSupportedFormats()) : Promise.resolve(null);
+    return formatsP.catch(function () { return null; }).then(function (supported) {
+      var choice = scanDecode.chooseEngine(hasDetector, supported);
+      if (choice.engine === 'detector') {
+        try { return detectorEngine(new BD({ formats: choice.formats })); } catch (e) { /* fall through to zxing */ }
+      }
+      return zxingEngine();
+    });
+  }
+
+  // ── the watch loop: continuous, throttled, resolution-adaptive ──────────────────────────────────
+  function loop() {
+    if (stopped) return;
+    nextFrame().then(function () {
+      if (stopped) return;
+      if (hard || (doc && doc.hidden) || !video.videoWidth) { loopTimer = setTimeout(loop, 60); return; }
+      var t0 = now();
+      Promise.resolve(decoder.find(view(), trackSide, false, pass++)).then(function (found) {
+        if (stopped) return;
+        merge(found);
+        fine();
+        var spent = now() - t0;
+        trackSide = nextTrackSide(trackSide, spent);
+        loopTimer = setTimeout(loop, minGapDelay(spent, MIN_GAP_MS));
+      }, function (e) {
+        if (stopped) return;
+        merge([]);
+        trouble(e);
+        loopTimer = setTimeout(loop, Math.min(3000, 300 * failures));
+      });
+    });
+  }
+
+  // ── capture: a tap/shutter press ────────────────────────────────────────────────────────────────
+  function pick(list, tapBox) {
+    var m = mapping();
+    var items = list.map(function (s) { return { s: s, corners: onScreen(s, m) }; });
+    var boxRect = { x: 0, y: 0, w: box.w || video.videoWidth, h: box.h || video.videoHeight };
+    var got = tapBox ? scanPick.nearestTo(items, tapBox) : scanPick.mostCentral(items, boxRect);
+    return got ? got.s : null;
+  }
+
+  function takeHard(tapBox) {
+    hard = true;
+    return Promise.resolve().then(function () {
+      var m = mapping();
+      var aim = tapBox ? scanPick.toPicture(m, tapBox) : null;
+      focusAt(aim);
+      var until = now() + HARD_MS;
+      var passNum = 0;
+      function tryPass() {
+        if (stopped || now() >= until) return null;
+        return nextFrame().then(function () {
+          var v = view();
+          var schedule = hardLookPass(passNum, aim, v);
+          var thisPass = passNum++;
+          return Promise.resolve(decoder.find(schedule.region, schedule.maxSide, true, thisPass)).then(function (found) {
+            if (found && found.length) { merge(found); return pick(seen(), tapBox); }
+            return tryPass();
+          }, function (e) {
+            trouble(e);
+            return tryPass();
+          });
+        });
+      }
+      return tryPass();
+    }).finally(function () { hard = false; });
+  }
+
+  /**
+   * Takes one barcode: with a tap (box pixels) the one under it or the nearest one; without, the
+   * most central/largest. If nothing is in view it looks hard for about a second (see takeHard) and
+   * takes the first thing found. Resolves null when there's truly nothing there. Only one capture
+   * runs at a time - a second call while one is in flight gets the SAME promise, never a second
+   * concurrent hard look.
+   */
+  function capture(tapBox) {
+    if (capturing) return capturing;
+    capturing = Promise.resolve().then(function () {
+      var inView = seen();
+      if (inView.length) return pick(inView, tapBox);
+      if (stopped || !video.videoWidth) return null;
+      return takeHard(tapBox);
+    }).finally(function () { capturing = null; });
+    return capturing;
+  }
+
+  function stop() {
+    if (stopped) return;
+    stopped = true;
+    if (loopTimer) clearTimeout(loopTimer);
+    if (doc && typeof doc.removeEventListener === 'function') doc.removeEventListener('visibilitychange', onVisible);
+    if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+    if (decoder) decoder.close();
+    try { video.srcObject = null; } catch (e) { /* some fake videos reject a null srcObject */ }
+    if (video.style) video.style.transform = '';
+    tracks = [];
+  }
+
+  return openStream(getUserMedia).then(function (s) {
+    stream = s;
+    try { video.setAttribute('playsinline', ''); } catch (e) { /* not a real <video> in a test */ }
+    video.muted = true;
+    video.srcObject = s;
+    // Caps/listeners/focus are only wired up once play() has actually succeeded - matching
+    // scanCamera.ts's own order (its SlabCamera is constructed, and focusUp() called, only after
+    // `await video.play()` resolves), so a play() failure never leaves an 'ended' listener or a
+    // visibilitychange handler attached for a camera this function is about to fail out of anyway.
+    return Promise.resolve(video.play()).catch(function (e) {
+      s.getTracks().forEach(function (t) { t.stop(); });
+      var info = classifyCameraError(e);
+      var err = new Error(info.message);
+      err.problem = info.problem;
+      throw err;
+    });
+  }).then(function () {
+    track = currentTrack();
+    caps = trackCaps(track);
+    if (track && typeof track.addEventListener === 'function') {
+      track.addEventListener('ended', function () { if (!stopped) events.onEnded && events.onEnded(); });
+    }
+    if (doc && typeof doc.addEventListener === 'function') doc.addEventListener('visibilitychange', onVisible);
+    var settings = trackSettings(track);
+    hwZoom = (typeof settings.zoom === 'number' ? settings.zoom : null) || (caps.zoom && caps.zoom.min) || 1;
+    return focusUp();
+  }).then(function () {
+    return pickDecoder();
+  }).then(function (chosen) {
+    decoder = chosen;
+    loop();
+    return {
+      decoderName: decoder.name,
+      setBox: setBox,
+      mapping: mapping,
+      view: view,
+      seen: seen,
+      onScreen: onScreen,
+      capture: capture,
+      stop: stop,
+      torchAvailable: torchAvailable,
+      setTorch: setTorch,
+      zoomRange: zoomRange,
+      getZoom: getZoom,
+      setZoom: setZoom
+    };
+  }).catch(function (e) {
+    if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+    throw e;
+  });
+}
+
+// Exported names only below, no comments - embedWholeFile's module.exports parser (see
+// rates-portal/build-portal.js) splits this block on top-level commas, and a comment containing a
+// comma of its own (English prose almost always has one) would corrupt that split. Every name here is
+// documented where it's defined above instead: tuning constants, the pure camera-free parts
+// (cameraAsks/classifyCameraError/stopsLadder/openStream/hardLookPass/cropAround/mergeSeen/
+// seenWithin/minGapDelay/nextTrackSide/zoomRangeFromCaps/clampZoom - see scanCamera.test.js), and the
+// real thing, openCamera.
+
+window.ScanCamera = {
+  KEEP_MS: KEEP_MS,
+  SEEN_MS: SEEN_MS,
+  HARD_MS: HARD_MS,
+  MIN_GAP_MS: MIN_GAP_MS,
+  INITIAL_TRACK_SIDE: INITIAL_TRACK_SIDE,
+  MIN_TRACK_SIDE: MIN_TRACK_SIDE,
+  MAX_TRACK_SIDE: MAX_TRACK_SIDE,
+  HARD_CLOSE_MAX_SIDE: HARD_CLOSE_MAX_SIDE,
+  HARD_WIDE_MAX_SIDE: HARD_WIDE_MAX_SIDE,
+  DIGITAL_ZOOM_MAX: DIGITAL_ZOOM_MAX,
+  CAMERA_HELP: CAMERA_HELP,
+  cameraAsks: cameraAsks,
+  classifyCameraError: classifyCameraError,
+  stopsLadder: stopsLadder,
+  openStream: openStream,
+  hardLookPass: hardLookPass,
+  cropAround: cropAround,
+  mergeSeen: mergeSeen,
+  seenWithin: seenWithin,
+  minGapDelay: minGapDelay,
+  nextTrackSide: nextTrackSide,
+  zoomRangeFromCaps: zoomRangeFromCaps,
+  clampZoom: clampZoom,
+  openCamera: openCamera,
+};
+})();
+
+(function () {
+'use strict';
 // Beep + vibrate on a scan, so the owner knows what happened without looking at the phone - he's
 // looking at the card in his other hand. Ported from Penguin's
 // web/src/lib/scanFeedback.ts (josh-scanner-parts): same tone table (a scanner's high "got it", a
@@ -3291,423 +4136,159 @@ window.AvgClient = {
     var ZXING_READER_URL = new URL('vendor/zxing/reader/index.js', document.baseURI).href;
     var ZXING_WASM_URL = new URL('vendor/zxing/zxing_reader.wasm', document.baseURI).href;
 
-    // ── camera: BarcodeDetector where this browser has one and it covers what a slab label needs -
-    // native, so cheaper than WASM, mainly Android Chrome today - else the self-hosted zxing-wasm
-    // reader, which is what makes this work on an iPhone at all: iOS Safari has no BarcodeDetector.
-    // Feature-detected (ScanDecode.chooseEngine), never read off the user agent. Tap to read, never
-    // continuous: the detect loop only draws outlines on screen, a tap on one (or the shutter, for
-    // the most central) is what actually prices a cert. ──────────────────────────────────────────
-    function CameraEngine() {
-      var stream = null, timer = null, engine = null, grabCanvas = null;
-      var found = []; // [{ value, corners }] currently on screen
-      var troubleStreak = 0;
-      var torchOn = false;
+    // ── camera: this is now only the browser-object + DOM wiring. The actual engine - resolution
+    // ladder, continuous/tap-to-focus, adaptive watch resolution, the hard look after a tap finds
+    // nothing, outline persistence/throttling, hardware-or-digital zoom, BarcodeDetector-vs-zxing
+    // choice, Worker-with-page-fallback decode - is scanner/scanCamera.js (window.ScanCamera, ported
+    // from Penguin's web/src/lib/scanCamera.ts - the engine he actually uses at shows). What used to
+    // be a hand-rolled CameraEngine here only ever ported his DECODE SETTINGS (scanDecode.js); this is
+    // the missing engine around them. See scanner/scanCamera.js's own header for the full list of
+    // what's different and why.
+    var cam = null; // the ScanCamera control object, or null while the camera is off
+    var camBoxObserver = null;
+    var torchOn = false;
 
-      function cameraSupported() {
-        return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    function cameraSupported() {
+      return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    }
+
+    function setTorchUi(on) {
+      torchOn = on;
+      dom.torch.classList.toggle('on', on);
+      dom.torch.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+
+    /** Leaving a phone's torch burning in a pocket after the camera stops (or the tab goes to the
+        background mid-show) is a real way to lose a battery. scanCamera.js owns stopping the torch
+        when the camera itself stops; this page-level listener is the extra safety net for the
+        backgrounded-but-still-open case, same reasoning the page had before this port. */
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden && cam && torchOn) {
+        cam.setTorch(false).then(function (ok) { if (ok) setTorchUi(false); });
       }
+    });
 
-      function trackOf() {
-        return stream ? stream.getVideoTracks()[0] : null;
+    function toggleTorch() {
+      if (!cam || !cam.torchAvailable()) return;
+      cam.setTorch(!torchOn).then(function (ok) { if (ok) setTorchUi(!torchOn); });
+    }
+
+    function setupZoomUi() {
+      var range = cam.zoomRange();
+      dom.zoomWrap.hidden = false;
+      dom.zoom.min = String(range.min);
+      dom.zoom.max = String(range.max);
+      dom.zoom.step = String((range.max - range.min) / 100 || 0.1);
+      dom.zoom.value = String(cam.getZoom());
+    }
+
+    function drawMarks(seenList) {
+      var m = cam.mapping();
+      var b = dom.vf.getBoundingClientRect();
+      dom.marks.setAttribute('viewBox', '0 0 ' + b.width + ' ' + b.height);
+      dom.marks.innerHTML = (seenList || []).map(function (s) {
+        var pts = cam.onScreen(s, m);
+        return '<polygon class="sc-mark" points="' + pts.map(function (p) { return p.x + ',' + p.y; }).join(' ') + '"></polygon>';
+      }).join('');
+    }
+
+    function closeCamera() {
+      if (camBoxObserver) { camBoxObserver.disconnect(); camBoxObserver = null; }
+      if (cam) { cam.stop(); cam = null; }
+      torchOn = false;
+      dom.torch.hidden = true;
+      dom.zoomWrap.hidden = true;
+      dom.marks.innerHTML = '';
+      dom.vf.hidden = true;
+      dom.vfOff.hidden = false;
+    }
+
+    function startCamera() {
+      if (!cameraSupported()) {
+        dom.vfOffText.textContent = 'No camera on this device or browser. Type or paste the cert below instead.';
+        return Promise.reject(new Error('unsupported'));
       }
-
-      // ── torch (flashlight): Android Chrome supports applyConstraints({advanced:[{torch}]}) on the
-      // video track; iOS Safari has never implemented it (and has no ImageCapture either), so this
-      // MUST be feature-detected off the real track's own getCapabilities() rather than assumed from
-      // the platform - a canvas-captured track (this repo's own e2e fake camera) or a future browser
-      // that changes its mind both fall out of this the same way, with no special-casing needed. A
-      // dead button is worse than no button, so dom.torch stays `hidden` whenever this says no. ──────
-      function torchCapable() {
-        var t = trackOf();
-        if (!t || typeof t.getCapabilities !== 'function') return false;
-        try {
-          var caps = t.getCapabilities();
-          return !!(caps && caps.torch);
-        } catch (e) {
-          return false; // a browser that throws on getCapabilities() gets treated as "no torch"
+      // Shown (not hidden) before the camera actually opens, so the box has real on-screen
+      // dimensions by the time ScanCamera.openCamera's caller measures it below - a [hidden] element
+      // reports a 0x0 bounding rect, which would otherwise make the very first setBox() a no-op.
+      dom.vf.hidden = false;
+      dom.vfOff.hidden = true;
+      dom.vfStatus.textContent = 'Starting camera…';
+      return ScanCamera.openCamera(dom.video, {
+        scanPick: ScanPick,
+        scanDecode: ScanDecode,
+        zxingReaderUrl: ZXING_READER_URL,
+        zxingWasmUrl: ZXING_WASM_URL,
+        events: {
+          onSeen: function (seenList) { drawMarks(seenList); },
+          onTrouble: function (msg) { dom.vfStatus.textContent = msg || 'Point at a barcode'; },
+          onEnded: function () {
+            closeCamera();
+            dom.vfOffText.textContent = 'The camera stopped. Tap Start camera to turn it back on.';
+          }
         }
-      }
-
-      function applyTorch(on) {
-        var t = trackOf();
-        if (!t || typeof t.applyConstraints !== 'function') return Promise.resolve(false);
-        return t.applyConstraints({ advanced: [{ torch: on }] }).then(function () { return true; }).catch(function () { return false; });
-      }
-
-      function setTorchUi(on) {
-        torchOn = on;
-        dom.torch.classList.toggle('on', on);
-        dom.torch.setAttribute('aria-pressed', on ? 'true' : 'false');
-      }
-
-      function toggleTorch() {
-        if (!torchCapable()) return;
-        applyTorch(!torchOn).then(function (ok) { if (ok) setTorchUi(!torchOn); });
-      }
-
-      /** Leaving a phone's torch burning in a pocket after the camera stops (or the tab goes to the
-          background mid-show) is a real way to lose a battery - called from stop() and from the
-          page's visibilitychange listener below. A no-op when the torch was never on or isn't
-          supported, so it is always safe to call defensively. */
-      function torchOff() {
-        if (!torchOn) return;
-        applyTorch(false);
+      }).then(function (c) {
+        cam = c;
+        dom.vfStatus.textContent = 'Point at a barcode';
+        dom.torch.hidden = !cam.torchAvailable();
         setTorchUi(false);
-      }
-
-      // ── zoom: the track's OWN zoom capability (min/max/step), never a CSS transform - a CSS scale
-      // just stretches the same pixels the decoder already failed to read at the smaller size, while
-      // applyConstraints({advanced:[{zoom}]}) asks the camera hardware for more real pixels on a slab
-      // label. iPhone's camera tracks report no zoom capability at all (confirmed by the same
-      // getCapabilities().zoom feature-detect used here, not assumed) - this is the end of it, no CSS
-      // fallback is faked in to compensate; the slider simply never shows there. ─────────────────────
-      function zoomRange() {
-        var t = trackOf();
-        if (!t || typeof t.getCapabilities !== 'function') return null;
-        var caps;
-        try { caps = t.getCapabilities(); } catch (e) { return null; }
-        var z = caps && caps.zoom;
-        if (!z || typeof z.min !== 'number' || typeof z.max !== 'number' || !(z.max > z.min)) return null;
-        var step = typeof z.step === 'number' && z.step > 0 ? z.step : (z.max - z.min) / 100;
-        return { min: z.min, max: z.max, step: step };
-      }
-
-      function currentZoom(range) {
-        var t = trackOf();
-        if (t && typeof t.getSettings === 'function') {
-          try {
-            var s = t.getSettings();
-            if (typeof s.zoom === 'number') return s.zoom;
-          } catch (e) { /* fall through to the range minimum */ }
-        }
-        return range.min;
-      }
-
-      function setZoom(value) {
-        var t = trackOf();
-        var range = zoomRange();
-        if (!t || !range || typeof t.applyConstraints !== 'function') return Promise.resolve(false);
-        var clamped = Math.min(range.max, Math.max(range.min, value));
-        return t.applyConstraints({ advanced: [{ zoom: clamped }] }).then(function () { return clamped; }).catch(function () { return false; });
-      }
-
-      function setupZoom() {
-        var range = zoomRange();
-        if (!range) { dom.zoomWrap.hidden = true; return; }
-        dom.zoomWrap.hidden = false;
-        dom.zoom.min = String(range.min);
-        dom.zoom.max = String(range.max);
-        dom.zoom.step = String(range.step);
-        dom.zoom.value = String(currentZoom(range));
-      }
-
-      function zoomOff() {
-        dom.zoomWrap.hidden = true;
-      }
-
-      function helpFor(err) {
-        if (err && err.name === 'NotAllowedError') return "The camera is blocked for this site. Allow it in your browser's settings (iPhone: Settings, then Safari, then Camera), then tap Start camera.";
-        if (err && err.name === 'NotFoundError') return 'No camera found on this device. Type the cert below instead.';
-        if (err && err.name === 'NotReadableError') return 'Another app is using the camera. Close it, then tap Start camera.';
-        return "The camera didn't start. Tap Start camera to try again, or type the cert below.";
-      }
-
-      /** BarcodeDetector where it's usable, else zxing. Picks once per camera session. */
-      function pickDecoder() {
-        var hasDetector = typeof window.BarcodeDetector === 'function';
-        var formatsP = hasDetector && window.BarcodeDetector.getSupportedFormats
-          ? window.BarcodeDetector.getSupportedFormats()
-          : Promise.resolve(null);
-        return formatsP.then(function (supported) {
-          var choice = ScanDecode.chooseEngine(hasDetector, supported);
-          return choice.engine === 'detector' ? detectorEngine(choice.formats) : zxingEngine();
-        });
-      }
-
-      function detectorEngine(formats) {
-        var detector = new window.BarcodeDetector({ formats: formats });
-        return {
-          name: 'detector',
-          detect: function () {
-            return detector.detect(dom.video).then(function (codes) {
-              return codes.map(function (c) {
-                return { value: c.rawValue, corners: (c.cornerPoints || []).map(function (p) { return { x: p.x, y: p.y }; }) };
-              }).filter(function (c) { return c.corners.length; });
-            });
-          },
-          close: function () {}
-        };
-      }
-
-      /** Grabs the current frame into an offscreen canvas, downscaled to at most `maxSide` on its
-          long side - full camera resolution is far more than a barcode needs and would be slow to
-          decode in WASM on a phone. Returns the pixels and the scale `k`, so a found barcode's
-          corners can be divided back up to real video pixels (ported from scanCamera.ts's
-          Grabber/back(), the class dropped since this engine never crops to a region). */
-      function grabFrame(maxSide) {
-        var vw = dom.video.videoWidth, vh = dom.video.videoHeight;
-        if (!vw || !vh) return null;
-        var k = Math.min(1, maxSide / Math.max(vw, vh));
-        var w = Math.max(1, Math.round(vw * k)), h = Math.max(1, Math.round(vh * k));
-        if (!grabCanvas) grabCanvas = document.createElement('canvas');
-        if (grabCanvas.width !== w) grabCanvas.width = w;
-        if (grabCanvas.height !== h) grabCanvas.height = h;
-        var ctx = grabCanvas.getContext('2d', { willReadFrequently: true });
-        ctx.drawImage(dom.video, 0, 0, w, h);
-        return { imageData: ctx.getImageData(0, 0, w, h), k: k };
-      }
-
-      function zxingEngine() {
-        var TRACK_SIDE = 960; // small enough to decode well under one frame interval on a mid phone
-        var runner = null; // { run(imageData, hard, pass) -> Promise<[{value,corners}]>, close() }
-
-        /** Decode in a Worker so the viewfinder stays smooth while zxing-cpp works through a frame -
-            same reasoning as scanWorker.ts. Built from a Blob so no separate worker file is needed
-            in a page that ships as one HTML file plus its vendored assets; the module import inside
-            uses the absolute ZXING_READER_URL (a blob: URL has no base of its own to resolve a
-            relative one against). toFound() is inlined rather than pulled from scanDecode.js: a
-            worker built from a Blob has no access to this page's own script scope or its CommonJS
-            modules, and it is six lines - not worth a build step we deliberately don't have. */
-        function makeWorkerRunner() {
-          var worker;
-          try {
-            var code =
-              'import { prepareZXingModule, readBarcodes, purgeZXingModule } from ' + JSON.stringify(ZXING_READER_URL) + ';\n' +
-              "var preparedFor = '', ready = null;\n" +
-              'function prepare(wasm) {\n' +
-              '  if (ready && preparedFor === wasm) return ready;\n' +
-              '  preparedFor = wasm;\n' +
-              "  ready = prepareZXingModule({ overrides: { locateFile: function (p, prefix) { return /\\.wasm$/.test(p) ? wasm : prefix + p; } }, fireImmediately: true });\n" +
-              '  return ready;\n' +
-              '}\n' +
-              'function toFound(results) {\n' +
-              '  return (results || []).filter(function (r) { return r && r.isValid && r.text; }).map(function (r) {\n' +
-              '    var p = r.position;\n' +
-              '    return { value: r.text, corners: [p.topLeft, p.topRight, p.bottomRight, p.bottomLeft].map(function (pt) { return { x: pt.x, y: pt.y }; }) };\n' +
-              '  });\n' +
-              '}\n' +
-              'self.onmessage = function (e) {\n' +
-              '  var req = e.data;\n' +
-              '  prepare(req.wasm).then(function () {\n' +
-              '    var pixels = new Uint8ClampedArray(req.data);\n' +
-              "    var image = typeof ImageData === 'function' ? new ImageData(pixels, req.width, req.height) : { data: pixels, width: req.width, height: req.height };\n" +
-              '    return readBarcodes(image, req.options);\n' +
-              '  }).then(function (results) {\n' +
-              '    self.postMessage({ id: req.id, found: toFound(results) });\n' +
-              '  }).catch(function (err) {\n' +
-              '    purgeZXingModule(); ready = null;\n' +
-              "    self.postMessage({ id: req.id, error: err && err.message ? err.message : String(err) });\n" +
-              '  });\n' +
-              '};\n';
-            worker = new Worker(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })), { type: 'module' });
-          } catch (e) {
-            return null; // this browser can't start a module Worker - decode on the page instead
-          }
-          var seq = 0, waiting = {};
-          worker.onmessage = function (e) {
-            var w = waiting[e.data.id];
-            if (!w) return;
-            delete waiting[e.data.id];
-            if (e.data.error) w.fail(new Error(e.data.error)); else w.ok(e.data.found || []);
-          };
-          worker.onerror = function (e) {
-            for (var id in waiting) waiting[id].fail(new Error((e && e.message) || 'the barcode reader stopped'));
-            waiting = {};
-          };
-          return {
-            run: function (imageData, hard, pass) {
-              return new Promise(function (ok, fail) {
-                var id = ++seq;
-                waiting[id] = { ok: ok, fail: fail };
-                var req = {
-                  id: id, wasm: ZXING_WASM_URL, width: imageData.width, height: imageData.height,
-                  data: imageData.data.buffer, options: ScanDecode.readerOptions(hard, pass)
-                };
-                worker.postMessage(req, [req.data]);
-              });
-            },
-            close: function () { worker.terminate(); }
-          };
-        }
-
-        /** No Worker in this browser, or it failed to start: decode on the page itself rather than
-            failing outright - a slower viewfinder beats a dead one. */
-        function makeInlineRunner() {
-          var mod = null;
-          function load() {
-            if (!mod) {
-              mod = import(ZXING_READER_URL).then(function (m) {
-                m.prepareZXingModule({ overrides: { locateFile: function (p, prefix) { return /\.wasm$/.test(p) ? ZXING_WASM_URL : prefix + p; } } });
-                return m;
-              }).catch(function (e) { mod = null; throw e; });
-            }
-            return mod;
-          }
-          return {
-            run: function (imageData, hard, pass) {
-              return load().then(function (m) { return m.readBarcodes(imageData, ScanDecode.readerOptions(hard, pass)); })
-                .then(function (results) { return ScanDecode.toFound(results).map(function (f) { return { value: f.text, corners: f.corners }; }); });
-            },
-            close: function () {}
-          };
-        }
-
-        return {
-          name: 'zxing',
-          detect: function () {
-            var frame = grabFrame(TRACK_SIDE);
-            if (!frame) return Promise.resolve([]);
-            if (!runner) runner = makeWorkerRunner() || makeInlineRunner();
-            var k = frame.k;
-            return runner.run(frame.imageData, false, 0).then(function (list) {
-              return list.map(function (f) { return { value: f.value, corners: f.corners.map(function (p) { return { x: p.x / k, y: p.y / k }; }) }; });
-            });
-          },
-          close: function () { if (runner) runner.close(); runner = null; }
-        };
-      }
-
-      function start() {
-        if (!cameraSupported()) {
-          dom.vfOffText.textContent = 'No camera on this device or browser. Type or paste the cert below instead.';
-          return Promise.reject(new Error('unsupported'));
-        }
-        return navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
-          .then(function (s) {
-            stream = s;
-            dom.video.srcObject = s;
-            return dom.video.play();
-          })
-          .then(pickDecoder)
-          .then(function (chosen) {
-            engine = chosen;
-            dom.vf.hidden = false;
-            dom.vfOff.hidden = true;
-            dom.vfStatus.textContent = 'Point at a barcode';
-            troubleStreak = 0;
-            dom.torch.hidden = !torchCapable();
-            setTorchUi(false);
-            setupZoom();
-            loop();
-          })
-          .catch(function (err) {
-            stop();
-            dom.vfOffText.textContent = helpFor(err);
-            throw err;
+        setupZoomUi();
+        var r = dom.vf.getBoundingClientRect();
+        cam.setBox(r.width, r.height);
+        if (typeof ResizeObserver !== 'undefined') {
+          camBoxObserver = new ResizeObserver(function () {
+            var rr = dom.vf.getBoundingClientRect();
+            if (cam) cam.setBox(rr.width, rr.height);
           });
-      }
-
-      function stop() {
-        if (timer) clearTimeout(timer);
-        timer = null;
-        if (engine) engine.close();
-        engine = null;
-        torchOff(); // never leave the flashlight burning once the camera (or this track) is done
-        dom.torch.hidden = true;
-        zoomOff();
-        if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
-        stream = null;
-        found = [];
+          camBoxObserver.observe(dom.vf);
+        }
+      }, function (err) {
         dom.vf.hidden = true;
         dom.vfOff.hidden = false;
-      }
+        dom.vfOffText.textContent = (err && err.message) || "The camera didn't start. Tap Start camera to try again, or type the cert below.";
+        throw err;
+      });
+    }
 
-      function loop() {
-        if (!stream) return;
-        engine.detect().then(function (codes) {
-          found = codes;
-          drawMarks();
-          if (troubleStreak) { troubleStreak = 0; dom.vfStatus.textContent = 'Point at a barcode'; }
-        }).catch(function () {
-          // One bad frame is not fatal; only say something once reading keeps failing (the WASM
-          // reader never downloaded, say - offline, or this origin blocked for some reason).
-          troubleStreak++;
-          if (troubleStreak === 3) dom.vfStatus.textContent = "Barcode reading isn't working here right now - type the cert below instead.";
-        }).then(function () {
-          // zxing spends real time decoding each frame already, so it needs less of a gap than the
-          // ~5/s BarcodeDetector polls at to spare the battery.
-          timer = setTimeout(loop, engine && engine.name === 'zxing' ? 120 : 180);
-        });
-      }
-
-      function box() {
-        var r = dom.vf.getBoundingClientRect();
-        return { w: r.width, h: r.height };
-      }
-
-      function mapOf() {
-        var b = box();
-        return ScanPick.coverMap(dom.video.videoWidth || b.w, dom.video.videoHeight || b.h, b.w, b.h, 1);
-      }
-
-      function drawMarks() {
-        var m = mapOf();
-        var b = box();
-        dom.marks.setAttribute('viewBox', '0 0 ' + b.w + ' ' + b.h);
-        dom.marks.innerHTML = found.map(function (f) {
-          var pts = ScanPick.fatten(f.corners).map(function (p) { return ScanPick.toScreen(m, p); });
-          return '<polygon class="sc-mark" points="' + pts.map(function (p) { return p.x + ',' + p.y; }).join(' ') + '"></polygon>';
-        }).join('');
-      }
-
-      function take(f) {
-        // Every tap/shutter press is a user gesture, so this doubles as the "re-prime a context an
-        // iOS backgrounding re-suspended" hook feedback.js's own header calls for - cheap and safe to
-        // call on every single capture attempt, not just the first.
-        feedback.unlock();
-        if (!f) { feedback.play('nothing'); dom.vfStatus.textContent = 'Nothing found - try again or type it below'; return; }
-        var parsed = parseOneCert(f.value);
+    function take(tapBox) {
+      if (!cam) return;
+      // Every tap/shutter press is a user gesture, so this doubles as the "re-prime a context an
+      // iOS backgrounding re-suspended" hook feedback.js's own header calls for - cheap and safe to
+      // call on every single capture attempt, not just the first.
+      feedback.unlock();
+      cam.capture(tapBox).then(function (found) {
+        if (!found) { feedback.play('nothing'); dom.vfStatus.textContent = 'Nothing found - try again or type it below'; return; }
+        var parsed = parseOneCert(found.text);
         if (!parsed.ok) { feedback.play('bad'); dom.vfStatus.textContent = parsed.why; return; }
         feedback.play('ok');
         dom.vfStatus.textContent = 'Read ' + parsed.grader.toUpperCase() + ' ' + parsed.cert;
         priceCert(parsed.cert, parsed.grader);
-      }
-
-      function onTap(ev) {
-        if (!found.length) { take(null); return; }
-        var rect = dom.vf.getBoundingClientRect();
-        var pic = ScanPick.toPicture(mapOf(), { x: ev.clientX - rect.left, y: ev.clientY - rect.top });
-        take(ScanPick.nearestTo(found, pic));
-      }
-
-      function onShutter(ev) {
-        ev.stopPropagation();
-        if (!found.length) { take(null); return; }
-        var b = box();
-        var view = ScanPick.visibleRect(mapOf(), dom.video.videoWidth || b.w, dom.video.videoHeight || b.h, b.w, b.h);
-        take(ScanPick.mostCentral(found, view));
-      }
-
-      dom.vf.addEventListener('click', onTap);
-      dom.shutter.addEventListener('click', onShutter);
-      dom.torch.addEventListener('click', function (ev) { ev.stopPropagation(); toggleTorch(); });
-      dom.zoom.addEventListener('input', function () { setZoom(parseFloat(dom.zoom.value)); });
-      dom.zoom.addEventListener('click', function (ev) { ev.stopPropagation(); });
-
-      // A backgrounded tab (owner switches apps, locks the phone, answers a text) must never leave a
-      // torch burning - same reasoning as stop(), triggered without the camera itself being stopped.
-      document.addEventListener('visibilitychange', function () {
-        if (document.hidden) torchOff();
       });
-
-      return { start: start, stop: stop, supported: cameraSupported };
     }
 
-    var camera = null;
+    dom.vf.addEventListener('click', function (ev) {
+      if (!cam || ev.target.closest('button')) return;
+      var rect = dom.vf.getBoundingClientRect();
+      take({ x: ev.clientX - rect.left, y: ev.clientY - rect.top });
+    });
+    dom.shutter.addEventListener('click', function (ev) { ev.stopPropagation(); take(null); });
+    dom.torch.addEventListener('click', function (ev) { ev.stopPropagation(); toggleTorch(); });
+    dom.zoom.addEventListener('input', function () { if (cam) cam.setZoom(parseFloat(dom.zoom.value)); });
+    dom.zoom.addEventListener('click', function (ev) { ev.stopPropagation(); });
+
     var wired = false;
     function wireOnce() {
       if (wired) return;
       wired = true;
-      camera = CameraEngine();
       dom.start.addEventListener('click', function () {
         // The Start camera tap is already a user gesture, which is the ONE thing iOS requires before
         // it will ever let an AudioContext leave "suspended" - prime it here so the very first beep
         // isn't silently swallowed (see feedback.js's header and FeedbackAudio above).
         feedback.unlock();
         dom.start.disabled = true;
-        camera.start().catch(function () { /* message already set inside start() */ }).then(function () { dom.start.disabled = false; });
+        startCamera().catch(function () { /* message already set inside startCamera() */ }).then(function () { dom.start.disabled = false; });
       });
-      if (!camera.supported()) { dom.start.textContent = 'Camera not available here'; dom.start.disabled = true; }
+      if (!cameraSupported()) { dom.start.textContent = 'Camera not available here'; dom.start.disabled = true; }
       function renderSoundButton() {
         var on = feedback.isSoundOn();
         dom.sound.textContent = on ? '🔊' : '🔇';
@@ -3762,7 +4343,7 @@ window.AvgClient = {
 
     function activate() { wireOnce(); ensureSettings(); }
     function isBusy() { return busy; }
-    function deactivate() { if (camera) camera.stop(); stopAveragePoll(); }
+    function deactivate() { closeCamera(); stopAveragePoll(); }
 
     return { activate: activate, isBusy: isBusy, deactivate: deactivate };
   })();
