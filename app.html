@@ -3727,11 +3727,11 @@ window.Signal = {
 'use strict';
 // Scanner-page client for the Card Ladder sales-average queue/cache (see
 // supabase/migrations/20261106000000_scanner_avg_requests.sql), fulfilled server-side by the bot's
-// avgQueue.js. Pure: no DOM, no fs, no `require` of anything else in this repo — so it can be
+// avgQueue.js. Pure: no DOM, no fs, no `require` of anything else in this repo, so it can be
 // embedded into rates-portal/page.html whole, the same way scanner/salesAvgs.js and
-// scanner/scanPick.js already are (see rates-portal/build-portal.js's embedWholeFile). A LATER
-// change swaps page.html's stubbed `fetchSalesAverages(cert, grader)` for a thin wrapper around
-// `getSalesAverages` below — see this file's own doc comment on the function for the exact shape.
+// scanner/scanPick.js already are (see rates-portal/build-portal.js's embedWholeFile). The page
+// uses it through `createAvgPoller` at the bottom of this file (one shared poller for every pending
+// card), which makes each card's first ask with `getSalesAverages`.
 'use strict';
 
 // Keep this in step with avgQueue.js's own AVG_STALE_MS. The two are deliberately NOT shared code
@@ -3746,6 +3746,17 @@ const DEFAULT_STALE_MS = 24 * 60 * 60 * 1000;
 // Keep in step with avgQueue.js's PENDING_TIMEOUT_MS for the same reason as DEFAULT_STALE_MS.
 const DEFAULT_PENDING_TIMEOUT_MS = 10 * 60 * 1000;
 
+// The exact text the bot (avgQueue.js) and the avg-worker write on a 'failed' row when Card Ladder
+// genuinely has nothing for the cert. That answer does not change on its own, so it is reused for
+// the full DEFAULT_STALE_MS like a 'done' row. Keep this string identical to theirs (the test file
+// checks that a fulfiller, wherever it lives now, still writes exactly this text).
+const NO_RESULTS_ERROR = 'Card Ladder has no results for this cert';
+
+// Any OTHER 'failed' row (Card Ladder did not answer in time, the helper was unreachable, ...) is a
+// transient failure: reusing it for a day would pin a good card to "Not available" for a whole show.
+// It is reused for this long only, then the page asks again exactly as it would for an expired row.
+const DEFAULT_FAILED_RETRY_MS = 10 * 60 * 1000;
+
 // Same rule as certs.js's certKey (duplicated here, not required, to stay dependency-free): dedupe
 // on the zero-stripped digits, since a cert can be read/typed with or without a leading zero.
 function certKeyOf(cert) {
@@ -3754,20 +3765,33 @@ function certKeyOf(cert) {
     .replace(/^0+(?=\d)/, '');
 }
 
+// The only graders the table takes (the migration's CHECK on `grader`). Any other grader (BGS, SGC,
+// TAG...) has no average here: asking for it under 'psa' would read a different card's average, so it
+// is never asked at all and ends as an 'error' with this reason.
+const AVG_GRADERS = ['psa', 'cgc'];
+const NO_GRADER_AVG_REASON = 'No average for this grader';
+
+/** The grader as the table spells it: trimmed and lower-cased, a missing one as 'psa' (as it always was). */
+function avgGraderOf(grader) {
+  return String(grader == null ? '' : grader).trim().toLowerCase() || 'psa';
+}
+
 /**
  * getSalesAverages({ cert, grader, supabaseUrl, supabaseAnonKey, accessToken, fetchImpl, now,
  * staleMs, pendingTimeoutMs })
  *
- *   cert/grader:      the slab being checked (grader 'psa'|'cgc').
+ *   cert/grader:      the slab being checked (grader 'psa'|'cgc', any case; missing = 'psa'). Any
+ *                     other grader resolves `{ status: 'error', reason: NO_GRADER_AVG_REASON }` with
+ *                     no request at all.
  *   supabaseUrl:      the project's REST base, e.g. "https://xxxx.supabase.co".
- *   supabaseAnonKey:  the project's public anon key (never a secret — safe in the page).
+ *   supabaseAnonKey:  the project's public anon key (never a secret, so safe in the page).
  *   accessToken:      the signed-in owner's or active sourcer's Supabase JWT. Required: RLS refuses
  *                     an anonymous request outright (see the migration's policies), so without one
  *                     this resolves `{ status: 'error', reason: 'not configured' }` rather than
  *                     making a request that could only ever be refused.
  *   fetchImpl/now:    injected for tests; default to the real `fetch` / `Date.now` in a browser.
- *   staleMs/pendingTimeoutMs: override the defaults above (tests only — a real page should leave
- *                     these alone so it agrees with avgQueue.js).
+ *   staleMs/pendingTimeoutMs/failedRetryMs: override the defaults above (tests only: a real page
+ *                     should leave these alone so it agrees with avgQueue.js).
  *   avgFunctionUrl:   where the slab-avg edge function lives (default `${supabaseUrl}/functions/v1/
  *                     slab-avg`). Only used to re-ask for an EXPIRED row when the direct upsert is
  *                     refused by RLS (an active sourcer has INSERT but no UPDATE): see the code below.
@@ -3778,22 +3802,23 @@ function certKeyOf(cert) {
  * Resolves to exactly one of:
  *   { status: 'done',    avg3Cents, avg5Cents,    -- avg3Cents/avg5Cents may each still be null:
  *     clValueCents, cardName, grade }                 Card Ladder found the card but it has fewer
- *                                                     than 3/5 sales to average — a true answer.
+ *                                                     than 3/5 sales to average: a true answer.
  *                                                     clValueCents/cardName/grade: what that same
  *                                                     Card Ladder lookup saw (null on an older row),
  *                                                     the page's fallback when Triumph is down.
  *   { status: 'pending' }                         -- queued, not fulfilled yet; ask again later.
  *   { status: 'failed',  reason }                 -- Card Ladder could not answer at all; `reason`
  *                                                     is avgQueue.js's own plain-text explanation.
+ *                                                     "No results for this cert" is reused for 24 h;
+ *                                                     any other reason for only 10 minutes (then the
+ *                                                     row is re-asked like an expired one).
  *   { status: 'error',   reason }                 -- could not even reach Supabase (network/auth/
- *                                                     misconfiguration) — distinct from 'failed',
+ *                                                     misconfiguration), distinct from 'failed',
  *                                                     which means Card Ladder itself was asked.
- * Never throws — a caller never needs its own try/catch around this.
+ * Never throws: a caller never needs its own try/catch around this.
  *
- * A future `fetchSalesAverages(cert, grader)` (rates-portal/page.html) is a thin wrapper: call this
- * with the page's own Supabase config + the signed-in user's token, and map the result to the shape
- * renderPriced already expects (`{ avg3Cents, avg5Cents }`, using nulls for 'pending'/'failed'/
- * 'error' — or, if staff want a "averages pending, check back" note, branch on `status` instead).
+ * rates-portal/page.html does not call this directly: its shared poller (createAvgPoller, below) makes
+ * each card's first ask with it and then reads all pending cards in one batched request per tick.
  */
 async function getSalesAverages({
   cert,
@@ -3805,15 +3830,15 @@ async function getSalesAverages({
   now,
   staleMs,
   pendingTimeoutMs,
+  failedRetryMs,
   avgFunctionUrl,
 } = {}) {
   const doFetch = fetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
   const getNow = now || (() => Date.now());
-  const STALE_MS = staleMs == null ? DEFAULT_STALE_MS : staleMs;
-  const PENDING_MS = pendingTimeoutMs == null ? DEFAULT_PENDING_TIMEOUT_MS : pendingTimeoutMs;
 
   const key = certKeyOf(cert);
-  const g = grader === 'cgc' ? 'cgc' : 'psa';
+  const g = avgGraderOf(grader);
+  if (AVG_GRADERS.indexOf(g) < 0) return { status: 'error', reason: NO_GRADER_AVG_REASON };
   if (!key || !supabaseUrl || !supabaseAnonKey || !accessToken || !doFetch) {
     return { status: 'error', reason: 'not configured' };
   }
@@ -3838,32 +3863,11 @@ async function getSalesAverages({
 
   const t = getNow();
   if (row) {
-    const filledAt = row.filled_at ? Date.parse(row.filled_at) : NaN;
-    const requestedAt = row.requested_at ? Date.parse(row.requested_at) : NaN;
-
-    if (row.status === 'done' && Number.isFinite(filledAt) && t - filledAt < STALE_MS) {
-      // clValueCents/cardName/grade: what the fulfiller's Card Ladder lookup saw, so the page can
-      // still price a card while Triumph is down. A row written before those columns existed simply
-      // has none (null), and reads exactly as it always did.
-      return {
-        status: 'done',
-        avg3Cents: row.avg3_cents == null ? null : Number(row.avg3_cents),
-        avg5Cents: row.avg5_cents == null ? null : Number(row.avg5_cents),
-        clValueCents: row.cl_value_cents == null ? null : Number(row.cl_value_cents),
-        cardName: row.card_name ? String(row.card_name) : null,
-        grade: row.grade != null && row.grade !== '' ? String(row.grade) : null,
-      };
-    }
-    if (row.status === 'failed' && Number.isFinite(filledAt) && t - filledAt < STALE_MS) {
-      return { status: 'failed', reason: row.error || 'Card Ladder could not answer' };
-    }
-    // 'working' = a worker has claimed it and is asking Card Ladder right now: in flight, exactly like
-    // 'pending' (and never re-asked, which would reset a live claim), until the same pending window.
-    if ((row.status === 'pending' || row.status === 'working') && Number.isFinite(requestedAt) && t - requestedAt < PENDING_MS) {
-      return { status: 'pending' };
-    }
-    // else: aged out in whatever status it was in (including an abandoned pending) — fall through
-    // and (re)enqueue below, same as a cert we have never seen.
+    const state = interpretRow(row, t, { staleMs, pendingMs: pendingTimeoutMs, failedRetryMs });
+    if (state) return state;
+    // else: aged out in whatever status it was in (including an abandoned pending, or a transient
+    // failure past its short reuse window): fall through and (re)enqueue below, same as a cert we
+    // have never seen.
   }
 
   const stamp = new Date(t).toISOString();
@@ -3922,23 +3926,118 @@ async function getSalesAverages({
       body: JSON.stringify({ cert: String(cert), grader: g }),
     });
     if (!re.ok) return { status: 'error', reason: `could not re-ask for this average (HTTP ${re.status})` };
+    // The function answers 200 {requeued:false} when ITS rules say the row is still fresh. Its rules
+    // match ours (logic.ts shouldRequeue: 10 minutes for a transient failure, 24 h for "no results"),
+    // but its clock and ours can differ by a moment: when it refuses, say so (the failure) rather than
+    // claim a request is queued that is not. (An owner never gets here - the upsert above succeeds for them.)
+    let body = null;
+    try {
+      body = await re.json();
+    } catch (e) {
+      body = null;
+    }
+    if (row.status === 'failed' && body && body.requeued === false) return failedState(row);
   } catch (e) {
     return { status: 'error', reason: (e && e.message) || 'network error' };
   }
   return { status: 'pending' };
 }
 
-// ── how the page keeps asking for one card's average ───────────────────────────────────────────
-// Every scan asks for an average now, so a busy show can queue many at once and the bot answers them
-// one after another. The page backs off (5s, 15s, then every 30s) and keeps asking for as long as the
-// bot itself would still treat the request as live (DEFAULT_PENDING_TIMEOUT_MS, 10 minutes). An
-// 'error' (no signal, a hiccup) is retried inside that window too; only 'done'/'failed' are final.
-const POLL_STEPS_MS = [5000, 15000, 30000];
+// What one table row means right now, as `getSalesAverages` returns it:
+//   { status: 'done', ... }  a finished average, trusted for staleMs (24 h)
+//   { status: 'failed', reason }  Card Ladder had nothing for the cert (reused for staleMs, 24 h) or
+//                            failed for any other reason (reused for failedRetryMs only, 10 min)
+//   { status: 'pending' }    queued or being worked on, and still inside the pending window
+//   null                     missing, aged out, or abandoned: the caller has to (re)ask
+// Shared by the first ask and by the batched poll below, so the two can never disagree.
+function doneState(row) {
+  // clValueCents/cardName/grade: what the fulfiller's Card Ladder lookup saw, so the page can still
+  // price a card while Triumph is down. A row written before those columns existed simply has none
+  // (null), and reads exactly as it always did.
+  return {
+    status: 'done',
+    avg3Cents: row.avg3_cents == null ? null : Number(row.avg3_cents),
+    avg5Cents: row.avg5_cents == null ? null : Number(row.avg5_cents),
+    clValueCents: row.cl_value_cents == null ? null : Number(row.cl_value_cents),
+    cardName: row.card_name ? String(row.card_name) : null,
+    grade: row.grade != null && row.grade !== '' ? String(row.grade) : null,
+  };
+}
 
-/** Delay before the next ask, after `attempt` asks have already come back pending. */
-function pollDelayMs(attempt) {
-  const i = Math.max(0, Math.min(Number(attempt) || 0, POLL_STEPS_MS.length - 1));
-  return POLL_STEPS_MS[i];
+function failedState(row) {
+  return { status: 'failed', reason: row.error || 'Card Ladder could not answer' };
+}
+
+/** True only for the exact "Card Ladder has no results" text (trimmed): anything else is transient. */
+function isNoResultsError(error) {
+  return String(error == null ? '' : error).trim() === NO_RESULTS_ERROR;
+}
+
+function interpretRow(row, t, { staleMs, pendingMs, failedRetryMs } = {}) {
+  if (!row) return null;
+  const STALE_MS = staleMs == null ? DEFAULT_STALE_MS : staleMs;
+  const PENDING_MS = pendingMs == null ? DEFAULT_PENDING_TIMEOUT_MS : pendingMs;
+  const FAILED_RETRY_MS = failedRetryMs == null ? DEFAULT_FAILED_RETRY_MS : failedRetryMs;
+  const filledAt = row.filled_at ? Date.parse(row.filled_at) : NaN;
+  const requestedAt = row.requested_at ? Date.parse(row.requested_at) : NaN;
+
+  if (row.status === 'done' && Number.isFinite(filledAt) && t - filledAt < STALE_MS) return doneState(row);
+  if (row.status === 'failed' && Number.isFinite(filledAt)) {
+    const reuseMs = isNoResultsError(row.error) ? STALE_MS : Math.min(STALE_MS, FAILED_RETRY_MS);
+    if (t - filledAt < reuseMs) return failedState(row);
+  }
+  // 'working' = a worker has claimed it and is asking Card Ladder right now: in flight, exactly like
+  // 'pending' (and never re-asked, which would reset a live claim), until the same pending window.
+  if ((row.status === 'pending' || row.status === 'working') && Number.isFinite(requestedAt) && t - requestedAt < PENDING_MS) {
+    return { status: 'pending' };
+  }
+  return null;
+}
+
+// ── how the page keeps asking for its cards' averages ──────────────────────────────────────────
+// Every scan asks for an average, so a busy show can have many pending at once, and the workers
+// answer in about ten seconds. So the page looks often while a request is young and eases off as it
+// ages, for ALL pending cards together: one shared poller (createAvgPoller below) sends one batched
+// GET per tick (cert_key=in.(...), chunked at POLL_BATCH_SIZE), never one timer and one GET per card.
+// The cadence follows the YOUNGEST pending request, so a fresh scan always gets the fast one:
+//   younger than 60 s: every 1.5 s     60 s to 3 min: every 3 s     older than that: every 10 s
+// and it keeps going for as long as the bot itself would still treat the request as live
+// (DEFAULT_PENDING_TIMEOUT_MS, 10 minutes). A failed read (no signal, HTTP error, or no answer within
+// REQUEST_TIMEOUT_MS) waits 5 s before the next tick and goes back to the schedule after the first
+// successful batched read (a card's own ask succeeding does not count). A hidden page does not poll.
+const POLL_TIERS = [
+  { untilMs: 60 * 1000, everyMs: 1500 },
+  { untilMs: 3 * 60 * 1000, everyMs: 3000 },
+  { untilMs: Infinity, everyMs: 10 * 1000 },
+];
+const POLL_ERROR_BACKOFF_MS = 5000;
+const POLL_BATCH_SIZE = 100;
+// Coming back to a hidden page polls at once, but never closer than this to the previous request.
+const POLL_RESUME_GAP_MS = 1000;
+// Only what the page reads off a row (interpretRow/doneState above). If the table lacks one of these
+// (a database that has not had the 20261110 migration), the poller falls back to select=*.
+const POLL_COLUMNS = 'cert_key,grader,status,avg3_cents,avg5_cents,cl_value_cents,card_name,grade,error,requested_at,filled_at';
+// Every request the poller makes (the batched read, a card's ask, a session refresh) gets this long, body
+// included, and then counts as failed. Without it one request that never settles would hold the whole poller
+// (a tick keeps its place until its request ends), and every pending card would wait on it forever.
+const REQUEST_TIMEOUT_MS = 15 * 1000;
+const REQUEST_TIMEOUT_REASON = 'request timed out';
+// After a session refresh fails (a dead refresh token, say), do not try another for this long.
+const REFRESH_RETRY_MS = 60 * 1000;
+// A card past its pending window gets one last look. If that look itself FAILS (the phone just woke and its
+// network is not back yet, say), the failure is not the card's answer: it keeps waiting, and ends with the
+// error only after this many failed looks in a row past the window. A look that works ends it as before.
+const MAX_FAILED_LAST_LOOKS = 3;
+// One card's ask failing need not mean the next card's will: a tick tries up to this many failed asks
+// before it marks the rest of that tick's asks as failed too, so one card that always fails cannot starve
+// every card behind it.
+const MAX_FAILED_ASKS_PER_TICK = 3;
+
+/** Delay before the next tick, from the age of the youngest pending request. */
+function pollDelayMs(youngestAgeMs) {
+  const age = Math.max(0, Number(youngestAgeMs) || 0);
+  for (const tier of POLL_TIERS) if (age < tier.untilMs) return tier.everyMs;
+  return POLL_TIERS[POLL_TIERS.length - 1].everyMs;
 }
 
 /** After one answer: 'wait' (ask again later) or 'stop' (a real answer, or the window ran out). */
@@ -3948,12 +4047,532 @@ function pollDecision(status, elapsedMs, pendingTimeoutMs) {
   return elapsedMs < limit ? 'wait' : 'stop';
 }
 
+/**
+ * createAvgPoller({ supabaseUrl, supabaseAnonKey, getAccessToken, refreshAuth, fetchImpl, now,
+ *                   setTimer, clearTimer, doc, staleMs, pendingTimeoutMs, failedRetryMs, avgFunctionUrl })
+ *
+ * One shared poller for every card the page is waiting on. `poller.watch({ cert, grader }, onState)`:
+ *   1. makes the first ask exactly as before (getSalesAverages: GET the row, INSERT it when new, re-ask
+ *      it when expired), then
+ *   2. if the answer is still pending, joins the shared batch: every tick is ONE GET for all joined
+ *      cards (more than POLL_BATCH_SIZE keys: one GET per chunk of that size).
+ * `onState(state, final)` is called with { status: 'pending', reason } (reason = the error text while a
+ * read is failing, else null) and final = false while waiting, and once with final = true and the
+ * answer: { status: 'done'|'failed'|'error'|'timeout', ... } (shapes as getSalesAverages, plus
+ * 'timeout' = still pending when the pending window ran out). A failing look ends a card with 'error' only
+ * past the window, after MAX_FAILED_LAST_LOOKS of them in a row; a grader with no average (not psa/cgc) ends
+ * at once with 'error' and NO_GRADER_AVG_REASON, without a request. It returns { stop() }.
+ *
+ * getAccessToken(): the signed-in user's current JWT (called on every request). refreshAuth(): optional,
+ * resolves true after refreshing the session; used when a read comes back 401, by one shared in-flight
+ * call at a time, and not again for REFRESH_RETRY_MS after it fails. doc: the document whose `hidden` /
+ * visibilitychange pause the polling (defaults to the page's; none in Node).
+ * A card whose row has aged out or never showed up is re-asked once, through getSalesAverages (the same
+ * path as any expired row), not as part of the polling load; after that it just stays pending.
+ * Every request (and refreshAuth) is cut off after REQUEST_TIMEOUT_MS and counts as a failed read, and a
+ * card whose pending window ends is settled even while a request is still in flight.
+ */
+function createAvgPoller(options) {
+  const o = options || {};
+  const getNow = o.now || (() => Date.now());
+  const setT = o.setTimer || ((fn, ms) => setTimeout(fn, ms));
+  const clearT = o.clearTimer || ((h) => clearTimeout(h));
+  const doc = o.doc !== undefined ? o.doc : typeof document !== 'undefined' ? document : null;
+  const doFetch = o.fetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
+  const rules = { staleMs: o.staleMs, pendingMs: o.pendingTimeoutMs, failedRetryMs: o.failedRetryMs };
+  const PENDING_MS = o.pendingTimeoutMs == null ? DEFAULT_PENDING_TIMEOUT_MS : o.pendingTimeoutMs;
+  const MAX_REASKS = 1;
+  const table = `${String(o.supabaseUrl || '').replace(/\/+$/, '')}/rest/v1/scanner_avg_requests`;
+  const accessToken = () => (typeof o.getAccessToken === 'function' ? o.getAccessToken() : o.accessToken) || null;
+
+  const live = new Map(); // id ("psa|12345678") -> entry; `waiting` once it has joined the batch
+  let timer = null;
+  let timerAt = 0;
+  let running = false;
+  let tickToken = 0; // which tick owns `running`: stopAll() hands it on, so a tick it cut loose cannot clobber the next
+  let guard = null; // while a tick is in flight: a timer for the earliest pending-window deadline
+  let errorMode = false; // the last batched read failed: next tick waits POLL_ERROR_BACKOFF_MS
+  let paused = false; // a tick was skipped (or cancelled) because the page was hidden
+  let lastTickAt = -Infinity;
+  let columns = POLL_COLUMNS;
+  let destroyed = false;
+  let refreshing = null; // the one session refresh in flight, shared by everyone who needs it
+  let refreshFailedAt = -Infinity; // when a refresh last failed: no new one for REFRESH_RETRY_MS
+  const inflight = new Set(); // a cancel() for each request in flight, so stopAll() can cut them loose
+
+  const isHidden = () => !!(doc && doc.hidden);
+
+  function abortQuietly(ctl) {
+    try {
+      if (ctl) ctl.abort();
+    } catch (e) {
+      /* nothing to abort */
+    }
+  }
+  /**
+   * Runs `work()` against a hard time limit. After `ms` it rejects with REQUEST_TIMEOUT_REASON and then
+   * aborts `ctl` (so a real fetch lets go of the connection); it does not rely on `work` honouring the abort,
+   * so a fetch that ignores its signal still cannot hold the caller. With `cancellable`, stopAll() can
+   * reject it early ('cancelled'). Its timer is always cleared once it settles.
+   */
+  function limited(work, ms, ctl, cancellable) {
+    let handle = null;
+    let cancel = null;
+    const stop = new Promise((resolve, reject) => {
+      handle = setT(() => {
+        // Reject BEFORE aborting: a fetch that rejects synchronously on abort would otherwise win the race
+        // below, and the card would show the browser's abort text instead of REQUEST_TIMEOUT_REASON.
+        reject(new Error(REQUEST_TIMEOUT_REASON));
+        abortQuietly(ctl);
+      }, Math.max(1, ms));
+      cancel = () => {
+        abortQuietly(ctl);
+        reject(new Error('cancelled'));
+      };
+    });
+    if (cancellable) inflight.add(cancel);
+    let job;
+    try {
+      job = Promise.resolve(work());
+    } catch (e) {
+      job = Promise.reject(e);
+    }
+    job.catch(() => {}); // a failure that lands after the limit already fired is not an unhandled rejection
+    const settled = () => {
+      clearT(handle);
+      inflight.delete(cancel);
+    };
+    return Promise.race([job, stop]).then(
+      (v) => {
+        settled();
+        return v;
+      },
+      (e) => {
+        settled();
+        throw e;
+      }
+    );
+  }
+  /** fetch with the hard limit: headers AND body share REQUEST_TIMEOUT_MS. Resolves { ok, status, json() }. */
+  function limitedFetch(url, opts) {
+    const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    const startedAt = getNow();
+    const init = ctl ? { ...opts, signal: ctl.signal } : opts;
+    return limited(() => doFetch(url, init), REQUEST_TIMEOUT_MS, ctl, true).then((res) => ({
+      ok: res.ok,
+      status: res.status,
+      json: () => limited(() => res.json(), REQUEST_TIMEOUT_MS - (getNow() - startedAt), ctl, true),
+    }));
+  }
+  function cancelInflight() {
+    const all = [...inflight];
+    inflight.clear();
+    for (const cancel of all) cancel();
+  }
+
+  function waitingList() {
+    const out = [];
+    for (const e of live.values()) if (e.waiting && !e.stopped) out.push(e);
+    return out;
+  }
+  function youngestAgeMs(list, t) {
+    let youngest = Infinity;
+    for (const e of list) youngest = Math.min(youngest, t - e.startedAt);
+    return youngest === Infinity ? 0 : youngest;
+  }
+  function nextDelayMs(list) {
+    const normal = pollDelayMs(youngestAgeMs(list, getNow()));
+    return errorMode ? Math.max(POLL_ERROR_BACKOFF_MS, normal) : normal;
+  }
+  function disarm() {
+    if (timer !== null) {
+      clearT(timer);
+      timer = null;
+    }
+  }
+  function arm(delayMs) {
+    disarm();
+    timerAt = getNow() + delayMs;
+    timer = setT(() => {
+      timer = null;
+      tick();
+    }, delayMs);
+  }
+  /** (Re)plan the next tick from scratch: after a tick, or when the page becomes visible again. */
+  function schedule() {
+    disarm();
+    if (destroyed || running) return;
+    const list = waitingList();
+    if (!list.length) return;
+    if (isHidden()) {
+      paused = true;
+      return;
+    }
+    arm(nextDelayMs(list));
+  }
+  /** A card joined: it may need a sooner tick than the one already waiting (never a later one). */
+  function nudge() {
+    if (destroyed || running) return;
+    const list = waitingList();
+    if (!list.length) return;
+    if (isHidden()) {
+      paused = true;
+      return;
+    }
+    const want = nextDelayMs(list);
+    if (timer === null || timerAt - getNow() > want) arm(want);
+  }
+
+  function onVisibility() {
+    if (destroyed) return;
+    if (isHidden()) {
+      disarm();
+      paused = true;
+      return;
+    }
+    if (!paused) return;
+    paused = false;
+    if (running || !waitingList().length) return;
+    const wait = Math.max(0, lastTickAt + POLL_RESUME_GAP_MS - getNow());
+    if (wait > 0) arm(wait);
+    else tick();
+  }
+  if (doc && typeof doc.addEventListener === 'function') doc.addEventListener('visibilitychange', onVisibility);
+
+  function emit(entry, state, final) {
+    if (entry.stopped) return;
+    if (!final) {
+      const sig = `${state.status}|${state.reason || ''}`;
+      if (entry.lastSig === sig) return; // nothing new to tell the page
+      entry.lastSig = sig;
+    }
+    try {
+      entry.onState(state, final);
+    } catch (e) {
+      // a bug in one card's callback must never stop the shared poller for every other card
+      if (typeof console !== 'undefined' && console.error) console.error('avg poller: callback failed', e);
+    }
+  }
+  function finish(entry, state) {
+    if (entry.stopped) return;
+    if (live.get(entry.id) === entry) live.delete(entry.id);
+    emit(entry, state, true);
+    entry.stopped = true;
+  }
+  /**
+   * One answer for one card: keep waiting (and stay in the batch), or finish it. 'error' means this look at
+   * the card failed (its read, its ask, or an ask skipped after other asks failed); past the window that is
+   * not final until MAX_FAILED_LAST_LOOKS such looks in a row have failed. Any look that works resets it.
+   */
+  function settle(entry, st) {
+    if (entry.stopped) return;
+    let wait = pollDecision(st.status, getNow() - entry.startedAt, PENDING_MS) === 'wait';
+    if (st.status !== 'error') entry.failedLooks = 0;
+    else if (!wait) wait = ++entry.failedLooks < MAX_FAILED_LAST_LOOKS; // an 'error' only stops past the window
+    if (wait) {
+      emit(entry, { status: 'pending', reason: st.status === 'error' ? st.reason || null : null }, false);
+      entry.waiting = true;
+    } else {
+      finish(entry, st.status === 'pending' ? { status: 'timeout' } : st);
+    }
+  }
+
+  /**
+   * Refreshes the session, for every caller at once: concurrent callers share ONE refreshAuth() call, and
+   * after a failure (false, a throw, or no answer within REQUEST_TIMEOUT_MS) nobody refreshes again for
+   * REFRESH_RETRY_MS, so a dead refresh token costs one auth call a minute, not one per tick.
+   */
+  function refreshOk() {
+    if (typeof o.refreshAuth !== 'function') return Promise.resolve(false);
+    if (refreshing) return refreshing;
+    if (getNow() - refreshFailedAt < REFRESH_RETRY_MS) return Promise.resolve(false);
+    refreshing = limited(() => o.refreshAuth(), REQUEST_TIMEOUT_MS, null, false)
+      .then(
+        (ok) => !!ok,
+        () => false
+      )
+      .then((ok) => {
+        if (!ok) refreshFailedAt = getNow();
+        refreshing = null;
+        return ok;
+      });
+    return refreshing;
+  }
+
+  /** The normal, per-card ask (GET, then INSERT or re-ask when needed): the first ask of every card. */
+  async function askFull(entry) {
+    const args = () => ({
+      cert: entry.cert,
+      grader: entry.grader,
+      supabaseUrl: o.supabaseUrl,
+      supabaseAnonKey: o.supabaseAnonKey,
+      accessToken: accessToken(),
+      fetchImpl: doFetch ? limitedFetch : null, // every request of the ask gets the hard time limit
+      now: o.now,
+      staleMs: o.staleMs,
+      pendingTimeoutMs: o.pendingTimeoutMs,
+      failedRetryMs: o.failedRetryMs,
+      avgFunctionUrl: o.avgFunctionUrl,
+    });
+    let st = await getSalesAverages(args());
+    if (st.status === 'error' && /HTTP 401/.test(String(st.reason || '')) && !entry.refreshed && accessToken()) {
+      entry.refreshed = true;
+      if (await refreshOk()) st = await getSalesAverages(args());
+    }
+    return st;
+  }
+
+  /** ONE batched read: the rows for up to POLL_BATCH_SIZE cert keys. -> { ok, rows } | { ok: false, reason }. */
+  async function readChunk(chunk) {
+    let refreshed = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const token = accessToken();
+      if (!token || !doFetch || !o.supabaseUrl || !o.supabaseAnonKey) return { ok: false, reason: 'not configured' };
+      const url = `${table}?cert_key=in.(${chunk.map((k) => encodeURIComponent(k)).join(',')})&select=${columns}`;
+      let res;
+      try {
+        res = await limitedFetch(url, { headers: { apikey: o.supabaseAnonKey, authorization: `Bearer ${token}` } });
+      } catch (e) {
+        return { ok: false, reason: (e && e.message) || 'network error' };
+      }
+      if (res.ok) {
+        try {
+          const rows = await res.json();
+          return { ok: true, rows: Array.isArray(rows) ? rows : [] };
+        } catch (e) {
+          return { ok: false, reason: e && e.message === REQUEST_TIMEOUT_REASON ? REQUEST_TIMEOUT_REASON : 'unreadable response' };
+        }
+      }
+      if (res.status === 401 && !refreshed) {
+        refreshed = true;
+        if (await refreshOk()) continue;
+      }
+      if (res.status === 400 && columns !== '*') {
+        columns = '*'; // a column the table does not have yet: read whole rows from now on
+        continue;
+      }
+      return { ok: false, reason: `HTTP ${res.status}` };
+    }
+    return { ok: false, reason: 'HTTP error' };
+  }
+
+  /**
+   * What a polled card's row means: a state, or null = the row needs the normal ask (missing, aged out or
+   * abandoned). A card is asked again at most MAX_REASKS times, whether its row was missing or aged out; after
+   * that it just stays pending.
+   */
+  function verdictFor(entry, row, t) {
+    const st = interpretRow(row, t, rules);
+    if (st) return st;
+    if (entry.reasks < MAX_REASKS) return null; // no row at all (the first ask never landed) or aged out: ask again, once per card
+    // Already re-asked once and the row is still missing, or still reads as aged out (a skewed phone clock,
+    // say): take it as it stands rather than send the cert to Card Ladder over and over.
+    if (!row) return { status: 'pending' };
+    if (row.status === 'done') return doneState(row);
+    if (row.status === 'failed') return failedState(row);
+    return { status: 'pending' };
+  }
+
+  /**
+   * Settles every card whose pending window is over as timed out, whatever any request is doing. A card whose
+   * last look failed (failedLooks) is left to its next look: timing it out here would drop an answer that may
+   * already be in the table, and that look is bounded by REQUEST_TIMEOUT_MS anyway.
+   */
+  function expireDue() {
+    const t = getNow();
+    for (const e of [...live.values()]) if (!e.stopped && !e.failedLooks && t - e.startedAt >= PENDING_MS) finish(e, { status: 'timeout' });
+  }
+  /**
+   * While a tick is in flight: wake at the earliest pending-window deadline still ahead, so a request that is
+   * slow (up to REQUEST_TIMEOUT_MS) cannot hold a card past its window. A card already past its window when
+   * the tick starts is left to that tick's own read (its last look), which the request limit also bounds.
+   */
+  function guardOn() {
+    guardOff();
+    const t = getNow();
+    let due = Infinity;
+    for (const e of live.values()) if (!e.stopped && e.startedAt + PENDING_MS > t) due = Math.min(due, e.startedAt + PENDING_MS);
+    if (due === Infinity) return;
+    guard = setT(() => {
+      guard = null;
+      expireDue();
+      if (running) guardOn();
+    }, due - t);
+  }
+  function guardOff() {
+    if (guard !== null) {
+      clearT(guard);
+      guard = null;
+    }
+  }
+
+  async function runTick(list, id) {
+    const stale = () => tickToken !== id; // stopAll() cut this tick loose: it must not touch anything any more
+    const keys = [];
+    for (const e of list) if (keys.indexOf(e.key) < 0) keys.push(e.key);
+    const rows = new Map();
+    const failedKeys = new Map(); // key -> why, for the cards of a chunk whose read failed
+    for (let i = 0; i < keys.length; i += POLL_BATCH_SIZE) {
+      if (stale()) return;
+      const chunk = keys.slice(i, i + POLL_BATCH_SIZE);
+      const r = await readChunk(chunk);
+      if (stale()) return;
+      if (r.ok) for (const row of r.rows) rows.set(`${row.grader}|${row.cert_key}`, row);
+      else for (const k of chunk) failedKeys.set(k, r.reason);
+    }
+    // Only a batched read that fully succeeded clears the back-off: a card's own ask (first ask or re-ask)
+    // succeeding says nothing about whether the batched read works. A failed chunk spoils only its own cards.
+    errorMode = failedKeys.size > 0;
+    let askFailed = null; // why the last failed ask failed
+    let askFailures = 0;
+    for (const e of list) {
+      if (e.stopped) continue;
+      if (stale()) return;
+      if (failedKeys.has(e.key)) {
+        settle(e, { status: 'error', reason: failedKeys.get(e.key) });
+        continue;
+      }
+      const row = rows.get(e.id) || null;
+      let st = verdictFor(e, row, getNow());
+      if (st === null) {
+        if (getNow() - e.startedAt >= PENDING_MS) {
+          st = { status: 'pending' }; // the window is over: settle() times it out, no pointless Card Ladder lookup
+        } else if (askFailures >= MAX_FAILED_ASKS_PER_TICK) {
+          st = { status: 'error', reason: askFailed };
+        } else {
+          st = await askFull(e);
+          if (stale()) return;
+          if (st.status === 'error') {
+            askFailed = st.reason;
+            askFailures++;
+            errorMode = true;
+          } else {
+            e.reasks++; // counted for a missing row too; an ask that failed is not counted, it is tried again
+          }
+        }
+      }
+      settle(e, st);
+    }
+  }
+
+  async function tick() {
+    if (running || destroyed) return;
+    const list = waitingList();
+    if (!list.length) return;
+    if (isHidden()) {
+      paused = true;
+      return;
+    }
+    const id = ++tickToken;
+    running = true;
+    lastTickAt = getNow();
+    guardOn();
+    try {
+      await runTick(list, id);
+    } catch (e) {
+      if (tickToken === id) errorMode = true;
+    } finally {
+      if (tickToken === id) {
+        running = false;
+        guardOff();
+        schedule();
+      }
+    }
+  }
+
+  async function firstAsk(entry) {
+    let st;
+    try {
+      st = await askFull(entry);
+    } catch (e) {
+      st = { status: 'error', reason: (e && e.message) || 'error' };
+    }
+    if (entry.stopped) return;
+    if (st.status === 'error') errorMode = true; // a failed ask backs the next tick off; a good one never lifts it
+    settle(entry, st);
+    if (entry.waiting && !entry.stopped) nudge();
+  }
+
+  function stopEntry(entry) {
+    entry.stopped = true;
+    if (live.get(entry.id) === entry) live.delete(entry.id);
+    if (!waitingList().length) disarm();
+  }
+
+  function watch(card, onState) {
+    const c = card || {};
+    const key = certKeyOf(c.cert);
+    const grader = avgGraderOf(c.grader);
+    const entry = {
+      id: `${grader}|${key}`,
+      key,
+      grader,
+      cert: String(c.cert == null ? '' : c.cert),
+      startedAt: getNow(),
+      onState: typeof onState === 'function' ? onState : () => {},
+      stopped: false,
+      waiting: false,
+      lastSig: null,
+      reasks: 0,
+      refreshed: false,
+      failedLooks: 0, // failed looks in a row past the pending window (see settle)
+    };
+    const handle = { stop: () => stopEntry(entry) };
+    if (destroyed) return handle;
+    const prev = live.get(entry.id);
+    if (prev) prev.stopped = true; // watching the same card again replaces the old watch
+    live.set(entry.id, entry);
+    const noAsk = AVG_GRADERS.indexOf(grader) < 0 ? NO_GRADER_AVG_REASON : !key ? 'not configured' : null;
+    if (noAsk) {
+      Promise.resolve().then(() => finish(entry, { status: 'error', reason: noAsk }));
+      return handle;
+    }
+    firstAsk(entry);
+    return handle;
+  }
+
+  function stopAll() {
+    for (const e of live.values()) e.stopped = true;
+    live.clear();
+    disarm();
+    guardOff();
+    // A tick that is still waiting on a request would otherwise hold `running` (and with it nudge, schedule
+    // and the visibility handler) until that request ended, so a card added right after stopAll() would sit
+    // idle. Hand the tick's place on, cut its requests loose, and start the back-off clean.
+    tickToken++;
+    running = false;
+    errorMode = false;
+    cancelInflight();
+  }
+  function destroy() {
+    destroyed = true;
+    stopAll();
+    if (doc && typeof doc.removeEventListener === 'function') doc.removeEventListener('visibilitychange', onVisibility);
+  }
+
+  return { watch, stopAll, destroy, size: () => waitingList().length };
+}
+
 window.AvgClient = {
   getSalesAverages: getSalesAverages,
+  createAvgPoller: createAvgPoller,
+  interpretRow: interpretRow,
+  isNoResultsError: isNoResultsError,
   certKeyOf: certKeyOf,
   DEFAULT_STALE_MS: DEFAULT_STALE_MS,
   DEFAULT_PENDING_TIMEOUT_MS: DEFAULT_PENDING_TIMEOUT_MS,
-  POLL_STEPS_MS: POLL_STEPS_MS,
+  DEFAULT_FAILED_RETRY_MS: DEFAULT_FAILED_RETRY_MS,
+  NO_RESULTS_ERROR: NO_RESULTS_ERROR,
+  POLL_TIERS: POLL_TIERS,
+  POLL_ERROR_BACKOFF_MS: POLL_ERROR_BACKOFF_MS,
+  POLL_BATCH_SIZE: POLL_BATCH_SIZE,
+  POLL_COLUMNS: POLL_COLUMNS,
+  REQUEST_TIMEOUT_MS: REQUEST_TIMEOUT_MS,
+  REQUEST_TIMEOUT_REASON: REQUEST_TIMEOUT_REASON,
+  REFRESH_RETRY_MS: REFRESH_RETRY_MS,
+  MAX_FAILED_LAST_LOOKS: MAX_FAILED_LAST_LOOKS,
+  MAX_FAILED_ASKS_PER_TICK: MAX_FAILED_ASKS_PER_TICK,
+  NO_GRADER_AVG_REASON: NO_GRADER_AVG_REASON,
   pollDelayMs: pollDelayMs,
   pollDecision: pollDecision,
 };
@@ -4837,19 +5456,23 @@ window.NativeBridge = {
     // exactly the same scanner_avg_requests cache/queue row the PC bot itself writes, the same way,
     // with this tab's OWN signed-in session (the same one TRIUMPH_URL already uses - the migration's
     // RLS allows the owner or an active sourcer either way, so no separate credential is needed here).
-    function fetchSalesAverages(cert, grader) {
-      return AvgClient.getSalesAverages({
-        cert: cert,
-        grader: grader,
-        supabaseUrl: SB_URL,
-        supabaseAnonKey: SB_ANON,
-        accessToken: session && session.access_token
-      });
-    }
+    //
+    // ONE shared poller for every card waiting on its average (AvgClient.createAvgPoller). A card's
+    // first ask is the same GET-then-INSERT as ever; after that ALL pending cards are read with one
+    // batched GET per tick - every 1.5 s while the youngest request is under a minute old, then 3 s,
+    // then 10 s - so a finished average shows within about a second and a half, without a timer and a
+    // request per card. It does not poll while the page is hidden (and polls again as soon as it is
+    // visible), and waits 5 s after a failed read before trying again.
+    var avgPoller = AvgClient.createAvgPoller({
+      supabaseUrl: SB_URL,
+      supabaseAnonKey: SB_ANON,
+      getAccessToken: function () { return session && session.access_token; },
+      refreshAuth: function () { return refreshSession().then(function (r) { return !!r.ok; }); }
+    });
 
     // How long a card keeps asking for its average before the page says so plainly: the bot's own
     // pending window (AvgClient.DEFAULT_PENDING_TIMEOUT_MS, 10 minutes - the same number avgQueue.js
-    // uses before it treats a request as abandoned). The backoff inside it is AvgClient.pollDelayMs.
+    // uses before it treats a request as abandoned). The poller enforces it; this only words the note.
     var AVG_POLL_TIMEOUT_MS = AvgClient.DEFAULT_PENDING_TIMEOUT_MS;
 
     // ── pricing one cert ─────────────────────────────────────────────────────────────────────
@@ -4866,7 +5489,7 @@ window.NativeBridge = {
     function stopAveragePoll(key) {
       var p = avgPolls[key];
       if (!p) return;
-      if (p.timer) clearTimeout(p.timer);
+      if (p.handle) p.handle.stop();
       delete avgPolls[key];
     }
     function stopAllAveragePolls() { Object.keys(avgPolls).forEach(stopAveragePoll); }
@@ -5079,46 +5702,26 @@ window.NativeBridge = {
     }
 
     /**
-     * Keeps asking for one card's average (AvgClient.pollDelayMs: 5s, 15s, then every 30s) for as long
-     * as the bot itself treats the request as live (AvgClient.pollDecision, 10 minutes). An 'error'
-     * (no signal, a hiccup) is retried inside that window and shows as still waiting; a 401 refreshes
-     * the session once and asks again at once. Only 'done'/'failed', or the window running out
-     * ('timeout'/'error'), is final - and even those are asked again on the next activate/reload.
+     * Hands one card to the shared poller (avgPoller above), which makes its first ask and then keeps
+     * asking, in one batched read with every other pending card (AvgClient.createAvgPoller: 1.5 s
+     * while young, then 3 s, then 10 s), for as long as the bot itself treats the request as live
+     * (10 minutes). An 'error' (no signal, a hiccup) is retried inside that window and shows as still
+     * waiting; a 401 refreshes the session once and asks again at once. Only 'done'/'failed', or the
+     * window running out ('timeout'/'error'), is final - and even those are asked again on the next
+     * activate/reload.
      */
     function startAveragePoll(key) {
       stopAveragePoll(key);
       var meta = pileMeta[key];
       if (!meta || !meta.facts) return;
       var f = meta.facts;
-      var poll = { timer: null };
+      var poll = { handle: null };
       avgPolls[key] = poll;
-      var startedAt = Date.now();
-      var attempt = 0;
-      var refreshed = false;
-      function check() {
-        fetchSalesAverages(f.cert, f.grader).then(function (avgState) {
-          if (avgPolls[key] !== poll) return; // stopped, restarted, or the card left the pile
-          if (avgState.status === 'error' && /HTTP 401/.test(String(avgState.reason || '')) && !refreshed && session) {
-            refreshed = true;
-            refreshSession().then(function (r) {
-              if (avgPolls[key] !== poll) return;
-              if (r.ok) check(); else settle(avgState);
-            });
-            return;
-          }
-          settle(avgState);
-        });
-      }
-      function settle(avgState) {
-        if (AvgClient.pollDecision(avgState.status, Date.now() - startedAt) === 'wait') {
-          setAverage(key, { status: 'pending', reason: avgState.status === 'error' ? avgState.reason : null });
-          poll.timer = setTimeout(check, AvgClient.pollDelayMs(attempt++));
-          return;
-        }
-        delete avgPolls[key];
-        setAverage(key, avgState.status === 'pending' ? { status: 'timeout' } : avgState);
-      }
-      check();
+      poll.handle = avgPoller.watch({ cert: f.cert, grader: f.grader }, function (avgState, final) {
+        if (avgPolls[key] !== poll) return; // stopped, restarted, or the card left the pile
+        if (final) delete avgPolls[key];
+        setAverage(key, avgState);
+      });
     }
 
     /** Only a 'done' answer is ever trusted as a real average - 'pending'/'failed'/'error'/'timeout'

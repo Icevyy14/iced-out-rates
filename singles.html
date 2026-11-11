@@ -719,10 +719,6 @@ const DEFAULT_MIN_LOT_MARKET = 2000;
 
 // ── shapes ───────────────────────────────────────────────────────────────────
 
-
-
-
-
 /**
  * One NOT-taking condition on a row. A card is excluded from the row when it matches EVERY
  * non-null field here (sets AND rarities AND kinds AND nameKeywords, whichever are set - a field
@@ -733,13 +729,6 @@ const DEFAULT_MIN_LOT_MARKET = 2000;
  * singles/rules.js rowMatches/rowExcludes. At least one of sets/rarities/kinds/nameKeywords must be
  * set; an exclude with none of them would vacuously match every card, which is never the intent.
  */
-
-
-
-
-
-
-
 
 /**
  * One NAMED, TOGGLEABLE entry in the sheet-level exclude-group library (`SinglesSettings.
@@ -767,17 +756,6 @@ const DEFAULT_MIN_LOT_MARKET = 2000;
  * SinglesExclude, except `productIds` ALSO counts here (a group may restrict on productIds alone).
  */
 
-
-
-
-
-
-
-
-
-
-
-
 /**
  * One lot-size pricing band (`SinglesSettings.lotTiers`). NOT yet wired into the live bot's default
  * sheet (see the deploy note at the end of this file) - this is the schema addition a lot-size rate
@@ -792,61 +770,14 @@ const DEFAULT_MIN_LOT_MARKET = 2000;
  * LAST tier's pct, flagged for staff rather than refused - see singles/comp.js's applyLotTiers.
  */
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                                                              
                                                       
-
-
 
                                                    
 
                                                          
 
                               
-
-
-
-
-
-
-
 
 // ── small helpers (no exports the page does not need) ────────────────────────
 
