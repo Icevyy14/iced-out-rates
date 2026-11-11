@@ -466,6 +466,40 @@ code{font-family:var(--font-mono);font-size:.92em;}
      but the lock card above. -->
 <fieldset class="editor-fieldset" id="consignors-dashboard" hidden>
 
+  <!-- The PRIVATE Scanner rates: what the Scanner app offers on "Normal". Hidden, and never even
+       fetched, until this page is unlocked with the edit key (ScannerRates in MODULE:consignors);
+       slab-rates GET /scanner refuses anyone without the key or a signed-in scanner login.
+       It sits first on the dashboard, folded to its title, so reaching it never means scrolling past the ledger. -->
+  <section class="card scr-card" id="scr-card" hidden>
+    <div class="sec-head">
+      <div>
+        <div class="sec-title">📷 Scanner rates</div>
+        <div class="sec-sub">What the Scanner app offers on Normal. Private: shown only after the edit key, never on the public page. With none saved, the app uses the consignor rates (the live sheet the bot quotes sellers).</div>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" id="scr-toggle" aria-expanded="false" aria-controls="scr-body">Show rates</button>
+    </div>
+    <div class="scr-status" id="scr-status" role="status" aria-live="polite"></div>
+    <div id="scr-body" hidden>
+    <div class="wtb-group scr-rows" id="scr-rows"></div>
+    <div class="scr-actions">
+      <button type="button" class="btn btn-ghost btn-sm" id="scr-copy">Start from the consignor rates</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="scr-add">+ Add band</button>
+      <button type="button" class="btn btn-sm btn-save" id="scr-save">Save scanner rates</button>
+    </div>
+    <div class="scr-errors" id="scr-errors" hidden></div>
+    </div>
+  </section>
+  <style>
+    #scr-card{margin:0 0 18px;}
+    #scr-card .sec-head{align-items:center;}
+    #scr-card #scr-toggle{flex:none;}
+    #scr-card .scr-status{font-size:12px;color:var(--dim);margin:6px 0 10px;}
+    #scr-card .scr-status.err{color:var(--red);}
+    #scr-card .scr-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+    #scr-card .scr-errors{margin-top:10px;font-size:12px;line-height:1.5;color:var(--red);}
+    #scr-card .scr-empty{padding:14px;font-size:13px;color:var(--dim);}
+  </style>
+
   <section class="stat-strip" id="stat-strip" aria-label="Ledger totals">
     <div class="wtb-total-card"><div class="lbl">Slabs in</div><div class="val" id="stat-slabs">—</div></div>
     <div class="wtb-total-card"><div class="lbl">Market value</div><div class="val" id="stat-market">—</div></div>
@@ -609,34 +643,6 @@ code{font-family:var(--font-mono);font-size:.92em;}
     <div class="card-title" id="lg-errors-title">Something went wrong</div>
     <div id="lg-errors-body" style="font-size:12px;color:var(--dim);"></div>
   </section>
-
-  <!-- The PRIVATE Scanner rates: what the Scanner app offers on "Normal". Hidden, and never even
-       fetched, until this page is unlocked with the edit key (ScannerRates in MODULE:consignors);
-       slab-rates GET /scanner refuses anyone without the key or a signed-in scanner login. -->
-  <section class="card scr-card" id="scr-card" hidden>
-    <div class="sec-head">
-      <div>
-        <div class="sec-title">📷 Scanner rates</div>
-        <div class="sec-sub">What the Scanner app offers on Normal. Private: shown only after the edit key, never on the public page. With none saved, the app uses the consignor rates (the live sheet the bot quotes sellers).</div>
-      </div>
-    </div>
-    <div class="scr-status" id="scr-status" role="status" aria-live="polite"></div>
-    <div class="wtb-group scr-rows" id="scr-rows"></div>
-    <div class="scr-actions">
-      <button type="button" class="btn btn-ghost btn-sm" id="scr-copy">Start from the consignor rates</button>
-      <button type="button" class="btn btn-ghost btn-sm" id="scr-add">+ Add band</button>
-      <button type="button" class="btn btn-sm btn-save" id="scr-save">Save scanner rates</button>
-    </div>
-    <div class="scr-errors" id="scr-errors" hidden></div>
-  </section>
-  <style>
-    #scr-card{margin-top:18px;}
-    #scr-card .scr-status{font-size:12px;color:var(--dim);margin:6px 0 10px;}
-    #scr-card .scr-status.err{color:var(--red);}
-    #scr-card .scr-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
-    #scr-card .scr-errors{margin-top:10px;font-size:12px;line-height:1.5;color:var(--red);}
-    #scr-card .scr-empty{padding:14px;font-size:13px;color:var(--dim);}
-  </style>
 
   <p class="foot" id="lg-foot"></p>
 
@@ -2620,9 +2626,26 @@ window.ScanSheet = {
       copy: document.getElementById('scr-copy'),
       add: document.getElementById('scr-add'),
       save: document.getElementById('scr-save'),
-      errors: document.getElementById('scr-errors')
+      errors: document.getElementById('scr-errors'),
+      toggle: document.getElementById('scr-toggle'),
+      body: document.getElementById('scr-body')
     };
     if (!dom.card || !V || !S) return null;
+    // The card is first on the dashboard and folded to its title and status, so it never pushes the ledger down;
+    // whether it was left open is remembered on this device.
+    var OPEN_KEY = 'iopScrOpen';
+    function setOpen(open) {
+      dom.body.hidden = !open;
+      dom.toggle.textContent = open ? 'Hide' : 'Show rates';
+      dom.toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      try { localStorage.setItem(OPEN_KEY, open ? '1' : '0'); } catch (e) {}
+    }
+    if (dom.toggle && dom.body) {
+      var wasOpen = false;
+      try { wasOpen = localStorage.getItem(OPEN_KEY) === '1'; } catch (e) {}
+      setOpen(wasOpen);
+      dom.toggle.addEventListener('click', function () { setOpen(dom.body.hidden); });
+    }
 
     var base = null; // the sheet-wide settings the rows are saved with (a saved sheet, or a copy of the consignor rates)
     var rows = [];
