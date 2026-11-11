@@ -832,9 +832,10 @@ code{font-family:var(--font-mono);font-size:.92em;}
     background:linear-gradient(180deg, transparent, var(--bg) 42%);
   }
   /* With the on-screen keyboard up the dock would sit on the field being typed in. Keyed on the keyboard
-     itself (the scanner script sets .sc-kbd-open from the visual viewport), never on a field merely having
-     focus: a Bluetooth scanner gun keeps the cert box focused with no keyboard at all, and Android keeps
-     the focus after Back puts the keyboard away, so a focus rule left the dock gone for good. */
+     itself (the scanner script sets .sc-kbd-open from the visual viewport, or in the Android app from the
+     window shrinking while a text field has focus), never on a field merely having focus: a Bluetooth
+     scanner gun keeps the cert box focused with no keyboard at all, and Android keeps the focus after Back
+     puts the keyboard away, so a focus rule left the dock gone for good. */
   #tab-scanner .scanner-layout.sc-kbd-open .sc-controls{display:none;}
   #tab-scanner .sc-controls .sc-mode{flex:1 1 auto;}
   #tab-scanner .sc-controls .sc-mode .sc-seg-btn{min-height:calc(var(--sc-dock-ctl) - 8px);} /* + the segment's 4px padding, top and bottom */
@@ -4847,22 +4848,45 @@ window.NativeBridge = {
     }
     window.addEventListener('penguinscannerclosed', function () { setNativeCamera(false); });
 
-    // ── the on-screen keyboard: the dock (Normal / Lower and Hide) steps aside for it. In a browser the
-    // keyboard shrinks the visual viewport while the page keeps its size, so that gap is the signal; a
-    // field merely having focus is not (a Bluetooth scanner gun keeps the cert box focused with no
-    // keyboard at all). A pinched-in page also has a smaller visual viewport, so only an unzoomed page
-    // counts. With no visualViewport the dock is never hidden. (The Android app shrinks its web view for
-    // the keyboard instead, so the gap never opens there and the dock rides on top of the keyboard.)
+    // ── the on-screen keyboard: the dock (Normal / Lower and Hide) steps aside for it. A field merely having
+    // focus is never the signal (a Bluetooth scanner gun keeps the cert box focused with no keyboard at all),
+    // and the two places this page runs show the keyboard differently:
+    //  - A browser: the keyboard shrinks the visual viewport while the page keeps its size, so that gap is the
+    //    signal. A pinched-in page also has a smaller visual viewport, so only an unzoomed page counts. With
+    //    no visualViewport a browser never hides the dock.
+    //  - The Android app (adjustResize, its root padded by the keyboard): the web view itself shrinks, so the
+    //    visual viewport and innerHeight fall together and that gap never opens. There the keyboard is up
+    //    when a text field has focus AND the window is more than KEYBOARD_GAP_PX shorter than the tallest it
+    //    has been at this width (the baseline restarts whenever the width changes, so a rotation cannot leave
+    //    it stale). The focus check keeps a scanner gun (focused, no shrink) from counting, and Android Back
+    //    (keyboard gone, focus kept) restores the height and so the dock.
+    // Re-checked on every event that can change either signal, so the class cannot go stale.
     var KEYBOARD_GAP_PX = 150;
+    var TEXT_INPUT_TYPES = ['text', 'search', 'tel', 'url', 'email', 'password', 'number'];
+    var tallestHeight = 0;
+    var tallestWidth = -1;
+    function textFieldFocused() {
+      var el = document.activeElement;
+      if (!el || !el.tagName) return false;
+      var tag = String(el.tagName).toLowerCase();
+      return tag === 'textarea' || (tag === 'input' && TEXT_INPUT_TYPES.indexOf(String(el.type || 'text').toLowerCase()) >= 0);
+    }
     function updateKeyboardOpen() {
       var vv = window.visualViewport;
       var open = !!vv && (vv.scale || 1) <= 1.05 && vv.height < window.innerHeight - KEYBOARD_GAP_PX;
+      // the baseline is kept on every call, focused or not: it must already be the full height when a field is tapped
+      if (window.innerWidth !== tallestWidth) { tallestWidth = window.innerWidth; tallestHeight = window.innerHeight; }
+      else if (window.innerHeight > tallestHeight) tallestHeight = window.innerHeight;
+      if (!open && bridge.isAvailable() && textFieldFocused()) open = window.innerHeight < tallestHeight - KEYBOARD_GAP_PX;
       dom.layout.classList.toggle('sc-kbd-open', open);
     }
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', updateKeyboardOpen);
-      updateKeyboardOpen();
-    }
+    window.addEventListener('resize', updateKeyboardOpen);
+    window.addEventListener('pageshow', updateKeyboardOpen);
+    document.addEventListener('visibilitychange', updateKeyboardOpen);
+    document.addEventListener('focusin', updateKeyboardOpen);
+    document.addEventListener('focusout', function () { setTimeout(updateKeyboardOpen, 0); }); // activeElement is not the new field yet
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', updateKeyboardOpen);
+    updateKeyboardOpen();
 
     function authFetch(url, opts) {
       opts = opts || {};
