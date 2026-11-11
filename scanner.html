@@ -11,6 +11,10 @@
 <meta name="supabase-url" content="https://ppfhgrurquvlyabtymbq.supabase.co">
 <meta name="supabase-anon-key" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwZmhncnVycXV2bHlhYnR5bWJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MjYyNjcsImV4cCI6MjA5MTEwMjI2N30.ZcEPKRHI3kb3aA6iXmf1Mo42Dyqj9fx1I9ZMT2xk0fg">
 <title>Iced Out Penguin · Scanner</title>
+<meta name="theme-color" content="#040308">
+<!-- Our Discord logo (the penguin), copied next to every page by build-portal.js (vendor/brand/). -->
+<link rel="icon" type="image/png" href="vendor/brand/penguin-icon-180.png">
+<link rel="apple-touch-icon" href="vendor/brand/penguin-icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
@@ -439,105 +443,414 @@ code{font-family:var(--font-mono);font-size:.92em;}
 <main class="main">
 
 <style>
-  /* Scoped to this panel on purpose, same reasoning as PANEL:consignors' own <style>: only
-     the scanner pages ship this markup, so it stays out of the shared head CSS every page carries.
-     One-handed at 375px wide, standing up at a show: one column, big tap targets, big numbers.
-     Blue/black/red only (DESIGN.md / the owner's call) - no green was added for "good", CL value
-     uses --buy the same way the rest of the app uses it for a number that matters. */
-  #tab-scanner .scanner-layout{display:flex;flex-direction:column;gap:14px;max-width:520px;margin:0 auto;}
-  #tab-scanner .card{padding:16px;}
+  /* Hallmark · pre-emit critique: P4 H5 E4 S4 R4 V4
+     Hallmark · genre: atmospheric · macrostructure: Workbench (one app screen, the Scanner) · theme: the site's own
+     blue / black / red tokens, kept · nav: none · motion: press feedback + one slow pulse on a value
+     that is still being fetched.
+     Scoped to this panel on purpose, same reasoning as PANEL:consignors' own <style>: only the scanner
+     pages ship this markup, so it stays out of the shared head CSS every page carries.
 
-  #tab-scanner .sc-vf-wrap{min-width:0;}
+     Built for one hand at a card show, 360px wide and up (owner, 2026-11-10: "make an actually
+     nice-looking UI instead of just a couple of rectangles and boxes"):
+       - the camera is the hero at the top, and its start state IS the camera frame (nothing is left
+         behind once it runs; with the Android app's own camera open it folds away completely);
+       - ONE result card, laid out like a slab label: grader, grade and cert on top, the card's name,
+         then "We pay" big, with Avg of 3 and CL value side by side underneath;
+       - settings are segmented controls, not stacked boxes; Normal / Lower and Hide live in a dock at
+         the bottom of the screen, where the thumb already is;
+       - colour is a key, not decoration: red marks what we pay, blue the avg of 3, violet the CL value
+         (the owner's own three-colour mapping), ice blue only on the primary actions.
+     Shape system: surfaces 20px; controls 16px; anything inside a control 12px; chips and glass labels
+     over the camera are pills. Type: Orbitron only for the wordmark and the two hero numbers (We pay,
+     hide mode's Market), Rajdhani for words, JetBrains Mono for certs and secondary money.
+     Icons: Lucide (ISC licence), inlined as CSS masks so a script writing a button's text never
+     wipes its icon. */
+  #tab-scanner{
+    --sc-ice:var(--buy);
+    --sc-red:var(--red);
+    --sc-violet:color-mix(in srgb, var(--purple) 62%, var(--text));
+    --sc-pay-ink:color-mix(in srgb, var(--red) 78%, var(--text));
+    --sc-avg-ink:color-mix(in srgb, var(--buy) 82%, var(--text));
+    --sc-warn-ink:color-mix(in srgb, var(--red) 38%, var(--text));
+    --sc-sunk:var(--s1);
+    --sc-card:var(--s2);
+    --sc-raised:color-mix(in srgb, var(--s3) 88%, var(--text));
+    --sc-line:color-mix(in srgb, var(--dim) 17%, transparent);
+    --sc-line-2:color-mix(in srgb, var(--dim) 30%, transparent);
+    --sc-glass:color-mix(in srgb, var(--bg) 62%, transparent);
+    --sc-glass-line:color-mix(in srgb, var(--text) 16%, transparent);
+    --sc-shutter:color-mix(in srgb, var(--text) 96%, transparent);
+    --sc-lens:color-mix(in srgb, var(--bg) 70%, black);
+    --sc-ring:color-mix(in srgb, var(--buy) 20%, transparent);
+    --sc-r-card:20px;
+    --sc-r-ctl:16px;
+    --sc-r-in:12px;
+    --sc-ease:cubic-bezier(.16, 1, .3, 1);
+    /* The dock's parts: its padding above and below one row of controls (the safe-area inset is added
+       on top of the bottom padding). --sc-dock-h is summed from these on .scanner-layout. */
+    --sc-dock-pad-top:16px;
+    --sc-dock-pad-bottom:12px;
+    --sc-dock-ctl:52px;
+
+    --i-scan:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7V5a2 2 0 0 1 2-2h2'/%3E%3Cpath d='M17 3h2a2 2 0 0 1 2 2v2'/%3E%3Cpath d='M21 17v2a2 2 0 0 1-2 2h-2'/%3E%3Cpath d='M7 21H5a2 2 0 0 1-2-2v-2'/%3E%3Cpath d='M8 7v10'/%3E%3Cpath d='M12 7v10'/%3E%3Cpath d='M17 7v10'/%3E%3C/svg%3E");
+    --i-torch:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6c0 2-2 2-2 4v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V10c0-2-2-2-2-4V2h12z'/%3E%3Cline x1='6' x2='18' y1='6' y2='6'/%3E%3Cline x1='12' x2='12' y1='12' y2='12'/%3E%3C/svg%3E");
+    --i-sound:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='11 5 6 9 2 9 2 15 6 15 11 19 11 5'/%3E%3Cpath d='M15.54 8.46a5 5 0 0 1 0 7.07'/%3E%3Cpath d='M19.07 4.93a10 10 0 0 1 0 14.14'/%3E%3C/svg%3E");
+    --i-sound-off:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='11 5 6 9 2 9 2 15 6 15 11 19 11 5'/%3E%3Cline x1='22' x2='16' y1='9' y2='15'/%3E%3Cline x1='16' x2='22' y1='9' y2='15'/%3E%3C/svg%3E");
+    --i-x:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18'/%3E%3Cpath d='m6 6 12 12'/%3E%3C/svg%3E");
+    --i-eye-off:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9.88 9.88a3 3 0 1 0 4.24 4.24'/%3E%3Cpath d='M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68'/%3E%3Cpath d='M6.61 6.61A13.53 13.53 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61'/%3E%3Cline x1='2' x2='22' y1='2' y2='22'/%3E%3C/svg%3E");
+    --i-eye:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
+    --i-lock:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='11' x='3' y='11' rx='2' ry='2'/%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'/%3E%3C/svg%3E");
+    --i-alert:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='12' x2='12' y1='8' y2='12'/%3E%3Cline x1='12' x2='12.01' y1='16' y2='16'/%3E%3C/svg%3E");
+  }
+  /* One icon recipe: a currentColor square cut out by the icon's mask. */
+  #tab-scanner .sc-vf-round::before,#tab-scanner .sc-start::before,#tab-scanner .sc-hide-btn::before,
+  #tab-scanner .sc-earlier-remove::before,#tab-scanner .sc-badge::before,#tab-scanner .sc-note.warn::before{
+    content:"";flex:none;width:20px;height:20px;background:currentColor;
+    -webkit-mask:var(--sc-i) center / contain no-repeat;mask:var(--sc-i) center / contain no-repeat;
+  }
+
+  /* The scroll area's bottom padding is exactly the dock's height (its padding + its row of controls)
+     plus the safe-area inset the dock also pads by, so scrolled to the end the last section stops at
+     the dock's top edge instead of under it. Summed here, on the element the Android camera's
+     .sc-native-cam also sits on, so that mode's smaller dock re-sums it too. */
+  #tab-scanner .scanner-layout{
+    display:flex;flex-direction:column;gap:12px;max-width:520px;margin:0 auto;
+    --sc-dock-h:calc(var(--sc-dock-pad-top) + var(--sc-dock-ctl) + var(--sc-dock-pad-bottom));
+    padding-bottom:calc(var(--sc-dock-h) + env(safe-area-inset-bottom));
+  }
+
+  /* ── wordmark (the Android app's page has no site header, so the scanner carries its own) ── */
+  #tab-scanner .sc-brand{display:flex;align-items:center;gap:12px;min-width:0;}
+  header.nav ~ .main #tab-scanner .sc-brand{display:none;}
+  #tab-scanner .sc-brand-mark{
+    flex:none;width:42px;height:42px;border-radius:50%;object-fit:cover;
+    background:radial-gradient(circle at 50% 28%, color-mix(in srgb, var(--sc-ice) 26%, var(--s2)), var(--s1) 72%);
+    box-shadow:inset 0 0 0 1px var(--sc-line-2);
+  }
+  #tab-scanner .sc-brand-words{min-width:0;}
+  #tab-scanner .sc-brand-name{font:800 15px/1.15 var(--font-display);letter-spacing:.03em;color:var(--text);}
+  #tab-scanner .sc-brand-sub{margin-top:4px;font:700 12px/1 var(--font-ui);letter-spacing:.3em;text-transform:uppercase;color:var(--sc-ice);}
+
+  /* ── the camera: one frame, two faces (ready to start / live). The same height either way: the live face
+     is absolute and the frame's min-height is the whole height, while the ready face is in the flow, so a
+     long camera message or a wrapped button grows the frame instead of being clipped. ── */
+  #tab-scanner .sc-vf-wrap{
+    --sc-vf-h:clamp(220px, 36vh, 380px);
+    position:relative;min-width:0;min-height:var(--sc-vf-h);overflow:hidden;isolation:isolate;
+    border-radius:var(--sc-r-card);background:var(--sc-lens);box-shadow:inset 0 0 0 1px var(--sc-line);
+  }
+  /* The Android app's own camera is open ABOVE this page (which is now a sheet under it): this frame has
+     nothing left to show, so it folds down to a slim Reopen button and the result is the first thing on
+     the sheet. The button stays because the app can drop the open message, and with the whole frame gone
+     there would be no way back; pressing it while the camera is up does nothing (the app ignores a second
+     open). */
+  #tab-scanner .scanner-layout.sc-native-cam .sc-brand{display:none;}
+  #tab-scanner .scanner-layout.sc-native-cam .sc-vf-wrap{min-height:0;overflow:visible;border-radius:0;background:none;box-shadow:none;}
+  #tab-scanner .scanner-layout.sc-native-cam .sc-vf-off{min-height:0;padding:0;background:none;}
+  #tab-scanner .scanner-layout.sc-native-cam .sc-vf-off::before,#tab-scanner .scanner-layout.sc-native-cam .sc-vf-off-text{display:none;}
+  #tab-scanner .scanner-layout.sc-native-cam .sc-start-row{background:none;}
+  #tab-scanner .scanner-layout.sc-native-cam .sc-start{
+    flex:1 1 auto;min-height:var(--sc-dock-ctl);font-size:16px;
+    background:var(--sc-raised);color:var(--text);box-shadow:inset 0 0 0 1px var(--sc-line-2);
+  }
   #tab-scanner .sc-vf{
-    position:relative;overflow:hidden;height:clamp(240px,46vh,440px);
-    border-radius:var(--r-lg);border:1px solid var(--border);background:#000;
+    position:absolute;inset:0;overflow:hidden;background:var(--sc-lens);
     touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
     -webkit-tap-highlight-color:transparent;cursor:crosshair;
   }
   #tab-scanner .sc-vf-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
   #tab-scanner .sc-vf-marks{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
-  #tab-scanner .sc-mark{fill:rgba(63,169,255,.14);stroke:var(--buy);stroke-width:3;stroke-linejoin:round;filter:drop-shadow(0 0 3px rgba(0,0,0,.8));}
-  #tab-scanner .sc-mark-taken{fill:rgba(63,169,255,.4);stroke:var(--buy);stroke-width:4;stroke-linejoin:round;}
-  #tab-scanner .sc-vf-top{position:absolute;top:10px;left:10px;right:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
-  #tab-scanner .sc-vf-round{display:grid;place-items:center;width:42px;height:42px;padding:0;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(0,0,0,.5);color:#fff;font-size:16px;cursor:pointer;}
-  #tab-scanner .sc-vf-round.on{background:var(--buy);border-color:var(--buy);color:var(--bg);}
-  #tab-scanner .sc-vf-round-space{width:42px;}
-  #tab-scanner .sc-vf-pill{padding:5px 12px;border-radius:var(--r-pill);background:rgba(0,0,0,.6);color:#fff;font-size:12px;white-space:nowrap;}
-  #tab-scanner .sc-vf-bottom{position:absolute;left:0;right:0;bottom:12px;display:flex;flex-direction:column;align-items:center;gap:10px;}
-  #tab-scanner .sc-vf-zoom-wrap{width:min(220px,70%);padding:6px 12px;border-radius:var(--r-pill);background:rgba(0,0,0,.45);}
-  #tab-scanner .sc-vf-zoom{display:block;width:100%;accent-color:var(--buy);}
-  #tab-scanner .sc-vf-hint{max-width:calc(100% - 24px);padding:4px 11px;border-radius:var(--r-pill);background:rgba(0,0,0,.55);color:rgba(255,255,255,.92);font-size:11.5px;text-align:center;}
-  #tab-scanner .sc-vf-shutter{width:64px;height:64px;padding:4px;border-radius:50%;border:4px solid rgba(255,255,255,.95);background:rgba(0,0,0,.15);cursor:pointer;}
-  #tab-scanner .sc-vf-shutter span{display:block;width:100%;height:100%;border-radius:50%;background:#fff;transition:transform .1s;}
+  #tab-scanner .sc-mark{fill:color-mix(in srgb, var(--sc-ice) 16%, transparent);stroke:var(--sc-ice);stroke-width:3;stroke-linejoin:round;filter:drop-shadow(0 0 3px var(--sc-lens));}
+  #tab-scanner .sc-vf-top{position:absolute;top:12px;left:12px;right:12px;display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:8px;}
+  #tab-scanner #sc-torch{grid-column:1;}
+  #tab-scanner .sc-vf-pill{grid-column:2;justify-self:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #tab-scanner #sc-sound{grid-column:3;}
+  #tab-scanner .sc-vf-round{
+    display:grid;place-items:center;width:44px;height:44px;padding:0;border-radius:50%;cursor:pointer;
+    border:1px solid var(--sc-glass-line);background:var(--sc-glass);color:var(--text);
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    transition:background-color 160ms var(--sc-ease), color 160ms var(--sc-ease);
+  }
+  #tab-scanner #sc-torch{--sc-i:var(--i-torch);}
+  #tab-scanner #sc-sound{--sc-i:var(--i-sound-off);}
+  #tab-scanner #sc-sound[aria-pressed="true"]{--sc-i:var(--i-sound);}
+  #tab-scanner .sc-vf-round.on{background:var(--sc-ice);border-color:var(--sc-ice);color:var(--bg);}
+  #tab-scanner .sc-vf-pill,#tab-scanner .sc-vf-hint{
+    padding:8px 12px;border-radius:var(--r-pill);border:1px solid var(--sc-glass-line);background:var(--sc-glass);
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:var(--text);font:600 14px/1.2 var(--font-ui);
+  }
+  #tab-scanner .sc-vf-bottom{position:absolute;left:0;right:0;bottom:12px;display:flex;flex-direction:column;align-items:center;gap:12px;}
+  #tab-scanner .sc-vf-zoom-wrap{width:min(220px, 70%);padding:8px 12px;border-radius:var(--r-pill);background:var(--sc-glass);border:1px solid var(--sc-glass-line);}
+  #tab-scanner .sc-vf-zoom{display:block;width:100%;accent-color:var(--sc-ice);}
+  #tab-scanner .sc-vf-hint{max-width:calc(100% - 24px);font-size:13px;text-align:center;}
+  #tab-scanner .sc-vf-shutter{width:68px;height:68px;padding:5px;border-radius:50%;border:4px solid var(--sc-shutter);background:transparent;cursor:pointer;}
+  #tab-scanner .sc-vf-shutter span{display:block;width:100%;height:100%;border-radius:50%;background:var(--sc-shutter);transition:transform 120ms var(--sc-ease);}
   #tab-scanner .sc-vf-shutter:active span{transform:scale(.86);}
-  #tab-scanner .sc-vf-off{display:flex;flex-direction:column;align-items:center;gap:12px;padding:28px 18px;text-align:center;}
-  #tab-scanner .sc-vf-off-icon{font-size:32px;}
-  #tab-scanner .sc-vf-off-text{max-width:360px;font-size:12.5px;line-height:1.5;color:var(--dim);}
 
-  #tab-scanner .sc-box{display:flex;gap:8px;align-items:stretch;min-width:0;}
-  #tab-scanner .sc-box .form-input{flex:1 1 auto;min-width:0;font-size:17px;}
-  #tab-scanner .sc-box .btn{flex:none;min-height:46px;}
-  #tab-scanner .sc-box-err,#tab-scanner .sc-signin-err{margin-top:10px;font-size:12px;color:var(--red);}
+  /* Ready to start: the frame itself says "camera" (four corners and a scanner's red line), so no
+     picture of a camera and no second box is needed. */
+  #tab-scanner .sc-vf-off{
+    position:relative;min-height:var(--sc-vf-h);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+    padding:28px 24px;text-align:center;
+    background:
+      radial-gradient(85% 65% at 50% 0%, color-mix(in srgb, var(--sc-ice) 13%, transparent), transparent 72%),
+      linear-gradient(180deg, var(--s2), var(--s1));
+  }
+  #tab-scanner .sc-vf-off::before{
+    content:"";position:absolute;inset:16px;pointer-events:none;--k:30px;
+    border:2px solid color-mix(in srgb, var(--text) 58%, transparent);border-radius:14px;
+    -webkit-mask:conic-gradient(at var(--k) var(--k), #0000 75%, #000 0) 0 0 / calc(100% - var(--k)) calc(100% - var(--k));
+    mask:conic-gradient(at var(--k) var(--k), #0000 75%, #000 0) 0 0 / calc(100% - var(--k)) calc(100% - var(--k));
+  }
+  #tab-scanner .sc-start-row{
+    align-self:stretch;display:flex;justify-content:center;
+    background:linear-gradient(90deg, transparent 6%, color-mix(in srgb, var(--sc-red) 75%, transparent) 30%, color-mix(in srgb, var(--sc-red) 75%, transparent) 70%, transparent 94%) center / 100% 1.5px no-repeat;
+  }
+  #tab-scanner .sc-start{
+    --sc-i:var(--i-scan);
+    position:relative;display:inline-flex;align-items:center;justify-content:center;gap:12px;max-width:100%;
+    min-height:56px;padding:12px 24px 12px 20px;border:0;border-radius:var(--sc-r-ctl);cursor:pointer;
+    background:var(--sc-ice);color:var(--bg);font:700 18px/1.2 var(--font-ui);letter-spacing:.02em;text-align:center;white-space:normal;
+    transition:transform 120ms var(--sc-ease), background-color 160ms var(--sc-ease);
+  }
+  #tab-scanner .sc-start:hover{background:color-mix(in srgb, var(--sc-ice) 86%, var(--text));}
+  #tab-scanner .sc-start:active{transform:scale(.97);}
+  #tab-scanner .sc-start:disabled{background:var(--s3);color:var(--dim);cursor:default;transform:none;}
+  #tab-scanner .sc-vf-off-text{position:relative;max-width:300px;font:500 15px/1.45 var(--font-ui);color:var(--dim);}
 
-  #tab-scanner .sc-sub{font-size:12px;line-height:1.5;color:var(--dim);margin:4px 0 12px;}
+  /* ── type a cert: one field with its button inside it ── */
+  #tab-scanner .sc-entry{display:flex;flex-direction:column;gap:8px;min-width:0;}
+  #tab-scanner .sc-label{font:600 14px/1.2 var(--font-ui);letter-spacing:.02em;color:var(--dim);}
+  #tab-scanner .sc-box{
+    display:flex;align-items:center;gap:8px;min-width:0;padding:4px;border-radius:var(--sc-r-ctl);
+    background:var(--sc-sunk);box-shadow:inset 0 0 0 1px var(--sc-line-2);
+  }
+  #tab-scanner .sc-box:focus-within{box-shadow:inset 0 0 0 1.5px var(--sc-ice), 0 0 0 4px var(--sc-ring);}
+  #tab-scanner .sc-cert-input{
+    flex:1 1 auto;min-width:0;height:48px;padding:0 12px 0 12px;border:0;background:transparent;outline:none;
+    color:var(--text);font:600 18px/1 var(--font-mono);letter-spacing:.02em;
+  }
+  #tab-scanner .sc-cert-input:focus-visible{outline:none;}
+  #tab-scanner .sc-cert-input::placeholder{font:500 16px/1 var(--font-ui);letter-spacing:.01em;color:color-mix(in srgb, var(--dim) 80%, transparent);}
+  #tab-scanner .sc-box .sc-btn{min-height:48px;border-radius:var(--sc-r-in);}
+  #tab-scanner .sc-box-err,#tab-scanner .sc-signin-err,#tab-scanner .sc-flat-err{font:600 14px/1.4 var(--font-ui);color:var(--sc-warn-ink);}
+  #tab-scanner .sc-grader-pick{
+    display:flex;flex-direction:column;gap:12px;padding:12px;border-radius:var(--sc-r-ctl);
+    background:color-mix(in srgb, var(--sc-ice) 7%, var(--s1));box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--sc-ice) 28%, transparent);
+  }
+  #tab-scanner .sc-grader-pick-text{font:600 15px/1.4 var(--font-ui);color:var(--text);}
+  #tab-scanner .sc-grader-pick-btns{display:grid;grid-template-columns:repeat(5, minmax(0, 1fr));gap:8px;}
+  #tab-scanner .sc-grader-pick-btns .sc-btn{min-height:44px;padding:0;border-radius:var(--sc-r-in);font:700 14px/1 var(--font-mono);}
 
-  #tab-scanner .sc-result-head{display:flex;flex-direction:column;gap:6px;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:12px;}
-  #tab-scanner .sc-result-name{font:700 16px/1.3 var(--font-display);overflow-wrap:anywhere;}
-  #tab-scanner .sc-result-id{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:12px;color:var(--dim);}
-  #tab-scanner .sc-result-id .sc-result-cert{font-family:var(--font-mono);color:var(--text);}
+  /* ── buttons ── */
+  #tab-scanner .sc-btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;
+    border:0;border-radius:var(--sc-r-ctl);cursor:pointer;white-space:nowrap;
+    font:700 16px/1 var(--font-ui);letter-spacing:.02em;
+    transition:background-color 160ms var(--sc-ease), color 160ms var(--sc-ease), transform 120ms var(--sc-ease);
+  }
+  #tab-scanner .sc-btn:active{transform:scale(.97);}
+  #tab-scanner .sc-btn:disabled{opacity:.5;cursor:default;transform:none;}
+  #tab-scanner .sc-btn-primary{background:var(--sc-ice);color:var(--bg);}
+  #tab-scanner .sc-btn-primary:hover{background:color-mix(in srgb, var(--sc-ice) 86%, var(--text));}
+  #tab-scanner .sc-btn-quiet{background:var(--sc-raised);color:var(--text);box-shadow:inset 0 0 0 1px var(--sc-line-2);}
+  #tab-scanner .sc-btn-quiet:hover{background:color-mix(in srgb, var(--sc-raised) 85%, var(--text));}
+  #tab-scanner .sc-btn-danger{background:color-mix(in srgb, var(--sc-red) 80%, var(--bg));color:var(--text);}
+  #tab-scanner .sc-btn-block{width:100%;min-height:52px;}
 
-  #tab-scanner .sc-money{font-family:var(--font-display);font-weight:800;letter-spacing:-0.3px;}
+  /* ── surfaces ── */
+  #tab-scanner .sc-card{
+    position:relative;min-width:0;border-radius:var(--sc-r-card);background:var(--sc-card);
+    box-shadow:inset 0 0 0 1px var(--sc-line), inset 0 1px 0 color-mix(in srgb, var(--text) 5%, transparent);
+  }
+  #tab-scanner .sc-h{font:700 19px/1.2 var(--font-ui);letter-spacing:.01em;color:var(--text);}
+  #tab-scanner .sc-sub{margin-top:4px;font:500 15px/1.45 var(--font-ui);color:var(--dim);}
 
-  /* The three squares: We pay (red), Avg of 3 (blue), CL value (purple) - the palette's own three
-     colours. Pay spans the top row and is the biggest number; the other two sit side by side. */
-  #tab-scanner .sc-squares{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
-  #tab-scanner .sc-sq{--sq:var(--buy);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-width:0;min-height:108px;padding:14px 12px;border-radius:var(--r-lg);text-align:center;background:linear-gradient(165deg, color-mix(in srgb, var(--sq) 24%, var(--s2)), color-mix(in srgb, var(--sq) 8%, var(--s1)));border:1.5px solid color-mix(in srgb, var(--sq) 70%, var(--border));box-shadow:0 0 18px color-mix(in srgb, var(--sq) 22%, transparent), inset 0 1px 0 rgba(255,255,255,.06);container-type:inline-size;}
-  #tab-scanner .sc-sq-pay{--sq:var(--sell);grid-column:1 / -1;min-height:136px;}
-  #tab-scanner .sc-sq-avg{--sq:var(--buy);}
-  #tab-scanner .sc-sq-clv{--sq:var(--purple);}
-  #tab-scanner .sc-sq-label{font:700 12px/1 var(--font-mono);letter-spacing:1.2px;text-transform:uppercase;color:color-mix(in srgb, var(--sq) 55%, var(--text));}
-  #tab-scanner .sc-sq-val{font:800 min(30px, 15cqi)/1.1 var(--font-display);letter-spacing:-0.3px;color:#fff;text-shadow:0 0 14px color-mix(in srgb, var(--sq) 65%, transparent);max-width:100%;overflow-wrap:anywhere;}
-  #tab-scanner .sc-sq-pay .sc-sq-val{font-size:min(50px, 13cqi);}
-  #tab-scanner .sc-sq-val.sc-words{font-size:min(19px, 10cqi);line-height:1.25;white-space:normal;text-shadow:none;color:var(--text);}
-  #tab-scanner .sc-sq-pay .sc-sq-val.sc-words{font-size:min(24px, 8cqi);}
-  #tab-scanner .sc-sq-math{font:600 12px/1.3 var(--font-mono);color:var(--dim);overflow-wrap:anywhere;white-space:pre-line;}
-  #tab-scanner .sc-sq-math:empty{display:none;}
+  /* ── sign in ── */
+  #tab-scanner .sc-signin{display:flex;flex-direction:column;gap:12px;padding:20px 16px;}
+  #tab-scanner .sc-signin-head{display:flex;align-items:flex-start;gap:12px;}
+  #tab-scanner .sc-badge{
+    --sc-i:var(--i-lock);
+    flex:none;display:grid;place-items:center;width:42px;height:42px;border-radius:50%;
+    background:color-mix(in srgb, var(--sc-ice) 14%, var(--s1));color:var(--sc-ice);
+  }
+  #tab-scanner .sc-field{display:flex;flex-direction:column;gap:8px;}
+  #tab-scanner .sc-input{
+    width:100%;min-width:0;height:50px;padding:0 12px;border:0;border-radius:var(--sc-r-ctl);outline:none;
+    background:var(--sc-sunk);box-shadow:inset 0 0 0 1px var(--sc-line-2);color:var(--text);font:600 16px/1 var(--font-ui);
+  }
+  #tab-scanner .sc-input:focus{box-shadow:inset 0 0 0 1.5px var(--sc-ice), 0 0 0 4px var(--sc-ring);}
+  #tab-scanner .sc-input:focus-visible{outline:none;}
+  #tab-scanner #sc-signed-in-as:empty{display:none;}
 
-  #tab-scanner .sc-rule-sheet{margin-left:6px;color:var(--muted);}
-  #tab-scanner .sc-rule-hint{margin-top:8px;font-size:12px;line-height:1.45;color:var(--yellow);}
+  /* ── the result: a slab label on top, the price under it ── */
+  #tab-scanner .sc-result{
+    overflow:hidden;container-type:inline-size;
+    background:linear-gradient(180deg, color-mix(in srgb, var(--s3) 72%, var(--s2)), var(--s2) 132px);
+    transition:opacity 220ms var(--sc-ease), box-shadow 220ms var(--sc-ease);
+  }
+  #tab-scanner .sc-result:has(.sc-pay-val.sc-no){box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--sc-red) 45%, transparent);}
+  #tab-scanner .sc-result-head{padding:16px 16px 12px;border-bottom:1px solid var(--sc-line);}
+  #tab-scanner .sc-result-id{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:8px;}
+  #tab-scanner .sc-result-id .sc-chip{
+    display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:var(--r-pill);
+    background:var(--sc-sunk);box-shadow:inset 0 0 0 1px var(--sc-line-2);
+    font:700 13px/1 var(--font-ui);letter-spacing:.08em;color:var(--text);
+  }
+  #tab-scanner .sc-result-grade{font:700 15px/1 var(--font-ui);color:var(--text);}
+  #tab-scanner .sc-result-grade.sc-blank{display:none;}
+  #tab-scanner .sc-result-cert{font:500 13px/1 var(--font-mono);color:var(--dim);letter-spacing:.02em;}
+  #tab-scanner .sc-result-id .sc-rescan{background:color-mix(in srgb, var(--sc-ice) 14%, transparent);box-shadow:none;color:var(--sc-avg-ink);letter-spacing:.02em;}
+  #tab-scanner .sc-result-name{font:700 18px/1.25 var(--font-ui);color:var(--text);overflow-wrap:anywhere;}
 
-  #tab-scanner .sc-controls{display:flex;gap:10px;align-items:stretch;}
+  #tab-scanner .sc-key{font:700 13px/1 var(--font-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);}
+  #tab-scanner .sc-key-pay{color:var(--sc-pay-ink);}
+  #tab-scanner .sc-key-avg{color:var(--sc-avg-ink);}
+  #tab-scanner .sc-key-clv{color:var(--sc-violet);}
+
+  #tab-scanner .sc-pay{padding:16px 16px 16px;}
+  #tab-scanner .sc-pay-val{
+    margin-top:12px;font:800 min(54px, 12.5cqi)/1.05 var(--font-display);letter-spacing:-.01em;
+    color:var(--text);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
+  }
+  #tab-scanner .sc-pay-val.sc-words{font:700 min(30px, 8.6cqi)/1.15 var(--font-ui);letter-spacing:.01em;}
+  #tab-scanner .sc-pay-val.sc-no{color:var(--sc-pay-ink);}
+  #tab-scanner .sc-math{margin-top:12px;font:500 13px/1.5 var(--font-mono);color:var(--dim);white-space:pre-line;overflow-wrap:anywhere;}
+  #tab-scanner .sc-math:empty{display:none;}
+
+  #tab-scanner .sc-pair{display:grid;grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);margin:0;border-top:1px solid var(--sc-line);}
+  #tab-scanner .sc-result:has(.sc-note:not([hidden])) .sc-pair{border-bottom:1px solid var(--sc-line);margin-bottom:12px;}
+  #tab-scanner .sc-pair-cell{min-width:0;padding:12px 16px 16px;}
+  #tab-scanner .sc-pair-cell + .sc-pair-cell{border-left:1px solid var(--sc-line);}
+  #tab-scanner .sc-pair-val{
+    margin:8px 0 0;font:600 min(22px, 6.2cqi)/1.2 var(--font-mono);color:var(--text);
+    font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
+  }
+  #tab-scanner .sc-pair-val.sc-words{font:600 16px/1.3 var(--font-ui);color:var(--dim);}
+  #tab-scanner .sc-pair-val.sc-blank{color:var(--sc-line-2);}
+  #tab-scanner .sc-wait{color:var(--dim);animation:scWait 1.3s ease-in-out infinite alternate;}
+  @keyframes scWait{from{opacity:1}to{opacity:.42}}
+
+  #tab-scanner .sc-note{margin:0 16px 16px;font:500 15px/1.45 var(--font-ui);color:var(--dim);}
+  #tab-scanner .sc-note.warn{
+    --sc-i:var(--i-alert);
+    display:flex;gap:8px;align-items:flex-start;color:var(--sc-warn-ink);
+  }
+  #tab-scanner .sc-note.warn::before{width:18px;height:18px;margin-top:2px;color:var(--sc-pay-ink);}
+  /* Triumph is down: one small staff line while the CL value rides in with the average. Not a warning,
+     a status: no alert icon, the CL value's violet as a slow dot (the box it is waiting to fill). Hide
+     mode never shows it (it lives in #sc-result, which is .sc-staff-only). */
+  #tab-scanner .sc-note.sc-note-down{
+    display:flex;align-items:center;gap:8px;
+    font:600 13px/1.35 var(--font-ui);letter-spacing:.01em;color:var(--dim);
+  }
+  #tab-scanner .sc-note.sc-note-down::before{
+    content:"";flex:none;width:8px;height:8px;border-radius:50%;background:var(--sc-violet);
+    animation:scWait 1.3s ease-in-out infinite alternate;
+  }
+  #tab-scanner .sc-retry{padding:0 16px 16px;}
+  #tab-scanner .sc-retry .sc-btn{min-width:132px;}
+
+  /* ── hide mode's seller card: name, grade and the market, nothing else ── */
+  #tab-scanner .sc-seller{display:flex;flex-direction:column;align-items:center;gap:8px;padding:32px 20px 32px;text-align:center;container-type:inline-size;}
+  #tab-scanner .sc-seller-empty{font:600 17px/1.3 var(--font-ui);color:var(--dim);}
+  #tab-scanner .sc-seller-name{font:700 19px/1.3 var(--font-ui);color:var(--text);overflow-wrap:anywhere;}
+  #tab-scanner .sc-seller-grade{
+    display:inline-flex;align-items:center;height:26px;padding:0 12px;border-radius:var(--r-pill);
+    background:var(--sc-sunk);box-shadow:inset 0 0 0 1px var(--sc-line-2);
+    font:700 13px/1 var(--font-ui);letter-spacing:.08em;color:var(--text);
+  }
+  #tab-scanner .sc-seller-market{margin-top:12px;font:800 min(40px, 10cqi)/1.15 var(--font-display);letter-spacing:-.01em;color:var(--text);overflow-wrap:anywhere;}
+  #tab-scanner .sc-seller-market.sc-wait,#tab-scanner .sc-seller-market.sc-plain{font:700 22px/1.3 var(--font-ui);letter-spacing:.01em;}
+
+  /* ── price with: our sheets or a flat % ── */
+  #tab-scanner .sc-rules{display:flex;flex-direction:column;gap:12px;min-width:0;padding:0 0;}
+  #tab-scanner .sc-rule-sheet{font:500 14px/1.4 var(--font-ui);color:var(--dim);}
+  #tab-scanner .sc-rule-hint{font:600 14px/1.45 var(--font-ui);color:var(--sc-warn-ink);}
+  #tab-scanner .sc-flat{display:flex;align-items:center;gap:8px;min-width:0;}
+  #tab-scanner .sc-flat .sc-input{width:84px;flex:none;height:52px;text-align:right;font:600 18px/1 var(--font-mono);}
+  #tab-scanner .sc-flat-of{flex:none;font:600 15px/1 var(--font-ui);color:var(--dim);}
+  #tab-scanner .sc-flat .sc-seg{flex:1 1 auto;}
+
+  /* ── segmented controls ── */
+  #tab-scanner .sc-seg{
+    display:flex;gap:4px;min-width:0;padding:4px;border-radius:var(--sc-r-ctl);
+    background:var(--sc-sunk);box-shadow:inset 0 0 0 1px var(--sc-line-2);
+  }
+  #tab-scanner .sc-seg-btn{
+    flex:1 1 auto;min-width:0;min-height:44px;padding:0 12px;border:0;border-radius:var(--sc-r-in);cursor:pointer;
+    background:transparent;color:var(--dim);font:700 15px/1 var(--font-ui);letter-spacing:.01em;white-space:nowrap;
+    transition:background-color 160ms var(--sc-ease), color 160ms var(--sc-ease), transform 120ms var(--sc-ease);
+  }
+  #tab-scanner .sc-seg-btn:hover{color:var(--text);}
+  #tab-scanner .sc-seg-btn:active{transform:scale(.97);}
+  #tab-scanner .sc-seg-btn[aria-pressed="true"]{background:var(--sc-raised);color:var(--text);box-shadow:inset 0 0 0 1px var(--sc-line-2);}
+
+  /* ── this visit: the pile ── */
+  #tab-scanner .sc-pile{container-type:inline-size;padding:16px 16px 8px;}
+  #tab-scanner .sc-pile-head{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  #tab-scanner .sc-pile-count{margin-top:4px;font:500 13px/1.2 var(--font-mono);color:var(--dim);}
+  #tab-scanner .sc-pile-totals{display:grid;grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);margin-top:12px;}
+  #tab-scanner .sc-total{min-width:0;padding:4px 12px 12px 0;}
+  #tab-scanner .sc-total + .sc-total{padding-left:14px;border-left:1px solid var(--sc-line);}
+  #tab-scanner .sc-total-val{margin-top:8px;font:600 min(21px, 7.2cqi)/1.15 var(--font-mono);color:var(--text);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+  #tab-scanner .sc-pile-unknown{margin-top:8px;font:500 13px/1.4 var(--font-ui);color:var(--sc-warn-ink);}
+  #tab-scanner .sc-pile-sub{margin-top:8px;font:500 13px/1.4 var(--font-ui);color:var(--dim);}
+  #tab-scanner .sc-clear-confirm{
+    display:flex;flex-direction:column;gap:12px;margin:4px 0 12px;padding:12px;border-radius:var(--sc-r-ctl);
+    background:color-mix(in srgb, var(--sc-red) 12%, var(--s1));
+  }
+  #tab-scanner .sc-clear-confirm-text{font:600 15px/1.45 var(--font-ui);color:var(--text);}
+  #tab-scanner .sc-clear-confirm-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  #tab-scanner .sc-clear-confirm-btns .sc-btn{min-height:48px;}
+  #tab-scanner .sc-earlier-row{display:flex;align-items:center;gap:4px;border-top:1px solid var(--sc-line);}
+  #tab-scanner .sc-earlier-main{
+    flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:12px;
+    min-height:62px;padding:12px 4px 12px 0;background:none;border:0;color:inherit;font:inherit;text-align:left;cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #tab-scanner .sc-earlier-main:active .name{color:var(--sc-avg-ink);}
+  #tab-scanner .sc-earlier-row .name{min-width:0;font:600 15px/1.3 var(--font-ui);color:var(--text);overflow-wrap:anywhere;}
+  #tab-scanner .sc-earlier-row .cert{display:block;margin-bottom:4px;font:500 12px/1.2 var(--font-mono);letter-spacing:.02em;color:var(--dim);}
+  #tab-scanner .sc-earlier-row .val{
+    flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:8px;
+    font:600 15px/1 var(--font-mono);color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap;
+  }
+  #tab-scanner .sc-earlier-row .status-pill{padding:4px 8px;font:700 11px/1 var(--font-ui);letter-spacing:.08em;}
+  #tab-scanner .sc-earlier-remove{
+    --sc-i:var(--i-x);
+    flex:none;display:flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;border:0;border-radius:50%;cursor:pointer;
+    background:transparent;color:var(--dim);font-size:0;line-height:0;transition:background-color 160ms var(--sc-ease), color 160ms var(--sc-ease);
+  }
+  #tab-scanner .sc-earlier-remove::before{width:18px;height:18px;}
+  #tab-scanner .sc-earlier-remove:hover,#tab-scanner .sc-earlier-remove:active{color:var(--sc-pay-ink);background:color-mix(in srgb, var(--sc-red) 12%, transparent);}
+
+  /* ── the dock: Normal / Lower and Hide, always on screen, at the bottom where the thumb is ── */
+  #tab-scanner .sc-controls{
+    position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;gap:12px;
+    padding:var(--sc-dock-pad-top) max(16px, calc((100vw - 520px) / 2)) calc(var(--sc-dock-pad-bottom) + env(safe-area-inset-bottom));
+    background:linear-gradient(180deg, transparent, var(--bg) 42%);
+  }
+  /* With the on-screen keyboard up the dock would sit on the field being typed in. Keyed on the keyboard
+     itself (the scanner script sets .sc-kbd-open from the visual viewport), never on a field merely having
+     focus: a Bluetooth scanner gun keeps the cert box focused with no keyboard at all, and Android keeps
+     the focus after Back puts the keyboard away, so a focus rule left the dock gone for good. */
+  #tab-scanner .scanner-layout.sc-kbd-open .sc-controls{display:none;}
   #tab-scanner .sc-controls .sc-mode{flex:1 1 auto;}
-  #tab-scanner .sc-controls .sc-mode .sc-seg-btn{min-height:46px;font-size:14px;}
-  #tab-scanner .sc-controls .sc-hide-btn{flex:0 0 36%;width:auto;padding:6px 10px;font-size:14px;white-space:normal;line-height:1.15;}
-
-  #tab-scanner .sc-note{font-size:12px;line-height:1.5;color:var(--dim);padding-top:4px;border-top:1px dashed var(--border);margin-top:4px;}
-  #tab-scanner .sc-note.warn{color:var(--yellow);}
-
-  #tab-scanner .sc-retry{margin-top:10px;}
-  #tab-scanner .sc-retry .btn{min-width:120px;min-height:40px;}
-
-  #tab-scanner .sc-pile-count{font-size:12px;color:var(--dim);margin-bottom:8px;font-family:var(--font-mono);letter-spacing:.3px;}
-  #tab-scanner .sc-pile-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
-  #tab-scanner .sc-pile-tile{padding:12px 14px;border-radius:var(--r);background:var(--s2);border:1px solid var(--border);min-width:0;}
-  #tab-scanner .sc-pile-tile-buy{border-color:color-mix(in srgb, var(--buy) 45%, var(--border));}
-  #tab-scanner .sc-pile-tile .sc-money{font-size:19px;}
-  #tab-scanner .sc-pile-unknown{font-size:11px;color:var(--yellow);margin-top:4px;line-height:1.4;}
-  #tab-scanner .sc-pile-sub{font-size:11px;color:var(--dim);margin-top:4px;}
-
-  #tab-scanner .sc-clear-confirm{display:flex;flex-direction:column;gap:10px;padding:12px 14px;margin-bottom:12px;border-radius:var(--r);background:color-mix(in srgb, var(--red) 10%, var(--s2));border:1px solid var(--red);}
-  #tab-scanner .sc-clear-confirm-text{font-size:12.5px;line-height:1.5;color:var(--text);}
-  #tab-scanner .sc-clear-confirm-btns{display:flex;gap:10px;}
-  #tab-scanner .sc-clear-confirm-btns .btn{flex:1 1 auto;min-height:42px;}
-
-  #tab-scanner .sc-earlier-row{display:flex;align-items:center;gap:8px;width:100%;padding:7px 2px;border-bottom:1px solid var(--border);}
-  #tab-scanner .sc-earlier-row:last-child{border-bottom:0;}
-  #tab-scanner .sc-earlier-main{flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 2px;background:none;border:0;color:inherit;font:inherit;text-align:left;cursor:pointer;}
-  #tab-scanner .sc-earlier-row .cert{font-family:var(--font-mono);color:var(--dim);font-size:11px;}
-  #tab-scanner .sc-earlier-row .name{font-size:13px;overflow-wrap:anywhere;}
-  #tab-scanner .sc-earlier-row .val{font-family:var(--font-display);font-weight:700;color:var(--buy);white-space:nowrap;}
-  #tab-scanner .sc-earlier-remove{flex:none;width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:var(--s2);color:var(--red);font-size:16px;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0;}
-  #tab-scanner .sc-earlier-remove:hover{background:var(--red);color:#fff;border-color:var(--red);}
+  #tab-scanner .sc-controls .sc-mode .sc-seg-btn{min-height:calc(var(--sc-dock-ctl) - 8px);} /* + the segment's 4px padding, top and bottom */
+  #tab-scanner .sc-hide-btn{
+    --sc-i:var(--i-eye-off);
+    position:relative;overflow:hidden;flex:0 0 42%;display:flex;align-items:center;justify-content:center;gap:8px;
+    min-height:var(--sc-dock-ctl);padding:0 12px;border:0;border-radius:var(--sc-r-ctl);cursor:pointer;
+    background:var(--sc-raised);color:var(--text);box-shadow:inset 0 0 0 1px var(--sc-line-2);
+    font:700 17px/1.1 var(--font-ui);letter-spacing:.02em;
+    touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+  }
+  #tab-scanner .sc-hide-btn::before{position:relative;z-index:1;}
+  #tab-scanner .sc-hide-btn span{position:relative;z-index:1;white-space:nowrap;}
+  #tab-scanner .sc-hide-btn::after{content:"";position:absolute;inset:0;background:color-mix(in srgb, var(--sc-ice) 32%, transparent);transform:scaleX(0);transform-origin:left center;}
+  #tab-scanner .sc-hide-btn.holding::after{transform:scaleX(1);transition:transform 1s linear;}
+  #tab-scanner .sc-hide-btn[aria-pressed="true"]{--sc-i:var(--i-eye);background:var(--sc-sunk);color:var(--dim);}
 
   /* Hide mode: the phone shown to a seller. The layout carries .sc-seller-mode; every staff-only
      section disappears (display:none beats each section's own [hidden] toggling) and the seller card
@@ -548,154 +861,163 @@ code{font-family:var(--font-mono);font-size:.92em;}
   body.sc-hiding .nav-tabs,body.sc-hiding .nav-right,body.sc-hiding .logo-sub{display:none !important;}
   /* Hide mode's Normal/Lower switch: a small unlabeled 1/2 control, the hold button takes the room. */
   #tab-scanner .scanner-layout.sc-seller-mode .sc-controls .sc-mode{flex:0 0 auto;}
-  #tab-scanner .scanner-layout.sc-seller-mode .sc-controls .sc-mode .sc-seg-btn{min-width:40px;padding:6px 8px;font-size:13px;}
+  #tab-scanner .scanner-layout.sc-seller-mode .sc-controls .sc-mode .sc-seg-btn{min-width:44px;padding:0 8px;}
   #tab-scanner .scanner-layout.sc-seller-mode .sc-controls .sc-hide-btn{flex:1 1 auto;}
+  /* ...and the seller card moves up under the wordmark: the market is the first thing the seller sees. */
+  #tab-scanner .scanner-layout.sc-seller-mode .sc-brand{order:-2;}
+  #tab-scanner .scanner-layout.sc-seller-mode .sc-seller{order:-1;}
 
-  #tab-scanner .sc-hide-btn{position:relative;overflow:hidden;width:100%;min-height:56px;font:800 15px/1.2 var(--font-display);letter-spacing:.4px;border-radius:var(--r-lg);background:var(--s3);color:var(--text);border:1.5px solid color-mix(in srgb, var(--buy) 45%, var(--border));touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;}
-  #tab-scanner .sc-hide-btn[aria-pressed="true"]{background:var(--s1);color:var(--dim);border-style:dashed;}
-  #tab-scanner .sc-hide-btn span{position:relative;z-index:1;}
-  #tab-scanner .sc-hide-btn::after{content:"";position:absolute;inset:0;background:color-mix(in srgb, var(--buy) 30%, transparent);transform:scaleX(0);transform-origin:left center;}
-  #tab-scanner .sc-hide-btn.holding::after{transform:scaleX(1);transition:transform 1s linear;}
+  /* The head CSS fades every .tab in with a transform, which would make the tab (not the screen) the box
+     the fixed dock sits in while it runs: the dock would start at the end of the page and jump. Fade only. */
+  #tab-scanner.tab.active{animation:scFadeIn .25s ease-out;}
+  @keyframes scFadeIn{from{opacity:0}to{opacity:1}}
 
-  #tab-scanner .sc-seg{display:flex;gap:4px;padding:4px;border-radius:var(--r-pill);background:var(--s1);border:1px solid var(--border);}
-  #tab-scanner .sc-seg-btn{flex:1 1 0;min-width:0;min-height:40px;padding:6px 10px;border-radius:var(--r-pill);border:0;background:transparent;color:var(--dim);font:700 13px/1.1 var(--font-ui);cursor:pointer;white-space:nowrap;}
-  #tab-scanner .sc-seg-btn[aria-pressed="true"]{background:var(--buy);color:var(--bg);box-shadow:0 0 12px rgba(63,169,255,.35);}
-  #tab-scanner .sc-flat{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px;}
-  #tab-scanner .sc-flat .form-input{width:88px;flex:none;font-size:17px;text-align:right;}
-  #tab-scanner .sc-flat-of{font-size:13px;color:var(--dim);}
-  #tab-scanner .sc-flat .sc-seg{flex:1 1 180px;}
-  #tab-scanner .sc-flat-err{margin-top:8px;font-size:12px;color:var(--red);}
+  /* Narrow phones (under 360px): the segmented labels and the hold button keep to one line. */
+  @media (max-width:359px){
+    #tab-scanner .sc-seg-btn{padding:0 6px;font-size:13px;}
+    #tab-scanner .sc-hide-btn{font-size:15px;}
+  }
 
-  #tab-scanner .sc-grader-pick{margin-top:10px;display:flex;flex-direction:column;gap:8px;}
-  #tab-scanner .sc-grader-pick-text{font-size:12.5px;color:var(--yellow);}
-  #tab-scanner .sc-grader-pick-btns{display:flex;flex-wrap:wrap;gap:6px;}
-  #tab-scanner .sc-grader-pick-btns .btn{flex:1 1 56px;min-height:40px;padding:6px 10px;}
+  /* Inside the Android app with its camera open, the page is a short sheet under the camera: a tighter
+     card, so We pay, Avg of 3 and CL value all sit above the dock without scrolling. */
+  body:has(.sc-native-cam) .main{padding-top:8px;}
+  #tab-scanner .sc-native-cam .sc-result-head{padding:12px 16px 8px;}
+  #tab-scanner .sc-native-cam .sc-result-id{margin-bottom:4px;}
+  #tab-scanner .sc-native-cam .sc-result-name{font-size:16px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  #tab-scanner .sc-native-cam .sc-pay{padding:12px 16px;}
+  #tab-scanner .sc-native-cam .sc-pay-val{margin-top:8px;}
+  #tab-scanner .sc-native-cam .sc-pay-val:not(.sc-words){font-size:min(44px, 11cqi);}
+  #tab-scanner .sc-native-cam .sc-math{margin-top:4px;}
+  #tab-scanner .sc-native-cam .sc-pair-cell{padding:8px 16px 12px;}
+  #tab-scanner .sc-native-cam .sc-pair-val{margin-top:4px;}
+  #tab-scanner .scanner-layout.sc-native-cam{--sc-dock-pad-top:8px;--sc-dock-ctl:48px;}
 
-  #tab-scanner .sc-seller{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:26px 16px;container-type:inline-size;}
-  #tab-scanner .sc-seller-empty{font-size:14px;color:var(--dim);}
-  #tab-scanner .sc-seller-name{font:700 14px/1.3 var(--font-display);color:var(--dim);overflow-wrap:anywhere;}
-  #tab-scanner .sc-seller-grade{font:600 12px/1.2 var(--font-mono);color:var(--muted);letter-spacing:.5px;}
-  #tab-scanner .sc-seller-market{margin-top:10px;font:800 min(46px, 12cqi)/1.1 var(--font-display);color:#fff;text-shadow:0 0 18px rgba(63,169,255,.5);overflow-wrap:anywhere;}
+  @starting-style{
+    #tab-scanner .sc-result{opacity:0;}
+  }
 </style>
 <div class="tab active" id="tab-scanner">
 <div class="scanner-layout" id="sc-layout">
 
-  <section class="card sc-vf-wrap" id="sc-vf-wrap">
+  <header class="sc-brand">
+    <img class="sc-brand-mark" src="vendor/brand/penguin-320.webp" width="42" height="42" alt="" decoding="async">
+    <div class="sc-brand-words">
+      <div class="sc-brand-name">Iced Out Penguin</div>
+      <div class="sc-brand-sub">Pricing</div>
+    </div>
+  </header>
+
+  <section class="sc-card sc-signin sc-staff-only" id="sc-signin" hidden>
+    <div class="sc-signin-head">
+      <span class="sc-badge" aria-hidden="true"></span>
+      <div>
+        <h2 class="sc-h">Sign in for live prices</h2>
+        <p class="sc-sub">Prices need your scanner login. Ask the owner if you don't have one.</p>
+      </div>
+    </div>
+    <label class="sc-field"><span class="sc-label">Email</span><input class="sc-input" id="sc-email" type="email" autocomplete="username"></label>
+    <label class="sc-field"><span class="sc-label">Password</span><input class="sc-input" id="sc-password" type="password" autocomplete="current-password"></label>
+    <button type="button" class="sc-btn sc-btn-primary sc-btn-block" id="sc-signin-go">Sign in</button>
+    <span class="sc-sub" id="sc-signed-in-as"></span>
+    <div class="sc-signin-err" id="sc-signin-err" role="alert" hidden></div>
+  </section>
+
+  <section class="sc-vf-wrap" id="sc-vf-wrap" aria-label="Scanner camera">
     <div class="sc-vf" id="sc-vf" hidden>
       <video class="sc-vf-video" id="sc-video" autoplay playsinline muted></video>
       <svg class="sc-vf-marks" id="sc-marks"></svg>
       <div class="sc-vf-top">
-        <button type="button" class="sc-vf-round" id="sc-torch" title="Flashlight" aria-pressed="false" hidden>🔦</button>
+        <button type="button" class="sc-vf-round" id="sc-torch" title="Flashlight" aria-label="Flashlight" aria-pressed="false" hidden></button>
         <span class="sc-vf-pill" id="sc-vf-status">Starting camera…</span>
-        <button type="button" class="sc-vf-round" id="sc-sound" title="Sound" aria-pressed="true">🔊</button>
+        <button type="button" class="sc-vf-round" id="sc-sound" title="Sound" aria-label="Sound" aria-pressed="true"></button>
       </div>
       <div class="sc-vf-bottom">
         <div class="sc-vf-zoom-wrap" id="sc-zoom-wrap" hidden>
           <input type="range" class="sc-vf-zoom" id="sc-zoom" min="1" max="1" step="0.1" value="1" aria-label="Zoom">
         </div>
         <div class="sc-vf-hint" id="sc-vf-hint">Tap a barcode's outline to read it</div>
-        <button type="button" class="sc-vf-shutter" id="sc-shutter" title="Read the most central barcode"><span></span></button>
+        <button type="button" class="sc-vf-shutter" id="sc-shutter" title="Read the most central barcode" aria-label="Read the most central barcode"><span></span></button>
       </div>
     </div>
     <div class="sc-vf-off" id="sc-vf-off">
-      <div class="sc-vf-off-icon">📷</div>
-      <div class="sc-vf-off-text" id="sc-vf-off-text">Tap to scan a slab's barcode or QR code. One tap reads it - it never grabs a code on its own.</div>
-      <button type="button" class="btn btn-buy" id="sc-start">Start camera</button>
+      <div class="sc-start-row"><button type="button" class="sc-start" id="sc-start">Start scanning</button></div>
+      <p class="sc-vf-off-text" id="sc-vf-off-text">Point at the slab, then tap its barcode. Nothing is read until you tap.</p>
     </div>
   </section>
 
-  <section class="card" id="sc-box-card">
-    <div class="form-label">Cert number</div>
-    <div class="sc-box">
-      <input class="form-input" id="sc-cert-input" type="text" inputmode="numeric" autocomplete="off"
-             placeholder="Type or paste a cert, or a PSA/CGC cert link" aria-label="Cert number">
-      <button type="button" class="btn btn-buy" id="sc-cert-go">Price it</button>
-    </div>
-    <div class="sc-box-err" id="sc-box-err" hidden></div>
-    <div class="sc-grader-pick" id="sc-grader-pick" hidden>
-      <div class="sc-grader-pick-text" id="sc-grader-pick-text">BGS or other grader: type the grader</div>
-      <div class="sc-grader-pick-btns" role="group" aria-label="Grader">
-        <button type="button" class="btn btn-ghost" data-grader="psa">PSA</button>
-        <button type="button" class="btn btn-ghost" data-grader="cgc">CGC</button>
-        <button type="button" class="btn btn-ghost" data-grader="bgs">BGS</button>
-        <button type="button" class="btn btn-ghost" data-grader="sgc">SGC</button>
-        <button type="button" class="btn btn-ghost" data-grader="tag">TAG</button>
-      </div>
-    </div>
-  </section>
-
-  <section class="card sc-signin sc-staff-only" id="sc-signin" hidden>
-    <div class="card-title">🔒 Sign in for live pricing</div>
-    <p class="sc-sub">Live prices need your scanner login. Ask the owner if you don't have one.</p>
-    <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="sc-email" type="email" autocomplete="username"></div>
-    <div class="form-group"><label class="form-label">Password</label><input class="form-input" id="sc-password" type="password" autocomplete="current-password"></div>
-    <button type="button" class="btn btn-buy" id="sc-signin-go">Sign in</button>
-    <span class="sc-sub" id="sc-signed-in-as" style="display:block;margin-top:10px;"></span>
-    <div class="sc-signin-err" id="sc-signin-err" hidden></div>
-  </section>
-
-  <!-- The result: ONE big box under the scan, three coloured squares (the owner's own layout): what
-       we pay, the avg of 3, the CL value. The rule's math sits small under the Pay square. -->
-  <section class="card scanner-result sc-staff-only" id="sc-result" hidden>
+  <!-- The result: ONE card under the scan. On top, the slab's own label (grader, grade, cert, name);
+       under it what we pay, big, with the rule's math; then the avg of 3 and the CL value side by side. -->
+  <section class="sc-card sc-result scanner-result sc-staff-only" id="sc-result" hidden>
     <div class="sc-result-head">
-      <div class="sc-result-name" id="sc-name">-</div>
       <div class="sc-result-id">
+        <span class="sc-chip" id="sc-grader">-</span>
+        <span class="sc-result-grade" id="sc-grade">-</span>
         <span class="sc-result-cert" id="sc-cert">-</span>
-        <span id="sc-grader">-</span>
-        <span id="sc-grade">-</span>
-        <span class="status-pill st-accepted" id="sc-rescan-badge" hidden>Already in pile - updated</span>
+        <span class="sc-chip sc-rescan" id="sc-rescan-badge" hidden>Updated in pile</span>
       </div>
+      <div class="sc-result-name" id="sc-name">-</div>
     </div>
 
-    <div class="sc-squares">
-      <div class="sc-sq sc-sq-pay">
-        <div class="sc-sq-label">We pay</div>
-        <div class="sc-sq-val" id="sc-pay">-</div>
-        <div class="sc-sq-math" id="sc-rule-math"></div>
-      </div>
-      <div class="sc-sq sc-sq-avg">
-        <div class="sc-sq-label">Avg of 3</div>
-        <div class="sc-sq-val" id="sc-avg3">-</div>
-      </div>
-      <div class="sc-sq sc-sq-clv">
-        <div class="sc-sq-label">CL value</div>
-        <div class="sc-sq-val" id="sc-clv">-</div>
-      </div>
+    <div class="sc-pay">
+      <div class="sc-key sc-key-pay">We pay</div>
+      <div class="sc-pay-val" id="sc-pay">-</div>
+      <div class="sc-math" id="sc-rule-math"></div>
     </div>
+    <dl class="sc-pair">
+      <div class="sc-pair-cell">
+        <dt class="sc-key sc-key-avg">Avg of 3</dt>
+        <dd class="sc-pair-val" id="sc-avg3">-</dd>
+      </div>
+      <div class="sc-pair-cell">
+        <dt class="sc-key sc-key-clv">CL value</dt>
+        <dd class="sc-pair-val" id="sc-clv">-</dd>
+      </div>
+    </dl>
 
     <div class="sc-note" id="sc-note" hidden></div>
     <div class="sc-retry" id="sc-retry" hidden>
-      <button type="button" class="btn btn-ghost btn-sm" id="sc-retry-btn">Retry</button>
+      <button type="button" class="sc-btn sc-btn-quiet" id="sc-retry-btn">Retry</button>
     </div>
   </section>
 
   <!-- Hide mode's seller card: the card's name and grade, small, and the MARKET, big. Nothing else is
        ever written into it (see ScannerTab's renderSeller). -->
-  <section class="card sc-seller sc-seller-only" id="sc-seller" aria-live="polite">
+  <section class="sc-card sc-seller sc-seller-only" id="sc-seller" aria-live="polite">
     <div class="sc-seller-empty" id="sc-seller-empty">Scan a card</div>
     <div class="sc-seller-name" id="sc-seller-name" hidden></div>
     <div class="sc-seller-grade" id="sc-seller-grade" hidden></div>
     <div class="sc-seller-market" id="sc-seller-market" hidden></div>
   </section>
 
-  <!-- Always on screen, hidden or not: Normal / Lower market, and the one hide button. -->
-  <div class="sc-controls">
-    <div class="sc-seg sc-mode" id="sc-mode" role="group" aria-label="Market">
-      <button type="button" class="sc-seg-btn" data-mode="normal" aria-pressed="true">Normal</button>
-      <button type="button" class="sc-seg-btn" data-mode="lower" aria-pressed="false">Lower</button>
+  <section class="sc-entry" id="sc-box-card">
+    <label class="sc-label" for="sc-cert-input">Cert number</label>
+    <div class="sc-box">
+      <input class="sc-cert-input" id="sc-cert-input" type="text" inputmode="numeric" autocomplete="off"
+             placeholder="Number or PSA/CGC link">
+      <button type="button" class="sc-btn sc-btn-primary" id="sc-cert-go">Price it</button>
     </div>
-    <button type="button" class="btn sc-hide-btn" id="sc-hide-btn" aria-pressed="false"><span id="sc-hide-label">Hide</span></button>
-  </div>
+    <div class="sc-box-err" id="sc-box-err" role="alert" hidden></div>
+    <div class="sc-grader-pick" id="sc-grader-pick" hidden>
+      <div class="sc-grader-pick-text" id="sc-grader-pick-text">BGS or other grader: pick the grader</div>
+      <div class="sc-grader-pick-btns" role="group" aria-label="Grader">
+        <button type="button" class="sc-btn sc-btn-quiet" data-grader="psa">PSA</button>
+        <button type="button" class="sc-btn sc-btn-quiet" data-grader="cgc">CGC</button>
+        <button type="button" class="sc-btn sc-btn-quiet" data-grader="bgs">BGS</button>
+        <button type="button" class="sc-btn sc-btn-quiet" data-grader="sgc">SGC</button>
+        <button type="button" class="sc-btn sc-btn-quiet" data-grader="tag">TAG</button>
+      </div>
+    </div>
+  </section>
 
-  <section class="card sc-rule-card sc-staff-only" id="sc-rule-card">
-    <div class="form-label">Price with <span class="sc-rule-sheet" id="sc-rate-label">Normal rates</span></div>
+  <section class="sc-rules sc-staff-only" id="sc-rule-card">
+    <h2 class="sc-h">Price with</h2>
     <div class="sc-seg" role="group" aria-label="Price with">
       <button type="button" class="sc-seg-btn" data-rule="normal" aria-pressed="true">Normal rates</button>
       <button type="button" class="sc-seg-btn" data-rule="consignor" aria-pressed="false">Consignor rates</button>
       <button type="button" class="sc-seg-btn" data-rule="flat" aria-pressed="false">Flat %</button>
     </div>
     <div class="sc-flat" id="sc-flat" hidden>
-      <input class="form-input" id="sc-flat-pct" type="text" inputmode="decimal" autocomplete="off" placeholder="90" aria-label="Percent">
+      <input class="sc-input" id="sc-flat-pct" type="text" inputmode="decimal" autocomplete="off" placeholder="90" aria-label="Percent">
       <span class="sc-flat-of">% of</span>
       <div class="sc-seg" role="group" aria-label="Percent of">
         <button type="button" class="sc-seg-btn" data-basis="value" aria-pressed="true">CL value</button>
@@ -703,41 +1025,52 @@ code{font-family:var(--font-mono);font-size:.92em;}
       </div>
     </div>
     <div class="sc-flat-err" id="sc-flat-err" hidden>Type a percent from 1 to 100 (up to two decimals).</div>
+    <div class="sc-rule-sheet" id="sc-rate-label">Normal rates</div>
     <div class="sc-rule-hint" id="sc-rule-hint" hidden></div>
   </section>
 
-  <section class="card scanner-earlier sc-staff-only" id="sc-earlier" hidden>
-    <div class="sec-head">
-      <div class="sec-title">This visit</div>
-      <button type="button" class="btn btn-ghost btn-sm" id="sc-clear">New seller</button>
+  <section class="sc-card sc-pile scanner-earlier sc-staff-only" id="sc-earlier" hidden>
+    <div class="sc-pile-head">
+      <div>
+        <h2 class="sc-h">This visit</h2>
+        <div class="sc-pile-count" id="sc-pile-count">0 cards</div>
+      </div>
+      <button type="button" class="sc-btn sc-btn-quiet" id="sc-clear">New seller</button>
     </div>
 
     <div class="sc-pile-totals" id="sc-pile-totals" hidden>
-      <div class="sc-pile-count" id="sc-pile-count">0 cards</div>
-      <div class="sc-pile-tiles">
-        <div class="sc-pile-tile">
-          <div class="sc-stat-label">Pile value</div>
-          <div class="sc-money" id="sc-pile-market">-</div>
-          <div class="sc-pile-unknown" id="sc-pile-unknown" hidden></div>
-        </div>
-        <div class="sc-pile-tile sc-pile-tile-buy">
-          <div class="sc-stat-label" id="sc-pile-pay-label">You'd pay</div>
-          <div class="sc-money" id="sc-pile-payout">-</div>
-          <div class="sc-pile-sub" id="sc-pile-buy-count"></div>
-        </div>
+      <div class="sc-total">
+        <div class="sc-key">Pile value</div>
+        <div class="sc-total-val" id="sc-pile-market">-</div>
+        <div class="sc-pile-unknown" id="sc-pile-unknown" hidden></div>
+      </div>
+      <div class="sc-total">
+        <div class="sc-key sc-key-pay" id="sc-pile-pay-label">You'd pay</div>
+        <div class="sc-total-val" id="sc-pile-payout">-</div>
+        <div class="sc-pile-sub" id="sc-pile-buy-count"></div>
       </div>
     </div>
 
-    <div class="sc-clear-confirm" id="sc-clear-confirm" hidden>
+    <div class="sc-clear-confirm" id="sc-clear-confirm" role="alert" hidden>
       <div class="sc-clear-confirm-text">Clear all <span id="sc-clear-count">0</span> cards and start a new seller? This can't be undone.</div>
       <div class="sc-clear-confirm-btns">
-        <button type="button" class="btn btn-danger btn-sm" id="sc-clear-yes">Yes, clear it</button>
-        <button type="button" class="btn btn-ghost btn-sm" id="sc-clear-no">Cancel</button>
+        <button type="button" class="sc-btn sc-btn-danger" id="sc-clear-yes">Yes, clear it</button>
+        <button type="button" class="sc-btn sc-btn-quiet" id="sc-clear-no">Cancel</button>
       </div>
     </div>
 
     <div id="sc-earlier-list"></div>
   </section>
+
+  <!-- Always on screen, hidden or not: Normal / Lower market, and the one hide button. A dock at the
+       bottom of the screen, where the thumb is. -->
+  <div class="sc-controls">
+    <div class="sc-seg sc-mode" id="sc-mode" role="group" aria-label="Market">
+      <button type="button" class="sc-seg-btn" data-mode="normal" aria-pressed="true">Normal</button>
+      <button type="button" class="sc-seg-btn" data-mode="lower" aria-pressed="false">Lower</button>
+    </div>
+    <button type="button" class="sc-hide-btn" id="sc-hide-btn" aria-pressed="false"><span id="sc-hide-label">Hide</span></button>
+  </div>
 
 </div>
 </div>
@@ -1976,11 +2309,11 @@ var WORKER_FAILURE_LIMIT = 3;
 
 // ── Plain words for why the camera didn't start, and what to do - verbatim from CAMERA_HELP. ───────
 var CAMERA_HELP = {
-  denied: "The camera is blocked for this site. Allow it in your browser's settings (iPhone: Settings, then Safari, then Camera), then tap Start camera.",
+  denied: "The camera is blocked for this site. Allow it in your browser's settings (iPhone: Settings, then Safari, then Camera), then tap Start scanning.",
   none: 'No camera found on this device. Type the cert or use the scanner gun below.',
-  busy: 'Another app is using the camera. Close it, then tap Start camera.',
+  busy: 'Another app is using the camera. Close it, then tap Start scanning.',
   unsupported: "This browser can't use the camera here. Type the cert below instead.",
-  failed: "The camera didn't start. Tap Start camera to try again."
+  failed: "The camera didn't start. Tap Start scanning to try again."
 };
 
 function now() {
@@ -3987,6 +4320,15 @@ function payText(price, avgStatus, fmt) {
   return 'Staff will price';
 }
 
+/** The Pay square's LOOK, decided from the same fields payText reads (in the same order), never from
+ *  its wording: 'wait' while the price is still on its way (the box pulses), 'no' when no rule takes
+ *  the card (it turns red), null for everything else. */
+function payLook(price, avgStatus) {
+  if (!price || typeof price.payoutCents === 'number') return null;
+  if (price.awaitingAverage) return avgStatus === 'pending' ? 'wait' : null;
+  return price.rejected ? 'no' : null;
+}
+
 /** The applied rule as its math, e.g. "Avg of 3 × 90%". null when there is no rate to show. */
 function ruleMath(price) {
   if (!price || typeof price.pct !== 'number' || !BASIS_WORDS[price.basis]) return null;
@@ -3998,6 +4340,13 @@ function marketLine(market, fmt) {
   if (market && typeof market.cents === 'number') return 'Market ' + fmt(market.cents);
   if (market && market.pending) return 'Checking the market…';
   return 'Market not available';
+}
+
+/** Hide mode's market line LOOK, from the same fields marketLine reads: 'wait' while it is still being
+ *  checked, null once there is a number or a final "not available". */
+function marketLook(market) {
+  if (market && typeof market.cents === 'number') return null;
+  return market && market.pending ? 'wait' : null;
 }
 
 window.OfferRules = {
@@ -4013,8 +4362,10 @@ window.OfferRules = {
   normalSheet: normalSheet,
   normalNote: normalNote,
   payText: payText,
+  payLook: payLook,
   ruleMath: ruleMath,
   marketLine: marketLine,
+  marketLook: marketLook,
 };
 })();
 
@@ -4478,6 +4829,40 @@ window.NativeBridge = {
     // the browser camera and hands every barcode to window.penguinScan. ───────────────────────────
     var bridge = NativeBridge.createNativeBridge(window);
     var nativeScannerOpen = false;
+    // The app's camera opens ABOVE this page (the page becomes a sheet under it), so while it is open the
+    // page's own camera frame has nothing to show: it folds away (.sc-native-cam), and comes back with its
+    // usual prompt when the app says the camera closed (Done or back fires 'penguinscannerclosed').
+    // bridge.openScanner() only says the message was posted to the app, and the app gives no "opened"
+    // answer. Nothing on the page can tell a dropped message from an open camera either: the page is a
+    // sheet UNDER the camera in the same window, so it never loses focus or visibility. So the frame never
+    // folds away entirely: it keeps its Start button (as "Reopen camera", see .sc-native-cam in the CSS),
+    // and pressing it again is harmless because the app ignores a second open.
+    var VF_OFF_PROMPT = dom.vfOffText.textContent;
+    var START_LABEL = dom.start.textContent;
+    function setNativeCamera(open) {
+      nativeScannerOpen = !!open;
+      dom.layout.classList.toggle('sc-native-cam', nativeScannerOpen);
+      if (bridge.isAvailable()) dom.start.textContent = nativeScannerOpen ? 'Reopen camera' : START_LABEL;
+      if (!nativeScannerOpen) dom.vfOffText.textContent = VF_OFF_PROMPT;
+    }
+    window.addEventListener('penguinscannerclosed', function () { setNativeCamera(false); });
+
+    // ── the on-screen keyboard: the dock (Normal / Lower and Hide) steps aside for it. In a browser the
+    // keyboard shrinks the visual viewport while the page keeps its size, so that gap is the signal; a
+    // field merely having focus is not (a Bluetooth scanner gun keeps the cert box focused with no
+    // keyboard at all). A pinched-in page also has a smaller visual viewport, so only an unzoomed page
+    // counts. With no visualViewport the dock is never hidden. (The Android app shrinks its web view for
+    // the keyboard instead, so the gap never opens there and the dock rides on top of the keyboard.)
+    var KEYBOARD_GAP_PX = 150;
+    function updateKeyboardOpen() {
+      var vv = window.visualViewport;
+      var open = !!vv && (vv.scale || 1) <= 1.05 && vv.height < window.innerHeight - KEYBOARD_GAP_PX;
+      dom.layout.classList.toggle('sc-kbd-open', open);
+    }
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateKeyboardOpen);
+      updateKeyboardOpen();
+    }
 
     function authFetch(url, opts) {
       opts = opts || {};
@@ -4641,10 +5026,11 @@ window.NativeBridge = {
 
     function money(cents) { return PriceCore.money.fmt(cents); }
 
-    function showNote(text, warn) {
+    /** `kind` 'down': the Triumph-down line, a small status line rather than a warning (sc-note-down). */
+    function showNote(text, warn, kind) {
       dom.note.textContent = text || '';
       dom.note.hidden = !text;
-      dom.note.className = 'sc-note' + (warn ? ' warn' : '');
+      dom.note.className = 'sc-note' + (warn ? ' warn' : '') + (kind === 'down' ? ' sc-note-down' : '');
     }
 
     // ── retry: a cert that couldn't be looked up for want of signal must be retryable without
@@ -4692,13 +5078,17 @@ window.NativeBridge = {
     }
 
     // ── the three squares. `setSquare` writes a number big, or a few words smaller (sc-words), so
-    // "Not buying right now" never has to squeeze into a money-sized font. ─────────────────────────
-    function setSquare(el, text, isMoney) {
+    // "Not buying right now" never has to squeeze into a money-sized font. `look` is the box's state,
+    // decided by the code that wrote it and never read back off the wording: 'wait' (still being
+    // fetched: it pulses, sc-wait) or 'no' (not buying, or the lookup failed: it turns red, sc-no). ──
+    function setSquare(el, text, isMoney, look) {
       el.textContent = text;
       el.classList.toggle('sc-words', !isMoney);
+      el.classList.toggle('sc-wait', look === 'wait');
+      el.classList.toggle('sc-no', look === 'no');
     }
-    function clearSquares(payText) {
-      setSquare(dom.pay, payText || '-', false);
+    function clearSquares(payText, payLook) {
+      setSquare(dom.pay, payText || '-', false, payLook);
       setSquare(dom.avg3, '-', false);
       setSquare(dom.clv, '-', false);
       dom.ruleMath.textContent = '';
@@ -4710,7 +5100,7 @@ window.NativeBridge = {
       dom.cert.textContent = cert;
       dom.grader.textContent = grader.toUpperCase();
       dom.grade.textContent = '-';
-      clearSquares('Looking up…');
+      clearSquares('Looking up…', 'wait');
       dom.rescanBadge.hidden = true;
       hideRetry();
       showNote('');
@@ -4733,7 +5123,7 @@ window.NativeBridge = {
 
     function renderError(cert, grader, msg) {
       dom.result.hidden = false;
-      setSquare(dom.pay, 'Error', false);
+      setSquare(dom.pay, 'Error', false, 'no');
       showNote(msg, true);
       currentKey = null;
       sellerView = { name: grader.toUpperCase() + ' ' + cert, grade: '', market: null };
@@ -4909,10 +5299,11 @@ window.NativeBridge = {
       dom.grader.textContent = f.grader.toUpperCase();
       dom.grade.textContent = f.gradeText ? ('Grade ' + f.gradeText) : '-';
 
-      setSquare(dom.clv, f.clvCents != null ? money(f.clvCents) : (TriumphDown.waitingForValue(f) ? 'Getting value…' : 'No value'), f.clvCents != null);
+      var clvWaiting = f.clvCents == null && TriumphDown.waitingForValue(f);
+      setSquare(dom.clv, f.clvCents != null ? money(f.clvCents) : (clvWaiting ? 'Getting value…' : 'No value'), f.clvCents != null, clvWaiting ? 'wait' : null);
       if (f.avgStatus === 'done') setSquare(dom.avg3, f.avg3Cents != null ? money(f.avg3Cents) : 'Not enough sales', f.avg3Cents != null);
-      else setSquare(dom.avg3, f.avgStatus === 'pending' ? 'Getting average…' : 'Not available', false);
-      setSquare(dom.pay, OfferRules.payText(price, f.avgStatus, money), !!price && typeof price.payoutCents === 'number');
+      else setSquare(dom.avg3, f.avgStatus === 'pending' ? 'Getting average…' : 'Not available', false, f.avgStatus === 'pending' ? 'wait' : null);
+      setSquare(dom.pay, OfferRules.payText(price, f.avgStatus, money), !!price && typeof price.payoutCents === 'number', OfferRules.payLook(price, f.avgStatus));
       // The rule line: the band's math, and while no Scanner sheet is saved, that Normal is borrowing the
       // consignor rates (staff only: hide mode never shows this card).
       var math = OfferRules.ruleMath(price) || '';
@@ -4933,7 +5324,7 @@ window.NativeBridge = {
       // Triumph is down and this card is still waiting for the CL value that comes with its average: say
       // so (staff only: hide mode hides this whole card). A missing rate sheet or percent is the more
       // actionable problem, so those notes still win.
-      if (TriumphDown.waitingForValue(f) && !(priced && (priced.noSheet || priced.noPct))) { showNote(TriumphDown.DOWN_NOTE, true); return; }
+      if (TriumphDown.waitingForValue(f) && !(priced && (priced.noSheet || priced.noPct))) { showNote(TriumphDown.DOWN_NOTE, false, 'down'); return; }
       if (!priced) { showNote(''); return; }
       if (priced.noSheet) {
         showNote(priced.rule === 'consignor'
@@ -4981,6 +5372,7 @@ window.NativeBridge = {
       dom.sellerName.textContent = v ? v.name : '';
       dom.sellerGrade.textContent = v && v.grade ? v.grade : '';
       dom.sellerMarket.textContent = v ? OfferRules.marketLine(v.market, money) : '';
+      dom.sellerMarket.classList.toggle('sc-wait', !!v && OfferRules.marketLook(v.market) === 'wait');
     }
 
     /** Hide mode also hides everything OUTSIDE the scanner (the header's links to the rate sheets and
@@ -5325,7 +5717,7 @@ window.NativeBridge = {
           onTrouble: function (msg) { dom.vfStatus.textContent = msg || 'Point at a barcode'; },
           onEnded: function () {
             closeCamera();
-            dom.vfOffText.textContent = 'The camera stopped. Tap Start camera to turn it back on.';
+            dom.vfOffText.textContent = 'The camera stopped. Tap Start scanning to turn it back on.';
           }
         }
       }).then(function (c) {
@@ -5346,7 +5738,7 @@ window.NativeBridge = {
       }, function (err) {
         dom.vf.hidden = true;
         dom.vfOff.hidden = false;
-        dom.vfOffText.textContent = (err && err.message) || "The camera didn't start. Tap Start camera to try again, or type the cert below.";
+        dom.vfOffText.textContent = (err && err.message) || "The camera didn't start. Tap Start scanning to try again, or type the cert below.";
         throw err;
       });
     }
@@ -5385,8 +5777,8 @@ window.NativeBridge = {
         // Inside the Android app its own scanner replaces the browser camera; every barcode it reads
         // comes back through window.penguinScan -> handleScanned, the same path the camera uses.
         if (bridge.isAvailable()) {
-          nativeScannerOpen = bridge.openScanner();
-          if (nativeScannerOpen) { dom.vfOffText.textContent = 'Scanning with the app. Each barcode it reads is priced here.'; return; }
+          setNativeCamera(bridge.openScanner());
+          if (nativeScannerOpen) return;
         }
         dom.start.disabled = true;
         startCamera().catch(function () { /* message already set inside startCamera() */ }).then(function () { dom.start.disabled = false; });
@@ -5394,7 +5786,7 @@ window.NativeBridge = {
       if (!cameraSupported() && !bridge.isAvailable()) { dom.start.textContent = 'Camera not available here'; dom.start.disabled = true; }
       function renderSoundButton() {
         var on = feedback.isSoundOn();
-        dom.sound.textContent = on ? '🔊' : '🔇';
+        // The speaker icon follows aria-pressed in the panel's CSS (on: sound waves, off: crossed out).
         dom.sound.setAttribute('aria-pressed', on ? 'true' : 'false');
         dom.sound.title = on ? 'Sound on - tap to mute' : 'Sound off - tap to unmute';
       }
@@ -5526,6 +5918,23 @@ window.NativeBridge = {
     renderRuleControls();
     renderPile();
 
+    // ── typography only: a blank "-" (a grade not known yet is hidden, a dash box is dimmed) and a market
+    // line with no number in it (set in words, not the hero font). The pulse (sc-wait) and the red
+    // (sc-no) are NOT read from the wording here: setSquare/renderSeller set them from the state that
+    // wrote the words. This only ever toggles a class: nothing here decides or changes a price. ────────
+    (function watchValueLooks() {
+      if (typeof MutationObserver === 'undefined') return;
+      [dom.pay, dom.avg3, dom.clv, dom.grade, dom.sellerMarket].forEach(function (el) {
+        function mark() {
+          var t = String(el.textContent || '').trim();
+          el.classList.toggle('sc-blank', t === '-' || t === '');
+          el.classList.toggle('sc-plain', t.indexOf('$') < 0);
+        }
+        new MutationObserver(mark).observe(el, { childList: true, characterData: true, subtree: true });
+        mark();
+      });
+    })();
+
     /** After a reload (or coming back to this tab): any card without a real answer yet - still waiting,
         timed out, or cut off by an error - asks again (its poll did not survive). A cached answer comes
         straight back from the GET; nothing is re-queued that is still fresh. */
@@ -5556,7 +5965,7 @@ window.NativeBridge = {
       stopAllAveragePolls();
       document.body.classList.remove('sc-hiding'); // another tab of the dev view keeps its header
       resumed = false;
-      if (nativeScannerOpen) { bridge.closeScanner(); nativeScannerOpen = false; }
+      if (nativeScannerOpen) { bridge.closeScanner(); setNativeCamera(false); }
     }
 
     return { activate: activate, isBusy: isBusy, deactivate: deactivate };
