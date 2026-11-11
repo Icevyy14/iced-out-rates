@@ -442,55 +442,66 @@ code{font-family:var(--font-mono);font-size:.92em;}
 
 <main class="main">
 
+<!-- The Scanner's one typeface (Manrope 500/700/800), loaded with this panel so only the scanner pages fetch it
+     (the head already preconnects to both font hosts). Until it arrives, or with no signal, the system sans. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap">
 <style>
-  /* Hallmark · pre-emit critique: P4 H5 E4 S4 R4 V4
-     Hallmark · genre: atmospheric · macrostructure: Workbench (one app screen, the Scanner) · theme: the site's own
-     blue / black / red tokens, kept · nav: none · motion: press feedback + one slow pulse on a value
-     that is still being fetched.
-     Scoped to this panel on purpose, same reasoning as PANEL:consignors' own <style>: only the scanner
-     pages ship this markup, so it stays out of the shared head CSS every page carries.
-
-     Built for one hand at a card show, 360px wide and up (owner, 2026-11-10: "make an actually
-     nice-looking UI instead of just a couple of rectangles and boxes"):
-       - the camera is the hero at the top, and its start state IS the camera frame (nothing is left
-         behind once it runs; with the Android app's own camera open it folds away completely);
-       - ONE result card, laid out like a slab label: grader, grade and cert on top, the card's name,
-         then "We pay" big, with Avg of 3 and CL value side by side underneath;
-       - settings are segmented controls, not stacked boxes; Normal / Lower and Hide live in a dock at
-         the bottom of the screen, where the thumb already is;
-       - colour is a key, not decoration: red marks what we pay, blue the avg of 3, violet the CL value
-         (the owner's own three-colour mapping), ice blue only on the primary actions.
-     Shape system: surfaces 20px; controls 16px; anything inside a control 12px; chips and glass labels
-     over the camera are pills. Type: Orbitron only for the wordmark and the two hero numbers (We pay,
-     hide mode's Market), Rajdhani for words, JetBrains Mono for certs and secondary money.
-     Icons: Lucide (ISC licence), inlined as CSS masks so a script writing a button's text never
-     wipes its icon. */
+  /* Scanner · the "calm dark sheet" (owner, 2026-11-11: "The ui looks good ... implement it").
+     A calm finance-app layout on a dark theme in the owner's palette: crimson #BF092F, navy #132440, steel
+     #16476A, teal #3B9797; the penguin, the red and the blue stay. Built for one hand at a card show (Operate:
+     scanability first, the brand in the details): the two numbers said out loud (We pay, This visit) sit
+     directly under the camera, then the card, then the pile, with Normal / Lower and Hide in a dock where the
+     thumb already is.
+       - Colour is a key the owners already read: red = We pay (and "no"), blue = Avg of 3 and the actions,
+         teal = CL value. Red is only ever a fill or a lightened tint (#FF9AA8), never red text on the dark.
+       - Decoration is deliberately small: soft navy gradients on surfaces, ONE arc holding a faint diamond
+         pattern on the We pay tile, a ring on the grade circle, a teal gradient on the active segment and a
+         blue one on the primary button. No pattern behind data, no display face, no badges.
+       - Type: Manrope (500/700/800, one family), tabular numerals for money, one type scale (--sc-fs-*).
+       - Icons: Lucide (ISC licence), inlined as CSS masks so a script writing a button's text never wipes
+         its icon.
+     Shapes: cards 22px, the two scoreboard tiles 20px, controls and chips are pills.
+     Scoped to this panel on purpose, same reasoning as PANEL:consignors' own <style>: only the scanner pages
+     ship this markup, so it stays out of the shared head CSS every page carries. The chrome around it (the
+     page background, and scanner.html's site header) is re-coloured only while the scanner is the tab on
+     screen (html:has(#tab-scanner.tab.active)): colours only, no layout, and the other pages keep their look. */
   #tab-scanner{
-    --sc-ice:var(--buy);
-    --sc-red:var(--red);
-    --sc-violet:color-mix(in srgb, var(--purple) 62%, var(--text));
-    --sc-pay-ink:color-mix(in srgb, var(--red) 78%, var(--text));
-    --sc-avg-ink:color-mix(in srgb, var(--buy) 82%, var(--text));
-    --sc-warn-ink:color-mix(in srgb, var(--red) 38%, var(--text));
-    --sc-sunk:var(--s1);
-    --sc-card:var(--s2);
-    --sc-raised:color-mix(in srgb, var(--s3) 88%, var(--text));
-    --sc-line:color-mix(in srgb, var(--dim) 17%, transparent);
-    --sc-line-2:color-mix(in srgb, var(--dim) 30%, transparent);
-    --sc-glass:color-mix(in srgb, var(--bg) 62%, transparent);
-    --sc-glass-line:color-mix(in srgb, var(--text) 16%, transparent);
-    --sc-shutter:color-mix(in srgb, var(--text) 96%, transparent);
-    --sc-lens:color-mix(in srgb, var(--bg) 70%, black);
-    --sc-ring:color-mix(in srgb, var(--buy) 20%, transparent);
-    --sc-r-card:20px;
-    --sc-r-ctl:16px;
-    --sc-r-in:12px;
+    /* brand, fixed by the owner */
+    --sc-crimson:#BF092F; --sc-navy:#132440; --sc-steel:#16476A; --sc-teal:#3B9797;
+    /* the dark theme */
+    --sc-cam:#060D18;
+    --sc-card-top:#1E375D; --sc-card-bot:#192F50; --sc-surface:#1B3256;
+    --sc-dock-top:#13243F; --sc-dock:#0F1D33;
+    --sc-ink:#F2F6FA; --sc-muted:#A9B9CC; --sc-faint:#7F92AB; --sc-ph:#8A9DB5;
+    --sc-line:rgba(255,255,255,.08);
+    --sc-fill:#1A3152; --sc-fill-card:#28466F; --sc-fill-focus:#213B60;
+    --sc-edge:#5A7090; --sc-edge-card:#6D84A2;
+    --sc-steel-ink:#9CCBEE; --sc-avg:#6FB1E0;
+    --sc-blue-top:#2678B3; --sc-blue-bot:#1F6FA8;
+    --sc-teal-ink:#5CC4C4; --sc-teal-top:#4BAAA8;
+    --sc-wait-tint:rgba(111,177,224,.16);
+    --sc-teal-tint:rgba(59,151,151,.22); --sc-teal-chip:#7FD6D6;
+    --sc-err-tint:rgba(191,9,47,.24); --sc-err-ink:#FF9AA8;
+    --sc-grey-tint:#28466F;
+    --sc-focus:rgba(111,177,224,.6); --sc-focus-soft:rgba(111,177,224,.35);
+    --sc-hi:inset 0 1px 0 rgba(255,255,255,.09);
+    --sc-ring:inset 0 0 0 1px rgba(255,255,255,.055);
+    --sc-sh-card:var(--sc-hi), var(--sc-ring), 0 1px 1px rgba(0,0,0,.25), 0 12px 24px -14px rgba(0,0,0,.85);
+    --sc-card-bg:linear-gradient(180deg, var(--sc-card-top), var(--sc-card-bot));
+    --sc-steel-orb:radial-gradient(circle at 32% 26%, #1F5A86 0%, #16476A 58%, #123A57 100%);
+    --sc-r-card:22px;
+    --sc-r-tile:20px;
     --sc-ease:cubic-bezier(.16, 1, .3, 1);
-    /* The dock's parts: its padding above and below one row of controls (the safe-area inset is added
-       on top of the bottom padding). --sc-dock-h is summed from these on .scanner-layout. */
-    --sc-dock-pad-top:16px;
+    --sc-font:'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    /* One type scale: every size on the scanner comes from these five. */
+    --sc-fs-hero:36px; --sc-fs-num:22px; --sc-fs-body:16px; --sc-fs-row:15px; --sc-fs-label:13px;
+    /* The dock's parts: its padding above and below its controls (the safe-area inset is added on top of the
+       bottom padding). --sc-dock-h is summed from these on .scanner-layout. */
+    --sc-dock-pad-top:12px;
     --sc-dock-pad-bottom:12px;
-    --sc-dock-ctl:52px;
+    --sc-dock-ctl:44px;
+    --sc-dock-gap:10px;
+    --sc-field-h:50px;
 
     --i-scan:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7V5a2 2 0 0 1 2-2h2'/%3E%3Cpath d='M17 3h2a2 2 0 0 1 2 2v2'/%3E%3Cpath d='M21 17v2a2 2 0 0 1-2 2h-2'/%3E%3Cpath d='M7 21H5a2 2 0 0 1-2-2v-2'/%3E%3Cpath d='M8 7v10'/%3E%3Cpath d='M12 7v10'/%3E%3Cpath d='M17 7v10'/%3E%3C/svg%3E");
     --i-torch:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6c0 2-2 2-2 4v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V10c0-2-2-2-2-4V2h12z'/%3E%3Cline x1='6' x2='18' y1='6' y2='6'/%3E%3Cline x1='12' x2='12' y1='12' y2='12'/%3E%3C/svg%3E");
@@ -500,19 +511,52 @@ code{font-family:var(--font-mono);font-size:.92em;}
     --i-eye-off:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9.88 9.88a3 3 0 1 0 4.24 4.24'/%3E%3Cpath d='M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68'/%3E%3Cpath d='M6.61 6.61A13.53 13.53 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61'/%3E%3Cline x1='2' x2='22' y1='2' y2='22'/%3E%3C/svg%3E");
     --i-eye:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
     --i-lock:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='11' x='3' y='11' rx='2' ry='2'/%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'/%3E%3C/svg%3E");
-    --i-alert:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='12' x2='12' y1='8' y2='12'/%3E%3Cline x1='12' x2='12.01' y1='16' y2='16'/%3E%3C/svg%3E");
+    --i-alert:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3'/%3E%3Cpath d='M12 9v4'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E");
+    --i-info:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 16v-4'/%3E%3Cpath d='M12 8h.01'/%3E%3C/svg%3E");
+    --i-barcode:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 5v14'/%3E%3Cpath d='M8 5v14'/%3E%3Cpath d='M12 5v14'/%3E%3Cpath d='M17 5v14'/%3E%3Cpath d='M21 5v14'/%3E%3C/svg%3E");
+    --i-user-plus:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M19 8v6'/%3E%3Cpath d='M22 11h-6'/%3E%3C/svg%3E");
+    --i-chevron-up:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m18 15-6-6-6 6'/%3E%3C/svg%3E");
+    --i-chevron-down:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    --i-arrow:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14'/%3E%3Cpath d='m12 5 7 7-7 7'/%3E%3C/svg%3E");
+    --i-pencil:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z'/%3E%3Cpath d='m15 5 4 4'/%3E%3C/svg%3E");
+    --i-ban:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m4.9 4.9 14.2 14.2'/%3E%3C/svg%3E");
+
+    font-family:var(--sc-font);font-weight:500;color:var(--sc-ink);
+    -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;caret-color:var(--sc-steel-ink);
   }
-  /* One icon recipe: a currentColor square cut out by the icon's mask. */
-  #tab-scanner .sc-vf-round::before,#tab-scanner .sc-start::before,#tab-scanner .sc-hide-btn::before,
-  #tab-scanner .sc-earlier-remove::before,#tab-scanner .sc-badge::before,#tab-scanner .sc-note.warn::before{
+  #tab-scanner button,#tab-scanner input{font-family:inherit;}
+  #tab-scanner ::selection{background:rgba(59,151,151,.28);color:var(--sc-ink);}
+  #tab-scanner :focus-visible{outline:3px solid var(--sc-focus);outline-offset:2px;}
+
+  /* The page around the scanner: its own dark base instead of the rate sheets' glow and scan lines, and
+     scanner.html's site header in the same colours (colours only: the header keeps its layout). */
+  html:has(#tab-scanner.tab.active) body{background:#0B1626;}
+  html:has(#tab-scanner.tab.active)::before,html:has(#tab-scanner.tab.active)::after{display:none;}
+  html:has(#tab-scanner.tab.active) .nav{background:#0F1D33;border-bottom-color:rgba(255,255,255,.08);}
+  html:has(#tab-scanner.tab.active) .logo{background:none;-webkit-text-fill-color:#F2F6FA;color:#F2F6FA;filter:none;}
+  html:has(#tab-scanner.tab.active) .logo-sub{color:#A9B9CC;}
+  html:has(#tab-scanner.tab.active) .nav-tabs{background:#0A1424;}
+  html:has(#tab-scanner.tab.active) .nav-tab{color:#A9B9CC;}
+  html:has(#tab-scanner.tab.active) .nav-tab:hover{color:#F2F6FA;}
+  html:has(#tab-scanner.tab.active) .nav-tab.active,html:has(#tab-scanner.tab.active) .nav-tab.active:hover{background:linear-gradient(180deg, #4BAAA8, #3B9797);color:#0B1626;box-shadow:inset 0 1px 0 rgba(255,255,255,.22);}
+  html:has(#tab-scanner.tab.active) ::-webkit-scrollbar-track{background:#0A1424;}
+  html:has(#tab-scanner.tab.active) ::-webkit-scrollbar-thumb{background:#28466F;}
+
+  /* One icon recipe: a currentColor square cut out by the icon's mask (--sc-i). */
+  #tab-scanner .sc-vf-round::before,#tab-scanner .sc-vf-pill::before,#tab-scanner .sc-start::before,
+  #tab-scanner .sc-hide-btn::before,#tab-scanner .sc-earlier-remove::before,#tab-scanner .sc-badge::before,
+  #tab-scanner .sc-note::before,#tab-scanner .sc-result-id::before,#tab-scanner .sc-grade-dot.sc-unk::before,
+  #tab-scanner .sc-row-grade.sc-unk::before,#tab-scanner #sc-cert-go::after,#tab-scanner #sc-clear::before,
+  #tab-scanner .sc-pile-unknown::before,#tab-scanner .sc-sheet-cue::before,#tab-scanner .sc-result-open::after,
+  #tab-scanner .sc-chip-no::before,#tab-scanner .sc-chip-hand::before,#tab-scanner .sc-chip-err::before{
     content:"";flex:none;width:20px;height:20px;background:currentColor;
     -webkit-mask:var(--sc-i) center / contain no-repeat;mask:var(--sc-i) center / contain no-repeat;
   }
 
-  /* The scroll area's bottom padding is exactly the dock's height (its padding + its row of controls)
-     plus the safe-area inset the dock also pads by, so scrolled to the end the last section stops at
-     the dock's top edge instead of under it. Summed here, on the element the Android camera's
-     .sc-native-cam also sits on, so that mode's smaller dock re-sums it too. */
+  /* The scroll area's bottom padding is exactly the dock's height (its padding + its controls) plus the
+     safe-area inset the dock also pads by, so scrolled to the end the last section stops at the dock's top
+     edge instead of under it. Summed here, on the element the Android camera's .sc-native-cam also sits on,
+     so that mode's two-row dock re-sums it too. */
   #tab-scanner .scanner-layout{
     display:flex;flex-direction:column;gap:12px;max-width:520px;margin:0 auto;
     --sc-dock-h:calc(var(--sc-dock-pad-top) + var(--sc-dock-ctl) + var(--sc-dock-pad-bottom));
@@ -523,313 +567,378 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-brand{display:flex;align-items:center;gap:12px;min-width:0;}
   header.nav ~ .main #tab-scanner .sc-brand{display:none;}
   #tab-scanner .sc-brand-mark{
-    flex:none;width:42px;height:42px;border-radius:50%;object-fit:cover;
-    background:radial-gradient(circle at 50% 28%, color-mix(in srgb, var(--sc-ice) 26%, var(--s2)), var(--s1) 72%);
-    box-shadow:inset 0 0 0 1px var(--sc-line-2);
+    flex:none;width:40px;height:40px;border-radius:50%;object-fit:cover;background:var(--sc-navy);
+    box-shadow:0 0 0 1px rgba(255,255,255,.1);
   }
-  #tab-scanner .sc-brand-words{min-width:0;}
-  #tab-scanner .sc-brand-name{font:800 15px/1.15 var(--font-display);letter-spacing:.03em;color:var(--text);}
-  #tab-scanner .sc-brand-sub{margin-top:4px;font:700 12px/1 var(--font-ui);letter-spacing:.3em;text-transform:uppercase;color:var(--sc-ice);}
+  #tab-scanner .sc-brand-words{min-width:0;display:flex;flex-direction:column;}
+  #tab-scanner .sc-brand-name{font-size:var(--sc-fs-body);font-weight:800;line-height:1.2;letter-spacing:-.01em;color:var(--sc-ink);}
+  #tab-scanner .sc-brand-sub{font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);}
 
   /* ── the camera: one frame, two faces (ready to start / live). The same height either way: the live face
      is absolute and the frame's min-height is the whole height, while the ready face is in the flow, so a
-     long camera message or a wrapped button grows the frame instead of being clipped. ── */
+     long camera message or a wrapped button grows the frame instead of being clipped. Its size and the
+     video's crop are exactly what they were: only the controls over it are re-skinned. ── */
   #tab-scanner .sc-vf-wrap{
     --sc-vf-h:clamp(220px, 36vh, 380px);
     position:relative;min-width:0;min-height:var(--sc-vf-h);overflow:hidden;isolation:isolate;
-    border-radius:var(--sc-r-card);background:var(--sc-lens);box-shadow:inset 0 0 0 1px var(--sc-line);
-  }
-  /* The Android app's own camera is open ABOVE this page (which is now a sheet under it): this frame has
-     nothing left to show, so it folds down to a slim Reopen button and the result is the first thing on
-     the sheet. The button stays because the app can drop the open message, and with the whole frame gone
-     there would be no way back; pressing it while the camera is up does nothing (the app ignores a second
-     open). */
-  #tab-scanner .scanner-layout.sc-native-cam .sc-brand{display:none;}
-  #tab-scanner .scanner-layout.sc-native-cam .sc-vf-wrap{min-height:0;overflow:visible;border-radius:0;background:none;box-shadow:none;}
-  #tab-scanner .scanner-layout.sc-native-cam .sc-vf-off{min-height:0;padding:0;background:none;}
-  #tab-scanner .scanner-layout.sc-native-cam .sc-vf-off::before,#tab-scanner .scanner-layout.sc-native-cam .sc-vf-off-text{display:none;}
-  #tab-scanner .scanner-layout.sc-native-cam .sc-start-row{background:none;}
-  #tab-scanner .scanner-layout.sc-native-cam .sc-start{
-    flex:1 1 auto;min-height:var(--sc-dock-ctl);font-size:16px;
-    background:var(--sc-raised);color:var(--text);box-shadow:inset 0 0 0 1px var(--sc-line-2);
+    border-radius:var(--sc-r-card);background:var(--sc-cam);box-shadow:inset 0 0 0 1px var(--sc-line);
   }
   #tab-scanner .sc-vf{
-    position:absolute;inset:0;overflow:hidden;background:var(--sc-lens);
+    position:absolute;inset:0;overflow:hidden;background:var(--sc-cam);
     touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
     -webkit-tap-highlight-color:transparent;cursor:crosshair;
   }
   #tab-scanner .sc-vf-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
   #tab-scanner .sc-vf-marks{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
-  #tab-scanner .sc-mark{fill:color-mix(in srgb, var(--sc-ice) 16%, transparent);stroke:var(--sc-ice);stroke-width:3;stroke-linejoin:round;filter:drop-shadow(0 0 3px var(--sc-lens));}
+  #tab-scanner .sc-mark{fill:rgba(59,151,151,.22);stroke:#6CCFCB;stroke-width:3;stroke-linejoin:round;filter:drop-shadow(0 0 3px rgba(6,13,24,.8));}
   #tab-scanner .sc-vf-top{position:absolute;top:12px;left:12px;right:12px;display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:8px;}
   #tab-scanner #sc-torch{grid-column:1;}
   #tab-scanner .sc-vf-pill{grid-column:2;justify-self:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   #tab-scanner #sc-sound{grid-column:3;}
   #tab-scanner .sc-vf-round{
-    display:grid;place-items:center;width:44px;height:44px;padding:0;border-radius:50%;cursor:pointer;
-    border:1px solid var(--sc-glass-line);background:var(--sc-glass);color:var(--text);
-    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;border-radius:50%;cursor:pointer;
+    background:rgba(6,11,20,.55);color:#fff;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
     transition:background-color 160ms var(--sc-ease), color 160ms var(--sc-ease);
   }
   #tab-scanner #sc-torch{--sc-i:var(--i-torch);}
   #tab-scanner #sc-sound{--sc-i:var(--i-sound-off);}
   #tab-scanner #sc-sound[aria-pressed="true"]{--sc-i:var(--i-sound);}
-  #tab-scanner .sc-vf-round.on{background:var(--sc-ice);border-color:var(--sc-ice);color:var(--bg);}
+  #tab-scanner .sc-vf-round.on{background:#fff;color:var(--sc-cam);}
   #tab-scanner .sc-vf-pill,#tab-scanner .sc-vf-hint{
-    padding:8px 12px;border-radius:var(--r-pill);border:1px solid var(--sc-glass-line);background:var(--sc-glass);
-    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:var(--text);font:600 14px/1.2 var(--font-ui);
+    padding:7px 14px;border-radius:999px;background:rgba(6,11,20,.62);
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    color:#fff;font-size:var(--sc-fs-label);font-weight:700;line-height:1.35;
   }
+  #tab-scanner .sc-vf-pill{--sc-i:var(--i-scan);padding-left:11px;}
+  #tab-scanner .sc-vf-pill::before{display:inline-block;width:16px;height:16px;margin-right:7px;vertical-align:-3px;}
   #tab-scanner .sc-vf-bottom{position:absolute;left:0;right:0;bottom:12px;display:flex;flex-direction:column;align-items:center;gap:12px;}
-  #tab-scanner .sc-vf-zoom-wrap{width:min(220px, 70%);padding:8px 12px;border-radius:var(--r-pill);background:var(--sc-glass);border:1px solid var(--sc-glass-line);}
-  #tab-scanner .sc-vf-zoom{display:block;width:100%;accent-color:var(--sc-ice);}
-  #tab-scanner .sc-vf-hint{max-width:calc(100% - 24px);font-size:13px;text-align:center;}
-  #tab-scanner .sc-vf-shutter{width:68px;height:68px;padding:5px;border-radius:50%;border:4px solid var(--sc-shutter);background:transparent;cursor:pointer;}
-  #tab-scanner .sc-vf-shutter span{display:block;width:100%;height:100%;border-radius:50%;background:var(--sc-shutter);transition:transform 120ms var(--sc-ease);}
-  #tab-scanner .sc-vf-shutter:active span{transform:scale(.86);}
+  #tab-scanner .sc-vf-zoom-wrap{width:min(220px, 70%);padding:8px 14px;border-radius:999px;background:rgba(6,11,20,.62);}
+  #tab-scanner .sc-vf-zoom{display:block;width:100%;accent-color:var(--sc-teal-top);}
+  #tab-scanner .sc-vf-hint{max-width:calc(100% - 24px);text-align:center;}
+  #tab-scanner .sc-vf-shutter{width:68px;height:68px;padding:5px;border-radius:50%;border:3px solid rgba(255,255,255,.95);background:transparent;cursor:pointer;}
+  #tab-scanner .sc-vf-shutter span{display:block;width:100%;height:100%;border-radius:50%;background:#fff;transition:transform 150ms ease-out;}
+  #tab-scanner .sc-vf-shutter:active span{transform:scale(.9);}
 
-  /* Ready to start: the frame itself says "camera" (four corners and a scanner's red line), so no
-     picture of a camera and no second box is needed. */
+  /* Ready to start: the frame itself says "camera" (four corners and a scanner's line), so no picture of a
+     camera and no second box is needed. */
   #tab-scanner .sc-vf-off{
     position:relative;min-height:var(--sc-vf-h);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
     padding:28px 24px;text-align:center;
-    background:
-      radial-gradient(85% 65% at 50% 0%, color-mix(in srgb, var(--sc-ice) 13%, transparent), transparent 72%),
-      linear-gradient(180deg, var(--s2), var(--s1));
+    background:radial-gradient(135% 58% at 50% 40%, #1A283E 0%, #091221 56%, #060D18 100%);
   }
   #tab-scanner .sc-vf-off::before{
-    content:"";position:absolute;inset:16px;pointer-events:none;--k:30px;
-    border:2px solid color-mix(in srgb, var(--text) 58%, transparent);border-radius:14px;
+    content:"";position:absolute;inset:16px;pointer-events:none;--k:28px;
+    border:3px solid rgba(255,255,255,.72);border-radius:14px;
     -webkit-mask:conic-gradient(at var(--k) var(--k), #0000 75%, #000 0) 0 0 / calc(100% - var(--k)) calc(100% - var(--k));
     mask:conic-gradient(at var(--k) var(--k), #0000 75%, #000 0) 0 0 / calc(100% - var(--k)) calc(100% - var(--k));
   }
   #tab-scanner .sc-start-row{
     align-self:stretch;display:flex;justify-content:center;
-    background:linear-gradient(90deg, transparent 6%, color-mix(in srgb, var(--sc-red) 75%, transparent) 30%, color-mix(in srgb, var(--sc-red) 75%, transparent) 70%, transparent 94%) center / 100% 1.5px no-repeat;
+    background:linear-gradient(90deg, transparent 6%, rgba(191,9,47,.8) 30%, rgba(191,9,47,.8) 70%, transparent 94%) center / 100% 1.5px no-repeat;
   }
   #tab-scanner .sc-start{
     --sc-i:var(--i-scan);
-    position:relative;display:inline-flex;align-items:center;justify-content:center;gap:12px;max-width:100%;
-    min-height:56px;padding:12px 24px 12px 20px;border:0;border-radius:var(--sc-r-ctl);cursor:pointer;
-    background:var(--sc-ice);color:var(--bg);font:700 18px/1.2 var(--font-ui);letter-spacing:.02em;text-align:center;white-space:normal;
-    transition:transform 120ms var(--sc-ease), background-color 160ms var(--sc-ease);
+    position:relative;display:inline-flex;align-items:center;justify-content:center;gap:10px;max-width:100%;
+    min-height:52px;padding:12px 22px 12px 18px;border:0;border-radius:999px;cursor:pointer;
+    background:linear-gradient(180deg, var(--sc-blue-top), var(--sc-blue-bot));color:#fff;
+    font-size:var(--sc-fs-body);font-weight:800;line-height:1.2;text-align:center;white-space:normal;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 10px 22px -14px rgba(0,0,0,.9);
+    transition:filter 150ms ease-out, transform 150ms ease-out;
   }
-  #tab-scanner .sc-start:hover{background:color-mix(in srgb, var(--sc-ice) 86%, var(--text));}
-  #tab-scanner .sc-start:active{transform:scale(.97);}
-  #tab-scanner .sc-start:disabled{background:var(--s3);color:var(--dim);cursor:default;transform:none;}
-  #tab-scanner .sc-vf-off-text{position:relative;max-width:300px;font:500 15px/1.45 var(--font-ui);color:var(--dim);}
+  #tab-scanner .sc-start:hover{filter:brightness(1.08);}
+  #tab-scanner .sc-start:active{transform:scale(.98);}
+  #tab-scanner .sc-start:disabled{background:var(--sc-fill);color:var(--sc-muted);cursor:default;transform:none;filter:none;box-shadow:none;}
+  #tab-scanner .sc-vf-off-text{position:relative;max-width:300px;font-size:var(--sc-fs-row);line-height:1.45;color:var(--sc-muted);}
 
-  /* ── type a cert: one field with its button inside it ── */
-  #tab-scanner .sc-entry{display:flex;flex-direction:column;gap:8px;min-width:0;}
-  #tab-scanner .sc-label{font:600 14px/1.2 var(--font-ui);letter-spacing:.02em;color:var(--dim);}
-  #tab-scanner .sc-box{
-    display:flex;align-items:center;gap:8px;min-width:0;padding:4px;border-radius:var(--sc-r-ctl);
-    background:var(--sc-sunk);box-shadow:inset 0 0 0 1px var(--sc-line-2);
+  /* ── the scoreboard: We pay for the card on screen, and what this visit comes to, side by side ── */
+  #tab-scanner .sc-score{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:8px;container-type:inline-size;}
+  /* In a phone's browser it shows once there is something to say (a card on screen, or a pile). */
+  #tab-scanner .scanner-layout:not(.sc-native-cam):has(#sc-result[hidden]):has(#sc-earlier[hidden]) .sc-score{display:none;}
+  #tab-scanner .sc-tile{position:relative;display:flex;flex-direction:column;min-width:0;min-height:118px;padding:13px 14px 13px 16px;border-radius:var(--sc-r-tile);}
+  #tab-scanner .sc-tile .sc-key{font-size:var(--sc-fs-label);font-weight:700;line-height:1.3;}
+  #tab-scanner .sc-tile-pay{
+    isolation:isolate;color:#fff;
+    background:linear-gradient(158deg, #CE0F37 0%, #BF092F 46%, #A1062A 100%);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 1px 1px rgba(0,0,0,.25), 0 12px 24px -14px rgba(0,0,0,.9);
   }
-  #tab-scanner .sc-box:focus-within{box-shadow:inset 0 0 0 1.5px var(--sc-ice), 0 0 0 4px var(--sc-ring);}
-  #tab-scanner .sc-cert-input{
-    flex:1 1 auto;min-width:0;height:48px;padding:0 12px 0 12px;border:0;background:transparent;outline:none;
-    color:var(--text);font:600 18px/1 var(--font-mono);letter-spacing:.02em;
+  /* The tile's one ornament: a large soft arc in its top-right corner, the faint facet pattern only inside
+     it. Drawn (and masked) inside the tile's own box, so the tile never has to clip its number. */
+  #tab-scanner .sc-tile-pay::after{
+    content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:inherit;
+    background:
+      radial-gradient(circle at calc(100% + 92px) -138px, transparent 199.5px, rgba(255,255,255,.2) 199.5px, rgba(255,255,255,.2) 200.5px, transparent 200.5px),
+      repeating-linear-gradient(60deg, rgba(255,255,255,.06) 0 1px, rgba(255,255,255,0) 1px 10px),
+      repeating-linear-gradient(-60deg, rgba(255,255,255,.06) 0 1px, rgba(255,255,255,0) 1px 10px),
+      linear-gradient(rgba(255,255,255,.035), rgba(255,255,255,.035));
+    -webkit-mask:radial-gradient(circle at calc(100% + 92px) -138px, #000 200.5px, transparent 201px);
+    mask:radial-gradient(circle at calc(100% + 92px) -138px, #000 200.5px, transparent 201px);
   }
-  #tab-scanner .sc-cert-input:focus-visible{outline:none;}
-  #tab-scanner .sc-cert-input::placeholder{font:500 16px/1 var(--font-ui);letter-spacing:.01em;color:color-mix(in srgb, var(--dim) 80%, transparent);}
-  #tab-scanner .sc-box .sc-btn{min-height:48px;border-radius:var(--sc-r-in);}
-  #tab-scanner .sc-box-err,#tab-scanner .sc-signin-err,#tab-scanner .sc-flat-err{font:600 14px/1.4 var(--font-ui);color:var(--sc-warn-ink);}
-  #tab-scanner .sc-grader-pick{
-    display:flex;flex-direction:column;gap:12px;padding:12px;border-radius:var(--sc-r-ctl);
-    background:color-mix(in srgb, var(--sc-ice) 7%, var(--s1));box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--sc-ice) 28%, transparent);
+  #tab-scanner .sc-tile-pay .sc-key{color:rgba(255,255,255,.9);}
+  #tab-scanner .sc-pay-val{
+    margin-top:auto;padding-top:6px;font-size:min(var(--sc-fs-hero), 10.2cqi);font-weight:800;line-height:1.05;letter-spacing:-.025em;
+    color:#fff;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
   }
-  #tab-scanner .sc-grader-pick-text{font:600 15px/1.4 var(--font-ui);color:var(--text);}
-  #tab-scanner .sc-grader-pick-btns{display:grid;grid-template-columns:repeat(5, minmax(0, 1fr));gap:8px;}
-  #tab-scanner .sc-grader-pick-btns .sc-btn{min-height:44px;padding:0;border-radius:var(--sc-r-in);font:700 14px/1 var(--font-mono);}
+  #tab-scanner .sc-pay-val.sc-words{font-size:min(20px, 6.2cqi);line-height:1.2;letter-spacing:-.01em;}
+  #tab-scanner .sc-pay-val.sc-blank{color:rgba(255,255,255,.75);}
+  #tab-scanner .sc-math{margin-top:6px;font-size:var(--sc-fs-label);line-height:1.3;color:rgba(255,255,255,.9);white-space:pre-line;overflow-wrap:anywhere;}
+  #tab-scanner .sc-math:empty{display:none;}
+  #tab-scanner .sc-tile-visit{background:var(--sc-card-bg);box-shadow:var(--sc-sh-card);padding-right:12px;}
+  #tab-scanner .sc-tile-title{font-size:var(--sc-fs-label);font-weight:700;line-height:1.3;color:var(--sc-ink);}
+  #tab-scanner .sc-tile-visit .sc-key{margin-top:auto;padding-top:6px;font-weight:500;color:var(--sc-muted);}
+  #tab-scanner .sc-tile-visit .sc-total-val{
+    font-size:min(var(--sc-fs-num), 6.2cqi);font-weight:800;line-height:1.2;letter-spacing:-.015em;color:var(--sc-ink);
+    font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
+  }
+  #tab-scanner .sc-tile-visit .sc-total-val.sc-blank{color:var(--sc-muted);}
+  #tab-scanner .sc-tile-visit .sc-pile-sub{margin-top:3px;font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);}
+  #tab-scanner .sc-tile-visit .sc-pile-sub:empty{display:none;}
+
+  /* The Android app's peek ('down') has one way up; nowhere else shows it. */
+  #tab-scanner .sc-sheet-cue{display:none;}
 
   /* ── buttons ── */
   #tab-scanner .sc-btn{
     display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;
-    border:0;border-radius:var(--sc-r-ctl);cursor:pointer;white-space:nowrap;
-    font:700 16px/1 var(--font-ui);letter-spacing:.02em;
-    transition:background-color 160ms var(--sc-ease), color 160ms var(--sc-ease), transform 120ms var(--sc-ease);
+    border:0;border-radius:999px;cursor:pointer;white-space:nowrap;
+    font-size:var(--sc-fs-row);font-weight:800;line-height:1.1;
+    transition:filter 150ms ease-out, transform 150ms ease-out, background-color 150ms ease-out;
   }
-  #tab-scanner .sc-btn:active{transform:scale(.97);}
-  #tab-scanner .sc-btn:disabled{opacity:.5;cursor:default;transform:none;}
-  #tab-scanner .sc-btn-primary{background:var(--sc-ice);color:var(--bg);}
-  #tab-scanner .sc-btn-primary:hover{background:color-mix(in srgb, var(--sc-ice) 86%, var(--text));}
-  #tab-scanner .sc-btn-quiet{background:var(--sc-raised);color:var(--text);box-shadow:inset 0 0 0 1px var(--sc-line-2);}
-  #tab-scanner .sc-btn-quiet:hover{background:color-mix(in srgb, var(--sc-raised) 85%, var(--text));}
-  #tab-scanner .sc-btn-danger{background:color-mix(in srgb, var(--sc-red) 80%, var(--bg));color:var(--text);}
-  #tab-scanner .sc-btn-block{width:100%;min-height:52px;}
+  #tab-scanner .sc-btn:active{transform:scale(.98);}
+  #tab-scanner .sc-btn:disabled{opacity:.55;cursor:default;transform:none;filter:none;}
+  #tab-scanner .sc-btn-primary{background:linear-gradient(180deg, var(--sc-blue-top), var(--sc-blue-bot));color:#fff;font-size:var(--sc-fs-body);box-shadow:inset 0 1px 0 rgba(255,255,255,.18);}
+  #tab-scanner .sc-btn-primary:hover{filter:brightness(.93);}
+  #tab-scanner .sc-btn-quiet{background:var(--sc-fill);color:var(--sc-ink);box-shadow:var(--sc-hi), var(--sc-ring);}
+  #tab-scanner .sc-card .sc-btn-quiet{background:var(--sc-fill-card);}
+  #tab-scanner .sc-btn-quiet:hover{filter:brightness(1.12);}
+  #tab-scanner .sc-btn-danger{background:linear-gradient(158deg, #CE0F37 0%, #BF092F 50%, #A1062A 100%);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.16);}
+  #tab-scanner .sc-btn-danger:hover{filter:brightness(1.06);}
+  #tab-scanner .sc-btn-block{width:100%;min-height:50px;}
 
   /* ── surfaces ── */
-  #tab-scanner .sc-card{
-    position:relative;min-width:0;border-radius:var(--sc-r-card);background:var(--sc-card);
-    box-shadow:inset 0 0 0 1px var(--sc-line), inset 0 1px 0 color-mix(in srgb, var(--text) 5%, transparent);
-  }
-  #tab-scanner .sc-h{font:700 19px/1.2 var(--font-ui);letter-spacing:.01em;color:var(--text);}
-  #tab-scanner .sc-sub{margin-top:4px;font:500 15px/1.45 var(--font-ui);color:var(--dim);}
+  #tab-scanner .sc-card{position:relative;min-width:0;border-radius:var(--sc-r-card);background:var(--sc-card-bg);box-shadow:var(--sc-sh-card);}
+  #tab-scanner .sc-h{font-size:var(--sc-fs-body);font-weight:800;line-height:1.25;letter-spacing:-.005em;color:var(--sc-ink);}
+  #tab-scanner .sc-sub{margin-top:4px;font-size:var(--sc-fs-row);line-height:1.45;color:var(--sc-muted);}
+  #tab-scanner .sc-key{font-size:var(--sc-fs-label);font-weight:700;line-height:1.3;color:var(--sc-muted);}
 
   /* ── sign in ── */
-  #tab-scanner .sc-signin{display:flex;flex-direction:column;gap:12px;padding:20px 16px;}
+  #tab-scanner .sc-signin{display:flex;flex-direction:column;gap:12px;padding:18px 16px;}
   #tab-scanner .sc-signin-head{display:flex;align-items:flex-start;gap:12px;}
   #tab-scanner .sc-badge{
     --sc-i:var(--i-lock);
-    flex:none;display:grid;place-items:center;width:42px;height:42px;border-radius:50%;
-    background:color-mix(in srgb, var(--sc-ice) 14%, var(--s1));color:var(--sc-ice);
+    flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;
+    background:var(--sc-steel-orb);color:#fff;box-shadow:0 0 0 1px rgba(111,177,224,.35);
   }
-  #tab-scanner .sc-field{display:flex;flex-direction:column;gap:8px;}
+  #tab-scanner .sc-badge::before{width:18px;height:18px;}
+  #tab-scanner .sc-field{display:flex;flex-direction:column;gap:6px;}
+  #tab-scanner .sc-label{font-size:var(--sc-fs-label);font-weight:700;line-height:1.3;color:var(--sc-muted);}
   #tab-scanner .sc-input{
-    width:100%;min-width:0;height:50px;padding:0 12px;border:0;border-radius:var(--sc-r-ctl);outline:none;
-    background:var(--sc-sunk);box-shadow:inset 0 0 0 1px var(--sc-line-2);color:var(--text);font:600 16px/1 var(--font-ui);
+    width:100%;min-width:0;height:48px;padding:0 16px;border:0;border-radius:999px;outline:none;
+    background:var(--sc-fill-card);box-shadow:inset 0 0 0 1px var(--sc-edge-card);
+    color:var(--sc-ink);font-size:var(--sc-fs-body);font-weight:500;
+    transition:box-shadow 150ms ease-out;
   }
-  #tab-scanner .sc-input:focus{box-shadow:inset 0 0 0 1.5px var(--sc-ice), 0 0 0 4px var(--sc-ring);}
+  #tab-scanner .sc-input:focus{box-shadow:inset 0 0 0 1px var(--sc-steel-ink), 0 0 0 3px var(--sc-focus-soft);}
   #tab-scanner .sc-input:focus-visible{outline:none;}
+  #tab-scanner .sc-input::placeholder{color:var(--sc-muted);opacity:1;} /* on a card's lighter field: --sc-ph would be 3.4:1 */
   #tab-scanner #sc-signed-in-as:empty{display:none;}
+  #tab-scanner .sc-box-err,#tab-scanner .sc-signin-err,#tab-scanner .sc-flat-err{font-size:var(--sc-fs-label);font-weight:700;line-height:1.45;color:var(--sc-err-ink);}
 
-  /* ── the result: a slab label on top, the price under it ── */
+  /* ── the card on screen: the ringed grade, its name and cert, then Avg of 3 and CL value ── */
   #tab-scanner .sc-result{
-    overflow:hidden;container-type:inline-size;
-    background:linear-gradient(180deg, color-mix(in srgb, var(--s3) 72%, var(--s2)), var(--s2) 132px);
-    transition:opacity 220ms var(--sc-ease), box-shadow 220ms var(--sc-ease);
+    container-type:inline-size;padding:15px 16px 14px;
+    transition:opacity 220ms var(--sc-ease), padding 200ms var(--sc-ease);
   }
-  #tab-scanner .sc-result:has(.sc-pay-val.sc-no){box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--sc-red) 45%, transparent);}
-  #tab-scanner .sc-result-head{padding:16px 16px 12px;border-bottom:1px solid var(--sc-line);}
-  #tab-scanner .sc-result-id{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:8px;}
-  #tab-scanner .sc-result-id .sc-chip{
-    display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:var(--r-pill);
-    background:var(--sc-sunk);box-shadow:inset 0 0 0 1px var(--sc-line-2);
-    font:700 13px/1 var(--font-ui);letter-spacing:.08em;color:var(--text);
+  #tab-scanner .sc-result-head{display:flex;gap:14px;align-items:flex-start;}
+  /* the grade circle: steel, lit from the top left, with a thin ring */
+  #tab-scanner .sc-grade-dot{
+    flex:none;display:grid;place-items:center;width:52px;height:52px;border-radius:50%;
+    background:var(--sc-steel-orb);color:#fff;font-size:var(--sc-fs-num);font-weight:800;line-height:1;
+    font-variant-numeric:tabular-nums;letter-spacing:-.02em;
+    box-shadow:0 0 0 3px var(--sc-card-top), 0 0 0 4.5px rgba(111,177,224,.55);
+    transition:width 200ms var(--sc-ease), height 200ms var(--sc-ease), font-size 200ms var(--sc-ease);
   }
-  #tab-scanner .sc-result-grade{font:700 15px/1 var(--font-ui);color:var(--text);}
+  #tab-scanner .sc-grade-dot.sc-unk{--sc-i:var(--i-barcode);background:var(--sc-grey-tint);color:var(--sc-muted);}
+  #tab-scanner .sc-result-words{flex:1 1 auto;min-width:0;padding-top:3px;}
+  #tab-scanner .sc-result-name{font-size:var(--sc-fs-body);font-weight:800;line-height:1.3;letter-spacing:-.005em;color:var(--sc-ink);overflow-wrap:anywhere;text-wrap:balance;}
+  #tab-scanner .sc-result-id{
+    --sc-i:var(--i-barcode);
+    display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin-top:4px;
+    font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);font-variant-numeric:tabular-nums;
+  }
+  #tab-scanner .sc-result-id::before{width:15px;height:15px;}
+  /* "Grade 9" is read out by a screen reader; the circle shows the number to everyone else. */
+  #tab-scanner .sc-result-grade{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
   #tab-scanner .sc-result-grade.sc-blank{display:none;}
-  #tab-scanner .sc-result-cert{font:500 13px/1 var(--font-mono);color:var(--dim);letter-spacing:.02em;}
-  #tab-scanner .sc-result-id .sc-rescan{background:color-mix(in srgb, var(--sc-ice) 14%, transparent);box-shadow:none;color:var(--sc-avg-ink);letter-spacing:.02em;}
-  #tab-scanner .sc-result-name{font:700 18px/1.25 var(--font-ui);color:var(--text);overflow-wrap:anywhere;}
-
-  #tab-scanner .sc-key{font:700 13px/1 var(--font-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);}
-  #tab-scanner .sc-key-pay{color:var(--sc-pay-ink);}
-  #tab-scanner .sc-key-avg{color:var(--sc-avg-ink);}
-  #tab-scanner .sc-key-clv{color:var(--sc-violet);}
-
-  #tab-scanner .sc-pay{padding:16px 16px 16px;}
-  #tab-scanner .sc-pay-val{
-    margin-top:12px;font:800 min(54px, 12.5cqi)/1.05 var(--font-display);letter-spacing:-.01em;
-    color:var(--text);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
-  }
-  #tab-scanner .sc-pay-val.sc-words{font:700 min(30px, 8.6cqi)/1.15 var(--font-ui);letter-spacing:.01em;}
-  #tab-scanner .sc-pay-val.sc-no{color:var(--sc-pay-ink);}
-  #tab-scanner .sc-math{margin-top:12px;font:500 13px/1.5 var(--font-mono);color:var(--dim);white-space:pre-line;overflow-wrap:anywhere;}
-  #tab-scanner .sc-math:empty{display:none;}
-
-  #tab-scanner .sc-pair{display:grid;grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);margin:0;border-top:1px solid var(--sc-line);}
-  #tab-scanner .sc-result:has(.sc-note:not([hidden])) .sc-pair{border-bottom:1px solid var(--sc-line);margin-bottom:12px;}
-  #tab-scanner .sc-pair-cell{min-width:0;padding:12px 16px 16px;}
-  #tab-scanner .sc-pair-cell + .sc-pair-cell{border-left:1px solid var(--sc-line);}
+  #tab-scanner .sc-rescan{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;background:var(--sc-wait-tint);color:var(--sc-steel-ink);font-size:var(--sc-fs-label);font-weight:700;}
+  /* Everything under the name folds away at the Android app's 'up' stop (a grid row from 1fr to 0fr). */
+  #tab-scanner .sc-result-more{display:grid;grid-template-rows:1fr;transition:grid-template-rows 200ms var(--sc-ease);}
+  #tab-scanner .sc-result-more-in{min-height:0;overflow:hidden;margin:0 -4px -4px;padding:0 4px 4px;}
+  #tab-scanner .sc-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin:12px 0 0;padding-top:12px;border-top:1px solid var(--sc-line);}
+  #tab-scanner .sc-pair-cell{min-width:0;}
+  #tab-scanner .sc-pair .sc-key{display:flex;align-items:center;gap:7px;}
+  #tab-scanner .sc-pair .sc-key::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;}
+  #tab-scanner .sc-key-avg::before{background:var(--sc-avg);}
+  #tab-scanner .sc-key-clv::before{background:var(--sc-teal);}
   #tab-scanner .sc-pair-val{
-    margin:8px 0 0;font:600 min(22px, 6.2cqi)/1.2 var(--font-mono);color:var(--text);
-    font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
+    margin:2px 0 0;font-size:min(var(--sc-fs-num), 7.5cqi);font-weight:800;line-height:1.25;letter-spacing:-.015em;
+    color:var(--sc-ink);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
   }
-  #tab-scanner .sc-pair-val.sc-words{font:600 16px/1.3 var(--font-ui);color:var(--dim);}
-  #tab-scanner .sc-pair-val.sc-blank{color:var(--sc-line-2);}
-  #tab-scanner .sc-wait{color:var(--dim);animation:scWait 1.3s ease-in-out infinite alternate;}
-  @keyframes scWait{from{opacity:1}to{opacity:.42}}
+  #tab-scanner #sc-clv:not(.sc-words):not(.sc-blank){color:var(--sc-teal-ink);}
+  #tab-scanner .sc-pair-val.sc-words{font-size:var(--sc-fs-row);font-weight:700;line-height:1.35;letter-spacing:0;color:var(--sc-muted);}
+  #tab-scanner .sc-pair-val.sc-blank{color:var(--sc-faint);}
+  #tab-scanner .sc-wait{animation:scWait 1.3s ease-in-out infinite alternate;}
+  @keyframes scWait{from{opacity:1}to{opacity:.5}}
 
-  #tab-scanner .sc-note{margin:0 16px 16px;font:500 15px/1.45 var(--font-ui);color:var(--dim);}
-  #tab-scanner .sc-note.warn{
-    --sc-i:var(--i-alert);
-    display:flex;gap:8px;align-items:flex-start;color:var(--sc-warn-ink);
+  /* the line under the card: the rule that priced it, or what is wrong */
+  #tab-scanner .sc-note{
+    --sc-i:var(--i-info);
+    display:flex;gap:8px;align-items:flex-start;margin-top:10px;
+    font-size:var(--sc-fs-label);line-height:1.45;color:var(--sc-muted);overflow-wrap:anywhere;
   }
-  #tab-scanner .sc-note.warn::before{width:18px;height:18px;margin-top:2px;color:var(--sc-pay-ink);}
+  #tab-scanner .sc-note::before{width:15px;height:15px;margin-top:2px;color:var(--sc-faint);}
+  #tab-scanner .sc-note.warn{--sc-i:var(--i-alert);color:var(--sc-ink);}
+  #tab-scanner .sc-note.warn::before{color:var(--sc-err-ink);}
   /* Triumph is down: one small staff line while the CL value rides in with the average. Not a warning,
-     a status: no alert icon, the CL value's violet as a slow dot (the box it is waiting to fill). Hide
-     mode never shows it (it lives in #sc-result, which is .sc-staff-only). */
-  #tab-scanner .sc-note.sc-note-down{
-    display:flex;align-items:center;gap:8px;
-    font:600 13px/1.35 var(--font-ui);letter-spacing:.01em;color:var(--dim);
-  }
+     a status: no alert icon, the CL value's teal as a slow dot (the box it is waiting to fill). Hide mode
+     never shows it (it lives in #sc-result, which is .sc-staff-only). */
+  #tab-scanner .sc-note.sc-note-down{align-items:center;font-weight:700;color:var(--sc-muted);}
   #tab-scanner .sc-note.sc-note-down::before{
-    content:"";flex:none;width:8px;height:8px;border-radius:50%;background:var(--sc-violet);
+    width:8px;height:8px;margin:0 3px;border-radius:50%;background:var(--sc-teal-ink);-webkit-mask:none;mask:none;
     animation:scWait 1.3s ease-in-out infinite alternate;
   }
-  #tab-scanner .sc-retry{padding:0 16px 16px;}
+  #tab-scanner .sc-retry{margin-top:12px;}
   #tab-scanner .sc-retry .sc-btn{min-width:132px;}
+  /* The folded card's own button (the Android app's 'up' stop only): the whole row opens the card again. */
+  #tab-scanner .sc-result-open{display:none;}
 
   /* ── hide mode's seller card: name, grade and the market, nothing else ── */
-  #tab-scanner .sc-seller{display:flex;flex-direction:column;align-items:center;gap:8px;padding:32px 20px 32px;text-align:center;container-type:inline-size;}
-  #tab-scanner .sc-seller-empty{font:600 17px/1.3 var(--font-ui);color:var(--dim);}
-  #tab-scanner .sc-seller-name{font:700 19px/1.3 var(--font-ui);color:var(--text);overflow-wrap:anywhere;}
+  #tab-scanner .sc-seller{display:flex;flex-direction:column;align-items:center;gap:8px;padding:28px 20px;text-align:center;container-type:inline-size;}
+  #tab-scanner .sc-seller-empty{font-size:var(--sc-fs-body);font-weight:700;line-height:1.3;color:var(--sc-muted);}
+  #tab-scanner .sc-seller-name{font-size:18px;font-weight:800;line-height:1.3;color:var(--sc-ink);overflow-wrap:anywhere;text-wrap:balance;}
   #tab-scanner .sc-seller-grade{
-    display:inline-flex;align-items:center;height:26px;padding:0 12px;border-radius:var(--r-pill);
-    background:var(--sc-sunk);box-shadow:inset 0 0 0 1px var(--sc-line-2);
-    font:700 13px/1 var(--font-ui);letter-spacing:.08em;color:var(--text);
+    display:inline-flex;align-items:center;height:26px;padding:0 12px;border-radius:999px;background:var(--sc-fill-card);
+    font-size:var(--sc-fs-label);font-weight:700;color:var(--sc-ink);
   }
-  #tab-scanner .sc-seller-market{margin-top:12px;font:800 min(40px, 10cqi)/1.15 var(--font-display);letter-spacing:-.01em;color:var(--text);overflow-wrap:anywhere;}
-  #tab-scanner .sc-seller-market.sc-wait,#tab-scanner .sc-seller-market.sc-plain{font:700 22px/1.3 var(--font-ui);letter-spacing:.01em;}
+  #tab-scanner .sc-seller-market{
+    margin-top:8px;font-size:min(var(--sc-fs-hero), 9cqi);font-weight:800;line-height:1.15;letter-spacing:-.02em;
+    color:var(--sc-ink);font-variant-numeric:tabular-nums;overflow-wrap:break-word;
+  }
+  #tab-scanner .sc-seller-market.sc-wait,#tab-scanner .sc-seller-market.sc-plain{font-size:20px;font-weight:700;letter-spacing:-.01em;}
+
+  /* ── type a cert: the field and its button ── */
+  #tab-scanner .sc-entry{display:flex;flex-direction:column;gap:8px;min-width:0;}
+  #tab-scanner .sc-box{display:flex;align-items:center;gap:8px;min-width:0;}
+  #tab-scanner .sc-cert-input{
+    flex:1 1 auto;min-width:0;height:var(--sc-field-h);padding:0 16px;border:0;border-radius:999px;outline:none;
+    background:var(--sc-fill);box-shadow:inset 0 0 0 1px var(--sc-edge);
+    color:var(--sc-ink);font-size:var(--sc-fs-body);font-weight:500;
+    transition:box-shadow 150ms ease-out, background-color 150ms ease-out;
+  }
+  #tab-scanner .sc-cert-input:focus{background:var(--sc-fill-focus);box-shadow:inset 0 0 0 1px var(--sc-steel-ink), 0 0 0 3px var(--sc-focus-soft);}
+  #tab-scanner .sc-cert-input:focus-visible{outline:none;}
+  #tab-scanner .sc-cert-input::placeholder{color:var(--sc-ph);opacity:1;}
+  #tab-scanner #sc-cert-go{--sc-i:var(--i-arrow);flex:none;min-height:var(--sc-field-h);gap:7px;padding:0 16px 0 19px;}
+  #tab-scanner #sc-cert-go::after{width:18px;height:18px;}
+  #tab-scanner .sc-grader-pick{
+    display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:18px;
+    background:var(--sc-surface);box-shadow:var(--sc-hi), var(--sc-ring);
+  }
+  #tab-scanner .sc-grader-pick-text{font-size:var(--sc-fs-row);font-weight:700;line-height:1.4;color:var(--sc-ink);}
+  #tab-scanner .sc-grader-pick-btns{display:grid;grid-template-columns:repeat(5, minmax(0, 1fr));gap:6px;}
+  #tab-scanner .sc-grader-pick-btns .sc-btn{min-height:44px;padding:0;font-size:var(--sc-fs-label);background:var(--sc-fill-card);}
 
   /* ── price with: our sheets or a flat % ── */
-  #tab-scanner .sc-rules{display:flex;flex-direction:column;gap:12px;min-width:0;padding:0 0;}
-  #tab-scanner .sc-rule-sheet{font:500 14px/1.4 var(--font-ui);color:var(--dim);}
-  #tab-scanner .sc-rule-hint{font:600 14px/1.45 var(--font-ui);color:var(--sc-warn-ink);}
+  #tab-scanner .sc-rules{display:flex;flex-direction:column;gap:12px;min-width:0;padding:16px;}
+  #tab-scanner .sc-rule-sheet{font-size:var(--sc-fs-label);line-height:1.45;color:var(--sc-muted);}
+  #tab-scanner .sc-rule-hint{font-size:var(--sc-fs-label);font-weight:700;line-height:1.45;color:var(--sc-err-ink);}
   #tab-scanner .sc-flat{display:flex;align-items:center;gap:8px;min-width:0;}
-  #tab-scanner .sc-flat .sc-input{width:84px;flex:none;height:52px;text-align:right;font:600 18px/1 var(--font-mono);}
-  #tab-scanner .sc-flat-of{flex:none;font:600 15px/1 var(--font-ui);color:var(--dim);}
+  #tab-scanner .sc-flat .sc-input{width:84px;flex:none;height:44px;text-align:right;font-weight:800;font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-flat-of{flex:none;font-size:var(--sc-fs-row);font-weight:700;color:var(--sc-muted);}
   #tab-scanner .sc-flat .sc-seg{flex:1 1 auto;}
 
-  /* ── segmented controls ── */
-  #tab-scanner .sc-seg{
-    display:flex;gap:4px;min-width:0;padding:4px;border-radius:var(--sc-r-ctl);
-    background:var(--sc-sunk);box-shadow:inset 0 0 0 1px var(--sc-line-2);
-  }
+  /* ── segmented controls: a sunk track, the chosen one lifted in teal ── */
+  #tab-scanner .sc-seg{display:flex;gap:2px;min-width:0;padding:4px;border-radius:999px;background:var(--sc-fill);}
+  #tab-scanner .sc-card .sc-seg{background:var(--sc-fill-card);}
   #tab-scanner .sc-seg-btn{
-    flex:1 1 auto;min-width:0;min-height:44px;padding:0 12px;border:0;border-radius:var(--sc-r-in);cursor:pointer;
-    background:transparent;color:var(--dim);font:700 15px/1 var(--font-ui);letter-spacing:.01em;white-space:nowrap;
-    transition:background-color 160ms var(--sc-ease), color 160ms var(--sc-ease), transform 120ms var(--sc-ease);
+    flex:1 1 0;min-width:0;min-height:36px;padding:0 10px;border:0;border-radius:999px;cursor:pointer;
+    background:transparent;color:var(--sc-muted);font-size:var(--sc-fs-row);font-weight:700;line-height:1.15;white-space:nowrap;
+    transition:background-color 200ms ease-out, color 200ms ease-out;
   }
-  #tab-scanner .sc-seg-btn:hover{color:var(--text);}
-  #tab-scanner .sc-seg-btn:active{transform:scale(.97);}
-  #tab-scanner .sc-seg-btn[aria-pressed="true"]{background:var(--sc-raised);color:var(--text);box-shadow:inset 0 0 0 1px var(--sc-line-2);}
+  #tab-scanner .sc-card .sc-seg-btn{color:var(--sc-ink);}
+  #tab-scanner .sc-seg-btn:hover{color:var(--sc-ink);}
+  #tab-scanner .sc-seg-btn[aria-pressed="true"]{
+    background:linear-gradient(180deg, var(--sc-teal-top), var(--sc-teal));color:#0B1626;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.22), 0 1px 2px rgba(0,0,0,.35);
+  }
+  /* "Normal rates / Consignor rates / Flat %" may wrap to two lines on a narrow phone rather than overflow. */
+  #tab-scanner .sc-rules .sc-seg-btn{flex:1 1 auto;padding:5px 10px;white-space:normal;text-align:center;}
 
   /* ── this visit: the pile ── */
-  #tab-scanner .sc-pile{container-type:inline-size;padding:16px 16px 8px;}
-  #tab-scanner .sc-pile-head{display:flex;align-items:center;justify-content:space-between;gap:12px;}
-  #tab-scanner .sc-pile-count{margin-top:4px;font:500 13px/1.2 var(--font-mono);color:var(--dim);}
-  #tab-scanner .sc-pile-totals{display:grid;grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);margin-top:12px;}
-  #tab-scanner .sc-total{min-width:0;padding:4px 12px 12px 0;}
-  #tab-scanner .sc-total + .sc-total{padding-left:14px;border-left:1px solid var(--sc-line);}
-  #tab-scanner .sc-total-val{margin-top:8px;font:600 min(21px, 7.2cqi)/1.15 var(--font-mono);color:var(--text);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
-  #tab-scanner .sc-pile-unknown{margin-top:8px;font:500 13px/1.4 var(--font-ui);color:var(--sc-warn-ink);}
-  #tab-scanner .sc-pile-sub{margin-top:8px;font:500 13px/1.4 var(--font-ui);color:var(--dim);}
-  #tab-scanner .sc-clear-confirm{
-    display:flex;flex-direction:column;gap:12px;margin:4px 0 12px;padding:12px;border-radius:var(--sc-r-ctl);
-    background:color-mix(in srgb, var(--sc-red) 12%, var(--s1));
-  }
-  #tab-scanner .sc-clear-confirm-text{font:600 15px/1.45 var(--font-ui);color:var(--text);}
+  #tab-scanner .sc-pile{display:flex;flex-direction:column;gap:12px;}
+  #tab-scanner .sc-pile-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:2px 4px 0;}
+  #tab-scanner .sc-pile-head .sc-h{font-size:var(--sc-fs-num);line-height:1.2;letter-spacing:-.015em;}
+  #tab-scanner .sc-pile-count{margin-top:2px;font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);}
+  #tab-scanner #sc-clear{--sc-i:var(--i-user-plus);flex:none;gap:7px;padding:0 15px 0 12px;color:var(--sc-steel-ink);font-size:var(--sc-fs-label);}
+  #tab-scanner #sc-clear::before{width:17px;height:17px;}
+  #tab-scanner .sc-pile-totals{padding:13px 16px;border-bottom:1px solid var(--sc-line);}
+  #tab-scanner .sc-total{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;}
+  #tab-scanner .sc-total .sc-total-val{font-size:var(--sc-fs-body);font-weight:800;line-height:1.3;color:var(--sc-ink);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-pile-unknown{--sc-i:var(--i-info);flex:1 1 100%;display:flex;gap:8px;margin-top:4px;font-size:var(--sc-fs-label);line-height:1.45;color:var(--sc-muted);}
+  #tab-scanner .sc-pile-unknown::before{width:15px;height:15px;margin-top:2px;color:var(--sc-faint);}
+  #tab-scanner .sc-clear-confirm{display:flex;flex-direction:column;gap:12px;margin:12px 12px 4px;padding:12px;border-radius:16px;background:var(--sc-err-tint);}
+  #tab-scanner .sc-clear-confirm-text{font-size:var(--sc-fs-row);font-weight:700;line-height:1.45;color:var(--sc-ink);}
   #tab-scanner .sc-clear-confirm-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-  #tab-scanner .sc-clear-confirm-btns .sc-btn{min-height:48px;}
-  #tab-scanner .sc-earlier-row{display:flex;align-items:center;gap:4px;border-top:1px solid var(--sc-line);}
+  #tab-scanner .sc-clear-confirm-btns .sc-btn{min-height:46px;}
+  #tab-scanner #sc-earlier-list{padding-bottom:2px;}
+  #tab-scanner .sc-earlier-row{position:relative;display:flex;align-items:flex-start;}
+  #tab-scanner .sc-earlier-row + .sc-earlier-row::before{content:"";position:absolute;top:0;left:68px;right:0;height:1px;background:var(--sc-line);}
   #tab-scanner .sc-earlier-main{
-    flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:12px;
-    min-height:62px;padding:12px 4px 12px 0;background:none;border:0;color:inherit;font:inherit;text-align:left;cursor:pointer;
+    flex:1 1 auto;min-width:0;display:grid;grid-template-columns:40px minmax(0,1fr) auto;column-gap:12px;align-items:start;
+    padding:12px 2px 12px 16px;border:0;border-radius:16px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;
     -webkit-tap-highlight-color:transparent;
   }
-  #tab-scanner .sc-earlier-main:active .name{color:var(--sc-avg-ink);}
-  #tab-scanner .sc-earlier-row .name{min-width:0;font:600 15px/1.3 var(--font-ui);color:var(--text);overflow-wrap:anywhere;}
-  #tab-scanner .sc-earlier-row .cert{display:block;margin-bottom:4px;font:500 12px/1.2 var(--font-mono);letter-spacing:.02em;color:var(--dim);}
-  #tab-scanner .sc-earlier-row .val{
-    flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:8px;
-    font:600 15px/1 var(--font-mono);color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap;
+  #tab-scanner .sc-earlier-main:active .title{color:var(--sc-steel-ink);}
+  #tab-scanner .sc-row-grade{
+    display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--sc-fill-card);
+    color:var(--sc-ink);font-size:var(--sc-fs-body);font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em;
   }
-  #tab-scanner .sc-earlier-row .status-pill{padding:4px 8px;font:700 11px/1 var(--font-ui);letter-spacing:.08em;}
+  #tab-scanner .sc-row-grade.sc-unk{--sc-i:var(--i-barcode);color:var(--sc-muted);}
+  #tab-scanner .sc-row-grade.sc-unk::before{width:18px;height:18px;}
+  #tab-scanner .sc-earlier-row .name{display:flex;flex-direction:column;align-items:flex-start;min-width:0;}
+  #tab-scanner .sc-earlier-row .title{
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+    font-size:var(--sc-fs-row);font-weight:700;line-height:1.3;color:var(--sc-ink);overflow-wrap:anywhere;
+  }
+  #tab-scanner .sc-earlier-row .cert{margin-top:3px;font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-earlier-row .val{font-size:var(--sc-fs-body);font-weight:800;line-height:1.3;color:var(--sc-ink);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right;}
+  #tab-scanner .sc-earlier-row .status-pill{
+    display:inline-flex;align-items:center;gap:5px;height:24px;margin-top:7px;padding:0 9px;border:0;border-radius:999px;
+    background:var(--sc-grey-tint);color:var(--sc-muted);
+    font-family:inherit;font-size:var(--sc-fs-label);font-weight:700;letter-spacing:0;text-transform:none;line-height:1;white-space:nowrap;
+  }
+  #tab-scanner .sc-earlier-row .status-pill::before{width:14px;height:14px;}
+  #tab-scanner .sc-earlier-row .status-pill.sc-chip-wait{background:var(--sc-wait-tint);color:var(--sc-steel-ink);}
+  #tab-scanner .sc-earlier-row .status-pill.sc-chip-hand{--sc-i:var(--i-pencil);padding-left:7px;background:var(--sc-teal-tint);color:var(--sc-teal-chip);}
+  #tab-scanner .sc-earlier-row .status-pill.sc-chip-no{--sc-i:var(--i-ban);padding-left:7px;background:var(--sc-grey-tint);color:var(--sc-muted);}
+  #tab-scanner .sc-earlier-row .status-pill.sc-chip-err{--sc-i:var(--i-alert);padding-left:7px;background:var(--sc-err-tint);color:var(--sc-err-ink);}
   #tab-scanner .sc-earlier-remove{
     --sc-i:var(--i-x);
-    flex:none;display:flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;border:0;border-radius:50%;cursor:pointer;
-    background:transparent;color:var(--dim);font-size:0;line-height:0;transition:background-color 160ms var(--sc-ease), color 160ms var(--sc-ease);
+    flex:none;display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin:5px 4px 0 0;padding:0;border:0;border-radius:50%;cursor:pointer;
+    background:transparent;color:var(--sc-faint);font-size:0;line-height:0;transition:background-color 150ms ease-out, color 150ms ease-out;
   }
-  #tab-scanner .sc-earlier-remove::before{width:18px;height:18px;}
-  #tab-scanner .sc-earlier-remove:hover,#tab-scanner .sc-earlier-remove:active{color:var(--sc-pay-ink);background:color-mix(in srgb, var(--sc-red) 12%, transparent);}
+  #tab-scanner .sc-earlier-remove::before{width:16px;height:16px;}
+  #tab-scanner .sc-earlier-remove:hover,#tab-scanner .sc-earlier-remove:active{color:var(--sc-err-ink);background:var(--sc-err-tint);}
 
-  /* ── the dock: Normal / Lower and Hide, always on screen, at the bottom where the thumb is ── */
+  /* ── the dock: Normal / Lower and Hide, always on screen, at the bottom where the thumb is. In a phone's
+     browser .sc-dock is only a wrapper (the controls are fixed, the cert box stays in the page); inside
+     the Android app with its camera open it pins both rows under the sheet. ── */
+  #tab-scanner .sc-dock{display:contents;}
   #tab-scanner .sc-controls{
-    position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;gap:12px;
+    position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;align-items:center;gap:8px;
     padding:var(--sc-dock-pad-top) max(16px, calc((100vw - 520px) / 2)) calc(var(--sc-dock-pad-bottom) + env(safe-area-inset-bottom));
-    background:linear-gradient(180deg, transparent, var(--bg) 42%);
+    background:linear-gradient(180deg, var(--sc-dock-top) 0, var(--sc-dock) 44px);
+    border-radius:24px 24px 0 0;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.10), 0 -12px 28px -10px rgba(0,0,0,.7);
   }
   /* With the on-screen keyboard up the dock would sit on the field being typed in. Keyed on the keyboard
      itself (the scanner script sets .sc-kbd-open from the visual viewport, or in the Android app from the
@@ -841,17 +950,17 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-controls .sc-mode .sc-seg-btn{min-height:calc(var(--sc-dock-ctl) - 8px);} /* + the segment's 4px padding, top and bottom */
   #tab-scanner .sc-hide-btn{
     --sc-i:var(--i-eye-off);
-    position:relative;overflow:hidden;flex:0 0 42%;display:flex;align-items:center;justify-content:center;gap:8px;
-    min-height:var(--sc-dock-ctl);padding:0 12px;border:0;border-radius:var(--sc-r-ctl);cursor:pointer;
-    background:var(--sc-raised);color:var(--text);box-shadow:inset 0 0 0 1px var(--sc-line-2);
-    font:700 17px/1.1 var(--font-ui);letter-spacing:.02em;
+    position:relative;overflow:hidden;flex:none;display:flex;align-items:center;justify-content:center;gap:7px;
+    min-height:var(--sc-dock-ctl);padding:0 16px 0 13px;border:0;border-radius:999px;cursor:pointer;
+    background:var(--sc-fill);color:var(--sc-ink);box-shadow:var(--sc-hi), var(--sc-ring);
+    font-size:var(--sc-fs-row);font-weight:700;line-height:1.1;
     touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
   }
-  #tab-scanner .sc-hide-btn::before{position:relative;z-index:1;}
+  #tab-scanner .sc-hide-btn::before{position:relative;z-index:1;width:19px;height:19px;}
   #tab-scanner .sc-hide-btn span{position:relative;z-index:1;white-space:nowrap;}
-  #tab-scanner .sc-hide-btn::after{content:"";position:absolute;inset:0;background:color-mix(in srgb, var(--sc-ice) 32%, transparent);transform:scaleX(0);transform-origin:left center;}
+  #tab-scanner .sc-hide-btn::after{content:"";position:absolute;inset:0;background:rgba(59,151,151,.45);transform:scaleX(0);transform-origin:left center;}
   #tab-scanner .sc-hide-btn.holding::after{transform:scaleX(1);transition:transform 1s linear;}
-  #tab-scanner .sc-hide-btn[aria-pressed="true"]{--sc-i:var(--i-eye);background:var(--sc-sunk);color:var(--dim);}
+  #tab-scanner .sc-hide-btn[aria-pressed="true"]{--sc-i:var(--i-eye);color:var(--sc-muted);}
 
   /* Hide mode: the phone shown to a seller. The layout carries .sc-seller-mode; every staff-only
      section disappears (display:none beats each section's own [hidden] toggling) and the seller card
@@ -862,7 +971,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   body.sc-hiding .nav-tabs,body.sc-hiding .nav-right,body.sc-hiding .logo-sub{display:none !important;}
   /* Hide mode's Normal/Lower switch: a small unlabeled 1/2 control, the hold button takes the room. */
   #tab-scanner .scanner-layout.sc-seller-mode .sc-controls .sc-mode{flex:0 0 auto;}
-  #tab-scanner .scanner-layout.sc-seller-mode .sc-controls .sc-mode .sc-seg-btn{min-width:44px;padding:0 8px;}
+  #tab-scanner .scanner-layout.sc-seller-mode .sc-controls .sc-mode .sc-seg-btn{flex:none;min-width:44px;padding:0 8px;}
   #tab-scanner .scanner-layout.sc-seller-mode .sc-controls .sc-hide-btn{flex:1 1 auto;}
   /* ...and the seller card moves up under the wordmark: the market is the first thing the seller sees. */
   #tab-scanner .scanner-layout.sc-seller-mode .sc-brand{order:-2;}
@@ -873,25 +982,128 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner.tab.active{animation:scFadeIn .25s ease-out;}
   @keyframes scFadeIn{from{opacity:0}to{opacity:1}}
 
-  /* Narrow phones (under 360px): the segmented labels and the hold button keep to one line. */
+  /* Narrow phones: the mock's own steps down. */
+  @media (max-width:374px){
+    #tab-scanner{--sc-fs-hero:33px;--sc-fs-num:20px;}
+    #tab-scanner .sc-tile{padding-left:14px;padding-right:12px;}
+    #tab-scanner #sc-cert-go{padding:0 18px;}
+    #tab-scanner #sc-cert-go::after{display:none;}
+    #tab-scanner .sc-hide-btn{padding:0 14px 0 11px;}
+  }
+  /* Under 360px: the segmented labels and the hold button keep to one line. */
   @media (max-width:359px){
-    #tab-scanner .sc-seg-btn{padding:0 6px;font-size:13px;}
-    #tab-scanner .sc-hide-btn{font-size:15px;}
+    #tab-scanner .sc-seg-btn{padding:0 6px;font-size:var(--sc-fs-label);}
+    #tab-scanner .sc-hide-btn{font-size:var(--sc-fs-label);}
   }
 
-  /* Inside the Android app with its camera open, the page is a short sheet under the camera: a tighter
-     card, so We pay, Avg of 3 and CL value all sit above the dock without scrolling. */
-  body:has(.sc-native-cam) .main{padding-top:8px;}
-  #tab-scanner .sc-native-cam .sc-result-head{padding:12px 16px 8px;}
-  #tab-scanner .sc-native-cam .sc-result-id{margin-bottom:4px;}
-  #tab-scanner .sc-native-cam .sc-result-name{font-size:16px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-  #tab-scanner .sc-native-cam .sc-pay{padding:12px 16px;}
-  #tab-scanner .sc-native-cam .sc-pay-val{margin-top:8px;}
-  #tab-scanner .sc-native-cam .sc-pay-val:not(.sc-words){font-size:min(44px, 11cqi);}
-  #tab-scanner .sc-native-cam .sc-math{margin-top:4px;}
-  #tab-scanner .sc-native-cam .sc-pair-cell{padding:8px 16px 12px;}
-  #tab-scanner .sc-native-cam .sc-pair-val{margin-top:4px;}
-  #tab-scanner .scanner-layout.sc-native-cam{--sc-dock-pad-top:8px;--sc-dock-ctl:48px;}
+  /* ── Inside the Android app with its camera open: the page is the sheet under the camera ──────────────
+     The app draws the sheet's rounded edge and its handle over the top 22px, so the page starts below it.
+     Order on the sheet: the scoreboard (the same top at every stop), the card, the pile, the rate choice,
+     and last the camera frame folded down to a Reopen camera button; the dock pins Normal / Lower, Hide and
+     the cert box under all of it. With no stop class (app 1.3, or 1.4 before it names one) this IS the
+     'mid' arrangement. */
+  html:has(#tab-scanner.tab.active) body:has(.sc-native-cam){
+    background:
+      radial-gradient(260px 190px at 90% -30px, rgba(59,151,151,.15), rgba(59,151,151,0) 72%) no-repeat,
+      linear-gradient(180deg, #0F1D33 0, #0A1424 280px) no-repeat #0A1424;
+  }
+  body:has(.sc-native-cam) .main{padding-top:22px;}
+  #tab-scanner .scanner-layout.sc-native-cam{
+    --sc-dock-pad-bottom:10px;
+    --sc-dock-h:calc(var(--sc-dock-pad-top) + var(--sc-dock-ctl) + var(--sc-dock-gap) + var(--sc-field-h) + var(--sc-dock-pad-bottom));
+  }
+  #tab-scanner .scanner-layout.sc-native-cam .sc-brand{display:none;}
+  #tab-scanner .scanner-layout.sc-native-cam .sc-score{order:-3;}
+  #tab-scanner .scanner-layout.sc-native-cam .sc-sheet-cue{order:-2;}
+  #tab-scanner .scanner-layout.sc-native-cam .sc-signin{order:-1;}
+  #tab-scanner .scanner-layout.sc-native-cam .sc-pile{order:2;}
+  #tab-scanner .scanner-layout.sc-native-cam .sc-rules{order:3;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-seller-mode .sc-seller{order:-3;}
+  #tab-scanner .scanner-layout.sc-native-cam .sc-result-name{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  /* The app's camera is open ABOVE this page: the page's own frame has nothing left to show, so it folds
+     down to a slim Reopen camera button at the end of the sheet. The button stays because the app can drop
+     the open message, and with the whole frame gone there would be no way back; pressing it while the camera
+     is up does nothing (the app ignores a second open). */
+  #tab-scanner .scanner-layout.sc-native-cam .sc-vf-wrap{order:5;min-height:0;overflow:visible;border-radius:0;background:none;box-shadow:none;}
+  #tab-scanner .scanner-layout.sc-native-cam .sc-vf-off{min-height:0;padding:0;background:none;}
+  #tab-scanner .scanner-layout.sc-native-cam .sc-vf-off::before,#tab-scanner .scanner-layout.sc-native-cam .sc-vf-off-text{display:none;}
+  #tab-scanner .scanner-layout.sc-native-cam .sc-start-row{background:none;}
+  #tab-scanner .scanner-layout.sc-native-cam .sc-start{
+    flex:1 1 auto;min-height:48px;font-size:var(--sc-fs-row);
+    background:var(--sc-fill);color:var(--sc-steel-ink);box-shadow:var(--sc-hi), var(--sc-ring);
+  }
+  #tab-scanner .scanner-layout.sc-native-cam .sc-dock{
+    position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;flex-direction:column;gap:var(--sc-dock-gap);
+    padding:var(--sc-dock-pad-top) max(16px, calc((100vw - 520px) / 2)) calc(var(--sc-dock-pad-bottom) + env(safe-area-inset-bottom));
+    background:linear-gradient(180deg, var(--sc-dock-top) 0, var(--sc-dock) 44px);
+    border-radius:24px 24px 0 0;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.10), 0 -12px 28px -10px rgba(0,0,0,.7);
+  }
+  #tab-scanner .scanner-layout.sc-native-cam .sc-controls{position:static;padding:0;background:none;border-radius:0;box-shadow:none;}
+  #tab-scanner .scanner-layout.sc-native-cam .sc-label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+  /* A safety net that needs no event: a sheet this short is the app's peek, which has no room for a dock. */
+  @media (max-height:200px){
+    #tab-scanner .scanner-layout.sc-native-cam:not(.sc-kbd-open) .sc-dock{display:none;}
+    #tab-scanner .scanner-layout.sc-native-cam:not(.sc-kbd-open){padding-bottom:0;}
+  }
+
+  /* 'down' (app 1.4, the sheet swiped down: "it's just a scanner"). Only the scoreboard (in hide mode, the
+     seller card) and one quiet way up; the dock and everything else are gone. Nothing else, the frame
+     included: a stop only ever arrives from an app whose camera is open (it sent the event), so the Reopen
+     camera button has nothing to do here, and it is one swipe away. Fits the app's 156px peek at 360px wide. */
+  body:has(.sc-native-cam.sc-sheet-down) .main{padding-bottom:0;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down{gap:4px;padding-bottom:0;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down > :not(.sc-score):not(.sc-seller):not(.sc-sheet-cue){display:none !important;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down .sc-sheet-cue{
+    --sc-i:var(--i-chevron-up);
+    display:flex;align-items:center;justify-content:center;gap:5px;width:100%;min-height:44px;padding:0 16px;
+    border:0;border-radius:14px;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent;
+    color:var(--sc-ph);font-size:var(--sc-fs-label);font-weight:700;line-height:1.2;
+  }
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down .sc-sheet-cue::before{width:16px;height:16px;}
+  #tab-scanner .sc-sheet-down .sc-score{display:flex;align-items:center;gap:12px;}
+  #tab-scanner .sc-sheet-down .sc-tile{min-height:0;justify-content:center;}
+  #tab-scanner .sc-sheet-down .sc-tile-pay{flex:0 1 auto;max-width:62%;padding:8px 16px 9px;border-radius:18px;}
+  #tab-scanner .sc-sheet-down .sc-tile-pay::after,#tab-scanner .sc-sheet-down .sc-math,#tab-scanner .sc-sheet-down #sc-pile-pay-label{display:none;}
+  #tab-scanner .sc-sheet-down .sc-tile .sc-key{line-height:1.2;}
+  #tab-scanner .sc-sheet-down .sc-pay-val{margin-top:1px;padding-top:0;font-size:calc(var(--sc-fs-num) + 2px);line-height:1.1;letter-spacing:-.02em;}
+  #tab-scanner .sc-sheet-down .sc-pay-val.sc-words{font-size:var(--sc-fs-row);line-height:1.2;}
+  #tab-scanner .sc-sheet-down .sc-tile-visit{flex:1 1 0;padding:0;background:none;box-shadow:none;}
+  #tab-scanner .sc-sheet-down .sc-tile-title{color:var(--sc-muted);line-height:1.2;}
+  #tab-scanner .sc-sheet-down .sc-tile-visit .sc-total-val{font-size:calc(var(--sc-fs-body) + 2px);line-height:1.25;}
+  #tab-scanner .sc-sheet-down .sc-tile-visit .sc-pile-sub{margin-top:1px;font-weight:700;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #tab-scanner .sc-sheet-down .sc-seller{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:2px 10px;padding:10px 16px;text-align:left;}
+  #tab-scanner .sc-sheet-down .sc-seller-empty,#tab-scanner .sc-sheet-down .sc-seller-market{grid-column:1 / -1;}
+  #tab-scanner .sc-sheet-down .sc-seller-name{font-size:var(--sc-fs-row);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #tab-scanner .sc-sheet-down .sc-seller-grade{height:24px;}
+  #tab-scanner .sc-sheet-down .sc-seller-market{margin-top:0;font-size:var(--sc-fs-num);}
+  #tab-scanner .sc-sheet-down .sc-seller-market.sc-wait,#tab-scanner .sc-sheet-down .sc-seller-market.sc-plain{font-size:var(--sc-fs-row);}
+
+  /* 'up' (app 1.4, the sheet swiped up: review the pile). The scoreboard stays on top; the card folds into
+     one row (its grade, name and cert) so the pile sits right under it, and tapping that row opens the
+     whole card again in place (.sc-card-open). Never while typing: the script shows 'mid' then. */
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-result{padding:10px 14px 10px 12px;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-result-head{align-items:center;gap:12px;padding-right:30px;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-grade-dot{
+    width:36px;height:36px;font-size:var(--sc-fs-body);
+    box-shadow:0 0 0 2px var(--sc-card-top), 0 0 0 3.5px rgba(111,177,224,.55);
+  }
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-result-words{padding-top:0;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-result-name{-webkit-line-clamp:1;text-wrap:wrap;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-result-id{margin-top:2px;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-result-more{grid-template-rows:0fr;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-result-more-in{visibility:hidden;transition:visibility 0s linear 200ms;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-result-open{
+    --sc-i:var(--i-chevron-down);
+    display:flex;align-items:center;justify-content:flex-end;position:absolute;inset:0;z-index:2;padding:0 14px;
+    border:0;border-radius:inherit;background:transparent;color:var(--sc-muted);cursor:pointer;-webkit-tap-highlight-color:transparent;
+  }
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-result-open::after{width:18px;height:18px;}
+
+  @media (prefers-reduced-motion:reduce){
+    #tab-scanner .sc-result-more,#tab-scanner .sc-result-more-in,#tab-scanner .sc-grade-dot,#tab-scanner .sc-result{transition:none !important;}
+    #tab-scanner .sc-wait,#tab-scanner .sc-note.sc-note-down::before{animation:none;}
+  }
 
   @starting-style{
     #tab-scanner .sc-result{opacity:0;}
@@ -946,39 +1158,60 @@ code{font-family:var(--font-mono);font-size:.92em;}
     </div>
   </section>
 
-  <!-- The result: ONE card under the scan. On top, the slab's own label (grader, grade, cert, name);
-       under it what we pay, big, with the rule's math; then the avg of 3 and the CL value side by side. -->
-  <section class="sc-card sc-result scanner-result sc-staff-only" id="sc-result" hidden>
-    <div class="sc-result-head">
-      <div class="sc-result-id">
-        <span class="sc-chip" id="sc-grader">-</span>
-        <span class="sc-result-grade" id="sc-grade">-</span>
-        <span class="sc-result-cert" id="sc-cert">-</span>
-        <span class="sc-chip sc-rescan" id="sc-rescan-badge" hidden>Updated in pile</span>
-      </div>
-      <div class="sc-result-name" id="sc-name">-</div>
-    </div>
-
-    <div class="sc-pay">
+  <!-- The scoreboard: the two numbers said out loud, directly under the camera. What we pay for the card on
+       screen (with the rule's math), and what this visit's pile comes to. In the Android app it is the top
+       of the sheet at every stop. -->
+  <section class="sc-score sc-staff-only" id="sc-score">
+    <div class="sc-tile sc-tile-pay">
       <div class="sc-key sc-key-pay">We pay</div>
       <div class="sc-pay-val" id="sc-pay">-</div>
       <div class="sc-math" id="sc-rule-math"></div>
     </div>
-    <dl class="sc-pair">
-      <div class="sc-pair-cell">
-        <dt class="sc-key sc-key-avg">Avg of 3</dt>
-        <dd class="sc-pair-val" id="sc-avg3">-</dd>
-      </div>
-      <div class="sc-pair-cell">
-        <dt class="sc-key sc-key-clv">CL value</dt>
-        <dd class="sc-pair-val" id="sc-clv">-</dd>
-      </div>
-    </dl>
-
-    <div class="sc-note" id="sc-note" hidden></div>
-    <div class="sc-retry" id="sc-retry" hidden>
-      <button type="button" class="sc-btn sc-btn-quiet" id="sc-retry-btn">Retry</button>
+    <div class="sc-tile sc-tile-visit">
+      <div class="sc-tile-title">This visit</div>
+      <div class="sc-key" id="sc-pile-pay-label">You'd pay</div>
+      <div class="sc-total-val" id="sc-pile-payout">-</div>
+      <div class="sc-pile-sub" id="sc-pile-buy-count"></div>
     </div>
+  </section>
+  <!-- Android app 1.4 with its sheet swiped down: the peek's one way up (asks the app for the 'up' stop). -->
+  <button type="button" class="sc-sheet-cue" id="sc-sheet-cue">Swipe up to review</button>
+
+  <!-- The card on screen: the ringed grade, the slab's name and cert, then the avg of 3 and the CL value
+       side by side, and the line saying which rule priced it. -->
+  <section class="sc-card sc-result scanner-result sc-staff-only" id="sc-result" hidden>
+    <div class="sc-result-head">
+      <span class="sc-grade-dot sc-unk" id="sc-grade-dot" aria-hidden="true"></span>
+      <div class="sc-result-words">
+        <div class="sc-result-name" id="sc-name">-</div>
+        <div class="sc-result-id">
+          <span class="sc-result-grade" id="sc-grade">-</span>
+          <span class="sc-result-grader" id="sc-grader">-</span>
+          <span class="sc-result-sep" aria-hidden="true">·</span>
+          <span class="sc-result-cert" id="sc-cert">-</span>
+          <span class="sc-rescan" id="sc-rescan-badge" hidden>Updated in pile</span>
+        </div>
+      </div>
+    </div>
+    <div class="sc-result-more">
+      <div class="sc-result-more-in">
+        <dl class="sc-pair">
+          <div class="sc-pair-cell">
+            <dt class="sc-key sc-key-avg">Avg of 3</dt>
+            <dd class="sc-pair-val" id="sc-avg3">-</dd>
+          </div>
+          <div class="sc-pair-cell">
+            <dt class="sc-key sc-key-clv">CL value</dt>
+            <dd class="sc-pair-val" id="sc-clv">-</dd>
+          </div>
+        </dl>
+        <div class="sc-note" id="sc-note" hidden></div>
+        <div class="sc-retry" id="sc-retry" hidden>
+          <button type="button" class="sc-btn sc-btn-quiet" id="sc-retry-btn">Retry</button>
+        </div>
+      </div>
+    </div>
+    <button type="button" class="sc-result-open" id="sc-result-open" aria-label="Show details" aria-expanded="false"></button>
   </section>
 
   <!-- Hide mode's seller card: the card's name and grade, small, and the MARKET, big. Nothing else is
@@ -990,27 +1223,40 @@ code{font-family:var(--font-mono);font-size:.92em;}
     <div class="sc-seller-market" id="sc-seller-market" hidden></div>
   </section>
 
-  <section class="sc-entry" id="sc-box-card">
-    <label class="sc-label" for="sc-cert-input">Cert number</label>
-    <div class="sc-box">
-      <input class="sc-cert-input" id="sc-cert-input" type="text" inputmode="numeric" autocomplete="off"
-             placeholder="Number or PSA/CGC link">
-      <button type="button" class="sc-btn sc-btn-primary" id="sc-cert-go">Price it</button>
-    </div>
-    <div class="sc-box-err" id="sc-box-err" role="alert" hidden></div>
-    <div class="sc-grader-pick" id="sc-grader-pick" hidden>
-      <div class="sc-grader-pick-text" id="sc-grader-pick-text">BGS or other grader: pick the grader</div>
-      <div class="sc-grader-pick-btns" role="group" aria-label="Grader">
-        <button type="button" class="sc-btn sc-btn-quiet" data-grader="psa">PSA</button>
-        <button type="button" class="sc-btn sc-btn-quiet" data-grader="cgc">CGC</button>
-        <button type="button" class="sc-btn sc-btn-quiet" data-grader="bgs">BGS</button>
-        <button type="button" class="sc-btn sc-btn-quiet" data-grader="sgc">SGC</button>
-        <button type="button" class="sc-btn sc-btn-quiet" data-grader="tag">TAG</button>
+  <!-- The dock. Always on screen, hidden or not: Normal / Lower market and the one hide button, at the
+       bottom of the screen where the thumb is. In a phone's browser the cert box below stays here in the
+       page; inside the Android app with its camera open it is the dock's second row. -->
+  <div class="sc-dock" id="sc-dock">
+    <div class="sc-controls">
+      <div class="sc-seg sc-mode" id="sc-mode" role="group" aria-label="Market">
+        <button type="button" class="sc-seg-btn" data-mode="normal" aria-pressed="true">Normal</button>
+        <button type="button" class="sc-seg-btn" data-mode="lower" aria-pressed="false">Lower</button>
       </div>
+      <button type="button" class="sc-hide-btn" id="sc-hide-btn" aria-pressed="false"><span id="sc-hide-label">Hide</span></button>
     </div>
-  </section>
 
-  <section class="sc-rules sc-staff-only" id="sc-rule-card">
+    <section class="sc-entry" id="sc-box-card">
+      <label class="sc-label" for="sc-cert-input">Cert number</label>
+      <div class="sc-box">
+        <input class="sc-cert-input" id="sc-cert-input" type="text" inputmode="numeric" autocomplete="off"
+               placeholder="Number or PSA/CGC link">
+        <button type="button" class="sc-btn sc-btn-primary" id="sc-cert-go">Price it</button>
+      </div>
+      <div class="sc-box-err" id="sc-box-err" role="alert" hidden></div>
+      <div class="sc-grader-pick" id="sc-grader-pick" hidden>
+        <div class="sc-grader-pick-text" id="sc-grader-pick-text">BGS or other grader: pick the grader</div>
+        <div class="sc-grader-pick-btns" role="group" aria-label="Grader">
+          <button type="button" class="sc-btn sc-btn-quiet" data-grader="psa">PSA</button>
+          <button type="button" class="sc-btn sc-btn-quiet" data-grader="cgc">CGC</button>
+          <button type="button" class="sc-btn sc-btn-quiet" data-grader="bgs">BGS</button>
+          <button type="button" class="sc-btn sc-btn-quiet" data-grader="sgc">SGC</button>
+          <button type="button" class="sc-btn sc-btn-quiet" data-grader="tag">TAG</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="sc-card sc-rules sc-staff-only" id="sc-rule-card">
     <h2 class="sc-h">Price with</h2>
     <div class="sc-seg" role="group" aria-label="Price with">
       <button type="button" class="sc-seg-btn" data-rule="normal" aria-pressed="true">Normal rates</button>
@@ -1030,7 +1276,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
     <div class="sc-rule-hint" id="sc-rule-hint" hidden></div>
   </section>
 
-  <section class="sc-card sc-pile scanner-earlier sc-staff-only" id="sc-earlier" hidden>
+  <!-- This visit: the pile. Its You'd pay total lives in the scoreboard above, next to We pay. -->
+  <section class="sc-pile scanner-earlier sc-staff-only" id="sc-earlier" hidden>
     <div class="sc-pile-head">
       <div>
         <h2 class="sc-h">This visit</h2>
@@ -1039,39 +1286,26 @@ code{font-family:var(--font-mono);font-size:.92em;}
       <button type="button" class="sc-btn sc-btn-quiet" id="sc-clear">New seller</button>
     </div>
 
-    <div class="sc-pile-totals" id="sc-pile-totals" hidden>
-      <div class="sc-total">
-        <div class="sc-key">Pile value</div>
-        <div class="sc-total-val" id="sc-pile-market">-</div>
-        <div class="sc-pile-unknown" id="sc-pile-unknown" hidden></div>
+    <div class="sc-card sc-pile-card">
+      <div class="sc-pile-totals" id="sc-pile-totals" hidden>
+        <div class="sc-total">
+          <div class="sc-key">Pile value</div>
+          <div class="sc-total-val" id="sc-pile-market">-</div>
+          <div class="sc-pile-unknown" id="sc-pile-unknown" hidden></div>
+        </div>
       </div>
-      <div class="sc-total">
-        <div class="sc-key sc-key-pay" id="sc-pile-pay-label">You'd pay</div>
-        <div class="sc-total-val" id="sc-pile-payout">-</div>
-        <div class="sc-pile-sub" id="sc-pile-buy-count"></div>
-      </div>
-    </div>
 
-    <div class="sc-clear-confirm" id="sc-clear-confirm" role="alert" hidden>
-      <div class="sc-clear-confirm-text">Clear all <span id="sc-clear-count">0</span> cards and start a new seller? This can't be undone.</div>
-      <div class="sc-clear-confirm-btns">
-        <button type="button" class="sc-btn sc-btn-danger" id="sc-clear-yes">Yes, clear it</button>
-        <button type="button" class="sc-btn sc-btn-quiet" id="sc-clear-no">Cancel</button>
+      <div class="sc-clear-confirm" id="sc-clear-confirm" role="alert" hidden>
+        <div class="sc-clear-confirm-text">Clear all <span id="sc-clear-count">0</span> cards and start a new seller? This can't be undone.</div>
+        <div class="sc-clear-confirm-btns">
+          <button type="button" class="sc-btn sc-btn-danger" id="sc-clear-yes">Yes, clear it</button>
+          <button type="button" class="sc-btn sc-btn-quiet" id="sc-clear-no">Cancel</button>
+        </div>
       </div>
-    </div>
 
-    <div id="sc-earlier-list"></div>
+      <div id="sc-earlier-list"></div>
+    </div>
   </section>
-
-  <!-- Always on screen, hidden or not: Normal / Lower market, and the one hide button. A dock at the
-       bottom of the screen, where the thumb is. -->
-  <div class="sc-controls">
-    <div class="sc-seg sc-mode" id="sc-mode" role="group" aria-label="Market">
-      <button type="button" class="sc-seg-btn" data-mode="normal" aria-pressed="true">Normal</button>
-      <button type="button" class="sc-seg-btn" data-mode="lower" aria-pressed="false">Lower</button>
-    </div>
-    <button type="button" class="sc-hide-btn" id="sc-hide-btn" aria-pressed="false"><span id="sc-hide-label">Hide</span></button>
-  </div>
 
 </div>
 </div>
@@ -5064,19 +5298,28 @@ window.ViewPrefs = {
 'use strict';
 // The Scanner page inside the Android app (a WebView). The app injects `window.penguinNative`; the
 // page posts it JSON messages - {type: 'openScanner' | 'closeScanner' | 'haptic' | 'saveFile' |
-// 'copyText', ...fields} - through `window.penguinNative.postMessage(text)` (a WebView JavaScript
-// interface only takes text, so the message goes over as a JSON string). The app's own scanner hands
-// each barcode back by calling `window.penguinScan(raw)` with the raw barcode string, which the page
-// runs through the same parse-and-price path as its browser camera.
+// 'copyText' | 'setSheet', ...fields} - through `window.penguinNative.postMessage(text)` (a WebView
+// JavaScript interface only takes text, so the message goes over as a JSON string). The app's own
+// scanner hands each barcode back by calling `window.penguinScan(raw)` with the raw barcode string,
+// which the page runs through the same parse-and-price path as its browser camera.
 //
 // Without the app (a phone's browser), `isAvailable()` is false, nothing is ever posted, and the page
 // uses the browser camera exactly as before. Availability is checked at CALL time, so an app that
 // injects the bridge after the page has loaded is still picked up.
 //
+// The sheet's three stops (app 1.4, `penguinNative.version >= 2`): while its camera is open the app's
+// bottom sheet rests at 'down' (a peek: just the scoreboard), 'mid' or 'up' (review the pile). The app
+// tells the page with `window.dispatchEvent(new CustomEvent('penguinsheet', { detail: { stop } }))` when
+// the camera opens ('mid') and each time the sheet STARTS travelling to a stop; the page asks for a stop
+// with {type: 'setSheet', stop}. App 1.3 (version 1) never sends the event and is never sent setSheet:
+// with no event the page simply keeps its 'mid' arrangement.
+//
 // Pure (embedded whole into the page by rates-portal/build-portal.js): the window is handed in.
 'use strict';
 
-var MESSAGE_TYPES = ['openScanner', 'closeScanner', 'haptic', 'saveFile', 'copyText'];
+var MESSAGE_TYPES = ['openScanner', 'closeScanner', 'haptic', 'saveFile', 'copyText', 'setSheet'];
+var SHEET_STOPS = ['down', 'mid', 'up'];
+var SHEETS_FROM_VERSION = 2;
 
 function createNativeBridge(win) {
   function native() {
@@ -5090,13 +5333,44 @@ function createNativeBridge(win) {
     var msg = Object.assign({}, fields || {}, { type: type });
     try { n.postMessage(JSON.stringify(msg)); return true; } catch (e) { return false; }
   }
+  /** The app has the three-stop sheet (version 2 and up). App 1.3 says version 1. */
+  function sheetsSupported() {
+    var n = native();
+    return !!n && Number(n.version) >= SHEETS_FROM_VERSION;
+  }
   return {
     isAvailable: function () { return !!native(); },
+    sheetsSupported: sheetsSupported,
     post: post,
     openScanner: function () { return post('openScanner'); },
     closeScanner: function () { return post('closeScanner'); },
     haptic: function (kind) { return post('haptic', { kind: kind || 'success' }); },
+    /** Asks the app to move its sheet to a stop. Never sent to an app without stops, never an unknown stop. */
+    setSheet: function (stop) {
+      if (!sheetsSupported() || SHEET_STOPS.indexOf(stop) < 0) return false;
+      return post('setSheet', { stop: stop });
+    },
   };
+}
+
+/** The stop a 'penguinsheet' event names, or null for anything else. */
+function sheetStopOf(ev) {
+  var d = ev && ev.detail;
+  var stop = d && d.stop;
+  return SHEET_STOPS.indexOf(stop) >= 0 ? stop : null;
+}
+
+/**
+ * Which stop's arrangement the page shows: null (no stop class at all, the page's own 'mid' look) unless
+ * the app has stops, its camera is open and it has named a stop. With the on-screen keyboard up the answer
+ * is always 'mid': nothing collapses or hides while someone is typing (the app slides the sheet up for the
+ * keyboard, so 'up' is what it will have said).
+ * `o`: { stop, supported, cameraOpen, keyboardOpen }.
+ */
+function layoutStop(o) {
+  if (!o || !o.supported || !o.cameraOpen) return null;
+  if (SHEET_STOPS.indexOf(o.stop) < 0) return null;
+  return o.keyboardOpen ? 'mid' : o.stop;
 }
 
 /** Installs window.penguinScan(raw) -> onScan(String(raw)). Returns an uninstall function. A handler
@@ -5112,7 +5386,10 @@ function installScanReceiver(win, onScan) {
 
 window.NativeBridge = {
   MESSAGE_TYPES: MESSAGE_TYPES,
+  SHEET_STOPS: SHEET_STOPS,
   createNativeBridge: createNativeBridge,
+  sheetStopOf: sheetStopOf,
+  layoutStop: layoutStop,
   installScanReceiver: installScanReceiver,
 };
 })();
@@ -5353,7 +5630,10 @@ window.NativeBridge = {
       flat: document.getElementById('sc-flat'),
       flatPct: document.getElementById('sc-flat-pct'),
       flatErr: document.getElementById('sc-flat-err'),
-      rateLabel: document.getElementById('sc-rate-label')
+      rateLabel: document.getElementById('sc-rate-label'),
+      gradeDot: document.getElementById('sc-grade-dot'),
+      sheetCue: document.getElementById('sc-sheet-cue'),
+      resultOpen: document.getElementById('sc-result-open')
     };
 
     function metaContent(name) {
@@ -5459,11 +5739,49 @@ window.NativeBridge = {
     // and pressing it again is harmless because the app ignores a second open.
     var VF_OFF_PROMPT = dom.vfOffText.textContent;
     var START_LABEL = dom.start.textContent;
+
+    // ── the app's sheet stops (app 1.4: penguinNative.version >= 2, see scanner/nativeBridge.js). While its
+    // camera is open the app's sheet rests at 'down' (a peek: the scoreboard and one way up), 'mid' (the card
+    // under the scoreboard) or 'up' (review the pile: the card folds to one row). The app names the stop in a
+    // 'penguinsheet' event as the sheet STARTS to travel, so the page changes with the slide; the layout then
+    // carries exactly one of .sc-sheet-down / -mid / -up next to .sc-native-cam. App 1.3 never sends it and a
+    // browser has no app: no stop class at all, which is the 'mid' arrangement, and no swipe hint. With the
+    // keyboard up the page shows 'mid' whatever the stop (NativeBridge.layoutStop): nothing folds away under
+    // someone typing. ──────────────────────────────────────────────────────────────────────────────────────
+    var sheetStop = null; // the stop the app last named while its camera was open
+    function applySheet() {
+      var shown = NativeBridge.layoutStop({
+        stop: sheetStop,
+        supported: bridge.sheetsSupported(),
+        cameraOpen: nativeScannerOpen,
+        keyboardOpen: dom.layout.classList.contains('sc-kbd-open')
+      });
+      NativeBridge.SHEET_STOPS.forEach(function (s) { dom.layout.classList.toggle('sc-sheet-' + s, s === shown); });
+    }
+    /** At 'up' the card is one row; tapping it opens the whole card again, in place, until the next stop. */
+    function setCardOpen(open) {
+      dom.layout.classList.toggle('sc-card-open', !!open);
+      if (dom.resultOpen) dom.resultOpen.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    window.addEventListener('penguinsheet', function (ev) {
+      var stop = NativeBridge.sheetStopOf(ev);
+      // Only from an app that has stops, and only while its camera is open: a late one after Done changes nothing.
+      if (!stop || !bridge.sheetsSupported() || !nativeScannerOpen) return;
+      sheetStop = stop;
+      setCardOpen(false);
+      applySheet();
+    });
+
     function setNativeCamera(open) {
       nativeScannerOpen = !!open;
       dom.layout.classList.toggle('sc-native-cam', nativeScannerOpen);
       if (bridge.isAvailable()) dom.start.textContent = nativeScannerOpen ? 'Reopen camera' : START_LABEL;
-      if (!nativeScannerOpen) dom.vfOffText.textContent = VF_OFF_PROMPT;
+      if (!nativeScannerOpen) {
+        dom.vfOffText.textContent = VF_OFF_PROMPT;
+        sheetStop = null; // the camera closed: so did its sheet
+        setCardOpen(false);
+      }
+      applySheet();
     }
     window.addEventListener('penguinscannerclosed', function () { setNativeCamera(false); });
 
@@ -5498,6 +5816,7 @@ window.NativeBridge = {
       else if (window.innerHeight > tallestHeight) tallestHeight = window.innerHeight;
       if (!open && bridge.isAvailable() && textFieldFocused()) open = window.innerHeight < tallestHeight - KEYBOARD_GAP_PX;
       dom.layout.classList.toggle('sc-kbd-open', open);
+      applySheet(); // the keyboard shows the 'mid' arrangement whatever the app's stop
     }
     window.addEventListener('resize', updateKeyboardOpen);
     window.addEventListener('pageshow', updateKeyboardOpen);
@@ -5673,6 +5992,16 @@ window.NativeBridge = {
 
     function money(cents) { return PriceCore.money.fmt(cents); }
 
+    /** The grade on the card: "Grade 9" in #sc-grade (what a screen reader reads, and what it always said),
+        and just the number in the ringed circle (a barcode mark there while the grade is not known). */
+    function showGrade(gradeText, gradeNumber) {
+      dom.grade.textContent = gradeText ? ('Grade ' + gradeText) : '-';
+      if (!dom.gradeDot) return;
+      var n = gradeNumber != null ? gradeNumber : gradeNum(gradeText);
+      dom.gradeDot.textContent = n != null ? String(n) : '';
+      dom.gradeDot.classList.toggle('sc-unk', n == null);
+    }
+
     /** `kind` 'down': the Triumph-down line, a small status line rather than a warning (sc-note-down). */
     function showNote(text, warn, kind) {
       dom.note.textContent = text || '';
@@ -5746,7 +6075,7 @@ window.NativeBridge = {
       dom.name.textContent = grader.toUpperCase() + ' ' + cert;
       dom.cert.textContent = cert;
       dom.grader.textContent = grader.toUpperCase();
-      dom.grade.textContent = '-';
+      showGrade(null);
       clearSquares('Looking up…', 'wait');
       dom.rescanBadge.hidden = true;
       hideRetry();
@@ -5759,7 +6088,7 @@ window.NativeBridge = {
     function renderNotSignedIn(cert, grader, message) {
       dom.result.hidden = false;
       dom.name.textContent = grader.toUpperCase() + ' ' + cert;
-      dom.cert.textContent = cert; dom.grader.textContent = grader.toUpperCase(); dom.grade.textContent = '-';
+      dom.cert.textContent = cert; dom.grader.textContent = grader.toUpperCase(); showGrade(null);
       clearSquares('Sign in to price');
       showNote(message || 'Sign in above for live prices. This needs your scanner login.', true);
       renderAuthState();
@@ -5924,7 +6253,7 @@ window.NativeBridge = {
       dom.name.textContent = f.title;
       dom.cert.textContent = f.cert;
       dom.grader.textContent = f.grader.toUpperCase();
-      dom.grade.textContent = f.gradeText ? ('Grade ' + f.gradeText) : '-';
+      showGrade(f.gradeText, f.grade);
 
       var clvWaiting = f.clvCents == null && TriumphDown.waitingForValue(f);
       setSquare(dom.clv, f.clvCents != null ? money(f.clvCents) : (clvWaiting ? 'Getting value…' : 'No value'), f.clvCents != null, clvWaiting ? 'wait' : null);
@@ -6057,13 +6386,15 @@ window.NativeBridge = {
       if (currentKey) renderCurrent();
     }
 
+    // Each pill's look (sc-chip-*): blue while it waits on an average, teal for one staff prices by hand, grey
+    // for not buying, the red tint when there is no sheet or percent to price it with.
     function pillFor(price) {
-      if (!price || price.noSheet) return ' <span class="status-pill st-unknown">Unpriced</span>';
-      if (price.noPct) return ' <span class="status-pill st-unknown">No percent</span>';
-      // Ambiguous, not declined - never the same red "Rejected" pill a genuine out-of-range slab gets.
-      if (price.awaitingAverage) return ' <span class="status-pill st-unknown">Needs average</span>';
-      if (price.rejected) return ' <span class="status-pill st-cancelled">Not buying</span>';
-      if (price.staffPrice) return ' <span class="status-pill st-unknown">No value</span>';
+      if (!price || price.noSheet) return ' <span class="status-pill st-unknown sc-chip-err">Unpriced</span>';
+      if (price.noPct) return ' <span class="status-pill st-unknown sc-chip-err">No percent</span>';
+      // Ambiguous, not declined - never the same "Not buying" pill a genuine out-of-range slab gets.
+      if (price.awaitingAverage) return ' <span class="status-pill st-unknown sc-chip-wait">Needs average</span>';
+      if (price.rejected) return ' <span class="status-pill st-cancelled sc-chip-no">Not buying</span>';
+      if (price.staffPrice) return ' <span class="status-pill st-unknown sc-chip-hand">No value</span>';
       return '';
     }
 
@@ -6076,7 +6407,14 @@ window.NativeBridge = {
       var entries = pile.list();
       var t = pile.totals();
       dom.earlier.hidden = entries.length === 0;
-      if (!entries.length) { dom.earlierList.innerHTML = ''; return; }
+      if (!entries.length) {
+        dom.earlierList.innerHTML = '';
+        // The You'd pay total sits in the scoreboard, outside the (now hidden) pile: it must not keep
+        // showing the last seller's total.
+        dom.pilePayout.textContent = '-';
+        dom.pileBuyCount.textContent = '';
+        return;
+      }
 
       dom.pileTotals.hidden = false;
       dom.pileCount.textContent = t.count + (t.count === 1 ? ' card scanned' : ' cards scanned');
@@ -6099,10 +6437,13 @@ window.NativeBridge = {
           ? money(c.price.payoutCents)
           : (typeof c.marketValueCents === 'number' ? money(c.marketValueCents) : '-');
         var key = pileMetaKey(c.grader, c.certKey);
+        var g = gradeNum(meta.grade);
+        // A row: the grade in a circle, the card's name over its cert (and its pill), the amount on the right.
         return '<div class="sc-earlier-row">' +
           '<button type="button" class="sc-earlier-main" data-cert="' + esc(c.cert) + '" data-grader="' + esc(c.grader) + '">' +
-            '<span class="name"><span class="cert">' + esc(c.grader.toUpperCase()) + ' ' + esc(c.cert) + '</span> ' + esc(title) + '</span>' +
-            '<span class="val">' + valueText + pillFor(c.price) + '</span>' +
+            '<span class="sc-row-grade' + (g == null ? ' sc-unk' : '') + '" aria-hidden="true">' + (g == null ? '' : esc(String(g))) + '</span>' +
+            '<span class="name"><span class="title">' + esc(title) + '</span> <span class="cert">' + esc(c.grader.toUpperCase()) + ' ' + esc(c.cert) + '</span>' + pillFor(c.price) + '</span>' +
+            '<span class="val">' + valueText + '</span>' +
           '</button>' +
           '<button type="button" class="sc-earlier-remove" data-cert="' + esc(c.cert) + '" data-grader="' + esc(c.grader) + '" data-key="' + esc(key) + '" aria-label="Remove ' + esc(c.cert) + '">✕</button>' +
         '</div>';
@@ -6438,6 +6779,7 @@ window.NativeBridge = {
             currentKey = null;
             sellerView = null;
             dom.result.hidden = true;
+            clearSquares(); // We pay sits in the scoreboard, outside the card: not the removed card's price any more
             renderSeller();
           }
           savePile();
@@ -6462,12 +6804,18 @@ window.NativeBridge = {
         pileMeta = {};
         savePile();
         dom.clearConfirm.hidden = true;
-        // A new seller must not see the last seller's card, on either view.
+        // A new seller must not see the last seller's card, on either view (nor its We pay in the scoreboard).
         currentKey = null;
         sellerView = null;
         dom.result.hidden = true;
+        clearSquares();
         renderPile();
       });
+
+      // ── the app's sheet (app 1.4): the peek's one control asks for 'up' (the app answers with the
+      // 'penguinsheet' event that moves the page), and at 'up' the folded card opens again when tapped ──
+      if (dom.sheetCue) dom.sheetCue.addEventListener('click', function () { bridge.setSheet('up'); });
+      if (dom.resultOpen) dom.resultOpen.addEventListener('click', function () { setCardOpen(true); });
 
       // ── the rule toggle (which of our sheets, or a flat %) and Normal / Lower ──
       function withChoice(patch) { return Object.assign({}, choice, patch); }
@@ -6551,7 +6899,7 @@ window.NativeBridge = {
     // wrote the words. This only ever toggles a class: nothing here decides or changes a price. ────────
     (function watchValueLooks() {
       if (typeof MutationObserver === 'undefined') return;
-      [dom.pay, dom.avg3, dom.clv, dom.grade, dom.sellerMarket].forEach(function (el) {
+      [dom.pay, dom.avg3, dom.clv, dom.grade, dom.sellerMarket, dom.pilePayout].forEach(function (el) {
         function mark() {
           var t = String(el.textContent || '').trim();
           el.classList.toggle('sc-blank', t === '-' || t === '');
