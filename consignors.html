@@ -606,12 +606,1224 @@ code{font-family:var(--font-mono);font-size:.92em;}
     <div id="lg-errors-body" style="font-size:12px;color:var(--dim);"></div>
   </section>
 
+  <!-- The PRIVATE Scanner rates: what the Scanner app offers on "Normal". Hidden, and never even
+       fetched, until this page is unlocked with the edit key (ScannerRates in MODULE:consignors);
+       slab-rates GET /scanner refuses anyone without the key or a signed-in scanner login. -->
+  <section class="card scr-card" id="scr-card" hidden>
+    <div class="sec-head">
+      <div>
+        <div class="sec-title">📷 Scanner rates</div>
+        <div class="sec-sub">What the Scanner app offers on Normal. Private: shown only after the edit key, never on the public page. With none saved, the app uses the consignor rates (the live sheet the bot quotes sellers).</div>
+      </div>
+    </div>
+    <div class="scr-status" id="scr-status" role="status" aria-live="polite"></div>
+    <div class="wtb-group scr-rows" id="scr-rows"></div>
+    <div class="scr-actions">
+      <button type="button" class="btn btn-ghost btn-sm" id="scr-copy">Start from the consignor rates</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="scr-add">+ Add band</button>
+      <button type="button" class="btn btn-sm btn-save" id="scr-save">Save scanner rates</button>
+    </div>
+    <div class="scr-errors" id="scr-errors" hidden></div>
+  </section>
+  <style>
+    #scr-card{margin-top:18px;}
+    #scr-card .scr-status{font-size:12px;color:var(--dim);margin:6px 0 10px;}
+    #scr-card .scr-status.err{color:var(--red);}
+    #scr-card .scr-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+    #scr-card .scr-errors{margin-top:10px;font-size:12px;line-height:1.5;color:var(--red);}
+    #scr-card .scr-empty{padding:14px;font-size:13px;color:var(--dim);}
+  </style>
+
   <p class="foot" id="lg-foot"></p>
 
 </fieldset>
 </div>
 
 </main>
+
+<script>
+/* VALIDATE-CORE:START - generated from validate.ts by build-portal.js, do not edit by hand */
+(function () {
+'use strict';
+/**
+ * Iced Out Penguin rates - the schema and its validator.
+ *
+ * Pure TypeScript. No Deno, no Node, no DOM, no imports. It runs in three places:
+ *   1. the edge function   (index.ts imports it),
+ *   2. the test runner     (validate.test.js imports it),
+ *   3. the editor page     (build-portal.js strips the types and inlines the JS into page.html).
+ *
+ * Because of (3), keep every export at the top of a line and in the form
+ * `export function` / `export const` / `export type` / `export interface`.
+ * build-portal.js drops the `export ` keyword with a line-anchored regex, and
+ * Node/Deno erase the type-only ones outright.
+ *
+ * Money is in dollars here (the bot converts to cents itself). Two decimals max.
+ *
+ * v2 mirrors the owner's app "Pricing Rules" tab: every row says which Sport, which Grader, which
+ * Grade range and which languages it takes, and the rows are tried in `sort` order with the FIRST
+ * match winning. v1 sheets still load: normalize() migrates them (see the table in migrateRow).
+ *
+ * Basis (what a payout is a percentage OF) is REQUIRED on every row as of this version — there is no
+ * sheet-wide `defaultBasis` any more and no "use default" option. This did not need a v3: it is
+ * additive-compatible, so a sheet saved under the old rules (a sheet-wide `defaultBasis`, rows with
+ * `basis: null`) still LOADS — normalize() fills every such row from the sheet's old `defaultBasis`
+ * (else 'clv') and drops the sheet-wide field — but a sheet cannot be SAVED again with a missing or
+ * null row basis: validateSettings rejects it outright. schema stays 'iced-out-rates-v2'.
+ */
+
+// ── vocabulary ───────────────────────────────────────────────────────────────
+
+const SCHEMA = 'iced-out-rates-v2';
+
+/** Every sport/game a row can ask for. '*' is "any sport" and takes a slab we could not classify. */
+const SPORT_KEYS = [
+  'pokemon', 'one_piece', 'dragon_ball',
+  'nba', 'nfl', 'mlb', 'nhl', 'soccer', 'racing', 'fighting', 'golf',
+  'sports', 'other', '*',
+];
+
+/** The order the page groups its rows in. Same list, kept separate so the page can't reorder SPORT_KEYS. */
+const SPORT_ORDER = SPORT_KEYS.slice();
+
+/** The page's own headings, emoji and all. Staff read these; nothing matches on them. */
+const SPORT_LABEL                         = {
+  pokemon: '⚡ Pokémon Slabs',
+  one_piece: '🏴‍☠️ One Piece Slabs',
+  dragon_ball: '🐉 Dragon Ball Slabs',
+  nba: '🏀 NBA Slabs',
+  nfl: '🏈 NFL Slabs',
+  mlb: '⚾ MLB Slabs',
+  nhl: '🏒 NHL Slabs',
+  soccer: '⚽ Soccer Slabs',
+  racing: '🏎️ Racing Slabs',
+  fighting: '🥊 Fighting Slabs',
+  golf: '⛳ Golf Slabs',
+  sports: '🏆 Sports (any league)',
+  other: '🃏 Other Slabs',
+  '*': '✨ Any Sport',
+};
+
+/** The same names with no emoji, for a narrow column, a Discord line or an error message. */
+const SPORT_SHORT                         = {
+  pokemon: 'Pokemon',
+  one_piece: 'One Piece',
+  dragon_ball: 'Dragon Ball',
+  nba: 'NBA',
+  nfl: 'NFL',
+  mlb: 'MLB',
+  nhl: 'NHL',
+  soccer: 'Soccer',
+  racing: 'Racing',
+  fighting: 'Fighting',
+  golf: 'Golf',
+  sports: 'Sports',
+  other: 'Other',
+  '*': 'Any sport',
+};
+
+/** What a row with sport 'sports' covers: every league, so one row can price all of them at once. */
+const SPORT_LEAGUES = ['nba', 'nfl', 'mlb', 'nhl', 'soccer', 'racing', 'fighting', 'golf', 'sports'];
+
+/** The bot never buys BGS or SGC, so they are not offered. '*' takes both of the ones we do buy. */
+const GRADER_KEYS = ['*', 'PSA', 'CGC'];
+
+const GRADER_LABEL                         = {
+  '*': 'Any grader',
+  PSA: 'PSA',
+  CGC: 'CGC',
+};
+
+/** Every grade a dropdown offers: whole and half steps, 1 through 10. */
+const GRADE_STEPS = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
+
+/** The four languages we buy. A row's list is a subset; all four means the row does not gate on language. */
+const LANGUAGE_KEYS = ['english', 'japanese', 'korean', 'chinese'];
+
+/** [short, long] per language: the short one fits a chip on the page, the long one a sentence. */
+const LANGUAGE_LABEL                           = {
+  english: ['EN', 'English'],
+  japanese: ['JP', 'Japanese'],
+  korean: ['KR', 'Korean'],
+  chinese: ['CN', 'Chinese'],
+};
+
+/** Payout basis keys. Same three the bot uses: rules.js BASIS_KEYS. */
+const BASIS_KEYS = ['clv', 'avg3', 'lowest'];
+
+/** Plain-English name per basis, used in both the page and the error messages. */
+const BASIS_LABEL                         = {
+  clv: 'CL Value',
+  avg3: 'Avg 3',
+  lowest: 'Lowest of 2',
+};
+
+const CERT_RULES = ['any', 'new'];
+
+const CERT_RULE_LABEL                         = {
+  any: 'Any cert',
+  new: 'New certs (7+)',
+};
+
+/** The confidence dropdown, blank meaning "don't care". */
+const CONFIDENCE_LABEL                         = {
+  '': 'Any conf',
+  1: '1+',
+  2: '2+',
+  3: '3+',
+  4: '4+',
+  5: '5',
+};
+
+/** Every hard limit in one place, so the page and the function cannot drift apart. */
+const LIMITS = {
+  minRows: 1,
+  maxRows: 60,
+  maxLabel: 100,
+  maxMoney: 1000000,
+  moneyDecimals: 2,
+  minPct: 1,
+  maxPct: 100,
+  pctDecimals: 2,
+  minGrade: 1,
+  maxGrade: 10,
+  minConfidence: 1,
+  maxConfidence: 5,
+  minSort: 0,
+  maxSort: 100000,
+  minYear: 1990,
+  maxYear: 2100,
+  minSlabs: 1,
+  // Raised from 300 on Josh's instruction 2026-11-05 ("Set the block for both at like 2k"), to match
+  // the singles side's maxCardsPerComp. This is only the ceiling the portal will SAVE; whether a comp
+  // that size can actually finish is a separate question, governed by COMP_TIMEOUT_MS and by how long
+  // Triumph and Card Ladder take per cert.
+  maxSlabs: 2000,
+  maxKeywords: 50,
+  maxKeywordLength: 60,
+  maxPausedMessage: 300,
+  maxTicketWindows: 10,
+  maxTicketsClosedMessage: 300,
+};
+
+const DEFAULT_VINTAGE_YEAR = 2003;
+const DEFAULT_MAX_SLABS = 200;
+/** The minimum total MARKET VALUE, across ACCEPTED rows only, a comp must reach before we buy it at
+ *  all (owner's rule 2026-11-05: "the market has to be 2K, the payout doesn't matter"). 0 turns the
+ *  floor off entirely. Dollars, same as a row's own from/to — not cents, unlike validate-singles.ts's
+ *  unrelated minMarketCents. */
+const DEFAULT_MIN_LOT_MARKET = 2000;
+
+// KEEP IN SYNC BY HAND with ticketHours.js's DEFAULT_WINDOWS / DEFAULT_TIMEZONE — this file can't
+// import that module (see file header), so the literal is duplicated here on purpose.
+const DEFAULT_TICKET_WINDOWS = [{ days: [5, 6, 0], from: '19:00', to: '23:00' }];
+const DEFAULT_TICKET_TIMEZONE = 'America/New_York';
+
+// ── shapes ───────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                             
+
+
+
+
+
+       
+
+
+
+
+
+
+
+
+
+
+// ── small helpers (no exports the page does not need) ────────────────────────
+
+function isObject(x         )          {
+  return !!x && typeof x === 'object' && !Array.isArray(x);
+}
+
+/** A finite number, or null when the input is not one. Strings are NOT coerced here. */
+function num(x         )                {
+  return typeof x === 'number' && Number.isFinite(x) ? x : null;
+}
+
+/** True when `n` has at most `places` decimal places (float-safe). */
+function decimalsOk(n        , places        )          {
+  const scaled = n * Math.pow(10, places);
+  return Math.abs(scaled - Math.round(scaled)) < 1e-6;
+}
+
+/** True when `n` is one of the grade steps a dropdown offers (a whole or half step inside 1..10). */
+function gradeStepOk(n        )          {
+  return GRADE_STEPS.some((g) => Math.abs(g - n) < 1e-9);
+}
+
+function listNames(keys          , labels                        )         {
+  const names = keys.map((k) => labels[k] || k);
+  if (names.length < 2) return names.join('');
+  return names.slice(0, -1).join(', ') + ' or ' + names[names.length - 1];
+}
+
+/** "$1,000,000" for the limit messages. */
+function money(n        )         {
+  return '$' + n.toLocaleString('en-US');
+}
+
+/** The long name of every language we buy, for one error message. */
+function languageNames()         {
+  return listNames(LANGUAGE_KEYS, {
+    english: 'English',
+    japanese: 'Japanese',
+    korean: 'Korean',
+    chinese: 'Chinese',
+  });
+}
+
+// ── defaults ─────────────────────────────────────────────────────────────────
+
+/** A valid, deliberately bare settings object. The page starts here when nothing is saved. */
+function defaults()           {
+  return {
+    schema: SCHEMA,
+    rates: [
+      {
+        sort: 0,
+        sport: '*',
+        grader: '*',
+        gradeMin: 1,
+        gradeMax: 10,
+        from: 0,
+        to: 100,
+        pct: 90,
+        basis: 'clv',
+        label: 'Every slab, up to $100',
+        languages: null,
+        minConfidence: null,
+        certRule: 'any',
+        vintage: false,
+        special: false,
+      },
+    ],
+    buyLanguages: LANGUAGE_KEYS.slice(),
+    vintageMaxYear: DEFAULT_VINTAGE_YEAR,
+    specialKeywords: [],
+    maxSlabsPerComp: DEFAULT_MAX_SLABS,
+    minLotMarket: DEFAULT_MIN_LOT_MARKET,
+    paused: false,
+    pausedMessage: '',
+    ticketsOpen: true,
+    ticketWindows: DEFAULT_TICKET_WINDOWS.map((w) => ({ ...w, days: w.days.slice() })),
+    ticketTimeZone: DEFAULT_TICKET_TIMEZONE,
+    ticketsClosedMessage: '',
+  };
+}
+
+// ── normalize ────────────────────────────────────────────────────────────────
+
+/**
+ * Coerce whatever arrived into the v2 shape validateSettings wants. Three kinds of input, detected
+ * in this order:
+ *   1. a v2 object, or a v2 form post (strings for numbers, "on" for booleans, a comma line for
+ *      keywords and languages),
+ *   2. a v1 object (schema 'iced-out-rates-v1', or no schema and rows carrying category/minGrade/
+ *      language) -> migrated row by row, see migrateRow,
+ *   3. anything else -> passed through, so validateSettings can complain about it by name.
+ * A `{ settings: {...} }` wrapper (what the function answers a GET with) is unwrapped either way.
+ *
+ * It only changes TYPES, never values: "abc" in a number field stays "abc".
+ *
+ * Basis is required on every row now (see the file header), so this is also where a sheet saved
+ * under the old rules gets fixed up: a row with no basis of its own inherits the sheet's old
+ * `defaultBasis` when it had one, else plain 'clv' — the same rule a brand new form post with a
+ * blank basis field falls under, since it has no `defaultBasis` to inherit either. Either way the
+ * sheet-wide field itself is dropped; it is never part of the v2 shape this returns.
+ */
+function normalize(raw         )          {
+  if (!isObject(raw)) return raw;
+  const r = raw                           ;
+  const src = isObject(r.settings) ? (r.settings                           ) : r;
+
+  if (looksV1(src)) return migrateV1(src);
+
+  const legacyDefault = (normBasis(src.defaultBasis)         ) || 'clv';
+  const out                          = {
+    schema: SCHEMA,
+    rates: Array.isArray(src.rates) ? src.rates.map((row) => normalizeRow(row, legacyDefault)) : src.rates,
+    buyLanguages: normLanguages(src.buyLanguages) ?? LANGUAGE_KEYS.slice(),
+    vintageMaxYear: normNumber(src.vintageMaxYear, DEFAULT_VINTAGE_YEAR),
+    specialKeywords: normKeywords(src.specialKeywords),
+    maxSlabsPerComp: normNumber(src.maxSlabsPerComp, DEFAULT_MAX_SLABS),
+    minLotMarket: normMoney(src.minLotMarket, DEFAULT_MIN_LOT_MARKET),
+    paused: normBool(src.paused),
+    pausedMessage: src.pausedMessage == null ? '' : String(src.pausedMessage),
+    ticketsOpen: src.ticketsOpen == null || src.ticketsOpen === '' ? true : normBool(src.ticketsOpen),
+    ticketWindows: Array.isArray(src.ticketWindows)
+      ? src.ticketWindows
+      : (src.ticketWindows == null ? DEFAULT_TICKET_WINDOWS.map((w) => ({ ...w, days: w.days.slice() })) : src.ticketWindows),
+    ticketTimeZone: src.ticketTimeZone == null ? DEFAULT_TICKET_TIMEZONE : src.ticketTimeZone,
+    ticketsClosedMessage: src.ticketsClosedMessage == null ? '' : String(src.ticketsClosedMessage),
+  };
+  return out;
+}
+
+/**
+ * Is this a v1 sheet? Its own schema string says so, and so does a row carrying a field only v1 had
+ * (`category`, `minGrade`, `language`) when no schema was saved at all. A v2 sheet, or a form post
+ * from the v2 page, says neither.
+ */
+function looksV1(src                         )          {
+  if (src.schema === SCHEMA) return false;
+  if (src.schema === 'iced-out-rates-v1') return true;
+  if (src.schema != null && src.schema !== '') return false;
+  if (!Array.isArray(src.rates)) return false;
+  return src.rates.some(
+    (row) =>
+      isObject(row) &&
+      ('category' in (row                           ) ||
+        'minGrade' in (row                           ) ||
+        'language' in (row                           )),
+  );
+}
+
+/** v1 `category` -> v2 sport + grader. "any" (null) meant any PSA game and never CGC. */
+const V1_CATEGORY                           = {
+  pokemon: ['pokemon', 'PSA'],
+  sports: ['sports', 'PSA'],
+  onepiece: ['one_piece', 'PSA'],
+  cgc: ['*', 'CGC'],
+};
+
+/** v1 `language` -> v2 `languages`. 'any' and 'Other' both mean "do not gate on language" (null). */
+const V1_LANGUAGE                                  = {
+  any: null,
+  Other: null,
+  English: ['english'],
+  Japanese: ['japanese'],
+  Korean: ['korean'],
+  Chinese: ['chinese'],
+};
+
+/**
+ * One v1 row as a v2 row. `sort` is filled in by migrateV1, which is where the ordering lives:
+ * v1 picked the highest-% matching row, v2 takes the first match, so the rows have to come out in
+ * descending pct for the prices to stay exactly the same. `legacyDefault` is the v1 sheet's own
+ * `defaultBasis` (already resolved to a live key, or 'clv'): a row with no basis of its own inherits
+ * it, since basis is required on every v2 row now.
+ */
+function migrateRow(raw         , legacyDefault       )          {
+  if (!isObject(raw)) return raw;
+  const r = raw                           ;
+  const cat = r.category == null || r.category === '' || r.category === 'any' ? null : String(r.category);
+  const mapped = cat != null && V1_CATEGORY[cat] ? V1_CATEGORY[cat] : ['*', 'PSA'];
+  const lang = r.language == null || r.language === '' ? 'any' : String(r.language);
+  const minGrade = r.minGrade === '' || r.minGrade == null ? null : normNumber(r.minGrade, r.minGrade);
+  return {
+    sort: 0,
+    sport: mapped[0],
+    grader: mapped[1],
+    gradeMin: minGrade == null ? LIMITS.minGrade : minGrade,
+    gradeMax: LIMITS.maxGrade,
+    from: normMoney(r.from, 0),
+    to: r.to === '' || r.to == null ? null : normMoney(r.to, r.to),
+    pct: normMoney(r.pct, r.pct),
+    basis: r.basis === '' || r.basis == null ? legacyDefault : normBasis(r.basis) || r.basis,
+    label: r.label == null ? '' : String(r.label),
+    languages: Object.prototype.hasOwnProperty.call(V1_LANGUAGE, lang) ? V1_LANGUAGE[lang] : [lang],
+    minConfidence:
+      r.minConfidence === '' || r.minConfidence == null ? null : normNumber(r.minConfidence, r.minConfidence),
+    certRule: r.certRule === 'new' ? 'new' : r.certRule == null || r.certRule === '' ? 'any' : r.certRule,
+    vintage: normBool(r.vintage),
+    special: normBool(r.special),
+  };
+}
+
+/**
+ * A whole v1 sheet as v2. The rows come back ordered by pct DESCENDING (stable, so two rows on the
+ * same pct keep the order they were saved in) with sort 10, 20, 30..., because first-match on that
+ * order is exactly what "highest matching pct wins" used to do. buyLanguages starts as all four:
+ * v1 had no such setting and gated language per row.
+ */
+function migrateV1(src                         )          {
+  const legacyDefault = (normBasis(src.defaultBasis)         ) || 'clv';
+  const rows = Array.isArray(src.rates) ? src.rates.map((row) => migrateRow(row, legacyDefault)) : src.rates;
+  if (Array.isArray(rows)) {
+    const withIndex = rows.map((row, i) => ({ row, i }));
+    withIndex.sort((a, b) => {
+      const pa = num((a.row                                  )?.pct);
+      const pb = num((b.row                                  )?.pct);
+      // a row whose pct is not a number keeps its place at the back; validateSettings names it
+      if (pa === null && pb === null) return a.i - b.i;
+      if (pa === null) return 1;
+      if (pb === null) return -1;
+      return pb === pa ? a.i - b.i : pb - pa;
+    });
+    for (let i = 0; i < withIndex.length; i++) {
+      const row = withIndex[i].row;
+      if (isObject(row)) (row                           ).sort = (i + 1) * 10;
+    }
+    rows.length = 0;
+    for (const entry of withIndex) rows.push(entry.row);
+  }
+  return {
+    schema: SCHEMA,
+    rates: rows,
+    buyLanguages: LANGUAGE_KEYS.slice(),
+    vintageMaxYear: normNumber(src.vintageMaxYear, DEFAULT_VINTAGE_YEAR),
+    specialKeywords: normKeywords(src.specialKeywords),
+    maxSlabsPerComp: normNumber(src.maxSlabsPerComp, DEFAULT_MAX_SLABS),
+    minLotMarket: normMoney(src.minLotMarket, DEFAULT_MIN_LOT_MARKET),
+    paused: normBool(src.paused),
+    pausedMessage: src.pausedMessage == null ? '' : String(src.pausedMessage),
+    ticketsOpen: src.ticketsOpen == null || src.ticketsOpen === '' ? true : normBool(src.ticketsOpen),
+    ticketWindows: Array.isArray(src.ticketWindows)
+      ? src.ticketWindows
+      : (src.ticketWindows == null ? DEFAULT_TICKET_WINDOWS.map((w) => ({ ...w, days: w.days.slice() })) : src.ticketWindows),
+    ticketTimeZone: src.ticketTimeZone == null ? DEFAULT_TICKET_TIMEZONE : src.ticketTimeZone,
+    ticketsClosedMessage: src.ticketsClosedMessage == null ? '' : String(src.ticketsClosedMessage),
+  };
+}
+
+/** `legacyDefault` is the sheet's old `defaultBasis` (already resolved), used only when this row has none of its own. */
+function normalizeRow(raw         , legacyDefault       )          {
+  if (!isObject(raw)) return raw;
+  const r = raw                           ;
+  return {
+    sort: normNumber(r.sort, 0),
+    sport: r.sport == null || r.sport === '' ? '*' : normKey(r.sport),
+    grader: r.grader == null || r.grader === '' ? '*' : normGrader(r.grader),
+    gradeMin: r.gradeMin === '' || r.gradeMin == null ? LIMITS.minGrade : normNumber(r.gradeMin, r.gradeMin),
+    gradeMax: r.gradeMax === '' || r.gradeMax == null ? LIMITS.maxGrade : normNumber(r.gradeMax, r.gradeMax),
+    from: normMoney(r.from, 0),
+    to: r.to === '' || r.to == null ? null : normMoney(r.to, r.to),
+    pct: normMoney(r.pct, r.pct),
+    basis: r.basis === '' || r.basis == null ? legacyDefault : normBasis(r.basis) || r.basis,
+    label: r.label == null ? '' : String(r.label),
+    languages: normLanguages(r.languages),
+    minConfidence:
+      r.minConfidence === '' || r.minConfidence == null ? null : normNumber(r.minConfidence, r.minConfidence),
+    certRule: r.certRule === 'new' ? 'new' : r.certRule == null || r.certRule === '' ? 'any' : r.certRule,
+    vintage: normBool(r.vintage),
+    special: normBool(r.special),
+  };
+}
+
+/** A vocabulary key as the schema spells it: trimmed and lower case ('Pokemon' -> 'pokemon'). */
+function normKey(x         )          {
+  return typeof x === 'string' ? x.trim().toLowerCase() : x;
+}
+
+/** The grader keys are the only upper-case vocabulary, so 'psa' typed by hand still lands on 'PSA'. */
+function normGrader(x         )          {
+  if (typeof x !== 'string') return x;
+  const s = x.trim();
+  const hit = GRADER_KEYS.find((k) => k.toLowerCase() === s.toLowerCase());
+  return hit || s;
+}
+
+/**
+ * A row's (or the sheet's) language list: null when nothing was picked (the row inherits), else an
+ * array of trimmed lower-case keys with the duplicates dropped. A comma line is what a plain form
+ * posts; an array is what the page and the JSON API send.
+ */
+function normLanguages(x         )                  {
+  let list           ;
+  if (x == null || x === '') return null;
+  if (typeof x === 'string') list = x.split(',');
+  else if (Array.isArray(x)) list = x;
+  else return null;
+  const out           = [];
+  for (const item of list) {
+    const key = typeof item === 'string' ? item.trim().toLowerCase() : String(item);
+    if (key !== '' && out.indexOf(key) < 0) out.push(key);
+  }
+  return out.length ? out : null;
+}
+
+/** Numbers that may arrive as "$1,200.50" or "85%" from a text input. */
+function normMoney(x         , fallback         )          {
+  if (typeof x === 'number') return x;
+  if (typeof x !== 'string') return x == null ? fallback : x;
+  const cleaned = x.trim().replace(/[$,%\s]/g, '');
+  if (cleaned === '') return fallback;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : x;
+}
+
+function normNumber(x         , fallback         )          {
+  if (typeof x === 'number') return x;
+  if (typeof x !== 'string') return x == null ? fallback : x;
+  const cleaned = x.trim();
+  if (cleaned === '') return fallback;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : x;
+}
+
+/** Checkboxes post "on"/"true"/"1"; absent means off. */
+function normBool(x         )          {
+  if (typeof x === 'boolean') return x;
+  if (x == null || x === '') return false;
+  if (typeof x === 'number') return x !== 0;
+  if (typeof x === 'string') {
+    const s = x.trim().toLowerCase();
+    if (s === 'true' || s === 'on' || s === 'yes' || s === '1') return true;
+    if (s === 'false' || s === 'off' || s === 'no' || s === '0') return false;
+  }
+  return x;
+}
+
+function normBasis(x         )                {
+  if (typeof x !== 'string') return null;
+  const s = x.trim();
+  // 'cl' is the key Penguin's own page uses for the same number.
+  if (s === 'cl') return 'clv';
+  return BASIS_KEYS.indexOf(s) >= 0 ? s : null;
+}
+
+/** The page edits keywords as one comma-separated line. */
+function normKeywords(x         )          {
+  if (typeof x === 'string') {
+    return x
+      .split(',')
+      .map((w) => w.trim())
+      .filter((w) => w !== '');
+  }
+  if (Array.isArray(x)) return x.map((w) => (typeof w === 'string' ? w.trim() : w)).filter((w) => w !== '');
+  if (x == null) return [];
+  return x;
+}
+
+// ── validate ─────────────────────────────────────────────────────────────────
+
+/**
+ * Check `raw` against the schema. On success the returned settings are a fresh,
+ * fully-populated object (never the caller's), with the rows ordered by `sort`; on failure every
+ * problem is listed in plain English, rows prefixed "Row N: ".
+ */
+function validateSettings(raw         )                 {
+  const errors           = [];
+
+  if (!isObject(raw)) {
+    return { ok: false, errors: ['The settings must be an object.'] };
+  }
+  const s = raw                           ;
+
+  if (!Array.isArray(s.rates)) {
+    return { ok: false, errors: ['The rate table is missing.'] };
+  }
+  if (s.rates.length < LIMITS.minRows) {
+    errors.push('Add at least one rate row.');
+  }
+  if (s.rates.length > LIMITS.maxRows) {
+    errors.push(
+      'Too many rate rows: ' + LIMITS.maxRows + ' is the limit, you have ' + s.rates.length + '.',
+    );
+  }
+
+  const rates            = [];
+  const rowCount = Math.min(s.rates.length, LIMITS.maxRows);
+  for (let i = 0; i < rowCount; i++) {
+    const row = validateRow(s.rates[i], i + 1, errors);
+    if (row) rates.push(row);
+  }
+  // Pricing reads the rows in this order and stops at the first match, so the stored sheet is stored
+  // in that order too: what staff see on the page is what the bot walks.
+  sortRows(rates);
+
+  // buyLanguages — the sheet-wide default every row inherits unless it names its own
+  let buyLanguages           = LANGUAGE_KEYS.slice();
+  if (s.buyLanguages != null && s.buyLanguages !== '') {
+    if (!Array.isArray(s.buyLanguages)) {
+      errors.push('Languages must be a list.');
+    } else {
+      const picked = checkLanguages(s.buyLanguages, '', errors);
+      if (picked) buyLanguages = picked;
+    }
+  }
+
+  // vintageMaxYear
+  let vintageMaxYear = DEFAULT_VINTAGE_YEAR;
+  if (s.vintageMaxYear != null && s.vintageMaxYear !== '') {
+    const y = num(s.vintageMaxYear);
+    if (y === null || !Number.isInteger(y) || y < LIMITS.minYear || y > LIMITS.maxYear) {
+      errors.push(
+        'Vintage year must be a whole year between ' + LIMITS.minYear + ' and ' + LIMITS.maxYear + '.',
+      );
+    } else {
+      vintageMaxYear = y;
+    }
+  }
+
+  // specialKeywords
+  let specialKeywords           = [];
+  if (s.specialKeywords != null && s.specialKeywords !== '') {
+    if (!Array.isArray(s.specialKeywords)) {
+      errors.push('Special keywords must be a list.');
+    } else {
+      if (s.specialKeywords.length > LIMITS.maxKeywords) {
+        errors.push('Too many special keywords: ' + LIMITS.maxKeywords + ' is the limit.');
+      }
+      s.specialKeywords.slice(0, LIMITS.maxKeywords).forEach((w         , i        ) => {
+        if (typeof w !== 'string') {
+          errors.push('Special keyword ' + (i + 1) + ' must be text.');
+          return;
+        }
+        if (w.length > LIMITS.maxKeywordLength) {
+          errors.push(
+            'Special keyword ' + (i + 1) + ' is longer than ' + LIMITS.maxKeywordLength + ' characters.',
+          );
+          return;
+        }
+        if (w.trim() !== '') specialKeywords.push(w.trim());
+      });
+    }
+  }
+
+  // maxSlabsPerComp
+  let maxSlabsPerComp = DEFAULT_MAX_SLABS;
+  if (s.maxSlabsPerComp != null && s.maxSlabsPerComp !== '') {
+    const m = num(s.maxSlabsPerComp);
+    if (m === null || !Number.isInteger(m) || m < LIMITS.minSlabs || m > LIMITS.maxSlabs) {
+      errors.push(
+        'Max slabs per comp must be a whole number between ' + LIMITS.minSlabs + ' and ' + LIMITS.maxSlabs + '.',
+      );
+    } else {
+      maxSlabsPerComp = m;
+    }
+  }
+
+  // minLotMarket — the minimum total MARKET VALUE, across ACCEPTED rows only, a comp must reach before
+  // we buy it at all (owner's rule 2026-11-05: "the market has to be 2K, the payout doesn't matter" —
+  // this gates on what the cards are worth, never on what we'd actually pay). Same dollar bounds as a
+  // row's own from/to (LIMITS.maxMoney / LIMITS.moneyDecimals): this is the same kind of value, just
+  // sheet-wide instead of per-row. 0 is a valid, deliberate value — it means the floor is off, not "use
+  // the default" — so it is checked the same way every other optional-but-zero-is-meaningful field here
+  // is (only null/'' fall back).
+  let minLotMarket = DEFAULT_MIN_LOT_MARKET;
+  if (s.minLotMarket != null && s.minLotMarket !== '') {
+    const m = num(s.minLotMarket);
+    if (m === null || m < 0 || m > LIMITS.maxMoney) {
+      errors.push('Minimum lot market value must be a number between $0 and ' + money(LIMITS.maxMoney) + '.');
+    } else if (!decimalsOk(m, LIMITS.moneyDecimals)) {
+      errors.push('Minimum lot market value can have at most ' + LIMITS.moneyDecimals + ' decimal places.');
+    } else {
+      minLotMarket = m;
+    }
+  }
+
+  // paused
+  let paused = false;
+  if (s.paused != null && s.paused !== '') {
+    if (typeof s.paused !== 'boolean') errors.push('Paused must be on or off.');
+    else paused = s.paused;
+  }
+
+  // pausedMessage
+  let pausedMessage = '';
+  if (s.pausedMessage != null && s.pausedMessage !== '') {
+    if (typeof s.pausedMessage !== 'string') {
+      errors.push('Paused message must be text.');
+    } else if (s.pausedMessage.length > LIMITS.maxPausedMessage) {
+      errors.push('Paused message is longer than ' + LIMITS.maxPausedMessage + ' characters.');
+    } else {
+      pausedMessage = s.pausedMessage;
+    }
+  }
+
+  // ticketsOpen — master switch. Absent means "on" (today's hardcoded Fri-Sun hours), so a sheet
+  // that has never set this keeps behaving exactly as it always has.
+  let ticketsOpen = true;
+  if (s.ticketsOpen != null && s.ticketsOpen !== '') {
+    if (typeof s.ticketsOpen !== 'boolean') errors.push('Tickets open must be on or off.');
+    else ticketsOpen = s.ticketsOpen;
+  }
+
+  // ticketWindows — same shape ticketHours.js's isOpen({ windows }) takes directly, no translation.
+  let ticketWindows                 = DEFAULT_TICKET_WINDOWS.map((w) => ({ ...w, days: w.days.slice() }));
+  if (s.ticketWindows != null && s.ticketWindows !== '') {
+    if (!Array.isArray(s.ticketWindows) || s.ticketWindows.length === 0) {
+      errors.push('Add at least one ticket window, or turn ticket opening off.');
+    } else if (s.ticketWindows.length > LIMITS.maxTicketWindows) {
+      errors.push(
+        'Too many ticket windows: ' + LIMITS.maxTicketWindows + ' is the limit, you have ' + s.ticketWindows.length + '.',
+      );
+    } else {
+      const windows                 = [];
+      s.ticketWindows.forEach((w         , i        ) => {
+        const win = validateTicketWindow(w, i + 1, errors);
+        if (win) windows.push(win);
+      });
+      if (!errors.length) ticketWindows = windows;
+    }
+  }
+
+  // ticketTimeZone — must be a zone Intl actually recognizes. Unlike ticketHours.js's own runtime
+  // fallback, a typo here must not silently pass through: this is the admin SAVING the sheet.
+  let ticketTimeZone = DEFAULT_TICKET_TIMEZONE;
+  if (s.ticketTimeZone != null && s.ticketTimeZone !== '') {
+    if (typeof s.ticketTimeZone !== 'string') {
+      errors.push('Ticket time zone must be text.');
+    } else {
+      try {
+        new Intl.DateTimeFormat('en-US', { timeZone: s.ticketTimeZone });
+        ticketTimeZone = s.ticketTimeZone;
+      } catch {
+        errors.push('Ticket time zone must be a real time zone name (for example America/New_York).');
+      }
+    }
+  }
+
+  // ticketsClosedMessage — mirrors pausedMessage exactly: empty means "use the generated message".
+  let ticketsClosedMessage = '';
+  if (s.ticketsClosedMessage != null && s.ticketsClosedMessage !== '') {
+    if (typeof s.ticketsClosedMessage !== 'string') {
+      errors.push('Ticket closed message must be text.');
+    } else if (s.ticketsClosedMessage.length > LIMITS.maxTicketsClosedMessage) {
+      errors.push('Ticket closed message is longer than ' + LIMITS.maxTicketsClosedMessage + ' characters.');
+    } else {
+      ticketsClosedMessage = s.ticketsClosedMessage;
+    }
+  }
+
+  if (errors.length) return { ok: false, errors };
+
+  return {
+    ok: true,
+    settings: {
+      schema: SCHEMA,
+      rates,
+      buyLanguages,
+      vintageMaxYear,
+      specialKeywords,
+      maxSlabsPerComp,
+      minLotMarket,
+      paused,
+      pausedMessage,
+      ticketsOpen,
+      ticketWindows,
+      ticketTimeZone,
+      ticketsClosedMessage,
+    },
+  };
+}
+
+/** Ascending `sort`, stable on a tie, so two rows on the same number keep the order they were saved in. */
+function sortRows(rows           )            {
+  const withIndex = rows.map((row, i) => ({ row, i }));
+  withIndex.sort((a, b) => (a.row.sort === b.row.sort ? a.i - b.i : a.row.sort - b.row.sort));
+  for (let i = 0; i < withIndex.length; i++) rows[i] = withIndex[i].row;
+  return rows;
+}
+
+/** A list of language keys, or null when one of them is not a language we buy. `at` prefixes the error. */
+function checkLanguages(list           , at        , errors          )                  {
+  const out           = [];
+  for (const item of list) {
+    if (typeof item !== 'string' || LANGUAGE_KEYS.indexOf(item.trim().toLowerCase()) < 0) {
+      errors.push(at + 'Language must be ' + languageNames() + '.');
+      return null;
+    }
+    const key = item.trim().toLowerCase();
+    if (out.indexOf(key) < 0) out.push(key);
+  }
+  if (!out.length) {
+    errors.push(at + 'Pick at least one language.');
+    return null;
+  }
+  return out;
+}
+
+const TICKET_TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/; // KEEP IN SYNC with ticketHours.js's TIME_RE
+
+function ticketMinutes(hhmm        )         {
+  const parts = hhmm.split(':').map(Number);
+  return parts[0] * 60 + parts[1];
+}
+
+/** One entry of `ticketWindows` — same shape and same rules ticketHours.js's isValidWindow checks
+ *  (days 0-6, HH:MM times, to strictly after from / no midnight-crossing) so a window either module
+ *  accepts is a window the other accepts too. Unlike ticketHours.js's runtime fallback (which drops
+ *  a bad window silently and keeps serving on the default schedule), this REJECTS the whole save —
+ *  the person here is the admin configuring the sheet, not a seller mid-comp. */
+function validateTicketWindow(raw         , i        , errors          )                      {
+  const at = 'Ticket window ' + i + ': ';
+  const before = errors.length;
+  if (!isObject(raw)) {
+    errors.push(at + 'must be an object.');
+    return null;
+  }
+  const w = raw                           ;
+
+  let days           = [];
+  if (!Array.isArray(w.days) || w.days.length === 0) {
+    errors.push(at + 'Pick at least one day.');
+  } else if (!w.days.every((d) => Number.isInteger(d) && (d          ) >= 0 && (d          ) <= 6)) {
+    errors.push(at + 'Days must be valid weekdays.');
+  } else {
+    days = (w.days            ).slice();
+  }
+
+  let from = '';
+  if (typeof w.from !== 'string' || !TICKET_TIME_RE.test(w.from)) {
+    errors.push(at + 'From must be a time like 19:00.');
+  } else {
+    from = w.from;
+  }
+
+  let to = '';
+  if (typeof w.to !== 'string' || !TICKET_TIME_RE.test(w.to)) {
+    errors.push(at + 'To must be a time like 23:00.');
+  } else {
+    to = w.to;
+  }
+
+  if (from && to && !(ticketMinutes(to) > ticketMinutes(from))) {
+    errors.push(at + 'To must be after From (ticket windows cannot cross midnight, same as ticketHours.js).');
+  }
+
+  if (errors.length > before) return null;
+  return { days, from, to };
+}
+
+function validateRow(raw         , n        , errors          )                 {
+  const at = 'Row ' + n + ': ';
+  if (!isObject(raw)) {
+    errors.push(at + 'this row is not filled in.');
+    return null;
+  }
+  const r = raw                           ;
+  const before = errors.length;
+
+  // sort — the order the bot tries the rows in, first match wins
+  let sort = 0;
+  if (r.sort != null && r.sort !== '') {
+    const o = num(r.sort);
+    if (o === null || !Number.isInteger(o) || o < LIMITS.minSort || o > LIMITS.maxSort) {
+      errors.push(
+        at + 'Sort order must be a whole number between ' + LIMITS.minSort + ' and ' + LIMITS.maxSort + '.',
+      );
+    } else sort = o;
+  }
+
+  // label
+  let label = '';
+  if (r.label != null && r.label !== '') {
+    if (typeof r.label !== 'string') errors.push(at + 'Label must be text.');
+    else if (r.label.length > LIMITS.maxLabel) {
+      errors.push(at + 'Label must be ' + LIMITS.maxLabel + ' characters or less.');
+    } else label = r.label;
+  }
+
+  // sport
+  let sport = '*';
+  if (r.sport != null && r.sport !== '') {
+    if (typeof r.sport !== 'string' || SPORT_KEYS.indexOf(r.sport) < 0) {
+      errors.push(at + 'Sport must be one of: ' + SPORT_KEYS.map((k) => SPORT_SHORT[k]).join(', ') + '.');
+    } else sport = r.sport;
+  }
+
+  // grader
+  let grader = '*';
+  if (r.grader != null && r.grader !== '') {
+    if (typeof r.grader !== 'string' || GRADER_KEYS.indexOf(r.grader) < 0) {
+      errors.push(at + 'Grader must be ' + listNames(GRADER_KEYS, GRADER_LABEL) + '.');
+    } else grader = r.grader;
+  }
+
+  // gradeMin / gradeMax
+  let gradeMin = LIMITS.minGrade;
+  if (r.gradeMin != null && r.gradeMin !== '') {
+    const g = num(r.gradeMin);
+    if (g === null || !gradeStepOk(g)) {
+      errors.push(
+        at + 'Grade min must be between ' + LIMITS.minGrade + ' and ' + LIMITS.maxGrade +
+          ', in halves like 8 or 8.5.',
+      );
+    } else gradeMin = g;
+  }
+  let gradeMax = LIMITS.maxGrade;
+  if (r.gradeMax != null && r.gradeMax !== '') {
+    const g = num(r.gradeMax);
+    if (g === null || !gradeStepOk(g)) {
+      errors.push(
+        at + 'Grade max must be between ' + LIMITS.minGrade + ' and ' + LIMITS.maxGrade +
+          ', in halves like 8 or 8.5.',
+      );
+    } else if (g < gradeMin) {
+      errors.push(at + 'Grade max must be at least the grade min.');
+    } else gradeMax = g;
+  }
+
+  // from
+  let from = 0;
+  const f = num(r.from);
+  if (r.from == null || r.from === '') {
+    from = 0;
+  } else if (f === null) {
+    errors.push(at + 'From $ must be a number.');
+  } else if (f < 0) {
+    errors.push(at + 'From $ cannot be negative.');
+  } else if (f > LIMITS.maxMoney) {
+    errors.push(at + 'From $ cannot be more than ' + money(LIMITS.maxMoney) + '.');
+  } else if (!decimalsOk(f, LIMITS.moneyDecimals)) {
+    errors.push(at + 'From $ can have at most ' + LIMITS.moneyDecimals + ' decimal places.');
+  } else {
+    from = f;
+  }
+
+  // to
+  let to                = null;
+  if (r.to != null && r.to !== '') {
+    const t = num(r.to);
+    if (t === null) {
+      errors.push(at + 'To $ must be a number, or blank for no limit.');
+    } else if (t < 0) {
+      errors.push(at + 'To $ cannot be negative.');
+    } else if (t > LIMITS.maxMoney) {
+      errors.push(at + 'To $ cannot be more than ' + money(LIMITS.maxMoney) + '.');
+    } else if (!decimalsOk(t, LIMITS.moneyDecimals)) {
+      errors.push(at + 'To $ can have at most ' + LIMITS.moneyDecimals + ' decimal places.');
+    } else if (f !== null && t <= f) {
+      errors.push(at + 'To $ must be more than From $.');
+    } else {
+      to = t;
+    }
+  }
+
+  // pct
+  let pct = 0;
+  const p = num(r.pct);
+  if (p === null) {
+    errors.push(at + 'Pays % must be a number.');
+  } else if (p < LIMITS.minPct || p > LIMITS.maxPct) {
+    errors.push(at + 'Pays % must be between ' + LIMITS.minPct + ' and ' + LIMITS.maxPct + '.');
+  } else if (!decimalsOk(p, LIMITS.pctDecimals)) {
+    errors.push(at + 'Pays % can have at most ' + LIMITS.pctDecimals + ' decimal places.');
+  } else {
+    pct = p;
+  }
+
+  // basis — required: every row says what it pays on, there is no sheet-wide default any more
+  let basis        = 'clv';
+  if (r.basis == null || r.basis === '') {
+    errors.push(at + 'Basis must be ' + listNames(BASIS_KEYS, BASIS_LABEL) + '.');
+  } else {
+    const b = normBasis(r.basis);
+    if (!b) errors.push(at + 'Basis must be ' + listNames(BASIS_KEYS, BASIS_LABEL) + '.');
+    else basis = b         ;
+  }
+
+  // languages — null means "inherit the sheet's buyLanguages"
+  let languages                  = null;
+  if (r.languages != null && r.languages !== '') {
+    if (!Array.isArray(r.languages)) {
+      errors.push(at + 'Languages must be a list.');
+    } else {
+      languages = checkLanguages(r.languages, at, errors);
+    }
+  }
+
+  // minConfidence
+  let minConfidence                = null;
+  if (r.minConfidence != null && r.minConfidence !== '') {
+    const c = num(r.minConfidence);
+    if (c === null || !Number.isInteger(c) || c < LIMITS.minConfidence || c > LIMITS.maxConfidence) {
+      errors.push(
+        at + 'Min confidence must be a whole number between ' + LIMITS.minConfidence + ' and ' +
+          LIMITS.maxConfidence + '.',
+      );
+    } else minConfidence = c;
+  }
+
+  // certRule
+  let certRule           = 'any';
+  if (r.certRule != null && r.certRule !== '') {
+    if (typeof r.certRule !== 'string' || CERT_RULES.indexOf(r.certRule) < 0) {
+      errors.push(at + 'Cert rule must be Any or New certs.');
+    } else certRule = r.certRule            ;
+  }
+
+  // vintage / special
+  let vintage = false;
+  if (r.vintage != null && r.vintage !== '') {
+    if (typeof r.vintage !== 'boolean') errors.push(at + 'Vintage holo only must be on or off.');
+    else vintage = r.vintage;
+  }
+  let special = false;
+  if (r.special != null && r.special !== '') {
+    if (typeof r.special !== 'boolean') errors.push(at + 'Special or WOTC only must be on or off.');
+    else special = r.special;
+  }
+
+  if (errors.length > before) return null;
+
+  return {
+    sort,
+    sport,
+    grader,
+    gradeMin,
+    gradeMax,
+    from,
+    to,
+    pct,
+    basis,
+    label,
+    languages,
+    minConfidence,
+    certRule,
+    vintage,
+    special,
+  };
+}
+
+window.RatesValidate = {
+  SCHEMA: SCHEMA,
+  SPORT_KEYS: SPORT_KEYS,
+  SPORT_ORDER: SPORT_ORDER,
+  SPORT_LABEL: SPORT_LABEL,
+  SPORT_SHORT: SPORT_SHORT,
+  SPORT_LEAGUES: SPORT_LEAGUES,
+  GRADER_KEYS: GRADER_KEYS,
+  GRADER_LABEL: GRADER_LABEL,
+  GRADE_STEPS: GRADE_STEPS,
+  LANGUAGE_KEYS: LANGUAGE_KEYS,
+  LANGUAGE_LABEL: LANGUAGE_LABEL,
+  BASIS_KEYS: BASIS_KEYS,
+  BASIS_LABEL: BASIS_LABEL,
+  CERT_RULES: CERT_RULES,
+  CERT_RULE_LABEL: CERT_RULE_LABEL,
+  CONFIDENCE_LABEL: CONFIDENCE_LABEL,
+  LIMITS: LIMITS,
+  DEFAULT_VINTAGE_YEAR: DEFAULT_VINTAGE_YEAR,
+  DEFAULT_MAX_SLABS: DEFAULT_MAX_SLABS,
+  DEFAULT_MIN_LOT_MARKET: DEFAULT_MIN_LOT_MARKET,
+  DEFAULT_TICKET_WINDOWS: DEFAULT_TICKET_WINDOWS,
+  DEFAULT_TICKET_TIMEZONE: DEFAULT_TICKET_TIMEZONE,
+  defaults: defaults,
+  normalize: normalize,
+  validateSettings: validateSettings,
+  sortRows: sortRows,
+};
+})();
+/* VALIDATE-CORE:END */
+</script>
+
+<script>
+/* SCANSHEET-CORE:START - generated from scanner/scannerSheet.js by build-portal.js, do not edit by hand */
+(function () {
+'use strict';
+// The Consignors page's "Scanner rates" editor: our PRIVATE sheet of what the Scanner app offers on
+// "Normal" (slab-rates GET/PUT /scanner; GET needs the edit key or a signed-in owner/active sourcer,
+// so a public viewer never receives it). Same schema as the consignor rates (the live sheet), so it is saved through
+// the same rates-portal/validate.ts normalize/validateSettings, and priced by the same rules.js
+// priceSlab. These helpers only turn a sheet into editable rows and back.
+//
+// Pure (embedded whole into the Consignors page by rates-portal/build-portal.js as window.ScanSheet).
+'use strict';
+
+var uidSeq = 0;
+
+function str(v) { return v == null ? '' : String(v); }
+
+/** One saved band -> the strings an editor row holds (the buy-rates editor's own shape). */
+function toFormRow(r) {
+  r = r || {};
+  uidSeq += 1;
+  return {
+    _uid: 'scr' + uidSeq,
+    sort: str(r.sort == null ? 0 : r.sort),
+    sport: str(r.sport || '*'),
+    grader: str(r.grader || '*'),
+    gradeMin: str(r.gradeMin == null ? 1 : r.gradeMin),
+    gradeMax: str(r.gradeMax == null ? 10 : r.gradeMax),
+    from: str(r.from == null ? 0 : r.from),
+    to: r.to == null ? '' : str(r.to),
+    pct: str(r.pct == null ? '' : r.pct),
+    basis: r.basis == null ? 'clv' : str(r.basis),
+    label: str(r.label),
+    languages: Array.isArray(r.languages) && r.languages.length ? r.languages.slice() : null,
+    minConfidence: r.minConfidence == null ? '' : str(r.minConfidence),
+    certRule: r.certRule === 'new' ? 'new' : 'any',
+    vintage: !!r.vintage,
+    special: !!r.special,
+  };
+}
+
+/** A sheet's bands as editor rows, in their saved order. */
+function toFormRows(sheet) {
+  return (sheet && Array.isArray(sheet.rates) ? sheet.rates : []).map(toFormRow);
+}
+
+/** A new, empty band after the last one (sort + 10). */
+function blankRow(rows) {
+  var max = 0;
+  (rows || []).forEach(function (r) { var n = Number(r.sort); if (isFinite(n) && n > max) max = n; });
+  return toFormRow({
+    sort: max + 10, sport: '*', grader: '*', gradeMin: 1, gradeMax: 10, from: 0, to: null,
+    pct: '', basis: 'clv', label: '', languages: null, minConfidence: null, certRule: 'any', vintage: false, special: false,
+  });
+}
+
+/** The sheet to save: every sheet-wide setting of `base`, with the edited rows as its bands. The
+ *  strings go through validate.ts normalize() on the way out, exactly like the buy-rates editor. */
+function fromFormRows(base, rows) {
+  var sheet = JSON.parse(JSON.stringify(base || {}));
+  sheet.rates = (rows || []).map(function (r) {
+    return {
+      sort: r.sort, sport: r.sport, grader: r.grader, gradeMin: r.gradeMin, gradeMax: r.gradeMax,
+      from: r.from, to: r.to, pct: r.pct, basis: r.basis, label: r.label,
+      languages: r.languages ? r.languages.slice() : null, minConfidence: r.minConfidence,
+      certRule: r.certRule, vintage: !!r.vintage, special: !!r.special,
+    };
+  });
+  return sheet;
+}
+
+window.ScanSheet = {
+  toFormRow: toFormRow,
+  toFormRows: toFormRows,
+  blankRow: blankRow,
+  fromFormRows: fromFormRows,
+};
+})();
+/* SCANSHEET-CORE:END */
+</script>
 
 <script>
 (function () {
@@ -1435,6 +2647,212 @@ code{font-family:var(--font-mono);font-size:.92em;}
         }
       }
     };
+  })();
+
+  // ── Scanner rates: the PRIVATE sheet the Scanner app prices "Normal" on (slab-rates GET/PUT
+  // /scanner). Nothing about it is fetched or shown until this page is unlocked with the edit key
+  // (whenUnlocked), and a relock hides and blanks it again. Same band rows as the buy-rates editor
+  // (.wtb-tier), saved through the same validate.ts normalize/validateSettings, with
+  // scanner/scannerSheet.js (window.ScanSheet) turning the sheet into rows and back. ─────────────
+  var ScannerRates = (function () {
+    var V = window.RatesValidate;
+    var S = window.ScanSheet;
+    var dom = {
+      card: document.getElementById('scr-card'),
+      status: document.getElementById('scr-status'),
+      rows: document.getElementById('scr-rows'),
+      copy: document.getElementById('scr-copy'),
+      add: document.getElementById('scr-add'),
+      save: document.getElementById('scr-save'),
+      errors: document.getElementById('scr-errors')
+    };
+    if (!dom.card || !V || !S) return null;
+
+    var base = null; // the sheet-wide settings the rows are saved with (a saved sheet, or a copy of the consignor rates)
+    var rows = [];
+    var busy = false;
+
+    function setStatus(text, isErr) {
+      dom.status.textContent = text || '';
+      dom.status.className = 'scr-status' + (isErr ? ' err' : '');
+    }
+    function showErrors(list) {
+      dom.errors.hidden = !(list && list.length);
+      dom.errors.innerHTML = (list || []).map(function (e) { return '<div>' + esc(e) + '</div>'; }).join('');
+    }
+    function opts(pairs, value) {
+      return pairs.map(function (p) {
+        return '<option value="' + esc(p[0]) + '"' + (String(p[0]) === String(value) ? ' selected' : '') + '>' + esc(p[1]) + '</option>';
+      }).join('');
+    }
+    function rowHtml(r) {
+      var sep = '<span class="sep">·</span>';
+      var sports = V.SPORT_KEYS.map(function (k) { return [k, (V.SPORT_SHORT && V.SPORT_SHORT[k]) || k]; });
+      var graders = V.GRADER_KEYS.map(function (k) { return [k, (V.GRADER_LABEL && V.GRADER_LABEL[k]) || k]; });
+      var grades = V.GRADE_STEPS.map(function (g) { return [g, g]; });
+      var bases = V.BASIS_KEYS.map(function (k) { return [k, (V.BASIS_LABEL && V.BASIS_LABEL[k]) || k]; });
+      var certs = V.CERT_RULES.map(function (k) { return [k, (V.CERT_RULE_LABEL && V.CERT_RULE_LABEL[k]) || k]; });
+      var confs = [['', (V.CONFIDENCE_LABEL && V.CONFIDENCE_LABEL['']) || 'Any conf']].concat(['1', '2', '3', '4', '5'].map(function (k) {
+        return [k, (V.CONFIDENCE_LABEL && V.CONFIDENCE_LABEL[k]) || k + '+'];
+      }));
+      return '' +
+        '<div class="wtb-tier" data-uid="' + esc(r._uid) + '">' +
+          '<div class="range">' +
+            '<input type="number" step="0.01" min="0" data-k="from" value="' + esc(r.from) + '" placeholder="0" aria-label="Min market dollars">' +
+            '<span class="dash">-</span>' +
+            '<input type="number" step="0.01" min="0" data-k="to" value="' + esc(r.to) + '" placeholder="∞" aria-label="Max market dollars, blank for no cap">' +
+          '</div>' +
+          '<div class="meta">' +
+            '<select data-k="sport" aria-label="Sport">' + opts(sports, r.sport) + '</select>' + sep +
+            '<select data-k="grader" aria-label="Grading company">' + opts(graders, r.grader) + '</select>' + sep +
+            '<select data-k="gradeMin" aria-label="Min grade">' + opts(grades, r.gradeMin) + '</select>' +
+            '<span class="dash">-</span>' +
+            '<select data-k="gradeMax" aria-label="Max grade">' + opts(grades, r.gradeMax) + '</select>' + sep +
+            '<input class="label-input" type="text" data-k="label" maxlength="100" placeholder="note (optional)" value="' + esc(r.label) + '" style="width:140px" aria-label="Note">' + sep +
+            '<select data-k="basis" aria-label="Basis">' + opts(bases, r.basis) + '</select>' + sep +
+            '<select data-k="certRule" aria-label="Cert rule">' + opts(certs, r.certRule) + '</select>' + sep +
+            '<select data-k="minConfidence" aria-label="Min confidence">' + opts(confs, r.minConfidence) + '</select>' + sep +
+            '<button type="button" class="tgl' + (r.vintage ? ' on' : '') + '" data-act="vintage" aria-pressed="' + !!r.vintage + '">VINTAGE</button>' +
+            '<button type="button" class="tgl' + (r.special ? ' on' : '') + '" data-act="special" aria-pressed="' + !!r.special + '">SPECIAL</button>' +
+          '</div>' +
+          '<input class="sort" type="number" step="1" data-k="sort" value="' + esc(r.sort) + '" aria-label="Sort order, lower is checked first">' +
+          '<div class="pct">' +
+            '<input type="number" step="0.01" min="0" max="100" data-k="pct" value="' + esc(r.pct) + '" aria-label="Percent paid"><span class="pct-sign">%</span>' +
+          '</div>' +
+          '<button type="button" class="del" data-act="del" aria-label="Delete this band">✕</button>' +
+        '</div>';
+    }
+    function render() {
+      dom.rows.innerHTML = rows.length
+        ? rows.map(rowHtml).join('')
+        : '<div class="scr-empty">No bands yet. Start from the consignor rates, or add a band.</div>';
+      dom.save.disabled = busy || !base;
+    }
+    function rowOf(target) {
+      var tier = target.closest('.wtb-tier');
+      var uid = tier && tier.getAttribute('data-uid');
+      for (var i = 0; i < rows.length; i++) if (rows[i]._uid === uid) return { row: rows[i], index: i };
+      return null;
+    }
+
+    dom.rows.addEventListener('input', function (ev) {
+      var k = ev.target.getAttribute('data-k');
+      var hit = k && rowOf(ev.target);
+      if (hit) { hit.row[k] = ev.target.value; setStatus('Not saved yet.'); }
+    });
+    dom.rows.addEventListener('change', function (ev) {
+      var k = ev.target.getAttribute('data-k');
+      var hit = k && rowOf(ev.target);
+      if (hit) { hit.row[k] = ev.target.value; setStatus('Not saved yet.'); }
+    });
+    dom.rows.addEventListener('click', function (ev) {
+      var btn = ev.target.closest('[data-act]');
+      var hit = btn && rowOf(btn);
+      if (!hit) return;
+      var act = btn.getAttribute('data-act');
+      if (act === 'del') rows.splice(hit.index, 1);
+      else if (act === 'vintage' || act === 'special') hit.row[act] = !hit.row[act];
+      setStatus('Not saved yet.');
+      render();
+    });
+
+    function load() {
+      var key = getStoredKey();
+      if (!key) return;
+      dom.card.hidden = false;
+      setStatus('Loading the Scanner rates…');
+      fetch(api('scanner'), { headers: { accept: 'application/json', 'x-edit-key': key } }).then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (body) { return { status: res.status, body: body }; });
+      }).then(function (out) {
+        if (out.status === 200 && out.body && out.body.settings) {
+          base = out.body.settings;
+          rows = S.toFormRows(base);
+          setStatus('These are the saved Scanner rates.');
+        } else if (out.status === 404 && out.body && out.body.error === 'no-settings') {
+          base = null; rows = [];
+          setStatus('No Scanner rates saved yet: the app uses the consignor rates. Start from the consignor rates to make a copy you can change.');
+        } else if (out.status === 404 || out.status === 401) {
+          base = null; rows = [];
+          setStatus('The rates server does not know Scanner rates yet: the slab-rates function needs its update before they can be read or saved.', true);
+        } else {
+          setStatus('Could not load the Scanner rates (' + out.status + ').', true);
+        }
+        render();
+      }, function () { setStatus('Could not reach the rates server.', true); render(); });
+    }
+
+    dom.copy.addEventListener('click', function () {
+      if (busy) return;
+      if (rows.length && !window.confirm('Replace these Scanner rates with a copy of the consignor rates? Nothing is saved until you press Save.')) return;
+      setStatus('Copying the consignor rates…');
+      fetch(api('settings'), { headers: { accept: 'application/json' } }).then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      }).then(function (j) {
+        base = j.settings;
+        rows = S.toFormRows(base);
+        setStatus('A copy of the consignor rates. Change what you like, then Save.');
+        render();
+      }, function () { setStatus('Could not load the consignor rates.', true); });
+    });
+
+    dom.add.addEventListener('click', function () {
+      if (!base) base = V.defaults(); // a sheet built from scratch carries the default sheet-wide settings
+      rows.push(S.blankRow(rows));
+      setStatus('Not saved yet.');
+      render();
+    });
+
+    dom.save.addEventListener('click', function () {
+      if (busy || !base) return;
+      var checked = V.validateSettings(V.normalize(S.fromFormRows(base, rows)));
+      if (!checked.ok) { showErrors(checked.errors); setStatus(checked.errors.length + ' problem(s) to fix.', true); return; }
+      showErrors(null);
+      var key = getStoredKey();
+      if (!key) { showLock('Enter the edit key to save.'); return; }
+      busy = true;
+      render();
+      setStatus('Saving…');
+      fetch(api('scanner'), {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json', 'x-edit-key': key },
+        body: JSON.stringify(checked.settings)
+      }).then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (body) { return { status: res.status, body: body }; });
+      }).then(function (out) {
+        busy = false;
+        if (out.status === 401) { forgetKey(); showLock('The key stopped working, enter it again'); return; }
+        if (out.status === 400 && out.body && out.body.errors) { showErrors(out.body.errors); setStatus('The server rejected the sheet.', true); render(); return; }
+        if (out.status === 404) { setStatus('The rates server does not know Scanner rates yet: the slab-rates function needs its update.', true); render(); return; }
+        if (out.status < 200 || out.status >= 300) { setStatus('Save failed (' + out.status + ').', true); render(); return; }
+        base = out.body.settings;
+        rows = S.toFormRows(base);
+        setStatus('Saved. The Scanner prices Normal on these now.');
+        render();
+      }, function () { busy = false; setStatus('Could not reach the rates server.', true); render(); });
+    });
+
+    // Never fetched or shown before the edit key is verified; a relock hides and blanks it again.
+    var waiting = false;
+    function loadWhenUnlocked() {
+      if (waiting) return; // one load per unlock, however many times the lock card was shown
+      waiting = true;
+      whenUnlocked(function () { waiting = false; load(); });
+    }
+    loadWhenUnlocked();
+    (function hookLock() {
+      var baseShowLock = showLock;
+      showLock = function (message) {
+        baseShowLock(message);
+        dom.card.hidden = true;
+        base = null; rows = [];
+        dom.rows.innerHTML = '';
+        showErrors(null);
+        loadWhenUnlocked();
+      };
+    })();
+
+    return { load: load };
   })();
   
 

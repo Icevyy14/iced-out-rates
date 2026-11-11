@@ -455,7 +455,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   <div class="sec-head">
     <div>
       <div class="sec-title">⚙️ Pricing Rules</div>
-      <div class="sec-sub">First matching tier (top → bottom) wins. Edit inline. Lower <code>sort</code> = checked first.</div>
+      <div class="sec-sub">Every tier a slab fits is priced and the one that pays the least in dollars is quoted (the first match, top → bottom, if the buy-side lowest-overlap switch is off). Edit inline. Lower <code>sort</code> = checked first.</div>
     </div>
     <span class="dirty-hint" id="dirty-hint" hidden>unsaved</span>
   </div>
@@ -752,9 +752,57 @@ const DEFAULT_TICKET_TIMEZONE = 'America/New_York';
 
 // ── shapes ───────────────────────────────────────────────────────────────────
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                                                              
 
+
+
+
+
        
+
+
+
+
+
+
+
+
+
 
 // ── small helpers (no exports the page does not need) ────────────────────────
 
@@ -1636,7 +1684,9 @@ window.RatesValidate = {
   var activeTab = 'rules';   // 'rules' | 'singles' | 'consignors' - which tab owns the shared header
 
   var V = window.RatesValidate || {};
+
   var KEY_STORE = 'iopRatesEditKey';
+
 
   // ── vocabulary ─────────────────────────────────────────────────────────────
   // Schema v2 publishes all of this on window.RatesValidate. The fallbacks below
@@ -1709,6 +1759,7 @@ window.RatesValidate = {
   function langFull(k) { return langPair(k)[1]; }
 
   // ── api ────────────────────────────────────────────────────────────────────
+
   // The function is served at .../functions/v1/slab-rates with no trailing slash, so a
   // literal "./settings" would resolve one level too high. Build the sibling path from
   // whatever path this page was loaded at; still host-relative, works behind any domain.
@@ -1717,6 +1768,7 @@ window.RatesValidate = {
     var base = meta && meta.content ? meta.content : location.pathname;
     return base.replace(new RegExp('[/]+$'), '') + '/' + name;
   }
+
 
   // ── state ──────────────────────────────────────────────────────────────────
   var state = null;        // form values (strings), never coerced until save time
@@ -1997,11 +2049,13 @@ window.RatesValidate = {
   }
 
   // ── html helpers ───────────────────────────────────────────────────────────
+
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
+
 
   function opts(pairs, value) {
     return pairs.map(function (p) {
@@ -2206,6 +2260,7 @@ window.RatesValidate = {
   }
 
   // ── status line ────────────────────────────────────────────────────────────
+
   function fmtTime(iso) {
     if (!iso) return null;
     var d = new Date(iso);
@@ -2216,6 +2271,7 @@ window.RatesValidate = {
       ? { hour: 'numeric', minute: '2-digit' }
       : { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   }
+
 
   function renderStatus() {
     if (activeTab !== 'rules') return;
@@ -2519,6 +2575,7 @@ window.RatesValidate = {
   }
 
   // ── save ───────────────────────────────────────────────────────────────────
+
   function getStoredKey() {
     try { return localStorage.getItem(KEY_STORE); } catch (e) { return null; }
   }
@@ -2531,11 +2588,13 @@ window.RatesValidate = {
     try { localStorage.removeItem(KEY_STORE); } catch (e) { /* nothing to forget */ }
   }
 
+
   // ── lock card: the key gate every page shows before it will let you edit or
   // read anything that needs the key. Verifies against the ledger API (the
   // rates API's own GET routes are public and cannot check a key), and once a
   // key passes it is remembered in this browser (KEY_STORE) so the lock does
   // not come back until the key stops working or "Change key" is used.
+
   var lockEl = {
     card: document.getElementById('lock-card'),
     input: document.getElementById('lock-key'),
@@ -2642,6 +2701,7 @@ window.RatesValidate = {
       else showLock('Could not check the key, try again');
     });
   })();
+
 
   function setBusy(on) {
     busy = on;
