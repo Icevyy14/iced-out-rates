@@ -3442,9 +3442,12 @@ function certKeyOf(cert) {
  * "pending"); an expired row is re-asked with the upsert (owner) or POST {fn}/reask (sourcer).
  *
  * Resolves to exactly one of:
- *   { status: 'done',    avg3Cents, avg5Cents }   -- avg3Cents/avg5Cents may each still be null:
- *                                                     Card Ladder found the card but it has fewer
+ *   { status: 'done',    avg3Cents, avg5Cents,    -- avg3Cents/avg5Cents may each still be null:
+ *     clValueCents, cardName, grade }                 Card Ladder found the card but it has fewer
  *                                                     than 3/5 sales to average — a true answer.
+ *                                                     clValueCents/cardName/grade: what that same
+ *                                                     Card Ladder lookup saw (null on an older row),
+ *                                                     the page's fallback when Triumph is down.
  *   { status: 'pending' }                         -- queued, not fulfilled yet; ask again later.
  *   { status: 'failed',  reason }                 -- Card Ladder could not answer at all; `reason`
  *                                                     is avgQueue.js's own plain-text explanation.
@@ -3505,16 +3508,24 @@ async function getSalesAverages({
     const requestedAt = row.requested_at ? Date.parse(row.requested_at) : NaN;
 
     if (row.status === 'done' && Number.isFinite(filledAt) && t - filledAt < STALE_MS) {
+      // clValueCents/cardName/grade: what the fulfiller's Card Ladder lookup saw, so the page can
+      // still price a card while Triumph is down. A row written before those columns existed simply
+      // has none (null), and reads exactly as it always did.
       return {
         status: 'done',
         avg3Cents: row.avg3_cents == null ? null : Number(row.avg3_cents),
         avg5Cents: row.avg5_cents == null ? null : Number(row.avg5_cents),
+        clValueCents: row.cl_value_cents == null ? null : Number(row.cl_value_cents),
+        cardName: row.card_name ? String(row.card_name) : null,
+        grade: row.grade != null && row.grade !== '' ? String(row.grade) : null,
       };
     }
     if (row.status === 'failed' && Number.isFinite(filledAt) && t - filledAt < STALE_MS) {
       return { status: 'failed', reason: row.error || 'Card Ladder could not answer' };
     }
-    if (row.status === 'pending' && Number.isFinite(requestedAt) && t - requestedAt < PENDING_MS) {
+    // 'working' = a worker has claimed it and is asking Card Ladder right now: in flight, exactly like
+    // 'pending' (and never re-asked, which would reset a live claim), until the same pending window.
+    if ((row.status === 'pending' || row.status === 'working') && Number.isFinite(requestedAt) && t - requestedAt < PENDING_MS) {
       return { status: 'pending' };
     }
     // else: aged out in whatever status it was in (including an abandoned pending) — fall through
@@ -3611,6 +3622,166 @@ window.AvgClient = {
   POLL_STEPS_MS: POLL_STEPS_MS,
   pollDelayMs: pollDelayMs,
   pollDecision: pollDecision,
+};
+})();
+
+(function () {
+'use strict';
+// The Scanner's fallback for a day Triumph is down. Triumph (the triumph-sourcer lookup) only ever
+// supplies a card's Card Ladder value, and its credential can be revoked or the service can fail. The
+// page used to stop with an error and price nothing; now a failed lookup that means "Triumph itself is
+// unavailable" (any 5xx, or the lookup timing out) puts the card in the pile as just its cert and takes
+// the Card Ladder value, card name and grade from the SAME Card Ladder lookup the sales average already
+// comes from (AvgClient's `done` answer carries clValueCents / cardName / grade). Slower, same prices:
+// the filled-in card goes through the one pricing path every Triumph card goes through.
+//
+// This file is only the decisions, so they can be unit-tested without a page:
+//   isTriumphDown(failure)      is this failed lookup "Triumph is down" (and so worth the fallback)?
+//   downFacts(...)              the facts a card starts with when its lookup failed that way
+//   fillFromAverage(...)        the facts once the average's answer arrives (CL value, name, grade)
+//   waitingForValue(facts)      a fallback card still waiting on its CL value (the page says so, staff only)
+//   marketValue(facts, current) the number the pile holds as the card's market value
+// Everything else (what a 4xx, a sign-out or a lost signal does) stays exactly as it was.
+//
+// "Triumph answers" always wins: a card that already has a Triumph value keeps it (downFacts), and the
+// average never replaces a Triumph card's value, name or grade (fillFromAverage only touches a card
+// whose facts carry `clvFromAvg`, set here and nowhere else).
+//
+// Pure, like every scanner/ sibling (embedded whole into the page by rates-portal/build-portal.js):
+// no DOM, no network, no require. The page hands in its own generated copies of the code a Triumph
+// answer goes through ({ sportCore: SportCore, priceCore: PriceCore, gradeNum }), so the sport, year,
+// language and grade of a fallback card are read by exactly the same code.
+'use strict';
+
+/** The ONE line staff see while a fallback card waits for its value. Staff view only: hide mode never
+ *  shows the note's card, and nothing else on the page mentions Triumph. No em dash: on-screen copy. */
+var DOWN_NOTE = 'Triumph is down: getting the Card Ladder value with the average';
+
+/** Any 5xx answer: the service (or the credential behind it) is not working. A 4xx is the cert or the
+ *  sign-in, a 2xx is an answer: neither is "Triumph is down". */
+function isDownStatus(status) {
+  return typeof status === 'number' && status >= 500 && status <= 599;
+}
+
+/**
+ * failure = { status?, name?, online? }: `status` when the lookup got an HTTP answer, `name` (the
+ * error's name) when it threw, `online` the device's own navigator.onLine reading if it has one.
+ * A status decides on its own. Otherwise only the lookup's own timeout counts (an AbortError), and not
+ * on a phone that is offline: there the timeout is a lost signal, and the page's no-signal wording and
+ * Retry stay what handle it. Any other thrown error (a fetch that never reached the server) is NOT
+ * Triumph being down.
+ */
+function isTriumphDown(failure) {
+  if (!failure || typeof failure !== 'object') return false;
+  if (typeof failure.status === 'number') return isDownStatus(failure.status);
+  if (failure.name === 'AbortError') return failure.online !== false;
+  return false;
+}
+
+/** The same grade-number reading the page uses for a Triumph grade ("10" -> 10, "9.5" -> 9.5,
+ *  "AUTHENTIC" -> null). The page passes its own gradeNum; this is only the fallback for a caller
+ *  that does not. */
+function gradeNumOf(g) {
+  if (g == null) return null;
+  var m = String(g).match(/\d+(?:\.\d+)?/);
+  return m ? parseFloat(m[0]) : null;
+}
+
+/** A Card Ladder value only counts when it is a real positive whole number of cents: a zero, a negative
+ *  or a non-number is "no value", never $0. */
+function validCents(n) {
+  if (typeof n !== 'number' || !isFinite(n)) return null;
+  var c = Math.round(n);
+  return c > 0 ? c : null;
+}
+
+/** sport / year / language read off a title, the way a Triumph answer's facts get them. */
+function titleFacts(title, deps) {
+  return {
+    sport: deps.sportCore.sportFromTitle(title),
+    year: deps.sportCore.yearFromTitle(title),
+    language: deps.priceCore.languageOf(title),
+  };
+}
+
+/** What a re-asked card shows for its average meanwhile: the one it already had, else pending. */
+function carryAverage(prev) {
+  if (prev && prev.avgStatus === 'done') return { avgStatus: 'done', avg3Cents: prev.avg3Cents, avgReason: null };
+  return { avgStatus: 'pending', avg3Cents: null, avgReason: null };
+}
+
+/**
+ * The facts for a card whose Triumph lookup failed because Triumph is down (the same fields the page's
+ * onLookup builds for a Triumph answer, with no value, name or grade known yet). `prev` is whatever
+ * facts the pile already holds for this cert (or null).
+ *   - prev already has a CL value (Triumph's, or an earlier fallback's): it stands. The card keeps its
+ *     name/grade/value and just asks again for the average.
+ *   - otherwise: a fresh fallback card, titled by its cert ("PSA 12345678"), `clvFromAvg` set so the
+ *     average's answer may fill its value in.
+ */
+function downFacts(cert, grader, prev, deps) {
+  var g = String(grader || '').toLowerCase();
+  var avg = carryAverage(prev);
+  if (prev && typeof prev === 'object' && prev.clvCents != null) return Object.assign({}, prev, avg);
+  var title = g.toUpperCase() + ' ' + cert;
+  var tf = titleFacts(title, deps);
+  return {
+    cert: cert, grader: g, title: title, clvCents: null,
+    grade: null, gradeText: null, confidence: null,
+    sport: tf.sport, year: tf.year, language: tf.language,
+    avgStatus: avg.avgStatus, avg3Cents: avg.avg3Cents, avgReason: avg.avgReason,
+    clvFromAvg: true,
+  };
+}
+
+/** True while a fallback card still waits on its CL value: nothing known yet and the average (which
+ *  carries it) is still on the way. A failed/timed-out average is not waiting any more. */
+function waitingForValue(facts) {
+  return !!facts && facts.clvFromAvg === true && facts.clvCents == null && facts.avgStatus === 'pending';
+}
+
+/**
+ * The facts after the average's answer: for a FALLBACK card and a `done` answer, a NEW facts object with
+ * the Card Ladder value, card name and grade the answer carries (sport/year/language re-read from the
+ * new title). Anything the answer does not carry stays as it was, and a value already known is never
+ * blanked by a later answer without one. Returns null when there is nothing to do: not a fallback card
+ * (a Triumph card is never touched), not a `done` answer, or no facts at all.
+ */
+function fillFromAverage(facts, avgState, deps) {
+  if (!facts || facts.clvFromAvg !== true) return null;
+  if (!avgState || avgState.status !== 'done') return null;
+  var next = Object.assign({}, facts);
+  var cl = validCents(avgState.clValueCents);
+  if (cl != null) next.clvCents = cl;
+  var name = typeof avgState.cardName === 'string' ? avgState.cardName.trim() : '';
+  if (name) {
+    next.title = name;
+    var tf = titleFacts(name, deps);
+    next.sport = tf.sport; next.year = tf.year; next.language = tf.language;
+  }
+  var gradeText = avgState.grade != null ? String(avgState.grade).trim() : '';
+  if (gradeText) {
+    next.gradeText = gradeText;
+    next.grade = (deps.gradeNum || gradeNumOf)(gradeText);
+  }
+  return next;
+}
+
+/** The market value the pile holds for a card: a fallback card follows its own CL value (unknown until
+ *  the answer arrives); every other card keeps whatever the pile already has. */
+function marketValue(facts, current) {
+  if (facts && facts.clvFromAvg === true) return typeof facts.clvCents === 'number' ? facts.clvCents : null;
+  return current;
+}
+
+window.TriumphDown = {
+  DOWN_NOTE: DOWN_NOTE,
+  isDownStatus: isDownStatus,
+  isTriumphDown: isTriumphDown,
+  downFacts: downFacts,
+  waitingForValue: waitingForValue,
+  fillFromAverage: fillFromAverage,
+  marketValue: marketValue,
 };
 })();
 
@@ -4422,8 +4593,14 @@ window.NativeBridge = {
         // No rate sheet this visit (a dropped signal at a show): an offer already in the pile from
         // that same sheet keeps its price rather than every card going blank at once.
         var sheet = choice.rule === 'consignor' ? consignorSettings : choice.rule === 'normal' ? normalRates() : true;
-        if (!sheet && e.price && e.price.rule === choice.rule && typeof e.price.payoutCents === 'number') return;
-        pile.addCard(e.cert, e.grader, e.marketValueCents, OfferRules.offerFor(meta.facts, choice, ctx));
+        // The market value the pile holds: the card's own, except a card priced while Triumph was down,
+        // whose value arrives later with its average (scanner/triumphDown.js).
+        var mv = TriumphDown.marketValue(meta.facts, e.marketValueCents);
+        if (!sheet && e.price && e.price.rule === choice.rule && typeof e.price.payoutCents === 'number') {
+          if (mv !== e.marketValueCents) pile.addCard(e.cert, e.grader, mv, e.price);
+          return;
+        }
+        pile.addCard(e.cert, e.grader, mv, OfferRules.offerFor(meta.facts, choice, ctx));
       });
       savePile();
     }
@@ -4435,9 +4612,7 @@ window.NativeBridge = {
       var g = String(grader || '').toLowerCase();
       var title = lookup.card || (g.toUpperCase() + ' ' + cert);
       var clvCents = lookup.marketValue != null ? Math.round(Number(lookup.marketValue) * 100) : null;
-      // certs.js certKey is session.js's own dedupe key, so this finds the same pile slot addCard will
-      var prevKey = pileMetaKey(g, Certs.certKey(cert));
-      var prev = pileMeta[prevKey] && pileMeta[prevKey].facts;
+      var prev = pileFactsFor(cert, g);
       var facts = {
         cert: cert, grader: g, title: title, clvCents: clvCents,
         grade: gradeNum(lookup.grade), gradeText: lookup.grade ? String(lookup.grade) : null,
@@ -4450,16 +4625,43 @@ window.NativeBridge = {
       if (prev && prev.avgStatus === 'done') { // a re-scan shows the average it already had while it re-checks
         facts.avgStatus = 'done'; facts.avg3Cents = prev.avg3Cents;
       }
-      var r = pile.addCard(cert, g, clvCents, null);
+      takeCard(cert, g, facts);
+    }
+
+    /** The facts the pile already holds for a cert (null when it is new). */
+    function pileFactsFor(cert, g) {
+      // certs.js certKey is session.js's own dedupe key, so this finds the same pile slot addCard will
+      var k = pileMetaKey(g, Certs.certKey(cert));
+      return (pileMeta[k] && pileMeta[k].facts) || null;
+    }
+
+    /** Puts one card's facts in the pile and on screen, then asks for its average. A Triumph answer and
+        the Triumph-down fallback below both end here. */
+    function takeCard(cert, g, facts) {
+      var r = pile.addCard(cert, g, facts.clvCents, null);
       var entry = pile.list()[r.index];
       var key = pileMetaKey(g, entry.certKey);
-      pileMeta[key] = { card: title, grade: facts.gradeText, facts: facts };
+      pileMeta[key] = { card: facts.title, grade: facts.gradeText, facts: facts };
       currentKey = key;
       repriceAll();
       renderPile();
       renderCurrent();
       dom.rescanBadge.hidden = !r.rescanned;
       startAveragePoll(key);
+    }
+
+    /** What scanner/triumphDown.js reads a fallback card with: the same sport/year/language/grade code a
+        Triumph answer's facts go through. */
+    var fallbackDeps = { sportCore: SportCore, priceCore: PriceCore, gradeNum: gradeNum };
+
+    /** The Triumph lookup failed because Triumph itself is down (TriumphDown.isTriumphDown: any 5xx, the
+        revoked credential's 503 included, or the lookup timing out). Nothing stops: the card goes in the
+        pile as just its cert, with no CL value yet, and the average is asked for exactly as always. That
+        answer carries the Card Ladder value, name and grade, and setAverage fills them in. A Triumph value
+        the card already has stands (downFacts). */
+    function onTriumphDown(cert, grader) {
+      var g = String(grader || '').toLowerCase();
+      takeCard(cert, g, TriumphDown.downFacts(cert, g, pileFactsFor(cert, g), fallbackDeps));
     }
 
     /**
@@ -4512,11 +4714,16 @@ window.NativeBridge = {
       var meta = pileMeta[key];
       if (!meta || !meta.facts || !pileEntry(key)) return;
       var f = meta.facts;
-      var before = [f.avgStatus, f.avg3Cents, f.avgReason].join('|');
+      var sig = function (x) { return [x.avgStatus, x.avg3Cents, x.avgReason, x.clvCents, x.title, x.gradeText].join('|'); };
+      var before = sig(f);
       f.avgStatus = avgState.status;
       f.avg3Cents = avgState.status === 'done' && avgState.avg3Cents != null ? avgState.avg3Cents : null;
       f.avgReason = avgState.reason || null;
-      if ([f.avgStatus, f.avg3Cents, f.avgReason].join('|') === before) return; // nothing new
+      // A card priced while Triumph was down has no CL value, name or grade of its own: they come with
+      // its average. Only that card (a Triumph card is never touched) and only a 'done' answer.
+      var filled = TriumphDown.fillFromAverage(f, avgState, fallbackDeps);
+      if (filled) { meta.facts = f = filled; meta.card = f.title; meta.grade = f.gradeText; }
+      if (sig(f) === before) return; // nothing new
       repriceAll();
       renderPile();
       if (currentKey === key) renderCurrent();
@@ -4535,7 +4742,7 @@ window.NativeBridge = {
       dom.grader.textContent = f.grader.toUpperCase();
       dom.grade.textContent = f.gradeText ? ('Grade ' + f.gradeText) : '-';
 
-      setSquare(dom.clv, f.clvCents != null ? money(f.clvCents) : 'No value', f.clvCents != null);
+      setSquare(dom.clv, f.clvCents != null ? money(f.clvCents) : (TriumphDown.waitingForValue(f) ? 'Getting value…' : 'No value'), f.clvCents != null);
       if (f.avgStatus === 'done') setSquare(dom.avg3, f.avg3Cents != null ? money(f.avg3Cents) : 'Not enough sales', f.avg3Cents != null);
       else setSquare(dom.avg3, f.avgStatus === 'pending' ? 'Getting average…' : 'Not available', false);
       setSquare(dom.pay, OfferRules.payText(price, f.avgStatus, money), !!price && typeof price.payoutCents === 'number');
@@ -4556,6 +4763,10 @@ window.NativeBridge = {
 
     /** The small explanation under the squares (staff only). The squares themselves stay uncluttered. */
     function renderNote(f, priced) {
+      // Triumph is down and this card is still waiting for the CL value that comes with its average: say
+      // so (staff only: hide mode hides this whole card). A missing rate sheet or percent is the more
+      // actionable problem, so those notes still win.
+      if (TriumphDown.waitingForValue(f) && !(priced && (priced.noSheet || priced.noPct))) { showNote(TriumphDown.DOWN_NOTE, true); return; }
       if (!priced) { showNote(''); return; }
       if (priced.noSheet) {
         showNote(priced.rule === 'consignor'
@@ -4756,10 +4967,18 @@ window.NativeBridge = {
             var eOut = new Error('signed out'); eOut.signedOut = true; throw eOut;
           });
         }).then(function (res) {
-          return res.json().then(function (j) { return { res: res, body: j }; });
+          // A gateway's own error page is not JSON, but a 5xx still means Triumph is down: a body that
+          // will not parse must never turn that into some other error.
+          return res.json().then(function (j) { return { res: res, body: j }; }, function (parseErr) {
+            if (TriumphDown.isTriumphDown({ status: res.status })) return { res: res, body: null };
+            throw parseErr;
+          });
         }).then(function (r) {
           busy = false;
           if (!r.res.ok) {
+            // Triumph itself is down (any 5xx, the revoked credential's 503 included): not an error, the
+            // average carries the CL value. Staff see only the note, never the 503's own text.
+            if (TriumphDown.isTriumphDown({ status: r.res.status })) { onTriumphDown(cert, grader); return; }
             var httpMsg = (r.body && r.body.error) || ('Lookup failed (HTTP ' + r.res.status + ').');
             applyFailure(cert, grader, attempt, describeFailure(httpMsg, attempt));
             return;
@@ -4774,7 +4993,13 @@ window.NativeBridge = {
           busy = false;
           if (e && e.signedOut) { renderNotSignedIn(cert, grader, Signal.SIGNED_OUT_MESSAGE); return; }
           if (e && e.noSignal) { applyFailure(cert, grader, attempt, describeFailure(Signal.NO_SIGNAL_ERROR, attempt)); return; }
-          if (e && e.name === 'AbortError') { applyFailure(cert, grader, attempt, describeFailure('The lookup took longer than ' + (LOOKUP_TIMEOUT_MS / 1000) + ' seconds.', attempt)); return; }
+          if (e && e.name === 'AbortError') {
+            // The lookup timing out is Triumph hanging, so the average carries on (unless this phone is
+            // offline: then it is a lost signal, and the no-signal wording and Retry below are right).
+            if (TriumphDown.isTriumphDown({ name: e.name, online: onlineHint() })) { onTriumphDown(cert, grader); return; }
+            applyFailure(cert, grader, attempt, describeFailure('The lookup took longer than ' + (LOOKUP_TIMEOUT_MS / 1000) + ' seconds.', attempt));
+            return;
+          }
           applyFailure(cert, grader, attempt, describeFailure(e, attempt));
         });
       }).then(drainScanQueue, function () { busy = false; drainScanQueue(); });
