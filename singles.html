@@ -215,7 +215,12 @@ html::after{
 .status-pill{display:inline-block;padding:3px 10px;border-radius:var(--r-pill);font-size:10px;font-weight:800;font-family:var(--font-mono);letter-spacing:.5px;text-transform:uppercase;border:1px solid var(--border);color:var(--dim);white-space:nowrap;background:transparent;}
 .status-pill.st-quoted{border-color:var(--border);color:var(--dim);}
 .status-pill.st-accepted{border-color:var(--buy);color:var(--buy);}
-.status-pill.st-received{background:color-mix(in srgb, var(--buy) 22%, transparent);border-color:var(--buy);color:var(--buy);}
+.status-pill.st-shipped{background:color-mix(in srgb, #16476A 55%, transparent);border-color:#3f7fa8;color:#b9dcf2;}
+/* st-received is the stored status; staff read it as "Arrived". It is the one state waiting on a
+   person, so it is the only filled pill before Locked and the only one with a mark (a box), in
+   teal so it cannot be read as Paid's green. Dark text on #3B9797 is 5.9:1. */
+.status-pill.st-received{--i-arrived:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l8 4.5v9L12 21l-8-4.5v-9z'/%3E%3Cpath d='M4 7.5l8 4.5 8-4.5M12 12v9'/%3E%3C/svg%3E");display:inline-flex;align-items:center;gap:5px;vertical-align:middle;padding-left:8px;background:#3B9797;border-color:#3B9797;color:var(--bg);}
+.status-pill.st-received::before{content:"";flex:none;width:11px;height:11px;background:currentColor;-webkit-mask:var(--i-arrived) center / contain no-repeat;mask:var(--i-arrived) center / contain no-repeat;}
 .status-pill.st-locked{background:color-mix(in srgb, var(--purple) 45%, transparent);border-color:var(--purple);color:var(--text);}
 .status-pill.st-paid{background:#2fd38a;border-color:#2fd38a;color:var(--bg);}
 .status-pill.st-cancelled{background:color-mix(in srgb, var(--red) 18%, transparent);border-color:var(--red);color:var(--red);}

@@ -215,7 +215,12 @@ html::after{
 .status-pill{display:inline-block;padding:3px 10px;border-radius:var(--r-pill);font-size:10px;font-weight:800;font-family:var(--font-mono);letter-spacing:.5px;text-transform:uppercase;border:1px solid var(--border);color:var(--dim);white-space:nowrap;background:transparent;}
 .status-pill.st-quoted{border-color:var(--border);color:var(--dim);}
 .status-pill.st-accepted{border-color:var(--buy);color:var(--buy);}
-.status-pill.st-received{background:color-mix(in srgb, var(--buy) 22%, transparent);border-color:var(--buy);color:var(--buy);}
+.status-pill.st-shipped{background:color-mix(in srgb, #16476A 55%, transparent);border-color:#3f7fa8;color:#b9dcf2;}
+/* st-received is the stored status; staff read it as "Arrived". It is the one state waiting on a
+   person, so it is the only filled pill before Locked and the only one with a mark (a box), in
+   teal so it cannot be read as Paid's green. Dark text on #3B9797 is 5.9:1. */
+.status-pill.st-received{--i-arrived:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l8 4.5v9L12 21l-8-4.5v-9z'/%3E%3Cpath d='M4 7.5l8 4.5 8-4.5M12 12v9'/%3E%3C/svg%3E");display:inline-flex;align-items:center;gap:5px;vertical-align:middle;padding-left:8px;background:#3B9797;border-color:#3B9797;color:var(--bg);}
+.status-pill.st-received::before{content:"";flex:none;width:11px;height:11px;background:currentColor;-webkit-mask:var(--i-arrived) center / contain no-repeat;mask:var(--i-arrived) center / contain no-repeat;}
 .status-pill.st-locked{background:color-mix(in srgb, var(--purple) 45%, transparent);border-color:var(--purple);color:var(--text);}
 .status-pill.st-paid{background:#2fd38a;border-color:#2fd38a;color:var(--bg);}
 .status-pill.st-cancelled{background:color-mix(in srgb, var(--red) 18%, transparent);border-color:var(--red);color:var(--red);}
@@ -458,6 +463,17 @@ code{font-family:var(--font-mono);font-size:.92em;}
      (raw card) row in the master list at a glance - reuses the existing pill look (.src-pill /
      .status-pill in the shared CSS) via the same custom properties rather than inventing new colors. */
   #master-table .kind-pill{display:inline-block;margin-right:6px;padding:2px 7px;border-radius:var(--r-pill);font-size:9px;font-weight:800;font-family:var(--font-mono);letter-spacing:.4px;text-transform:uppercase;border:1px solid var(--border);color:var(--dim);vertical-align:middle;white-space:nowrap;}
+  /* Arrival cues. The pills themselves are the shared .status-pill rules; these only place them:
+     a consignor badge beside the name, the one-line delivery/tracking note under a lot's pill,
+     and the count under the stat cards. */
+  #tab-consignors .cons-badge{margin-left:8px;}
+  #tab-consignors .lot-note{flex:0 0 100%;min-width:0;margin-top:-4px;font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #stat-strip .arrived-note{grid-column:1 / -1;justify-self:start;}
+  /* The status filter grew to 8 chips: let it wrap instead of widening the phone layout. Phone tap targets: 44px. */
+  #master-status-filter{flex-wrap:wrap;}
+  @media (max-width:768px){
+    #master-status-filter .filter-chip,#tab-consignors .cons-actions .btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;}
+  }
 </style>
 <div class="tab active" id="tab-consignors">
 <!-- Hidden until a verified edit key is in hand (see MODULE:consignors' lock-gating
@@ -507,6 +523,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
     <div class="wtb-total-card owed"><div class="lbl">Owed</div><div class="val" id="stat-owed">—</div></div>
     <div class="wtb-total-card"><div class="lbl">Paid out</div><div class="val" id="stat-paid">—</div></div>
     <div class="wtb-total-card"><div class="lbl">Consignments</div><div class="val" id="stat-consignments">—</div></div>
+    <span class="status-pill st-received arrived-note" id="lg-arrived-note" hidden role="status"></span>
   </section>
 
   <section class="partner-strip" id="partner-strip" aria-label="By partner">
@@ -599,7 +616,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
         <button type="button" class="filter-chip active" data-status="all" title="Show every status">All</button>
         <button type="button" class="filter-chip" data-status="quoted" title="Show only Quoted">Quoted</button>
         <button type="button" class="filter-chip" data-status="accepted" title="Show only Accepted">Accepted</button>
-        <button type="button" class="filter-chip" data-status="received" title="Show only Received">Received</button>
+        <button type="button" class="filter-chip" data-status="shipped" title="Show only Shipped">Shipped</button>
+        <button type="button" class="filter-chip" data-status="received" title="Show only Arrived">Arrived</button>
         <button type="button" class="filter-chip" data-status="locked" title="Show only Locked">Locked</button>
         <button type="button" class="filter-chip" data-status="paid" title="Show only Paid">Paid</button>
         <button type="button" class="filter-chip" data-status="cancelled" title="Show only Cancelled">Cancelled</button>
@@ -1957,8 +1975,9 @@ window.ScanSheet = {
 
   var ConsignorsTab = (function () {
     var SRC_LABEL = { josh: 'Icevyy', penguin: 'Penguin', unknown: 'Unknown' };
-    var STATUS_LABEL = { quoted: 'Quoted', accepted: 'Accepted', received: 'Received', locked: 'Locked', paid: 'Paid', cancelled: 'Cancelled' };
-    var STATUS_ORDER = ['quoted', 'accepted', 'received', 'locked', 'paid'];
+    // 'received' stays the stored value (the ledger API's lifecycle); staff read it as "Arrived".
+    var STATUS_LABEL = { quoted: 'Quoted', accepted: 'Accepted', shipped: 'Shipped', received: 'Arrived', locked: 'Locked', paid: 'Paid', cancelled: 'Cancelled' };
+    var STATUS_ORDER = ['quoted', 'accepted', 'shipped', 'received', 'locked', 'paid'];
 
     function isActive() { return activeTab === 'consignors'; }
 
@@ -1971,6 +1990,7 @@ window.ScanSheet = {
       statPaid: document.getElementById('stat-paid'),
       statConsignments: document.getElementById('stat-consignments'),
       unknownWarning: document.getElementById('lg-unknown-warning'),
+      arrivedNote: document.getElementById('lg-arrived-note'),
       owedTbody: document.getElementById('owed-tbody'),
       sellersTbody: document.getElementById('sellers-tbody'),
       sellersSearch: document.getElementById('sellers-search'),
@@ -1993,6 +2013,8 @@ window.ScanSheet = {
     var summaryData = null;
     var masterRows = [];
     var masterTotal = 0;
+    var sellerStages = {}; // sellerId -> { received, shipped } lot counts, see buildSellerStages()
+    var lotTracking = {}; // lot id -> tracking number, see buildLotTracking()
     var busy = false;
     var loadedOnce = false;
     var msgCache = { text: '', kind: '' };
@@ -2028,6 +2050,67 @@ window.ScanSheet = {
     function statusClass(s) { return STATUS_LABEL[s] ? 'st-' + s : 'st-unknown'; }
     function statusLabelOf(s) { return STATUS_LABEL[s] || (s ? (String(s).charAt(0).toUpperCase() + String(s).slice(1)) : '—'); }
     function statusPillHtml(s) { return '<span class="status-pill ' + statusClass(s) + '">' + esc(statusLabelOf(s)) + '</span>'; }
+
+    // ── arrival cues ─────────────────────────────────────────────────────────
+    // /summary's bySeller carries money per consignor, not lot statuses, so the "Arrived" and
+    // "In transit" badges are counted from two reads loadAll() makes for them: every received
+    // lot and every shipped lot (GET /consignments?status=...), one row per lot, none missed.
+    function fetchLotsByStatus(status) {
+      var all = [];
+      function next() {
+        var params = { status: status, limit: 500 }; // 500 is the server's page cap
+        if (all.length) params.offset = all.length;
+        return apiGet('/consignments', params).then(function (res) {
+          var rows = (res && res.rows) || [];
+          all = all.concat(rows);
+          var total = (res && typeof res.total === 'number') ? res.total : all.length;
+          return (rows.length > 0 && all.length < total && all.length < 20000) ? next() : all;
+        });
+      }
+      return next();
+    }
+    function buildSellerStages(receivedLots, shippedLots) {
+      var out = Object.create(null);
+      function add(lots, status) {
+        (lots || []).forEach(function (c) {
+          if (!c || !c.sellerId) return;
+          var o = out[c.sellerId] || (out[c.sellerId] = { received: 0, shipped: 0 });
+          o[status]++;
+        });
+      }
+      add(receivedLots, 'received');
+      add(shippedLots, 'shipped');
+      return out;
+    }
+    // The list reads (/consignments, /summary) do not select the tracking column, so a lot's
+    // tracking number is taken from its /master item rows, which do carry it.
+    function buildLotTracking() {
+      var out = Object.create(null);
+      (masterRows || []).forEach(function (r) { if (r && r.consignmentId && r.tracking) out[r.consignmentId] = r.tracking; });
+      return out;
+    }
+
+    function sellerBadgeHtml(sellerId) {
+      var st = sellerStages[sellerId];
+      if (!st) return '';
+      var html = '';
+      if (st.received > 0) html += '<span class="status-pill st-received cons-badge" title="' + st.received + (st.received === 1 ? ' lot' : ' lots') + ' arrived, not locked yet">Arrived' + (st.received > 1 ? ' ' + st.received : '') + '</span>';
+      if (st.shipped > 0) html += '<span class="status-pill st-shipped cons-badge" title="' + st.shipped + (st.shipped === 1 ? ' lot' : ' lots') + ' in transit">In transit' + (st.shipped > 1 ? ' ' + st.shipped : '') + '</span>';
+      return html;
+    }
+
+    // The quiet line under a lot's pill: when an Arrived lot was delivered (the bot writes that
+    // into notes, always starting "Delivered "), or a Shipped lot's tracking. Nothing otherwise.
+    // The bot puts its delivery note first and joins older notes on with " | " or a new line, so
+    // the line shows the first part only; the tooltip keeps all of it.
+    function lotNoteHtml(c) {
+      var full = '';
+      var tracking = c.tracking || lotTracking[c.id];
+      if (c.status === 'received' && typeof c.notes === 'string' && c.notes.indexOf('Delivered ') === 0) full = c.notes;
+      else if (c.status === 'shipped' && tracking) full = 'Tracking ' + String(tracking);
+      if (!full) return '';
+      return '<span class="lot-note" title="' + esc(full) + '">' + esc(full.split(/\r?\n| \| /)[0]) + '</span>';
+    }
 
     function cmp(a, b) {
       if (a == null && b == null) return 0;
@@ -2146,6 +2229,12 @@ window.ScanSheet = {
       dom.statOwed.textContent = money(t.owedCents);
       dom.statPaid.textContent = money(t.paidCents);
       dom.statConsignments.textContent = t.consignments == null ? '—' : Number(t.consignments).toLocaleString('en-US');
+      var bs = (summaryData && summaryData.byStatus) || {};
+      var arrived = bs.received && typeof bs.received.consignments === 'number' ? bs.received.consignments : 0;
+      if (dom.arrivedNote) {
+        dom.arrivedNote.hidden = !(arrived > 0);
+        dom.arrivedNote.textContent = arrived > 0 ? 'Arrived, not locked: ' + arrived : '';
+      }
     }
 
     function renderPartners() {
@@ -2184,7 +2273,7 @@ window.ScanSheet = {
       rows.forEach(function (s) {
         var isOpen = !!expanded[s.sellerId];
         html += '<tr class="owed-row" data-seller="' + esc(s.sellerId) + '">';
-        html += '<td><button type="button" class="exp-toggle" aria-expanded="' + (isOpen ? 'true' : 'false') + '" title="Show consignments from this seller">' + (isOpen ? '▾' : '▸') + '</button>' + esc(s.sellerName || 'Unknown') + (s.sellerHandle ? '<span class="handle">@' + esc(s.sellerHandle) + '</span>' : '') + '</td>';
+        html += '<td><button type="button" class="exp-toggle" aria-expanded="' + (isOpen ? 'true' : 'false') + '" title="Show consignments from this seller">' + (isOpen ? '▾' : '▸') + '</button>' + esc(s.sellerName || 'Unknown') + (s.sellerHandle ? '<span class="handle">@' + esc(s.sellerHandle) + '</span>' : '') + sellerBadgeHtml(s.sellerId) + '</td>';
         html += '<td>' + srcPill(s.sourcedBy) + '</td>';
         html += '<td class="num">' + (s.slabs == null ? '—' : s.slabs) + '</td>';
         html += '<td class="num">' + money(s.marketCents) + '</td>';
@@ -2217,6 +2306,7 @@ window.ScanSheet = {
         if (c.sellerSheetUrl) html += '<a href="' + esc(c.sellerSheetUrl) + '" target="_blank" rel="noopener">Seller sheet</a>';
         html += '</span>';
         html += '<span class="cons-actions">' + actionButtonsHtml(c) + '</span>';
+        html += lotNoteHtml(c);
         html += '</div></div>';
       });
       return html;
@@ -2264,13 +2354,8 @@ window.ScanSheet = {
       });
     }
 
-    function refreshAfterChange() {
-      var openIds = Object.keys(expanded).filter(function (id) { return expanded[id]; });
-      openIds.forEach(function (id) { sellerCache[id] = null; });
-      return loadAll().then(function () {
-        openIds.forEach(function (id) { loadSellerConsignments(id); });
-      });
-    }
+    // loadAll() drops every opened consignor's lots and renderOwed() reads the open ones again.
+    function refreshAfterChange() { return loadAll(); }
 
     dom.owedTbody.addEventListener('click', function (e) {
       var actionBtn = e.target.closest ? e.target.closest('[data-action="status"]') : null;
@@ -2300,7 +2385,7 @@ window.ScanSheet = {
       var html = '';
       rows.forEach(function (s) {
         html += '<tr>';
-        html += '<td>' + esc(s.sellerName || 'Unknown') + (s.sellerHandle ? ' <span style="color:var(--dim);">@' + esc(s.sellerHandle) + '</span>' : '') + '</td>';
+        html += '<td>' + esc(s.sellerName || 'Unknown') + (s.sellerHandle ? ' <span style="color:var(--dim);">@' + esc(s.sellerHandle) + '</span>' : '') + sellerBadgeHtml(s.sellerId) + '</td>';
         html += '<td>' + srcPill(s.sourcedBy) + '</td>';
         html += '<td class="num">' + (s.consignments == null ? '—' : s.consignments) + '</td>';
         html += '<td class="num">' + (s.slabs == null ? '—' : s.slabs) + '</td>';
@@ -2362,6 +2447,7 @@ window.ScanSheet = {
         if (c.staffSheetUrl) html += '<a href="' + esc(c.staffSheetUrl) + '" target="_blank" rel="noopener">Staff</a>';
         if (c.sellerSheetUrl) html += '<a href="' + esc(c.sellerSheetUrl) + '" target="_blank" rel="noopener">Seller</a>';
         html += '</span>';
+        html += lotNoteHtml(c);
         html += '</div>';
       });
       dom.recentList.innerHTML = html;
@@ -2502,10 +2588,15 @@ window.ScanSheet = {
       }
       busy = true;
       if (isActive()) el.reload.disabled = true;
-      return Promise.all([apiGet('/summary'), fetchAllMaster()]).then(function (out) {
+      return Promise.all([apiGet('/summary'), fetchAllMaster(), fetchLotsByStatus('received'), fetchLotsByStatus('shipped')]).then(function (out) {
         summaryData = out[0];
         masterRows = out[1].rows;
         masterTotal = out[1].total;
+        sellerStages = buildSellerStages(out[2], out[3]);
+        lotTracking = buildLotTracking();
+        // Lots read before this load are stale now (a card could still say Shipped, with Shipped's
+        // buttons, for a lot that has arrived). Drop them all; renderOwed() reads the open ones again.
+        sellerCache = {};
         renderStats();
         renderPartners();
         renderOwed();
@@ -2540,6 +2631,8 @@ window.ScanSheet = {
       masterTotal = 0;
       expanded = {};
       sellerCache = {};
+      sellerStages = {};
+      lotTracking = {};
       loadedOnce = false;
       if (dom.owedTbody) dom.owedTbody.innerHTML = '';
       if (dom.sellersTbody) dom.sellersTbody.innerHTML = '';

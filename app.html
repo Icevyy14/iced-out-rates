@@ -215,7 +215,12 @@ html::after{
 .status-pill{display:inline-block;padding:3px 10px;border-radius:var(--r-pill);font-size:10px;font-weight:800;font-family:var(--font-mono);letter-spacing:.5px;text-transform:uppercase;border:1px solid var(--border);color:var(--dim);white-space:nowrap;background:transparent;}
 .status-pill.st-quoted{border-color:var(--border);color:var(--dim);}
 .status-pill.st-accepted{border-color:var(--buy);color:var(--buy);}
-.status-pill.st-received{background:color-mix(in srgb, var(--buy) 22%, transparent);border-color:var(--buy);color:var(--buy);}
+.status-pill.st-shipped{background:color-mix(in srgb, #16476A 55%, transparent);border-color:#3f7fa8;color:#b9dcf2;}
+/* st-received is the stored status; staff read it as "Arrived". It is the one state waiting on a
+   person, so it is the only filled pill before Locked and the only one with a mark (a box), in
+   teal so it cannot be read as Paid's green. Dark text on #3B9797 is 5.9:1. */
+.status-pill.st-received{--i-arrived:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l8 4.5v9L12 21l-8-4.5v-9z'/%3E%3Cpath d='M4 7.5l8 4.5 8-4.5M12 12v9'/%3E%3C/svg%3E");display:inline-flex;align-items:center;gap:5px;vertical-align:middle;padding-left:8px;background:#3B9797;border-color:#3B9797;color:var(--bg);}
+.status-pill.st-received::before{content:"";flex:none;width:11px;height:11px;background:currentColor;-webkit-mask:var(--i-arrived) center / contain no-repeat;mask:var(--i-arrived) center / contain no-repeat;}
 .status-pill.st-locked{background:color-mix(in srgb, var(--purple) 45%, transparent);border-color:var(--purple);color:var(--text);}
 .status-pill.st-paid{background:#2fd38a;border-color:#2fd38a;color:var(--bg);}
 .status-pill.st-cancelled{background:color-mix(in srgb, var(--red) 18%, transparent);border-color:var(--red);color:var(--red);}
@@ -430,7 +435,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
      directly under the camera, then the card, then the pile, with Normal / Lower and Hide in a dock where the
      thumb already is.
        - Colour is a key the owners already read: red = We pay (and "no"), blue = Avg of 3 and the actions,
-         teal = CL value. Red is only ever a fill or a lightened tint (#FF9AA8), never red text on the dark.
+         green = CL value (owner, 11/11: "make the CL value fully green"). Red is only ever a fill or a lightened
+         tint (#FF9AA8), never red text on the dark.
        - Decoration is deliberately small: soft navy gradients on surfaces, ONE arc holding a faint diamond
          pattern on the We pay tile, a ring on the grade circle, a teal gradient on the active segment and a
          blue one on the primary button. No pattern behind data, no display face, no badges.
@@ -456,6 +462,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
     --sc-steel-ink:#9CCBEE; --sc-avg:#6FB1E0;
     --sc-blue-top:#2678B3; --sc-blue-bot:#1F6FA8;
     --sc-teal-ink:#5CC4C4; --sc-teal-top:#4BAAA8;
+    --sc-clv:#4ADE80; /* the CL value: its number, its dot, its line on the trend (7:1 on the card) */
     --sc-wait-tint:rgba(111,177,224,.16);
     --sc-teal-tint:rgba(59,151,151,.22); --sc-teal-chip:#7FD6D6;
     --sc-err-tint:rgba(191,9,47,.24); --sc-err-ink:#FF9AA8;
@@ -526,7 +533,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-note::before,#tab-scanner .sc-conf.sc-conf-low::before,#tab-scanner .sc-type-btn::before,#tab-scanner .sc-grade-dot.sc-unk::before,
   #tab-scanner .sc-row-grade.sc-unk::before,#tab-scanner #sc-cert-go::after,#tab-scanner #sc-clear::before,
   #tab-scanner .sc-pile-unknown::before,#tab-scanner .sc-sheet-cue::before,#tab-scanner .sc-result-open::after,
-  #tab-scanner .sc-chip-no::before,#tab-scanner .sc-chip-hand::before,#tab-scanner .sc-chip-err::before{
+  #tab-scanner .sc-chip-no::before,#tab-scanner .sc-chip-hand::before,#tab-scanner .sc-chip-err::before,
+  #tab-scanner .sc-chip-out::after,#tab-scanner .sc-recent-shill::before{
     content:"";flex:none;width:20px;height:20px;background:currentColor;
     -webkit-mask:var(--sc-i) center / contain no-repeat;mask:var(--sc-i) center / contain no-repeat;
   }
@@ -536,7 +544,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
      edge instead of under it. Summed here, on the element the Android camera's .sc-native-cam also sits on,
      so that mode's two-row dock re-sums it too. */
   #tab-scanner .scanner-layout{
-    display:flex;flex-direction:column;gap:12px;max-width:520px;margin:0 auto;
+    display:flex;flex-direction:column;gap:10px;max-width:520px;margin:0 auto;
     --sc-dock-h:calc(var(--sc-dock-pad-top) + var(--sc-dock-ctl) + var(--sc-dock-pad-bottom));
     padding-bottom:calc(var(--sc-dock-h) + env(safe-area-inset-bottom));
   }
@@ -632,7 +640,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-score{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:8px;container-type:inline-size;}
   /* In a phone's browser it shows once there is something to say (a card on screen, or a pile). */
   #tab-scanner .scanner-layout:not(.sc-native-cam):has(#sc-result[hidden]):has(#sc-earlier[hidden]) .sc-score{display:none;}
-  #tab-scanner .sc-tile{position:relative;display:flex;flex-direction:column;min-width:0;min-height:118px;padding:13px 14px 13px 16px;border-radius:var(--sc-r-tile);}
+  #tab-scanner .sc-tile{position:relative;display:flex;flex-direction:column;min-width:0;min-height:104px;padding:11px 12px 11px 14px;border-radius:var(--sc-r-tile);}
   #tab-scanner .sc-tile .sc-key{font-size:var(--sc-fs-label);font-weight:700;line-height:1.3;}
   #tab-scanner .sc-tile-pay{
     isolation:isolate;color:#fff;
@@ -660,6 +668,10 @@ code{font-family:var(--font-mono);font-size:.92em;}
     font-size:var(--sc-fs-label);font-weight:700;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap;
   }
   #tab-scanner .sc-conf.sc-conf-low{--sc-i:var(--i-alert);background:#fff;color:#8E0623;box-shadow:none;}
+  /* ...and in colour, so it reads at a glance: 5 green, 4 lime, 3 amber; 1 and 2 keep the white warning. */
+  #tab-scanner .sc-conf.sc-conf-5{background:#22C55E;color:#04260F;box-shadow:inset 0 1px 0 rgba(255,255,255,.3);}
+  #tab-scanner .sc-conf.sc-conf-4{background:#BEF264;color:#1C2E05;box-shadow:inset 0 1px 0 rgba(255,255,255,.3);}
+  #tab-scanner .sc-conf.sc-conf-3{background:#FBBF24;color:#3A2400;box-shadow:inset 0 1px 0 rgba(255,255,255,.3);}
   #tab-scanner .sc-conf.sc-conf-low::before{width:13px;height:13px;}
   #tab-scanner .sc-conf.sc-conf-none{padding:0;background:none;box-shadow:none;color:rgba(255,255,255,.9);}
   #tab-scanner .sc-pay-val{
@@ -668,7 +680,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   }
   #tab-scanner .sc-pay-val.sc-words{font-size:min(20px, 6.2cqi);line-height:1.2;letter-spacing:-.01em;}
   #tab-scanner .sc-pay-val.sc-blank{color:rgba(255,255,255,.75);}
-  #tab-scanner .sc-math{margin-top:6px;font-size:var(--sc-fs-label);line-height:1.3;color:rgba(255,255,255,.9);white-space:pre-line;overflow-wrap:anywhere;}
+  #tab-scanner .sc-math{margin-top:4px;font-size:var(--sc-fs-label);line-height:1.3;color:rgba(255,255,255,.9);white-space:pre-line;overflow-wrap:anywhere;}
   #tab-scanner .sc-math:empty{display:none;}
   #tab-scanner .sc-tile-visit{background:var(--sc-card-bg);box-shadow:var(--sc-sh-card);padding-right:12px;}
   #tab-scanner .sc-tile-title{font-size:var(--sc-fs-label);font-weight:700;line-height:1.3;color:var(--sc-ink);}
@@ -734,7 +746,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
 
   /* ── the card on screen: the ringed grade, its name and cert, then Avg of 3 and CL value ── */
   #tab-scanner .sc-result{
-    container-type:inline-size;padding:15px 16px 14px;
+    container-type:inline-size;padding:12px 14px 12px;
     transition:opacity 220ms var(--sc-ease), padding 200ms var(--sc-ease);
   }
   #tab-scanner .sc-result-head{display:flex;gap:14px;align-items:flex-start;}
@@ -749,6 +761,12 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-grade-dot.sc-unk{--sc-i:var(--i-barcode);background:var(--sc-grey-tint);color:var(--sc-muted);}
   #tab-scanner .sc-result-words{flex:1 1 auto;min-width:0;padding-top:3px;}
   #tab-scanner .sc-result-name{font-size:var(--sc-fs-body);font-weight:800;line-height:1.3;letter-spacing:-.005em;color:var(--sc-ink);overflow-wrap:anywhere;text-wrap:balance;}
+  /* The card's year, set and number lead the cert row (CardView.splitTitle leads the name with the card):
+     "2005 EX Deoxys #108   PSA 112458903", told apart by colour (no dot to strand at a line's end when it wraps).
+     It wraps rather than cutting the number off (the app's folded card keeps it to one line: the set's name is cut
+     short there, never its #number). */
+  #tab-scanner .sc-result-set{min-width:0;margin-right:4px;font-weight:700;color:var(--sc-steel-ink);}
+  #tab-scanner .sc-result-line{display:contents;} /* the set and the cert, kept together only on the app's folded card */
   #tab-scanner .sc-result-id{
     display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin-top:4px;
     font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);font-variant-numeric:tabular-nums;
@@ -760,27 +778,64 @@ code{font-family:var(--font-mono);font-size:.92em;}
   /* Everything under the name folds away at the Android app's 'up' stop (a grid row from 1fr to 0fr). */
   #tab-scanner .sc-result-more{display:grid;grid-template-rows:1fr;transition:grid-template-rows 200ms var(--sc-ease);}
   #tab-scanner .sc-result-more-in{min-height:0;overflow:hidden;margin:0 -4px -4px;padding:0 4px 4px;}
-  #tab-scanner .sc-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin:12px 0 0;padding-top:12px;border-top:1px solid var(--sc-line);}
+  #tab-scanner .sc-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin:10px 0 0;padding-top:10px;border-top:1px solid var(--sc-line);}
   #tab-scanner .sc-pair-cell{min-width:0;}
   #tab-scanner .sc-pair .sc-key{display:flex;align-items:center;gap:7px;}
   #tab-scanner .sc-pair .sc-key::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;}
   #tab-scanner .sc-key-avg::before{background:var(--sc-avg);}
-  #tab-scanner .sc-key-clv::before{background:var(--sc-teal);}
+  #tab-scanner .sc-key-clv::before{background:var(--sc-clv);}
   #tab-scanner .sc-pair-val{
     margin:2px 0 0;font-size:min(var(--sc-fs-num), 7.5cqi);font-weight:800;line-height:1.25;letter-spacing:-.015em;
     color:var(--sc-ink);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
   }
-  #tab-scanner #sc-clv:not(.sc-words):not(.sc-blank){color:var(--sc-teal-ink);}
+  #tab-scanner #sc-clv:not(.sc-words):not(.sc-blank){color:var(--sc-clv);}
   #tab-scanner .sc-pair-val.sc-words{font-size:var(--sc-fs-row);font-weight:700;line-height:1.35;letter-spacing:0;color:var(--sc-muted);}
   #tab-scanner .sc-pair-val.sc-blank{color:var(--sc-faint);}
   #tab-scanner .sc-wait{animation:scWait 1.3s ease-in-out infinite alternate;}
   @keyframes scWait{from{opacity:1}to{opacity:.5}}
 
+  /* ── recent sales: five chips under the name ("$1,625" over "2d"), newest first. The three the Avg of 3
+     averages carry its blue underline; a sale the outlier rule left out (far above the rest: likely a shill
+     bid) is red AND carries the alert icon on its corner, the same icon the "Likely shill" key wears, so it
+     never rests on colour alone. The trend line (opened card only) joins the sales that count, against the
+     CL value. ── */
+  #tab-scanner .sc-vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+  #tab-scanner .sc-recent{margin-top:10px;}
+  #tab-scanner .sc-recent-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px;}
+  #tab-scanner .sc-recent-title{font-size:var(--sc-fs-label);font-weight:700;line-height:1.2;color:var(--sc-muted);}
+  #tab-scanner .sc-recent-shill{--sc-i:var(--i-alert);display:inline-flex;align-items:center;gap:4px;align-self:center;font-size:var(--sc-fs-label);font-weight:700;line-height:1.2;color:var(--sc-err-ink);white-space:nowrap;}
+  #tab-scanner .sc-recent-shill::before{width:13px;height:13px;}
+  #tab-scanner .sc-recent-shill[hidden]{display:none;}
+  #tab-scanner .sc-recent-list{display:grid;grid-template-columns:repeat(5, minmax(0, 1fr));gap:5px;margin:0;padding:0;list-style:none;}
+  #tab-scanner .sc-chip{
+    display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0;padding:5px 2px 6px;border-radius:10px;
+    background:var(--sc-fill-card);color:var(--sc-muted);text-align:center;
+  }
+  #tab-scanner .sc-chip-price{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--sc-fs-label);font-weight:800;line-height:1.25;letter-spacing:-.01em;font-variant-numeric:tabular-nums;}
+  /* No fading on top of --sc-muted: on a plain chip that would drop the age under 4.5:1 (it is 4.8:1 as is). */
+  #tab-scanner .sc-chip-age{font-size:12px;font-weight:700;line-height:1.2;}
+  #tab-scanner .sc-chip-avg{color:var(--sc-ink);box-shadow:inset 0 -2px 0 var(--sc-avg);}
+  #tab-scanner .sc-chip-out{--sc-i:var(--i-alert);position:relative;background:var(--sc-err-tint);color:var(--sc-err-ink);}
+  #tab-scanner .sc-chip-out::after{position:absolute;top:-6px;right:-4px;width:14px;height:14px;}
+  #tab-scanner .sc-trend{margin:10px 6px 2px;}
+  #tab-scanner .sc-trend[hidden]{display:none;}
+  #tab-scanner .sc-spark{position:relative;height:44px;}
+  #tab-scanner .sc-spark-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+  #tab-scanner .sc-spark-area{fill:url(#sc-spark-fill);stroke:none;}
+  #tab-scanner .sc-spark-line{fill:none;stroke:var(--sc-avg);stroke-width:2;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke;}
+  #tab-scanner .sc-spark-clv{stroke:var(--sc-clv);stroke-width:1.5;stroke-dasharray:4 4;vector-effect:non-scaling-stroke;}
+  #tab-scanner .sc-spark-dot{
+    position:absolute;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;
+    background:var(--sc-card-bot);box-shadow:inset 0 0 0 2px var(--sc-faint), 0 0 0 2px var(--sc-card-bot);
+  }
+  #tab-scanner .sc-spark-dot.sc-sale-avg{background:var(--sc-avg);box-shadow:0 0 0 2px var(--sc-card-bot);}
+  #tab-scanner .sc-spark-dot.sc-sale-out{box-shadow:inset 0 0 0 2px var(--sc-err-ink), 0 0 0 2px var(--sc-card-bot);}
+
   /* the line under the card: the rule that priced it, or what is wrong */
   #tab-scanner .sc-note{
     --sc-i:var(--i-info);
-    display:flex;gap:8px;align-items:flex-start;margin-top:10px;
-    font-size:var(--sc-fs-label);line-height:1.45;color:var(--sc-muted);overflow-wrap:anywhere;
+    display:flex;gap:8px;align-items:flex-start;margin-top:8px;
+    font-size:var(--sc-fs-label);line-height:1.4;color:var(--sc-muted);overflow-wrap:anywhere;
   }
   #tab-scanner .sc-note::before{width:15px;height:15px;margin-top:2px;color:var(--sc-faint);}
   #tab-scanner .sc-note.warn{--sc-i:var(--i-alert);color:var(--sc-ink);}
@@ -790,7 +845,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
      never shows it (it lives in #sc-result, which is .sc-staff-only). */
   #tab-scanner .sc-note.sc-note-down{align-items:center;font-weight:700;color:var(--sc-muted);}
   #tab-scanner .sc-note.sc-note-down::before{
-    width:8px;height:8px;margin:0 3px;border-radius:50%;background:var(--sc-teal-ink);-webkit-mask:none;mask:none;
+    width:8px;height:8px;margin:0 3px;border-radius:50%;background:var(--sc-clv);-webkit-mask:none;mask:none;
     animation:scWait 1.3s ease-in-out infinite alternate;
   }
   #tab-scanner .sc-retry{margin-top:12px;}
@@ -802,6 +857,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-seller{display:flex;flex-direction:column;align-items:center;gap:8px;padding:28px 20px;text-align:center;container-type:inline-size;}
   #tab-scanner .sc-seller-empty{font-size:var(--sc-fs-body);font-weight:700;line-height:1.3;color:var(--sc-muted);}
   #tab-scanner .sc-seller-name{font-size:18px;font-weight:800;line-height:1.3;color:var(--sc-ink);overflow-wrap:anywhere;text-wrap:balance;}
+  #tab-scanner .sc-seller-set{margin-top:-4px;font-size:var(--sc-fs-row);font-weight:700;line-height:1.35;color:var(--sc-muted);overflow-wrap:anywhere;}
   #tab-scanner .sc-seller-grade{
     display:inline-flex;align-items:center;height:26px;padding:0 12px;border-radius:999px;background:var(--sc-fill-card);
     font-size:var(--sc-fs-label);font-weight:700;color:var(--sc-ink);
@@ -835,7 +891,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-grader-pick-btns .sc-btn{min-height:44px;padding:0;font-size:var(--sc-fs-label);background:var(--sc-fill-card);}
 
   /* ── price with: our sheets or a flat % ── */
-  #tab-scanner .sc-rules{display:flex;flex-direction:column;gap:12px;min-width:0;padding:16px;}
+  #tab-scanner .sc-rules{display:flex;flex-direction:column;gap:10px;min-width:0;padding:14px;}
   #tab-scanner .sc-rule-sheet{font-size:var(--sc-fs-label);line-height:1.45;color:var(--sc-muted);}
   #tab-scanner .sc-rule-hint{font-size:var(--sc-fs-label);font-weight:700;line-height:1.45;color:var(--sc-err-ink);}
   #tab-scanner .sc-flat{display:flex;align-items:center;gap:8px;min-width:0;}
@@ -861,13 +917,13 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-rules .sc-seg-btn{flex:1 1 auto;padding:5px 10px;white-space:normal;text-align:center;}
 
   /* ── this visit: the pile ── */
-  #tab-scanner .sc-pile{display:flex;flex-direction:column;gap:12px;}
+  #tab-scanner .sc-pile{display:flex;flex-direction:column;gap:8px;}
   #tab-scanner .sc-pile-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 4px 0;}
   #tab-scanner .sc-pile-head .sc-h{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
   #tab-scanner .sc-pile-count{font-size:var(--sc-fs-body);font-weight:800;line-height:1.3;color:var(--sc-ink);}
   #tab-scanner #sc-clear{--sc-i:var(--i-user-plus);flex:none;gap:7px;padding:0 15px 0 12px;color:var(--sc-steel-ink);font-size:var(--sc-fs-label);}
   #tab-scanner #sc-clear::before{width:17px;height:17px;}
-  #tab-scanner .sc-pile-totals{padding:13px 16px;border-bottom:1px solid var(--sc-line);}
+  #tab-scanner .sc-pile-totals{padding:10px 14px;border-bottom:1px solid var(--sc-line);}
   #tab-scanner .sc-total{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;}
   #tab-scanner .sc-total .sc-total-val{font-size:var(--sc-fs-body);font-weight:800;line-height:1.3;color:var(--sc-ink);font-variant-numeric:tabular-nums;}
   #tab-scanner .sc-pile-unknown{--sc-i:var(--i-info);flex:1 1 100%;display:flex;gap:8px;margin-top:4px;font-size:var(--sc-fs-label);line-height:1.45;color:var(--sc-muted);}
@@ -878,10 +934,10 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-clear-confirm-btns .sc-btn{min-height:46px;}
   #tab-scanner #sc-earlier-list{padding-bottom:2px;}
   #tab-scanner .sc-earlier-row{position:relative;display:flex;align-items:flex-start;}
-  #tab-scanner .sc-earlier-row + .sc-earlier-row::before{content:"";position:absolute;top:0;left:68px;right:0;height:1px;background:var(--sc-line);}
+  #tab-scanner .sc-earlier-row + .sc-earlier-row::before{content:"";position:absolute;top:0;left:66px;right:0;height:1px;background:var(--sc-line);}
   #tab-scanner .sc-earlier-main{
     flex:1 1 auto;min-width:0;display:grid;grid-template-columns:40px minmax(0,1fr) auto;column-gap:12px;align-items:start;
-    padding:12px 2px 12px 16px;border:0;border-radius:16px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;
+    padding:9px 2px 9px 14px;border:0;border-radius:16px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;
     -webkit-tap-highlight-color:transparent;
   }
   #tab-scanner .sc-earlier-main:active .title{color:var(--sc-steel-ink);}
@@ -896,6 +952,11 @@ code{font-family:var(--font-mono);font-size:.92em;}
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
     font-size:var(--sc-fs-row);font-weight:700;line-height:1.3;color:var(--sc-ink);overflow-wrap:anywhere;
   }
+  #tab-scanner .sc-earlier-row .meta{display:flex;flex-wrap:wrap;column-gap:10px;margin-top:3px;max-width:100%;}
+  /* The set keeps to one line: its name is cut short ("2021 Sword & Shield Evol…") and its #number never is. */
+  #tab-scanner .sc-earlier-row .set{display:flex;gap:4px;min-width:0;max-width:100%;white-space:nowrap;font-size:var(--sc-fs-label);font-weight:700;line-height:1.3;color:var(--sc-steel-ink);}
+  #tab-scanner .sc-earlier-row .set-name{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+  #tab-scanner .sc-earlier-row .meta .cert{margin-top:0;}
   #tab-scanner .sc-earlier-row .cert{margin-top:3px;font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
   #tab-scanner .sc-earlier-row .val{font-size:var(--sc-fs-body);font-weight:800;line-height:1.3;color:var(--sc-ink);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right;}
   #tab-scanner .sc-earlier-row .status-pill{
@@ -910,7 +971,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-earlier-row .status-pill.sc-chip-err{--sc-i:var(--i-alert);padding-left:7px;background:var(--sc-err-tint);color:var(--sc-err-ink);}
   #tab-scanner .sc-earlier-remove{
     --sc-i:var(--i-x);
-    flex:none;display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin:5px 4px 0 0;padding:0;border:0;border-radius:50%;cursor:pointer;
+    flex:none;display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin:2px 4px 0 0;padding:0;border:0;border-radius:50%;cursor:pointer;
     background:transparent;color:var(--sc-faint);font-size:0;line-height:0;transition:background-color 150ms ease-out, color 150ms ease-out;
   }
   #tab-scanner .sc-earlier-remove::before{width:16px;height:16px;}
@@ -970,13 +1031,17 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner.tab.active{animation:scFadeIn .25s ease-out;}
   @keyframes scFadeIn{from{opacity:0}to{opacity:1}}
 
-  /* Narrow phones: the mock's own steps down. */
+  /* Narrow phones: the mock's own steps down. The sales chips too: a 7-character price ("$12,346", "$264.99")
+     fits a chip at 320px instead of losing its end to an ellipsis. */
   @media (max-width:374px){
     #tab-scanner{--sc-fs-hero:33px;--sc-fs-num:20px;}
     #tab-scanner .sc-tile{padding-left:14px;padding-right:12px;}
     #tab-scanner #sc-cert-go{padding:0 18px;}
     #tab-scanner #sc-cert-go::after{display:none;}
     #tab-scanner .sc-hide-btn{padding:0 14px 0 11px;}
+    #tab-scanner .sc-recent-list{gap:3px;}
+    #tab-scanner .sc-chip{padding-left:0;padding-right:0;}
+    #tab-scanner .sc-chip-price{font-size:12px;letter-spacing:-.03em;}
   }
   /* Under 360px: the segmented labels and the hold button keep to one line. */
   @media (max-width:359px){
@@ -1084,21 +1149,33 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-sheet-down .sc-seller-empty,#tab-scanner .sc-sheet-down .sc-seller-market{grid-column:1 / -1;}
   #tab-scanner .sc-sheet-down .sc-seller-name{font-size:var(--sc-fs-row);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   #tab-scanner .sc-sheet-down .sc-seller-grade{height:24px;}
+  #tab-scanner .sc-sheet-down .sc-seller-set{display:none;}
   #tab-scanner .sc-sheet-down .sc-seller-market{margin-top:0;font-size:var(--sc-fs-num);}
   #tab-scanner .sc-sheet-down .sc-seller-market.sc-wait,#tab-scanner .sc-sheet-down .sc-seller-market.sc-plain{font-size:var(--sc-fs-row);}
+
+  /* The app's folded card, at 'up' and at 'mid' alike: a compact head (a 36px grade, the name, and the set and
+     cert on ONE line, the set's name cut short before its #number is: .sc-result-line holds them together, and only
+     the "Updated in pile" pill may wrap under them), so it stays one row and, at 'mid', leaves room for the sales
+     strip above the dock. */
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result{padding:10px 14px 10px 12px;}
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-head{align-items:center;gap:12px;}
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-grade-dot{
+    width:36px;height:36px;font-size:var(--sc-fs-body);
+    box-shadow:0 0 0 2px var(--sc-card-top), 0 0 0 3.5px rgba(111,177,224,.55);
+  }
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-words{padding-top:0;}
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-id{margin-top:2px;}
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-line{display:flex;align-items:center;gap:5px;min-width:0;max-width:100%;white-space:nowrap;}
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-set{display:contents;}
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-set-name{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-set-num{flex:none;}
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-cert-id{flex:none;margin-left:3px;}
 
   /* 'up' (app 1.4, the sheet swiped up: review the pile). The scoreboard stays on top; the card folds into
      one row (its grade, name and cert) so the pile sits right under it, and tapping that row opens the
      whole card again in place (.sc-card-open). Never while typing: the script shows 'mid' then. */
-  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-result{padding:10px 14px 10px 12px;}
-  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-result-head{align-items:center;gap:12px;padding-right:30px;}
-  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-grade-dot{
-    width:36px;height:36px;font-size:var(--sc-fs-body);
-    box-shadow:0 0 0 2px var(--sc-card-top), 0 0 0 3.5px rgba(111,177,224,.55);
-  }
-  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-result-words{padding-top:0;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-result-head{padding-right:30px;}
   #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-result-name{-webkit-line-clamp:1;text-wrap:wrap;}
-  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-result-id{margin-top:2px;}
   #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-result:not(.sc-result-flag) .sc-result-more{grid-template-rows:0fr;}
   #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-result:not(.sc-result-flag) .sc-result-more-in{visibility:hidden;transition:visibility 0s linear 200ms;}
   #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-result:not(.sc-result-flag) .sc-result-open{
@@ -1123,10 +1200,26 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .scanner-layout.sc-native-cam:not(.sc-sheet-up):not(.sc-card-open) .sc-result:not(.sc-result-flag) .sc-result-more{grid-template-rows:0fr;}
   #tab-scanner .scanner-layout.sc-native-cam:not(.sc-sheet-up):not(.sc-card-open) .sc-result:not(.sc-result-flag) .sc-result-more-in{visibility:hidden;transition:visibility 0s linear 200ms;}
   #tab-scanner .scanner-layout.sc-native-cam:not(.sc-sheet-up):not(.sc-card-open) .sc-result:not(.sc-result-flag) .sc-result-open{inset:0;align-items:center;padding:0 14px;}
-  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result.sc-result-flag .sc-pair{display:none;}
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result.sc-result-flag .sc-pair,
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result.sc-result-flag .sc-trend{display:none;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-recent{display:none;}
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-sheet-up):not(.sc-card-open) .sc-result:not(.sc-result-flag) .sc-result-open{align-items:flex-start;padding-top:14px;}
+  /* The middle stop is where the camera opens and the scanning happens, and the sheet cannot scroll there (a
+     swipe moves the sheet), so the sales sit right under the folded card's head as one slim strip of prices that
+     clears the dock on a 360 x 800 phone: no heading, no ages (the opened card has both, and the spoken text
+     carries each date); the blue underline and the red chip with its alert icon still say which is which. */
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-sheet-up):not(.sc-card-open) .sc-recent{margin-top:6px;}
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-sheet-up):not(.sc-card-open) .sc-recent-head,
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-sheet-up):not(.sc-card-open) .sc-chip-age{display:none;}
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-sheet-up):not(.sc-card-open) .sc-chip{padding-top:3px;padding-bottom:4px;}
   /* A short phone leaves the page under 320px at the middle stop: one line of name keeps the cert number clear of the dock. */
   @media (max-height:320px){
     #tab-scanner .scanner-layout.sc-native-cam:not(.sc-sheet-up):not(.sc-card-open) .sc-result:not(.sc-result-flag) .sc-result-name{-webkit-line-clamp:1;text-wrap:wrap;}
+  }
+  /* ...and a page under 280px (a 360 x 800 phone with button navigation) has room for the card's head alone: the
+     strip would only sit under the dock, so it waits for the opened card. */
+  @media (max-height:279px){
+    #tab-scanner .scanner-layout.sc-native-cam:not(.sc-sheet-up):not(.sc-card-open) .sc-recent{display:none;}
   }
 
   @media (prefers-reduced-motion:reduce){
@@ -1214,13 +1307,20 @@ code{font-family:var(--font-mono);font-size:.92em;}
       <div class="sc-result-words">
         <div class="sc-result-name" id="sc-name">-</div>
         <div class="sc-result-id">
+          <span class="sc-result-line"><span class="sc-result-set" id="sc-set" hidden><span class="sc-set-name" id="sc-set-name"></span> <span class="sc-set-num" id="sc-set-num"></span></span>
           <span class="sc-result-grade" id="sc-grade">-</span>
-          <span class="sc-result-grader" id="sc-grader">-</span>
-          <span class="sc-result-sep" aria-hidden="true">·</span>
-          <span class="sc-result-cert" id="sc-cert">-</span>
+          <span class="sc-result-cert-id"><span class="sc-result-grader" id="sc-grader">-</span> <span class="sc-result-cert" id="sc-cert">-</span></span></span>
           <span class="sc-rescan" id="sc-rescan-badge" hidden>Updated in pile</span>
         </div>
       </div>
+    </div>
+    <!-- Card Ladder's newest sales (they come with the average), newest first: the price, how long ago, the three the
+         Avg of 3 averages underlined in its blue, and a sale far above the rest in red with the alert icon (likely a
+         shill bid, so left out of the average). On the card itself, so a glance shows them without opening it: in the
+         Android app's middle stop as a slim strip of prices that clears the dock (see the CSS above). -->
+    <div class="sc-recent" id="sc-recent" hidden>
+      <div class="sc-recent-head"><span class="sc-recent-title">Recent sales</span><span class="sc-recent-shill" id="sc-recent-shill" hidden>Likely shill</span></div>
+      <ol class="sc-recent-list" id="sc-recent-list" role="list"></ol>
     </div>
     <div class="sc-result-more">
       <div class="sc-result-more-in">
@@ -1234,6 +1334,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
             <dd class="sc-pair-val" id="sc-clv">-</dd>
           </div>
         </dl>
+        <!-- The same sales as a trend line, oldest on the left, against the CL value (its green, dashed). -->
+        <div class="sc-trend" id="sc-trend" hidden aria-hidden="true"><div class="sc-spark" id="sc-spark"></div></div>
         <div class="sc-note" id="sc-note" hidden></div>
         <div class="sc-retry" id="sc-retry" hidden>
           <button type="button" class="sc-btn sc-btn-quiet" id="sc-retry-btn">Retry</button>
@@ -1248,6 +1350,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   <section class="sc-card sc-seller sc-seller-only" id="sc-seller" aria-live="polite">
     <div class="sc-seller-empty" id="sc-seller-empty">Scan a card</div>
     <div class="sc-seller-name" id="sc-seller-name" hidden></div>
+    <div class="sc-seller-set" id="sc-seller-set" hidden></div>
     <div class="sc-seller-grade" id="sc-seller-grade" hidden></div>
     <div class="sc-seller-market" id="sc-seller-market" hidden></div>
   </section>
@@ -4063,6 +4166,116 @@ function avgGraderOf(grader) {
   return String(grader == null ? '' : grader).trim().toLowerCase() || 'psa';
 }
 
+// ── the newest sales a 'done' row carries (recent_sales) ──────────────────────────────────────────
+// The fulfillers (avgQueue.js, avg-worker/) send each card's newest sales with its averages, and the
+// function stores them in scanner_avg_requests.recent_sales (supabase/migrations/
+// 20261112000000_scanner_avg_sales.sql): newest first, at most MAX_SALES, each { date, cents } plus
+// out: true on a sale the Avg of 3's outlier rule passed over (see CONTRACT.md's Sale). Same limit and
+// date rule as clHelper.js (duplicated, not required, to stay dependency-free; clHelper.test.js checks
+// the two agree).
+const MAX_SALES = 5;
+
+/** 'YYYY-MM-DD' naming a real calendar day (no 2026-02-30, no year 0000), else false. Strict: no spaces. */
+function isSaleDate(x) {
+  if (typeof x !== 'string') return false;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(x);
+  if (!m) return false;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (y < 1 || mo < 1 || mo > 12 || d < 1) return false;
+  const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  return d <= [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1];
+}
+
+/**
+ * A row's recent_sales as the page may use it (a done answer's `sales`): null when the row has none (a
+ * row answered before the column existed or by an older fulfiller, or a database without the column
+ * yet); otherwise an array, newest first, of at most MAX_SALES items, each exactly { date, cents } or
+ * { date, cents, out: true }. An item that is not an object with a safe non-negative whole number of
+ * cents is dropped; a date that is not a real calendar 'YYYY-MM-DD' reads as null; `out` is kept only
+ * when it is exactly true; nothing else on an item is passed on. An empty array (Card Ladder found the
+ * card but showed no sales) stays an empty array.
+ */
+function salesOf(raw) {
+  if (!Array.isArray(raw)) return null;
+  const out = [];
+  for (let i = 0; i < raw.length && out.length < MAX_SALES; i++) {
+    const s = raw[i];
+    if (!s || typeof s !== 'object' || Array.isArray(s)) continue;
+    if (!Number.isSafeInteger(s.cents) || s.cents < 0) continue;
+    const date = isSaleDate(s.date) ? s.date : null;
+    out.push(s.out === true ? { date: date, cents: s.cents, out: true } : { date: date, cents: s.cents });
+  }
+  return out;
+}
+
+// ── what a read of the table selects ──────────────────────────────────────────────────────────────
+// Only what the page reads off a row (interpretRow/doneState below), recent_sales included. Every read
+// (a card's first ask and the poller's batched read) names these columns.
+const SALES_COLUMN = 'recent_sales';
+const POLL_COLUMNS_NO_SALES = 'cert_key,grader,status,avg3_cents,avg5_cents,cl_value_cents,card_name,grade,error,requested_at,filled_at';
+const POLL_COLUMNS = POLL_COLUMNS_NO_SALES + ',' + SALES_COLUMN;
+
+/**
+ * True when a PostgREST 400 body says a column is unknown and that column is (or may be) recent_sales:
+ * code 42703 (Postgres "undefined column"), PGRST204 (not in the schema cache), or a "column ... does
+ * not exist" message. One that names a DIFFERENT column is not this (the database lacks an older column
+ * too); one that names no column is taken to be the newest column, recent_sales.
+ */
+function isMissingSalesColumn(body) {
+  if (!body || typeof body !== 'object') return false;
+  const code = String(body.code == null ? '' : body.code);
+  const text = [body.message, body.details, body.hint].filter((x) => typeof x === 'string').join(' ');
+  const unknown = code === '42703' || code === 'PGRST204' || /\bcolumn\b[\s\S]*\bdoes not exist\b/i.test(text) || /could not find the\b[\s\S]*\bcolumn\b/i.test(text);
+  if (!unknown) return false;
+  if (text.indexOf(SALES_COLUMN) >= 0) return true;
+  return !/\bcolumn\s+\S+\s+does not exist\b|\bthe '[^']*' column\b/i.test(text);
+}
+
+/**
+ * Which columns the reads select, for as long as this lives (the page's one shared poller makes one and
+ * lives as long as the page, so a step down is remembered for the page's lifetime). It only ever steps
+ * down, each step at most once:
+ *   POLL_COLUMNS            the normal case
+ *   POLL_COLUMNS_NO_SALES   the database has no recent_sales column yet (its migration is not applied):
+ *                           done answers then read with sales: null
+ *   '*'                     any other refused column list (a database from before the 20261110
+ *                           migration): whole rows, whatever they hold
+ * `refused(body, used)`: a read that selected `used` (what `get()` gave it) came back HTTP 400 with this
+ * body; true when it is worth reading again with `get()`. Reads run side by side (a tick's batched read and
+ * a card's first ask), so a read refused for a list that another read has already stepped down from just
+ * tries the current list: one missing column never steps down twice.
+ */
+function createReadColumns() {
+  let level = 0; // 0 POLL_COLUMNS, 1 without recent_sales, 2 select=*
+  const get = () => (level === 0 ? POLL_COLUMNS : level === 1 ? POLL_COLUMNS_NO_SALES : '*');
+  return {
+    get: get,
+    refused: (body, used) => {
+      if (used !== undefined && used !== get()) return true; // already stepped down past `used` meanwhile
+      if (level === 0 && isMissingSalesColumn(body)) {
+        level = 1;
+        return true;
+      }
+      if (level < 2) {
+        level = 2;
+        return true;
+      }
+      return false;
+    },
+  };
+}
+
+/** The JSON body of a refused read, or null when there is none to read. */
+async function bodyOf(res) {
+  try {
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
+}
+
 /**
  * getSalesAverages({ cert, grader, supabaseUrl, supabaseAnonKey, accessToken, fetchImpl, now,
  * staleMs, pendingTimeoutMs })
@@ -4082,17 +4295,26 @@ function avgGraderOf(grader) {
  *   avgFunctionUrl:   where the slab-avg edge function lives (default `${supabaseUrl}/functions/v1/
  *                     slab-avg`). Only used to re-ask for an EXPIRED row when the direct upsert is
  *                     refused by RLS (an active sourcer has INSERT but no UPDATE): see the code below.
+ *   readColumns:      which columns the read selects (createReadColumns()): the poller hands over its
+ *                     own, so a database without recent_sales is found out once for the page's
+ *                     lifetime. Without it the read starts from POLL_COLUMNS every time.
  *
  * A cert never seen is a plain INSERT (a 409 from a second phone's simultaneous insert still means
  * "pending"); an expired row is re-asked with the upsert (owner) or POST {fn}/reask (sourcer).
  *
  * Resolves to exactly one of:
  *   { status: 'done',    avg3Cents, avg5Cents,    -- avg3Cents/avg5Cents may each still be null:
- *     clValueCents, cardName, grade }                 Card Ladder found the card but it has fewer
+ *     clValueCents, cardName, grade, sales }          Card Ladder found the card but it has fewer
  *                                                     than 3/5 sales to average: a true answer.
  *                                                     clValueCents/cardName/grade: what that same
  *                                                     Card Ladder lookup saw (null on an older row),
  *                                                     the page's fallback when Triumph is down.
+ *                                                     sales: the newest sales (salesOf: up to 5,
+ *                                                     newest first, { date, cents } plus out: true
+ *                                                     on one the Avg of 3 left out), [] when Card
+ *                                                     Ladder showed none, null on a row without
+ *                                                     them (older row or fulfiller, or a database
+ *                                                     without the recent_sales column yet).
  *   { status: 'pending' }                         -- queued, not fulfilled yet; ask again later.
  *   { status: 'failed',  reason }                 -- Card Ladder could not answer at all; `reason`
  *                                                     is avgQueue.js's own plain-text explanation.
@@ -4119,6 +4341,7 @@ async function getSalesAverages({
   pendingTimeoutMs,
   failedRetryMs,
   avgFunctionUrl,
+  readColumns,
 } = {}) {
   const doFetch = fetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
   const getNow = now || (() => Date.now());
@@ -4139,8 +4362,16 @@ async function getSalesAverages({
   };
 
   let row = null;
+  const columns = readColumns || createReadColumns();
   try {
-    const res = await doFetch(`${table}?cert_key=eq.${encodeURIComponent(key)}&grader=eq.${g}&select=*`, { headers });
+    let res;
+    // A 400 on the column list (a database without recent_sales, or without an older column too) is
+    // read again with fewer columns (createReadColumns); any other answer is final.
+    for (;;) {
+      const used = columns.get();
+      res = await doFetch(`${table}?cert_key=eq.${encodeURIComponent(key)}&grader=eq.${g}&select=${used}`, { headers });
+      if (res.status !== 400 || !columns.refused(await bodyOf(res), used)) break;
+    }
     if (!res.ok) return { status: 'error', reason: `HTTP ${res.status}` };
     const rows = await res.json();
     row = (Array.isArray(rows) && rows[0]) || null;
@@ -4248,6 +4479,8 @@ function doneState(row) {
     clValueCents: row.cl_value_cents == null ? null : Number(row.cl_value_cents),
     cardName: row.card_name ? String(row.card_name) : null,
     grade: row.grade != null && row.grade !== '' ? String(row.grade) : null,
+    // The newest sales, for the card's list (salesOf: null on a row without them).
+    sales: salesOf(row.recent_sales),
   };
 }
 
@@ -4301,9 +4534,6 @@ const POLL_ERROR_BACKOFF_MS = 5000;
 const POLL_BATCH_SIZE = 100;
 // Coming back to a hidden page polls at once, but never closer than this to the previous request.
 const POLL_RESUME_GAP_MS = 1000;
-// Only what the page reads off a row (interpretRow/doneState above). If the table lacks one of these
-// (a database that has not had the 20261110 migration), the poller falls back to select=*.
-const POLL_COLUMNS = 'cert_key,grader,status,avg3_cents,avg5_cents,cl_value_cents,card_name,grade,error,requested_at,filled_at';
 // Every request the poller makes (the batched read, a card's ask, a session refresh) gets this long, body
 // included, and then counts as failed. Without it one request that never settles would hold the whole poller
 // (a tick keeps its place until its request ends), and every pending card would wait on it forever.
@@ -4381,7 +4611,7 @@ function createAvgPoller(options) {
   let errorMode = false; // the last batched read failed: next tick waits POLL_ERROR_BACKOFF_MS
   let paused = false; // a tick was skipped (or cancelled) because the page was hidden
   let lastTickAt = -Infinity;
-  let columns = POLL_COLUMNS;
+  const columns = createReadColumns(); // shared by every read this poller makes: a step down is remembered for its life
   let destroyed = false;
   let refreshing = null; // the one session refresh in flight, shared by everyone who needs it
   let refreshFailedAt = -Infinity; // when a refresh last failed: no new one for REFRESH_RETRY_MS
@@ -4600,6 +4830,7 @@ function createAvgPoller(options) {
       pendingTimeoutMs: o.pendingTimeoutMs,
       failedRetryMs: o.failedRetryMs,
       avgFunctionUrl: o.avgFunctionUrl,
+      readColumns: columns,
     });
     let st = await getSalesAverages(args());
     if (st.status === 'error' && /HTTP 401/.test(String(st.reason || '')) && !entry.refreshed && accessToken()) {
@@ -4612,10 +4843,12 @@ function createAvgPoller(options) {
   /** ONE batched read: the rows for up to POLL_BATCH_SIZE cert keys. -> { ok, rows } | { ok: false, reason }. */
   async function readChunk(chunk) {
     let refreshed = false;
-    for (let attempt = 0; attempt < 3; attempt++) {
+    // At most 4 requests: one session refresh, and the column list stepping down twice (createReadColumns).
+    for (let attempt = 0; attempt < 4; attempt++) {
       const token = accessToken();
       if (!token || !doFetch || !o.supabaseUrl || !o.supabaseAnonKey) return { ok: false, reason: 'not configured' };
-      const url = `${table}?cert_key=in.(${chunk.map((k) => encodeURIComponent(k)).join(',')})&select=${columns}`;
+      const used = columns.get();
+      const url = `${table}?cert_key=in.(${chunk.map((k) => encodeURIComponent(k)).join(',')})&select=${used}`;
       let res;
       try {
         res = await limitedFetch(url, { headers: { apikey: o.supabaseAnonKey, authorization: `Bearer ${token}` } });
@@ -4634,10 +4867,9 @@ function createAvgPoller(options) {
         refreshed = true;
         if (await refreshOk()) continue;
       }
-      if (res.status === 400 && columns !== '*') {
-        columns = '*'; // a column the table does not have yet: read whole rows from now on
-        continue;
-      }
+      // A column the table does not have yet: without recent_sales when that is the one it lacks, whole
+      // rows (select=*) for anything else, from now on.
+      if (res.status === 400 && columns.refused(await bodyOf(res), used)) continue;
       return { ok: false, reason: `HTTP ${res.status}` };
     }
     return { ok: false, reason: 'HTTP error' };
@@ -4862,6 +5094,12 @@ window.AvgClient = {
   NO_GRADER_AVG_REASON: NO_GRADER_AVG_REASON,
   pollDelayMs: pollDelayMs,
   pollDecision: pollDecision,
+  MAX_SALES: MAX_SALES,
+  isSaleDate: isSaleDate,
+  salesOf: salesOf,
+  isMissingSalesColumn: isMissingSalesColumn,
+  createReadColumns: createReadColumns,
+  POLL_COLUMNS_NO_SALES: POLL_COLUMNS_NO_SALES,
 };
 })();
 
@@ -5423,6 +5661,188 @@ window.NativeBridge = {
   installScanReceiver: installScanReceiver,
 };
 })();
+
+(function () {
+'use strict';
+// How the Scanner shows a card: its name, and its Card Ladder sales.
+//
+// 1. splitTitle: Triumph and Card Ladder name a slab year, set, number, then the card
+//    ("2005 Pokemon EX Deoxys #108 Rayquaza Gold Star Holo"). On a phone the line is cut off before the part
+//    that tells two slabs apart, so the Scanner leads with the card ("Rayquaza Gold Star Holo") and puts the
+//    set under it ("2005 EX Deoxys #108"). A title with no card number is shown whole, unchanged.
+// 2. salesView: the sales the averages answer carries (scanner/avgClient.js's `sales`, newest first) as the
+//    small chips the card shows ("$1,625" over "2d"): which three make the Avg of 3, and which one the outlier
+//    rule left out (a price far above the card's own history: on the card it reads as a likely shill bid).
+//    Plus the small trend line against the CL value the opened card shows.
+//
+// Pure, like every scanner/ sibling (embedded whole into the page by rates-portal/build-portal.js): the
+// clock and the money formatter are handed in.
+'use strict';
+
+var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// "<year and set> #<number> <card>". The number may carry letters and dashes (One Piece "OP01-120",
+// promos "SWSH050", "TG13", "GG44"). A number written with a space in it ("#SV-P 001 Pikachu") is not split
+// (splitTitle keeps it whole): the card would otherwise lead with "001 Pikachu".
+var TITLE_RE = /^(.*?\S)\s+#\s?([A-Za-z0-9][A-Za-z0-9.\-\/]*)\s+(\S.*)$/;
+
+// The brand word right after the year ("2005 Pokemon EX Deoxys"), and only that one: a "Pokemon" further in
+// is part of a set's own name ("Japanese Pokemon Center Promo", "SV2a Pokemon Card 151"). Kept too where the
+// brand word itself starts the set's name ("2022 Pokemon GO", "Pokemon Center", "Pokemon Card 151").
+var BRAND_RE = /^(\d{4}\s+)?Pok[eé]mon\s+(?!(?:go|center|card)\b)/i;
+
+/**
+ * splitTitle(title) -> { name, set, setName, number }. `name` is what to lead with; `set` the quieter line
+ * under it ('' when the title has no "#number" to split at), which is `setName` + ' ' + `number` ("2005 EX
+ * Deoxys" and "#108"): the page shows the two apart, so a long set name is cut short before the number ever
+ * is. The brand word "Pokemon" after the year is dropped from the set line only (BRAND_RE): every card at the
+ * table is one, and the line has little room.
+ */
+function splitTitle(title) {
+  var t = String(title == null ? '' : title).replace(/\s+/g, ' ').trim();
+  var m = TITLE_RE.exec(t);
+  if (!m || m[3].length < 3 || !/[A-Za-z]/.test(m[3]) || /^\d+(?:\s|$)/.test(m[3])) return { name: t, set: '', setName: '', number: '' };
+  var setName = m[1].replace(BRAND_RE, '$1').trim() || m[1];
+  var number = '#' + m[2];
+  return { name: m[3], set: setName + ' ' + number, setName: setName, number: number };
+}
+
+/** 'YYYY-MM-DD' -> a local Date at midnight, or null. */
+function dayOf(date) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(date == null ? '' : date));
+  if (!m) return null;
+  var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d.getMonth() === Number(m[2]) - 1 && d.getDate() === Number(m[3]) ? d : null;
+}
+
+/**
+ * saleWhen(date, nowMs) -> { day, ago, days }: "Nov 9" (with the year when it isn't this year: "Dec 28, 2025")
+ * and "2 days ago" / "today" / "3 weeks ago" / "4 months ago". A missing or bad date: day '' and ago
+ * 'Date unknown', days null. A date ahead of the clock (a phone set wrong) reads "today".
+ */
+function saleWhen(date, nowMs) {
+  var d = dayOf(date);
+  if (!d) return { day: '', ago: 'Date unknown', days: null };
+  var now = new Date(nowMs);
+  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var days = Math.max(0, Math.round((today - d) / 86400000));
+  var day = MONTHS[d.getMonth()] + ' ' + d.getDate() + (d.getFullYear() !== today.getFullYear() ? ', ' + d.getFullYear() : '');
+  var ago;
+  if (days === 0) ago = 'today';
+  else if (days === 1) ago = 'yesterday';
+  else if (days < 14) ago = days + ' days ago';
+  else if (days < 60) ago = Math.round(days / 7) + ' weeks ago';
+  else if (days < 730) ago = Math.round(days / 30.44) + ' months ago';
+  else ago = Math.round(days / 365.25) + ' years ago';
+  return { day: day, ago: ago, days: days };
+}
+
+/** "2d", "today", "3w", "4mo", "2y": a sale's age in as few letters as the chip has room for ('' unknown). */
+function shortAgo(days) {
+  if (days == null) return '';
+  if (days === 0) return 'today';
+  if (days < 14) return days + 'd';
+  if (days < 60) return Math.round(days / 7) + 'w';
+  if (days < 730) return Math.round(days / 30.44) + 'mo';
+  return Math.round(days / 365.25) + 'y';
+}
+
+/**
+ * chipPrice(cents): a sale's price short enough for a chip. Under $1,000 to the cent, without ".00" ("$62",
+ * "$298.50"); $1,000 and up in whole dollars, rounded half up ("$1,625", "$12,346"); $100,000 and up in
+ * thousands, rounded half up from the cents ("$123k"). Only ever a label: the exact price is in the chip's spoken text, and nothing adds these.
+ */
+function chipPrice(cents) {
+  if (!Number.isSafeInteger(cents) || cents < 0) return '';
+  var group = function (n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); };
+  if (cents < 100000) {
+    var d = Math.floor(cents / 100), c = cents % 100;
+    return '$' + group(d) + (c ? '.' + String(c).padStart(2, '0') : '');
+  }
+  var dollars = Math.floor((cents + 50) / 100);
+  if (dollars < 100000) return '$' + group(dollars);
+  // Rounded once, from the cents: rounding the whole dollars again would put $123,499.50 at "$124k".
+  return '$' + group(Math.floor((cents + 50000) / 100000)) + 'k';
+}
+
+/** The sales array as avgClient hands it over, trusted no further than it has to be. */
+function cleanSales(sales) {
+  if (!Array.isArray(sales)) return [];
+  return sales.filter(function (s) {
+    return s && typeof s === 'object' && Number.isSafeInteger(s.cents) && s.cents >= 0;
+  }).slice(0, 5);
+}
+
+/**
+ * salesView(sales, { clvCents, hasAvg, nowMs, fmt }) -> null when there is nothing to show, else
+ *   { rows: [{ day, ago, days, age, price, chip, cents, inAvg, out, said }], newestDays, avgCount, outCount, spark }
+ * `price` is the exact price (fmt), `chip` the short one (chipPrice) and `age` the short age (shortAgo); `said`
+ * is the whole sale in words for a screen reader ("Nov 9, $1,625.00, in the Avg of 3").
+ * Rows stay newest first. `out`: the outlier rule left that sale out of the Avg of 3. `inAvg`: one of the
+ * first three sales WITHOUT `out` - exactly the ones the Avg of 3 averages (money.avgCentsClean skips a
+ * flier and tops up from the next sale; clHelper.js marks every sale it skipped). Pass hasAvg: false when
+ * the card has no Avg of 3, and nothing is marked as in it.
+ * `spark`: the trend line, oldest on the left: { points: [{ x, y, inAvg, out, clamped }], line: [{ x, y }], clvY }
+ * with x and y from 0 to 1 (y = 0 at the top); clvY is null with no CL value. The scale is set by the sales
+ * that count (every sale not `out`) and the CL value, so one freak sale can't flatten the rest: a left-out
+ * sale past the edge is pinned to it (`clamped`), and `line` joins only the sales that count (empty with
+ * fewer than two of them). Fewer than two sales in all: no chart (spark null).
+ */
+function salesView(sales, opts) {
+  var o = opts || {};
+  var list = cleanSales(sales);
+  if (!list.length) return null;
+  var fmt = typeof o.fmt === 'function' ? o.fmt : function (c) { return '$' + (c / 100).toFixed(2); };
+  var nowMs = Number.isFinite(o.nowMs) ? o.nowMs : Date.now();
+  var hasAvg = o.hasAvg !== false;
+  var taken = 0;
+  var rows = list.map(function (s) {
+    var w = saleWhen(s.date, nowMs);
+    var out = s.out === true;
+    var inAvg = hasAvg && !out && taken < 3;
+    if (inAvg) taken++;
+    var price = fmt(s.cents);
+    var said = (w.day || 'Date unknown') + ', ' + price +
+      (inAvg ? ', in the Avg of 3' : out ? ', left out of the Avg of 3: far above the other sales, likely a shill bid' : '');
+    return { day: w.day, ago: w.ago, days: w.days, age: shortAgo(w.days), price: price, chip: chipPrice(s.cents), cents: s.cents, inAvg: inAvg, out: out, said: said };
+  });
+
+  var spark = null;
+  if (list.length >= 2) {
+    var clv = Number.isSafeInteger(o.clvCents) && o.clvCents > 0 ? o.clvCents : null;
+    var counted = list.filter(function (s) { return s.out !== true; });
+    var vals = (counted.length ? counted : list).map(function (s) { return s.cents; }).concat(clv != null ? [clv] : []);
+    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+    var pad = (hi - lo) * 0.12 || hi * 0.05 || 1; // a flat line still sits mid-height
+    lo -= pad; hi += pad;
+    var yRaw = function (c) { return 1 - (c - lo) / (hi - lo); };
+    var r3 = function (v) { return Math.round(v * 1000) / 1000; };
+    var n = rows.length;
+    var points = rows.slice().reverse().map(function (r, i) {
+      var y = yRaw(r.cents);
+      var clamped = y < 0 || y > 1;
+      return { x: r3(i / (n - 1)), y: r3(Math.min(1, Math.max(0, y))), inAvg: r.inAvg, out: r.out, clamped: clamped };
+    });
+    var line = points.filter(function (p) { return !p.out; }).map(function (p) { return { x: p.x, y: p.y }; });
+    spark = { points: points, line: line.length >= 2 ? line : [], clvY: clv != null ? r3(yRaw(clv)) : null };
+  }
+  return {
+    rows: rows,
+    newestDays: rows[0].days,
+    avgCount: rows.filter(function (r) { return r.inAvg; }).length,
+    outCount: rows.filter(function (r) { return r.out; }).length,
+    spark: spark,
+  };
+}
+
+window.CardView = {
+  splitTitle: splitTitle,
+  saleWhen: saleWhen,
+  shortAgo: shortAgo,
+  chipPrice: chipPrice,
+  salesView: salesView,
+};
+})();
 /* SCANNER-CORE:END */
 </script>
 
@@ -5476,6 +5896,14 @@ window.NativeBridge = {
       signinErr: document.getElementById('sc-signin-err'),
       result: document.getElementById('sc-result'),
       name: document.getElementById('sc-name'),
+      nameSet: document.getElementById('sc-set'),
+      nameSetName: document.getElementById('sc-set-name'),
+      nameSetNum: document.getElementById('sc-set-num'),
+      recent: document.getElementById('sc-recent'),
+      recentList: document.getElementById('sc-recent-list'),
+      recentShill: document.getElementById('sc-recent-shill'),
+      trend: document.getElementById('sc-trend'),
+      spark: document.getElementById('sc-spark'),
       cert: document.getElementById('sc-cert'),
       grader: document.getElementById('sc-grader'),
       grade: document.getElementById('sc-grade'),
@@ -5506,6 +5934,7 @@ window.NativeBridge = {
       seller: document.getElementById('sc-seller'),
       sellerEmpty: document.getElementById('sc-seller-empty'),
       sellerName: document.getElementById('sc-seller-name'),
+      sellerSet: document.getElementById('sc-seller-set'),
       sellerGrade: document.getElementById('sc-seller-grade'),
       sellerMarket: document.getElementById('sc-seller-market'),
       mode: document.getElementById('sc-mode'),
@@ -5973,12 +6402,66 @@ window.NativeBridge = {
       el.classList.toggle('sc-wait', look === 'wait');
       el.classList.toggle('sc-no', look === 'no');
     }
+    /** The card's name: the card itself first, its year, set and number on the quieter line under it
+        (CardView.splitTitle). A title with no card number shows whole, with no second line. The set's name and
+        its number are two spans, so the app's folded card can cut the name short and keep the number. */
+    function showName(title) {
+      var parts = CardView.splitTitle(title);
+      dom.name.textContent = parts.name;
+      if (!dom.nameSet) return;
+      dom.nameSetName.textContent = parts.setName;
+      dom.nameSetNum.textContent = parts.number;
+      dom.nameSet.hidden = !parts.set;
+    }
+
+    /** Card Ladder's newest sales as chips under the name, and as a trend line in the opened card (staff only:
+        hide mode hides this whole card). Shown once the average has answered with them; an older answer without
+        sales, or no average yet, shows none. */
+    function renderSales(f) {
+      if (!dom.recent) return;
+      var v = f && f.avgStatus === 'done'
+        ? CardView.salesView(f.sales, { clvCents: f.clvCents, hasAvg: f.avg3Cents != null, nowMs: Date.now(), fmt: money })
+        : null;
+      dom.recent.hidden = !v;
+      dom.trend.hidden = !(v && v.spark);
+      dom.recentShill.hidden = !(v && v.outCount);
+      if (!v) { dom.recentList.innerHTML = ''; dom.spark.innerHTML = ''; return; }
+      dom.recentList.innerHTML = v.rows.map(function (r) {
+        return '<li class="sc-chip' + (r.inAvg ? ' sc-chip-avg' : '') + (r.out ? ' sc-chip-out' : '') + '">' +
+          '<span class="sc-vh">' + esc(r.said) + '</span>' +
+          '<span class="sc-chip-price" aria-hidden="true">' + esc(r.chip) + '</span>' +
+          '<span class="sc-chip-age" aria-hidden="true">' + esc(r.age || '-') + '</span>' +
+        '</li>';
+      }).join('');
+      if (!v.spark) { dom.spark.innerHTML = ''; return; }
+      // The line and its soft fill join the sales that count; a left-out sale is only a ringed dot (pinned to
+      // the edge when it is off the scale). The dots are HTML over a stretched SVG, so they stay round.
+      var pct = function (n) { return (n * 100).toFixed(2); };
+      var line = v.spark.line;
+      var linePts = line.map(function (p) { return pct(p.x) + ',' + pct(p.y); }).join(' ');
+      var area = line.length ? pct(line[0].x) + ',100 ' + linePts + ' ' + pct(line[line.length - 1].x) + ',100' : '';
+      dom.spark.innerHTML =
+        '<svg class="sc-spark-svg" viewBox="0 0 100 100" preserveAspectRatio="none">' +
+          '<defs><linearGradient id="sc-spark-fill" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0" stop-color="#6FB1E0" stop-opacity=".26"/><stop offset="1" stop-color="#6FB1E0" stop-opacity="0"/>' +
+          '</linearGradient></defs>' +
+          (area ? '<polygon class="sc-spark-area" points="' + area + '"/>' : '') +
+          (v.spark.clvY != null ? '<line class="sc-spark-clv" x1="0" x2="100" y1="' + pct(v.spark.clvY) + '" y2="' + pct(v.spark.clvY) + '"/>' : '') +
+          (linePts ? '<polyline class="sc-spark-line" points="' + linePts + '"/>' : '') +
+        '</svg>' +
+        v.spark.points.map(function (p) {
+          return '<span class="sc-spark-dot' + (p.inAvg ? ' sc-sale-avg' : '') + (p.out ? ' sc-sale-out' : '') +
+            '" style="left:' + pct(p.x) + '%;top:' + pct(p.y) + '%"></span>';
+        }).join('');
+    }
+
     function clearSquares(payText, payLook) {
       setSquare(dom.pay, payText || '-', false, payLook);
       setSquare(dom.avg3, '-', false);
       setSquare(dom.clv, '-', false);
       dom.ruleMath.textContent = '';
       if (dom.conf) dom.conf.hidden = true;
+      renderSales(null);
     }
 
     var CONF_OK = 4; // what the confidence-gated bands ask for; under it the pill is a warning
@@ -5994,11 +6477,15 @@ window.NativeBridge = {
       dom.conf.setAttribute('aria-label', known ? 'Confidence ' + n + ' out of 5' : 'Confidence not available');
       dom.conf.classList.toggle('sc-conf-low', known && n < CONF_OK);
       dom.conf.classList.toggle('sc-conf-none', !known);
+      // The colour steps at the same >= the rate bands' confidence gate uses (rules.js), never a rounded number:
+      // a 3.5 that a band needing 4 refuses is amber with its warning, not the lime of a 4.
+      var level = !known ? 0 : n >= 5 ? 5 : n >= 4 ? 4 : n >= 3 ? 3 : 0;
+      for (var lv = 3; lv <= 5; lv++) dom.conf.classList.toggle('sc-conf-' + lv, level === lv);
     }
 
     function renderLoading(cert, grader) {
       dom.result.hidden = false;
-      dom.name.textContent = grader.toUpperCase() + ' ' + cert;
+      showName(grader.toUpperCase() + ' ' + cert);
       dom.cert.textContent = cert;
       dom.grader.textContent = grader.toUpperCase();
       showGrade(null);
@@ -6013,7 +6500,7 @@ window.NativeBridge = {
 
     function renderNotSignedIn(cert, grader, message) {
       dom.result.hidden = false;
-      dom.name.textContent = grader.toUpperCase() + ' ' + cert;
+      showName(grader.toUpperCase() + ' ' + cert);
       dom.cert.textContent = cert; dom.grader.textContent = grader.toUpperCase(); showGrade(null);
       clearSquares('Sign in to price');
       showNote(message || 'Sign in above for live prices. This needs your scanner login.', true);
@@ -6082,7 +6569,7 @@ window.NativeBridge = {
         avgStatus: 'pending', avg3Cents: null, avgReason: null
       };
       if (prev && prev.avgStatus === 'done') { // a re-scan shows the average it already had while it re-checks
-        facts.avgStatus = 'done'; facts.avg3Cents = prev.avg3Cents;
+        facts.avgStatus = 'done'; facts.avg3Cents = prev.avg3Cents; facts.sales = prev.sales || null;
       }
       takeCard(cert, g, facts);
     }
@@ -6153,7 +6640,7 @@ window.NativeBridge = {
       var meta = pileMeta[key];
       if (!meta || !meta.facts || !pileEntry(key)) return;
       var f = meta.facts;
-      var sig = function (x) { return [x.avgStatus, x.avg3Cents, x.avgReason, x.clvCents, x.title, x.gradeText].join('|'); };
+      var sig = function (x) { return [x.avgStatus, x.avg3Cents, x.avgReason, x.clvCents, x.title, x.gradeText, JSON.stringify(x.sales || null)].join('|'); };
       var before = sig(f);
       f.avgStatus = avgState.status;
       f.avg3Cents = avgState.status === 'done' && avgState.avg3Cents != null ? avgState.avg3Cents : null;
@@ -6162,6 +6649,9 @@ window.NativeBridge = {
       // its average. Only that card (a Triumph card is never touched) and only a 'done' answer.
       var filled = TriumphDown.fillFromAverage(f, avgState, fallbackDeps);
       if (filled) { meta.facts = f = filled; meta.card = f.title; meta.grade = f.gradeText; }
+      // Card Ladder's newest sales come with a 'done' answer (null from an older worker or row): the list
+      // under the two numbers. Any other answer shows none.
+      f.sales = avgState.status === 'done' && Array.isArray(avgState.sales) ? avgState.sales : null;
       if (sig(f) === before) return; // nothing new
       repriceAll();
       renderPile();
@@ -6176,7 +6666,7 @@ window.NativeBridge = {
       var entry = pileEntry(currentKey);
       var price = entry ? entry.price : null;
       dom.result.hidden = false;
-      dom.name.textContent = f.title;
+      showName(f.title);
       dom.cert.textContent = f.cert;
       dom.grader.textContent = f.grader.toUpperCase();
       showGrade(f.gradeText, f.grade);
@@ -6192,6 +6682,7 @@ window.NativeBridge = {
       var borrowed = choice.rule === 'normal' && settingsLoaded ? OfferRules.normalNote(scannerSettings) : '';
       dom.ruleMath.textContent = math && borrowed ? math + String.fromCharCode(10) + borrowed : (math || borrowed);
       renderNote(f, price);
+      renderSales(f);
       showConf(f);
 
       sellerView = {
@@ -6252,7 +6743,9 @@ window.NativeBridge = {
       dom.sellerName.hidden = !v;
       dom.sellerGrade.hidden = !(v && v.grade);
       dom.sellerMarket.hidden = !v;
-      dom.sellerName.textContent = v ? v.name : '';
+      var parts = CardView.splitTitle(v ? v.name : '');
+      dom.sellerName.textContent = parts.name;
+      if (dom.sellerSet) { dom.sellerSet.textContent = parts.set; dom.sellerSet.hidden = !parts.set; }
       dom.sellerGrade.textContent = v && v.grade ? v.grade : '';
       dom.sellerMarket.textContent = v ? OfferRules.marketLine(v.market, money) : '';
       dom.sellerMarket.classList.toggle('sc-wait', !!v && OfferRules.marketLook(v.market) === 'wait');
@@ -6362,7 +6855,7 @@ window.NativeBridge = {
 
       dom.earlierList.innerHTML = entries.slice().reverse().map(function (c) {
         var meta = pileMeta[pileMetaKey(c.grader, c.certKey)] || {};
-        var title = meta.card || (c.grader.toUpperCase() + ' ' + c.cert);
+        var title = CardView.splitTitle(meta.card || (c.grader.toUpperCase() + ' ' + c.cert));
         var valueText = c.price && typeof c.price.payoutCents === 'number'
           ? money(c.price.payoutCents)
           : (typeof c.marketValueCents === 'number' ? money(c.marketValueCents) : '-');
@@ -6372,7 +6865,9 @@ window.NativeBridge = {
         return '<div class="sc-earlier-row">' +
           '<button type="button" class="sc-earlier-main" data-cert="' + esc(c.cert) + '" data-grader="' + esc(c.grader) + '">' +
             '<span class="sc-row-grade' + (g == null ? ' sc-unk' : '') + '" aria-hidden="true">' + (g == null ? '' : esc(String(g))) + '</span>' +
-            '<span class="name"><span class="title">' + esc(title) + '</span> <span class="cert">' + esc(c.grader.toUpperCase()) + ' ' + esc(c.cert) + '</span>' + pillFor(c.price) + '</span>' +
+            '<span class="name"><span class="title">' + esc(title.name) + '</span>' +
+              ' <span class="meta">' + (title.set ? '<span class="set"><span class="set-name">' + esc(title.setName) + '</span> ' + esc(title.number) + '</span>' : '') +
+              '<span class="cert">' + esc(c.grader.toUpperCase()) + ' ' + esc(c.cert) + '</span></span>' + pillFor(c.price) + '</span>' +
             '<span class="val">' + valueText + '</span>' +
           '</button>' +
           '<button type="button" class="sc-earlier-remove" data-cert="' + esc(c.cert) + '" data-grader="' + esc(c.grader) + '" data-key="' + esc(key) + '" aria-label="Remove ' + esc(c.cert) + '">✕</button>' +
