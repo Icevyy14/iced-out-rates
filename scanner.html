@@ -2381,13 +2381,15 @@ function resolveBasisCents(basis, slab) {
 }
 
 /**
- * A One Piece DON!! card ("DON!!" / "DON CARD" in the title): the owner never buys these at ANY price, so no
+ * A One Piece DON!! card ("DON!!", "DON!", "DON CARD", "DON-card" in ANY of the slab's name strings: title + titles[]): the owner never buys these at ANY price, so no
  * row of either sheet may take one. The "no DON!! cards" wording on the $1-$100 row was only label text; this is
  * the rule itself, applied to every row so a pricier band cannot quietly buy one. One Piece slabs only.
  */
+const DON_RE = /\bDON\s*!{1,2}(?![a-z])|\bDON[\s\-_]*CARDS?\b/i;
 function isDonCard(slab) {
   if (!slab || slab.sport !== 'one_piece') return false;
-  return /\bDON\s*!!|\bDON\s+CARD/i.test(String(slab.title ?? ''));
+  const names = [slab.title, ...(Array.isArray(slab.titles) ? slab.titles : [])];
+  return names.some(n => DON_RE.test(String(n ?? '')));
 }
 
 function rowMatches(row, slab, basisCents, settings) {
@@ -7138,7 +7140,7 @@ window.CardView = {
       var clvCents = lookup.marketValue != null ? Math.round(Number(lookup.marketValue) * 100) : null;
       var prev = pileFactsFor(cert, g);
       var facts = {
-        cert: cert, grader: g, title: title, clvCents: clvCents,
+        cert: cert, grader: g, title: title, titles: [title, lookup.cardTitle, lookup.cardName].filter(Boolean), clvCents: clvCents,
         grade: gradeNum(lookup.grade), gradeText: lookup.grade ? String(lookup.grade) : null,
         confidence: lookup.confidence != null ? lookup.confidence : null,
         // Same fallback the bot uses when Triumph gives no category/year (triumph.js's mapSport/mapYear):
