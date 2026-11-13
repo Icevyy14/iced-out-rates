@@ -6484,7 +6484,15 @@ window.CardView = {
     // sheet UNDER the camera in the same window, so it never loses focus or visibility. So the frame never
     // folds away entirely: it keeps its Start button (as "Reopen camera", see .sc-native-cam in the CSS),
     // and pressing it again is harmless because the app ignores a second open.
+    // The idle hint under the Start button. The markup's own words (VF_OFF_PROMPT) are true where a tap is what reads a
+    // barcode: a phone's browser camera, and an app older than bridge version 2. From version 2 the app's own camera reads a
+    // barcode by itself when one is in the middle of the frame (a tap is only the override), so "Nothing is read until you
+    // tap" would be false there: it says what that camera says. Asked each time the hint is put back, as the bridge is
+    // checked at call time everywhere else.
     var VF_OFF_PROMPT = dom.vfOffText.textContent;
+    var VF_OFF_APP_PROMPT = 'Point at a barcode';
+    function idlePrompt() { return bridge.isAvailable() && bridge.sheetsSupported() ? VF_OFF_APP_PROMPT : VF_OFF_PROMPT; }
+    dom.vfOffText.textContent = idlePrompt();
     var START_LABEL = dom.start.textContent;
 
     // ── the app's sheet stops (app 1.4: penguinNative.version >= 2, see scanner/nativeBridge.js). While its
@@ -6533,7 +6541,7 @@ window.CardView = {
       dom.layout.classList.toggle('sc-native-cam', nativeScannerOpen);
       if (bridge.isAvailable()) dom.start.textContent = nativeScannerOpen ? 'Reopen camera' : START_LABEL;
       if (!nativeScannerOpen) {
-        dom.vfOffText.textContent = VF_OFF_PROMPT;
+        dom.vfOffText.textContent = idlePrompt();
         sheetStop = null; // the camera closed: so did its sheet
         setTypeOpen(false);
         setCardOpen(false);
@@ -6852,6 +6860,9 @@ window.CardView = {
       if (sheetsAttempt) settleSheets(sheetsAttempt, false);
       try { repaintForSheets(); } catch (e) { /* drawing must never hold up what a scan waits on */ }
     }
+    /** The sheets the picked rule prices on are being asked for right now (an attempt is out and they are not in): a price
+        that needs one is on its way, not missing. Only for how a card is DRAWN; no price is ever decided by it. */
+    function ratesLoading() { return !!sheetsAttempt && !sheetsInFor(choice.rule); }
 
     // ── Card Ladder's sales averages: live, via the PC bot's avgQueue.js (see avgQueue.js's,
     // avg-portal/'s and scanner/avgClient.js's own headers). AvgClient (window.AvgClient) is
@@ -7074,13 +7085,14 @@ window.CardView = {
       for (var lv = 3; lv <= 5; lv++) dom.conf.classList.toggle('sc-conf-' + lv, level === lv);
     }
 
+    var LOOKING_UP = 'Looking up…'; // the wait of a scan (its lookup, or the rate sheets it prices on), and of a rule switch waiting on its sheet
     function renderLoading(cert, grader) {
       dom.result.hidden = false;
       showName(grader.toUpperCase() + ' ' + cert);
       dom.cert.textContent = cert;
       dom.grader.textContent = grader.toUpperCase();
       showGrade(null);
-      clearSquares('Looking up…', 'wait');
+      clearSquares(LOOKING_UP, 'wait');
       dom.rescanBadge.hidden = true;
       hideRetry();
       showNote('');
@@ -7280,7 +7292,10 @@ window.CardView = {
       setSquare(dom.clv, f.clvCents != null ? money(f.clvCents) : (clvWaiting ? 'Getting value…' : 'No value'), f.clvCents != null, clvWaiting ? 'wait' : null);
       if (f.avgStatus === 'done') setSquare(dom.avg3, f.avg3Cents != null ? money(f.avg3Cents) : 'Not enough sales', f.avg3Cents != null);
       else setSquare(dom.avg3, f.avgStatus === 'pending' ? 'Getting average…' : 'Not available', false, f.avgStatus === 'pending' ? 'wait' : null);
-      setSquare(dom.pay, OfferRules.payText(price, f.avgStatus, money), !!price && typeof price.payoutCents === 'number', OfferRules.payLook(price, f.avgStatus));
+      // A price that is only missing because its rate sheet is still on its way (a rule picked while that sheet was out) shows
+      // the wait a scan shows, not "No rate sheet" yet: that is said once the attempt is over and the sheet is still not in.
+      var ratesComing = !!price && !!price.noSheet && ratesLoading();
+      setSquare(dom.pay, ratesComing ? LOOKING_UP : OfferRules.payText(price, f.avgStatus, money), !!price && typeof price.payoutCents === 'number', ratesComing ? 'wait' : OfferRules.payLook(price, f.avgStatus));
       // The rule line: the band's math, and while no Scanner sheet is saved, that Normal is borrowing the
       // consignor rates (staff only: hide mode never shows this card).
       var math = OfferRules.ruleMath(price) || '';
@@ -7306,7 +7321,8 @@ window.CardView = {
       if (TriumphDown.waitingForValue(f) && !(priced && (priced.noSheet || priced.noPct))) { showNote(TriumphDown.noteFor(f), false, 'down'); return; }
       if (!priced) { showNote(''); return; }
       if (priced.noSheet) {
-        showNote(priced.rule === 'consignor'
+        if (ratesLoading()) showNote(''); // still being asked for: "could not be loaded" is said once it has not been
+        else showNote(priced.rule === 'consignor'
           ? 'The consignor rates (the live sheet) could not be loaded, so nothing was matched against a band.'
           : 'The live rate sheet could not be loaded, so nothing was matched against a band.', true);
       } else if (priced.noPct) {
@@ -7405,11 +7421,16 @@ window.CardView = {
     function setChoice(next) {
       choice = OfferRules.normalizeChoice(next);
       savePrefsNow();
+      // A rule that prices on a sheet that is not in (its read failed or never answered: a lost signal at a show) asks for
+      // it now, not at the next scan: the ONE shared attempt (ensureSettings), asked before the repaint so the open card is
+      // drawn as waiting for it. What lands reprices everything (sheetsMoved); the end of the attempt draws what is left.
+      var asked = sheetsInFor(choice.rule) ? null : ensureSettings();
       renderRuleControls();
       repriceAll();
       renderPile();
       if (currentKey) renderCurrent();
       if (sheetsAttempt) settleSheets(sheetsAttempt, false); // a scan waiting on the sheets of the old rule goes on if the new one's are in
+      if (asked) asked.then(function () { repaintForSheets(); });
     }
 
     // Each pill's look (sc-chip-*): blue while it waits on an average, teal for one staff prices by hand, grey
