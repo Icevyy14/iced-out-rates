@@ -2357,7 +2357,18 @@ function resolveBasisCents(basis, slab) {
   }
 }
 
+/**
+ * A One Piece DON!! card ("DON!!" / "DON CARD" in the title): the owner never buys these at ANY price, so no
+ * row of either sheet may take one. The "no DON!! cards" wording on the $1-$100 row was only label text; this is
+ * the rule itself, applied to every row so a pricier band cannot quietly buy one. One Piece slabs only.
+ */
+function isDonCard(slab) {
+  if (!slab || slab.sport !== 'one_piece') return false;
+  return /\bDON\s*!!|\bDON\s+CARD/i.test(String(slab.title ?? ''));
+}
+
 function rowMatches(row, slab, basisCents, settings) {
+  if (isDonCard(slab)) return false;
   const fromCents = money.toCents(row.from) ?? 0;
   const toCents = row.to == null ? null : money.toCents(row.to);
   if (!(basisCents > fromCents && (toCents == null || basisCents <= toCents))) return false;
