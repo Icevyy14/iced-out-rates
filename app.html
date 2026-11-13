@@ -1507,6 +1507,28 @@ function lastSaleCents(sales) {
   return (best || list[0]).cents;
 }
 
+/**
+ * "Use last sale if trending down" (owner's rate sheets): true when the NEWEST sale is lower than EACH of the
+ * two sales before it. Needs at least 3 readable sales ({ cents, date } objects or plain cents, newest first, as
+ * clHelper's toClResult builds them); fewer than 3 is never "trending down". When every sale carries a date the
+ * list is re-sorted newest first by date (a stable sort, so list order breaks a tie); otherwise the list order
+ * is taken as given (a mix of dated and undated sales is never trending down). A sale that is not a positive number is not a sale. Strictly lower: an equal sale is flat.
+ */
+function trendingDown(sales) {
+  const list = (Array.isArray(sales) ? sales : [])
+    .map(s => (s && typeof s === 'object' ? s : { cents: s, date: null }))
+    .filter(s => typeof s.cents === 'number' && Number.isFinite(s.cents) && s.cents > 0);
+  if (list.length < 3) return false;
+  const dated = list.every(s => typeof s.date === 'string' && s.date);
+  // some dated and some not: "newest" is a guess, and lastSaleCents may pick a different sale than list order does.
+  // All undated is fine: the list is newest first as the helper sends it, and lastSaleCents takes the first.
+  if (!dated && list.some(s => typeof s.date === 'string' && s.date)) return false;
+  const ordered = dated
+    ? list.map((s, i) => ({ s, i })).sort((a, b) => (a.s.date === b.s.date ? a.i - b.i : a.s.date < b.s.date ? 1 : -1)).map(x => x.s)
+    : list;
+  return ordered[0].cents < ordered[1].cents && ordered[0].cents < ordered[2].cents;
+}
+
 // Owner's rule (2026-11-05): "if sales are like 500, 500, 800, 500, it should put averages as 500 -
 // disregarding the super high sales." A single freak sale must never drag a sale average up.
 //
@@ -1633,6 +1655,7 @@ window.Money = {
   AVG_OUTLIER_MADS: AVG_OUTLIER_MADS,
   lowestOf: lowestOf,
   lastSaleCents: lastSaleCents,
+  trendingDown: trendingDown,
   sumCents: sumCents,
   fmt: fmt,
 };
@@ -2253,20 +2276,67 @@ function isNewCert(cert) {
   return n >= NEW_CERT_FROM;
 }
 
-/** Vintage holo: year known and WOTC-era (<= vintageMaxYear) AND the title says "holo" (not "non-holo"). */
+/**
+ * Vintage holo / rev holo: year known and WOTC-era (<= vintageMaxYear) AND the title says "holo" (not "non-holo"),
+ * or is a reverse (Triumph writes a reverse holo as "REV.FOIL", which has no "holo" in it).
+ */
 function isVintage(slab, settings) {
   const year = slab.year ?? null;
   if (year == null || year > settings.vintageMaxYear) return false;
   const t = plainWords(slab.title);
-  return hasWord(t, 'holo') && !hasWord(t, 'non holo') && !hasWord(t, 'nonholo');
+  if (hasWord(t, 'non holo') || hasWord(t, 'nonholo')) return false;
+  return hasWord(t, 'holo') || isReverseTitle(t);
 }
 
-/** Special set: WOTC-era by year alone (any name), OR the title names one of the special keywords. */
+/**
+ * Special set: ONLY the sheet row's own wording (owner, 2026-11: "E-readers, Shinings, Legendary Collection
+ * reverses, Gold Stars"), never a year rule. A title is special when it names:
+ *   - one of the sheet's specialKeywords (Expedition, Aquapolis, Skyridge, Shining, Gold Star...), except that
+ *     "Legendary Collection" only counts for a REVERSE holo (the sheet row says "reverses"; the plain holos are
+ *     not special),
+ *   - an e-Reader era card by name (e-Reader, e-Card, e-Series), whatever the sheet's keyword list says,
+ *   - a Gold Star (the words, or the star symbol),
+ *   - a 2002-2003 holo numbered "H1".."H32" (Aquapolis/Skyridge's own numbering: Triumph's terse title often
+ *     drops the set name, e.g. "ARCANINE-HOLO #H2 2003").
+ * `lenient` is for needsCardLadder's "could Card Ladder's fuller title still match" check: it drops the
+ * Legendary-Collection-reverse requirement, since a terse Triumph title may not say "reverse" yet.
+ */
+function isReverseTitle(t) {
+  const words = t.split(' ');
+  return words.includes('reverse') || words.includes('rev');
+}
+function isSpecialTitle(title, year, settings, lenient) {
+  const raw = String(title ?? '');
+  const t = plainWords(raw);
+  if (!t) return false;
+  if (/[★☆]/.test(raw)) return true; // the star symbol: a Gold Star
+  if (hasWord(t, 'gold star')) return true;
+  if (hasWord(t, 'e reader') || hasWord(t, 'ereader') || hasWord(t, 'e card') || hasWord(t, 'ecard') || hasWord(t, 'e series')) return true;
+  if ((year === 2002 || year === 2003) && hasWord(t, 'holo') && /(^| )h[0-9]{1,2}( |$)/.test(t)) return true;
+  return ((settings && settings.specialKeywords) || []).some(w => {
+    const k = plainWords(w);
+    // whole words only, and only on a card that can be vintage: "Shining Fates" (2021) and a 2024 "Shiny Charizard"
+    // are modern cards that merely share a word with an old set
+    if (!k || !(' ' + t + ' ').includes(' ' + k + ' ')) return false;
+    if (year != null && settings && Number.isFinite(settings.vintageMaxYear) && year > settings.vintageMaxYear) return false;
+    if (k === 'legendary collection' && !lenient) return isReverseTitle(t);
+    return true;
+  });
+}
 function isSpecial(slab, settings) {
-  const year = slab.year ?? null;
-  if (year != null && year <= settings.vintageMaxYear) return true;
-  const t = plainWords(slab.title);
-  return (settings.specialKeywords || []).some(w => hasWord(t, plainWords(w)));
+  return isSpecialTitle(slab.title, slab.year ?? null, settings, false);
+}
+/**
+ * The avg-of-3 value a slab is priced on. "Use last sale if trending down": when the caller found the newest sale
+ * lower than each of the two before it (slab.avg3TrendDown, from money.trendingDown over the dated sales), the
+ * newest sale stands in for the average, on every basis that reads the average (avg3 and lowest). No average, or no
+ * newest sale to use, leaves the average as it was.
+ */
+function avg3ValueOf(slab) {
+  const avg3 = slab.avg3Cents ?? null;
+  // never above the average it replaces: a trend flag may never raise a payout
+  if (avg3 != null && slab.avg3TrendDown === true && slab.lastSaleCents != null) return Math.min(avg3, slab.lastSaleCents);
+  return avg3;
 }
 
 /**
@@ -2276,7 +2346,7 @@ function isSpecial(slab, settings) {
  */
 function resolveBasisCents(basis, slab) {
   const clv = slab.clvCents ?? null;
-  const avg3 = slab.avg3Cents ?? null;
+  const avg3 = avg3ValueOf(slab);
   switch (basis) {
     case 'clv': return clv;
     case 'avg3': return avg3;
@@ -2409,7 +2479,7 @@ function vintageOrSpecialCouldMatch(row, hint, settings) {
   if (title == null) return true;
   const t = plainWords(title);
   if (row.vintage && hasWord(t, 'holo') && !hasWord(t, 'non holo') && !hasWord(t, 'nonholo')) return true;
-  if (row.special && (settings.specialKeywords || []).some(w => hasWord(t, plainWords(w)))) return true;
+  if (row.special && isSpecialTitle(title, year, settings, true)) return true;
   return false;
 }
 
@@ -2475,6 +2545,8 @@ function needsCardLadder(hint, settings, marketBasis) {
 window.PriceCore = {
   priceSlab: priceSlab,
   resolveBasisCents: resolveBasisCents,
+  avg3ValueOf: avg3ValueOf,
+  buySideOf: buySideOf,
   rowMatches: rowMatches,
   isNewCert: isNewCert,
   isVintage: isVintage,
@@ -5611,21 +5683,51 @@ function lastSaleOf(sales) {
   return best ? best.cents : null;
 }
 
+/**
+ * "Use last sale if trending down": true when the newest sale is lower than EACH of the two before it (needs 3
+ * sales, { date, cents } newest first). Same rule as money.js trendingDown (scanner/offerRules.test.js pins
+ * that they agree); written out here because this file takes nothing in but `ctx`.
+ */
+function trendingDownOf(sales) {
+  if (!Array.isArray(sales)) return false;
+  var list = [];
+  for (var i = 0; i < sales.length; i++) {
+    var s = sales[i];
+    if (s && typeof s.cents === 'number' && isFinite(s.cents) && s.cents > 0) list.push({ cents: s.cents, date: typeof s.date === 'string' ? s.date : '', i: list.length });
+  }
+  if (list.length < 3) return false;
+  var dated = list.every(function (s) { return !!s.date; });
+  if (!dated && list.some(function (s) { return !!s.date; })) return false; // mixed: newest is a guess
+  if (dated) list.sort(function (a, b) { return a.date === b.date ? a.i - b.i : a.date < b.date ? 1 : -1; });
+  return list[0].cents < list[1].cents && list[0].cents < list[2].cents;
+}
+
 function factsOf(card) {
   var avgDone = card.avgStatus === 'done';
+  var avg3 = avgDone && typeof card.avg3Cents === 'number' ? card.avg3Cents : null;
+  // From the same Card Ladder answer as the average, so it only counts once that answer is in.
+  var last = avgDone ? lastSaleOf(card.sales) : null;
+  var trend = avgDone && avg3 != null && last != null && trendingDownOf(card.sales);
+  var clClv = avgDone && typeof card.clClvCents === 'number' && card.clClvCents > 0 ? card.clClvCents : null;
+  var triumph = typeof card.clvCents === 'number' ? card.clvCents : null;
   return {
     avgDone: avgDone,
     avgPending: card.avgStatus === 'pending',
-    avg3: avgDone && typeof card.avg3Cents === 'number' ? card.avg3Cents : null,
-    // From the same Card Ladder answer as the average, so it only counts once that answer is in.
-    last: avgDone ? lastSaleOf(card.sales) : null,
-    clv: typeof card.clvCents === 'number' ? card.clvCents : null,
+    avg3: avg3,
+    // The avg of 3 as it is PAID on: the newest sale instead while the sales are trending down.
+    avg3e: trend ? Math.min(last, avg3) : avg3,
+    trend: trend,
+    last: last,
+    // Triumph's value; with none (Triumph unknown for this cert) Card Ladder's stands alone.
+    clv: triumph != null ? triumph : clClv,
+    // Card Ladder's own value, from the same answer (only 'done'); null when unknown or a different grade.
+    clClv: clClv,
   };
 }
 
 function slabOf(card, f) {
   return {
-    clvCents: f.clv, avg3Cents: f.avg3, lastSaleCents: f.last, grade: card.grade, confidence: card.confidence, cert: card.cert,
+    clvCents: f.clv, avg3Cents: f.avg3, avg3TrendDown: f.trend, lastSaleCents: f.last, grade: card.grade, confidence: card.confidence, cert: card.cert,
     title: card.title, year: card.year, sport: card.sport, grader: card.grader, language: card.language,
   };
 }
@@ -5642,7 +5744,22 @@ function priceOnSheet(card, sheet, rule, ctx, f, lower) {
   // never drop after it was shown. rules.js needsCardLadder is the check the bot itself makes.
   var couldNeedAvg = !f.avgDone && ctx.priceCore.needsCardLadder(hint, sheet, basis);
   if (couldNeedAvg && f.avgPending) return { awaitingAverage: true, rule: rule };
-  var priced = ctx.priceCore.priceSlab(slabOf(card, f), sheet, lower ? { basis: basis } : {});
+  var slab = slabOf(card, f);
+  var opts = lower ? { basis: basis } : {};
+  var priced = ctx.priceCore.priceSlab(slab, sheet, opts);
+  // Two value sources, exactly as the bot's consignment path (comp.js lowerValue): when Triumph and Card Ladder
+  // both gave a value and they differ, price at BOTH through the full band logic and keep the LOWER payout (a
+  // lower value can land in a higher-percent band, so the lower value alone is not enough). If today's value
+  // prices and the other does not, the sources disagree about whether we buy it: staff price. One source known
+  // = that source. Never a raise.
+  if (f.clv > 0 && f.clClv > 0 && f.clClv !== f.clv && typeof priced.payoutCents === 'number' && ctx.priceCore.buySideOf(sheet).lowerValue) {
+    var other = ctx.priceCore.priceSlab(Object.assign({}, slab, { clvCents: f.clClv }), sheet, opts);
+    if (typeof other.payoutCents !== 'number') {
+      priced = { staffPrice: true, buySide: true, why: 'the value sources disagree: ' + ctx.money.fmt(f.clClv) + ' on Card Ladder against ' + ctx.money.fmt(f.clv) + ' on Triumph, and one of them is not a price we quote' };
+    } else if (other.payoutCents < priced.payoutCents) {
+      priced = other;
+    }
+  }
   var out = Object.assign({}, priced, { rule: rule });
   // Rejected with no average to be had (failed/timed out), but an average band could still take it:
   // "needs average", never a pass.
@@ -5665,7 +5782,7 @@ function offerFor(card, choice, ctx) {
     if (c.flatPct == null) return { noPct: true, rule: 'flat' };
     var basis = lower ? 'lowest' : (c.flatBasis === 'avg3' ? 'avg3' : 'clv');
     if (basis !== 'clv' && f.avgPending) return { awaitingAverage: true, basis: basis, pct: c.flatPct, rule: 'flat' };
-    var basisCents = basis === 'lowest' ? lowerOf(f.clv, f.avg3) : basis === 'avg3' ? f.avg3 : f.clv;
+    var basisCents = basis === 'lowest' ? lowerOf(f.clv, f.avg3e) : basis === 'avg3' ? f.avg3e : f.clv;
     if (basis === 'avg3' && !f.avgDone) return { awaitingAverage: true, basis: basis, pct: c.flatPct, rule: 'flat' };
     if (basisCents == null) return { staffPrice: true, why: basis === 'avg3' ? 'no avg of 3' : 'no value', rule: 'flat' };
     return {
@@ -5689,12 +5806,12 @@ function marketFor(card, price, mode) {
   var f = factsOf(card);
   if (mode === 'lower') {
     if (f.avgPending) return { cents: null, pending: true };
-    return { cents: lowerOf(f.clv, f.avg3), pending: false };
+    return { cents: lowerOf(f.clv, f.avg3e), pending: false };
   }
   if (price && typeof price.payoutCents === 'number' && typeof price.basisCents === 'number') return { cents: price.basisCents, pending: false };
   if (price && price.awaitingAverage && f.avgPending) return { cents: null, pending: true }; // the band, and so the market, is not known yet
   if (f.clv != null) return { cents: f.clv, pending: false };
-  if (f.avg3 != null) return { cents: f.avg3, pending: false };
+  if (f.avg3e != null) return { cents: f.avg3e, pending: false };
   return { cents: null, pending: f.avgPending };
 }
 
@@ -5750,6 +5867,7 @@ function marketLook(market) {
 }
 
 window.OfferRules = {
+  trendingDownOf: trendingDownOf,
   RULES: RULES,
   MODES: MODES,
   FLAT_BASES: FLAT_BASES,
@@ -6851,7 +6969,7 @@ window.CardView = {
         avgStatus: 'pending', avg3Cents: null, avgReason: null
       };
       if (prev && prev.avgStatus === 'done') { // a re-scan shows the average it already had while it re-checks
-        facts.avgStatus = 'done'; facts.avg3Cents = prev.avg3Cents; facts.sales = prev.sales || null;
+        facts.avgStatus = 'done'; facts.avg3Cents = prev.avg3Cents; facts.sales = prev.sales || null; facts.clClvCents = prev.clClvCents == null ? null : prev.clClvCents;
       }
       takeCard(cert, g, facts);
     }
@@ -6922,11 +7040,16 @@ window.CardView = {
       var meta = pileMeta[key];
       if (!meta || !meta.facts || !pileEntry(key)) return;
       var f = meta.facts;
-      var sig = function (x) { return [x.avgStatus, x.avg3Cents, x.avgReason, x.clvCents, x.title, x.gradeText, JSON.stringify(x.sales || null)].join('|'); };
+      var sig = function (x) { return [x.avgStatus, x.avg3Cents, x.clClvCents, x.avgReason, x.clvCents, x.title, x.gradeText, JSON.stringify(x.sales || null)].join('|'); };
       var before = sig(f);
       f.avgStatus = avgState.status;
       f.avg3Cents = avgState.status === 'done' && avgState.avg3Cents != null ? avgState.avg3Cents : null;
       f.avgReason = avgState.reason || null;
+      // Card Ladder's own value, from the same answer: priced alongside Triumph's (offerRules: the LOWER payout wins,
+      // exactly like the bot). Dropped when Card Ladder's grade is not this slab's grade (the bot's grade conflict).
+      var clGrade = avgState.grade != null ? gradeNum(avgState.grade) : null;
+      var clConflict = clGrade != null && f.grade != null && clGrade !== f.grade;
+      f.clClvCents = avgState.status === 'done' && !clConflict && avgState.clValueCents > 0 ? avgState.clValueCents : null;
       // A card priced while Triumph was down has no CL value, name or grade of its own: they come with
       // its average. Only that card (a Triumph card is never touched) and only a 'done' answer.
       var filled = TriumphDown.fillFromAverage(f, avgState, fallbackDeps);
