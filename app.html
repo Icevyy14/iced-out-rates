@@ -456,28 +456,29 @@ code{font-family:var(--font-mono);font-size:.92em;}
     --sc-crimson:#BF092F; --sc-navy:#132440; --sc-steel:#16476A; --sc-teal:#3B9797;
     /* the dark theme */
     --sc-cam:#060D18;
-    --sc-card-top:#1C3E68; --sc-card-bot:#142642; --sc-surface:#1B3256;
-    --sc-dock-top:#17325A; --sc-dock:#0F1D33;
+    --sc-card-top:#1C2536; --sc-card-bot:#12161F; --sc-surface:#161C28;
+    --sc-dock-top:#141922; --sc-dock:#0E121A;
     --sc-ink:#F2F6FA; --sc-muted:#A9B9CC; --sc-faint:#7F92AB; --sc-ph:#8A9DB5;
     --sc-line:rgba(255,255,255,.08);
-    --sc-fill:#1A3152; --sc-fill-card:#28466F; --sc-fill-focus:#213B60;
+    --sc-fill:#161B26; --sc-fill-card:#252D3D; --sc-fill-focus:#1C2433;
     --sc-edge:#5A7090; --sc-edge-card:#6D84A2;
-    --sc-steel-ink:#9CCBEE; --sc-avg:#6FB1E0;
-    --sc-blue-top:#2678B3; --sc-blue-bot:#1F6FA8;
+    --sc-steel-ink:#6BA4F5; --sc-avg:#5B97FF;
+    --sc-blue-top:#3070E8; --sc-blue-bot:#2762DC; --sc-blue:#3478F5;
     --sc-teal-ink:#5CC4C4; --sc-teal-top:#4BAAA8;
     --sc-clv:#4ADE80; /* the CL value: its number, its dot, its line on the trend (7:1 on the card) */
-    --sc-wait-tint:rgba(111,177,224,.16);
+    --sc-wait-tint:rgba(91,151,255,.16);
     --sc-teal-tint:rgba(59,151,151,.22); --sc-teal-chip:#7FD6D6;
     --sc-err-tint:rgba(191,9,47,.24); --sc-err-ink:#FF9AA8;
-    --sc-grey-tint:#28466F;
-    --sc-focus:rgba(111,177,224,.6); --sc-focus-soft:rgba(111,177,224,.35);
+    --sc-grey-tint:#252D3D;
+    --sc-focus:rgba(107,164,245,.65); --sc-focus-soft:rgba(107,164,245,.35);
     --sc-hi:inset 0 1px 0 rgba(255,255,255,.09);
-    --sc-ring:inset 0 0 0 1px rgba(255,255,255,.055);
+    --sc-ring:inset 0 0 0 1px rgba(255,255,255,.09);
     --sc-sh-card:var(--sc-hi), var(--sc-ring), 0 1px 1px rgba(0,0,0,.25), 0 12px 24px -14px rgba(0,0,0,.85);
-    --sc-card-bg:linear-gradient(160deg, #1F4570 0%, #1A3A60 46%, var(--sc-card-bot) 100%); /* steel to navy; every stop keeps the muted ink above 4.5:1 */
-    --sc-fill-card-bg:linear-gradient(180deg, #284870 0%, #223C61 100%); /* chips, pills, tracks and fields on a card */
-    --sc-surface-bg:linear-gradient(160deg, #1E4068 0%, #172E4E 100%);
-    --sc-steel-orb:radial-gradient(circle at 32% 26%, #1F5A86 0%, #16476A 58%, #123A57 100%);
+    --sc-card-bg:linear-gradient(160deg, #1D2738 0%, #171E2B 48%, var(--sc-card-bot) 100%); /* steel to navy; every stop keeps the muted ink above 4.5:1 */
+    --sc-fill-card-bg:linear-gradient(180deg, #262F40 0%, #1F2735 100%); /* chips, pills, tracks and fields on a card */
+    --sc-surface-bg:linear-gradient(160deg, #1B2332 0%, #141A25 100%);
+    --sc-steel-orb:linear-gradient(155deg, #2A3652 0%, #1A2238 60%, #141A2B 100%);
+    --sc-grade-bg:linear-gradient(155deg, #3B3F7A 0%, #2A3169 28%, #19214E 58%, #25102A 100%); /* the grade badges: indigo with a wine shade */
     --sc-r-card:22px;
     --sc-r-tile:20px;
     --sc-ease:cubic-bezier(.16, 1, .3, 1);
@@ -520,17 +521,17 @@ code{font-family:var(--font-mono);font-size:.92em;}
 
   /* The page around the scanner: its own dark base instead of the rate sheets' glow and scan lines, and
      scanner.html's site header in the same colours (colours only: the header keeps its layout). */
-  html:has(#tab-scanner.tab.active) body{background:#0B1626;}
+  html:has(#tab-scanner.tab.active) body{background:#0A0F18;}
   html:has(#tab-scanner.tab.active)::before,html:has(#tab-scanner.tab.active)::after{display:none;}
-  html:has(#tab-scanner.tab.active) .nav{background:#0F1D33;border-bottom-color:rgba(255,255,255,.08);}
+  html:has(#tab-scanner.tab.active) .nav{background:#0E121A;border-bottom-color:rgba(255,255,255,.08);}
   html:has(#tab-scanner.tab.active) .logo{background:none;-webkit-text-fill-color:#F2F6FA;color:#F2F6FA;filter:none;}
   html:has(#tab-scanner.tab.active) .logo-sub{color:#A9B9CC;}
-  html:has(#tab-scanner.tab.active) .nav-tabs{background:#0A1424;}
+  html:has(#tab-scanner.tab.active) .nav-tabs{background:#0A0F18;}
   html:has(#tab-scanner.tab.active) .nav-tab{color:#A9B9CC;}
   html:has(#tab-scanner.tab.active) .nav-tab:hover{color:#F2F6FA;}
-  html:has(#tab-scanner.tab.active) .nav-tab.active,html:has(#tab-scanner.tab.active) .nav-tab.active:hover{background:linear-gradient(180deg, #4BAAA8, #3B9797);color:#0B1626;box-shadow:inset 0 1px 0 rgba(255,255,255,.22);}
-  html:has(#tab-scanner.tab.active) ::-webkit-scrollbar-track{background:#0A1424;}
-  html:has(#tab-scanner.tab.active) ::-webkit-scrollbar-thumb{background:#28466F;}
+  html:has(#tab-scanner.tab.active) .nav-tab.active,html:has(#tab-scanner.tab.active) .nav-tab.active:hover{background:linear-gradient(180deg, #3070E8, #2762DC);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.22);}
+  html:has(#tab-scanner.tab.active) ::-webkit-scrollbar-track{background:#0A0F18;}
+  html:has(#tab-scanner.tab.active) ::-webkit-scrollbar-thumb{background:#252D3D;}
 
   /* One icon recipe: a currentColor square cut out by the icon's mask (--sc-i). */
   #tab-scanner .sc-vf-round::before,#tab-scanner .sc-vf-pill::before,#tab-scanner .sc-start::before,
@@ -646,11 +647,11 @@ code{font-family:var(--font-mono);font-size:.92em;}
   /* In a phone's browser it shows once there is something to say (a card on screen, or a pile). */
   #tab-scanner .scanner-layout:not(.sc-native-cam):has(#sc-result[hidden]):has(#sc-earlier[hidden]) .sc-score{display:none;}
   #tab-scanner .sc-tile{position:relative;display:flex;flex-direction:column;min-width:0;min-height:92px;padding:10px 12px 10px 14px;border-radius:var(--sc-r-tile);}
-  #tab-scanner .sc-tile .sc-key{font-size:var(--sc-fs-label);font-weight:700;line-height:1.3;}
+  #tab-scanner .sc-tile .sc-key{font-size:var(--sc-fs-label);font-weight:800;line-height:1.3;letter-spacing:.09em;text-transform:uppercase;}
   #tab-scanner .sc-tile-pay{
     isolation:isolate;color:#fff;
-    background:linear-gradient(158deg, #CE0F37 0%, #BF092F 46%, #A1062A 100%);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 1px 1px rgba(0,0,0,.25), 0 12px 24px -14px rgba(0,0,0,.9);
+    background:linear-gradient(158deg, #D32549 0%, #BF092F 38%, #7A0A1F 100%);
+    box-shadow:inset 0 0 0 1px rgba(255,150,170,.34), inset 0 1px 0 rgba(255,255,255,.22), 0 1px 1px rgba(0,0,0,.25), 0 14px 26px -14px rgba(191,9,47,.55);
   }
   /* The tile's one ornament: a large soft arc in its top-right corner, the faint facet pattern only inside
      it. Drawn (and masked) inside the tile's own box, so the tile never has to clip its number. */
@@ -668,7 +669,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   /* Confidence, 2 to 5: quiet when it is fine, a warning under the 4 the gated bands ask for. */
   #tab-scanner .sc-tile-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:22px;}
   #tab-scanner .sc-conf{
-    flex:none;display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:999px;
+    flex:none;display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 9px;border-radius:8px;
     background:rgba(255,255,255,.16);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);
     font-size:var(--sc-fs-label);font-weight:700;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap;
   }
@@ -687,11 +688,11 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-pay-val.sc-blank{color:rgba(255,255,255,.75);}
   #tab-scanner .sc-math{margin-top:4px;font-size:var(--sc-fs-label);line-height:1.3;color:rgba(255,255,255,.9);white-space:pre-line;overflow-wrap:anywhere;}
   #tab-scanner .sc-math:empty{display:none;}
-  #tab-scanner .sc-tile-visit{background:var(--sc-card-bg);box-shadow:var(--sc-sh-card);padding-right:12px;min-height:0;justify-content:flex-start;}
-  #tab-scanner .sc-tile-title{font-size:var(--sc-fs-label);font-weight:700;line-height:1.3;color:var(--sc-ink);}
+  #tab-scanner .sc-tile-visit{background:var(--sc-card-bg);box-shadow:var(--sc-sh-card), inset 4px 0 0 -1px var(--sc-blue);padding-right:12px;min-height:0;justify-content:flex-start;}
+  #tab-scanner .sc-tile-title{font-size:var(--sc-fs-label);font-weight:800;line-height:1.3;letter-spacing:.09em;text-transform:uppercase;color:var(--sc-muted);}
   #tab-scanner .sc-tile-visit .sc-key{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
   #tab-scanner .sc-tile-visit .sc-total-val{
-    margin-top:6px;padding-top:0;
+    margin-top:auto;padding-top:6px;
     font-size:min(var(--sc-fs-num), 6.2cqi);font-weight:800;line-height:1.2;letter-spacing:-.015em;color:var(--sc-ink);
     font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
   }
@@ -757,10 +758,10 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-result-head{display:flex;gap:14px;align-items:flex-start;}
   /* the grade circle: steel, lit from the top left, with a thin ring */
   #tab-scanner .sc-grade-dot{
-    flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;
-    background:var(--sc-steel-orb);color:#fff;font-size:var(--sc-fs-num);font-weight:800;line-height:1;
+    flex:none;display:grid;place-items:center;width:52px;height:52px;border-radius:15px;
+    background:var(--sc-grade-bg);color:#fff;font-size:calc(var(--sc-fs-num) * 1.2);font-weight:800;line-height:1;
     font-variant-numeric:tabular-nums;letter-spacing:-.02em;
-    box-shadow:0 0 0 2px var(--sc-card-top), 0 0 0 3.5px rgba(111,177,224,.55);
+    box-shadow:inset 0 0 0 1.5px rgba(176,184,232,.42), inset 0 1px 0 rgba(255,255,255,.16), 0 0 0 2px rgba(6,10,18,.4), 0 5px 12px -5px rgba(0,0,0,.75);
     transition:width 200ms var(--sc-ease), height 200ms var(--sc-ease), font-size 200ms var(--sc-ease);
   }
   #tab-scanner .sc-grade-dot.sc-unk{--sc-i:var(--i-barcode);background:var(--sc-grey-tint);color:var(--sc-muted);}
@@ -773,7 +774,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-result-set{min-width:0;margin-right:4px;font-weight:700;color:var(--sc-steel-ink);}
   #tab-scanner .sc-result-line{display:contents;} /* the set and the cert, kept together only on the app's folded card */
   #tab-scanner .sc-result-id{
-    display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px;margin-top:2px;
+    display:flex;flex-direction:column;align-items:flex-start;gap:3px;margin-top:3px;
     font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);font-variant-numeric:tabular-nums;
   }
   /* "Grade 9" is read out by a screen reader; the circle shows the number to everyone else. */
@@ -794,6 +795,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
     color:var(--sc-ink);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
   }
   #tab-scanner #sc-clv:not(.sc-words):not(.sc-blank){color:var(--sc-clv);}
+  #tab-scanner #sc-avg3:not(.sc-words):not(.sc-blank){color:var(--sc-avg);}
   #tab-scanner .sc-pair-val.sc-words{font-size:var(--sc-fs-row);font-weight:700;line-height:1.35;letter-spacing:0;color:var(--sc-muted);}
   #tab-scanner .sc-pair-val.sc-blank{color:var(--sc-faint);}
   #tab-scanner .sc-wait{animation:scWait 1.3s ease-in-out infinite alternate;}
@@ -806,22 +808,21 @@ code{font-family:var(--font-mono);font-size:.92em;}
      CL value. ── */
   #tab-scanner .sc-vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
   #tab-scanner .sc-recent{margin-top:4px;}
-  #tab-scanner .sc-recent-head{display:flex;justify-content:flex-end;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:2px;}
-  #tab-scanner .sc-recent-head:has(.sc-recent-shill[hidden]){display:none;}
-  #tab-scanner .sc-recent-title{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;font-size:var(--sc-fs-label);font-weight:700;line-height:1.2;color:var(--sc-muted);}
+  #tab-scanner .sc-recent-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px;}
+    #tab-scanner .sc-recent-title{font-size:var(--sc-fs-label);font-weight:700;line-height:1.2;color:var(--sc-muted);}
   #tab-scanner .sc-recent-shill{--sc-i:var(--i-alert);display:inline-flex;align-items:center;gap:4px;align-self:center;font-size:var(--sc-fs-label);font-weight:700;line-height:1.2;color:var(--sc-err-ink);white-space:nowrap;}
   #tab-scanner .sc-recent-shill::before{width:13px;height:13px;}
   #tab-scanner .sc-recent-shill[hidden]{display:none;}
   #tab-scanner .sc-recent-list{display:grid;grid-template-columns:repeat(5, minmax(0, 1fr));gap:5px;margin:0;padding:0;list-style:none;}
   #tab-scanner .sc-chip{
-    display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0;padding:5px 2px 6px;border-radius:10px;
-    background:var(--sc-fill-card-bg);box-shadow:inset 0 1px 0 rgba(255,255,255,.07);color:var(--sc-muted);text-align:center;
+    display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0;padding:5px 2px 6px;border-radius:9px;
+    background:var(--sc-fill-card-bg);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09), inset 0 1px 0 rgba(255,255,255,.07);color:var(--sc-muted);text-align:center;
   }
   #tab-scanner .sc-chip-price{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--sc-fs-label);font-weight:800;line-height:1.25;letter-spacing:-.01em;font-variant-numeric:tabular-nums;}
   /* No fading on top of --sc-muted: on a plain chip that would drop the age under 4.5:1 (it is 4.8:1 as is). */
   #tab-scanner .sc-chip-age{font-size:12px;font-weight:700;line-height:1.2;}
-  #tab-scanner .sc-chip-avg{color:var(--sc-ink);box-shadow:inset 0 -2px 0 var(--sc-avg);}
-  #tab-scanner .sc-chip-out{--sc-i:var(--i-alert);position:relative;background:var(--sc-err-tint);color:var(--sc-err-ink);}
+  #tab-scanner .sc-chip-avg{color:var(--sc-ink);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09), inset 0 -2px 0 var(--sc-avg);}
+  #tab-scanner .sc-chip-out{--sc-i:var(--i-alert);position:relative;background:linear-gradient(180deg, rgba(120,16,40,.62), rgba(70,14,30,.62));color:var(--sc-err-ink);box-shadow:inset 0 0 0 1px rgba(255,120,145,.5);}
   #tab-scanner .sc-chip-out::after{position:absolute;top:-6px;right:-4px;width:14px;height:14px;}
   #tab-scanner .sc-trend{margin:6px 6px 2px;}
   #tab-scanner .sc-trend[hidden]{display:none;}
@@ -916,8 +917,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-card .sc-seg-btn{color:var(--sc-ink);}
   #tab-scanner .sc-seg-btn:hover{color:var(--sc-ink);}
   #tab-scanner .sc-seg-btn[aria-pressed="true"]{
-    background:linear-gradient(180deg, var(--sc-teal-top), var(--sc-teal));color:#0B1626;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.22), 0 1px 2px rgba(0,0,0,.35);
+    background:linear-gradient(180deg, var(--sc-blue-top), var(--sc-blue-bot));color:#fff;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 1px 2px rgba(0,0,0,.45), 0 6px 14px -6px rgba(52,120,245,.55);
   }
   /* "Normal rates / Consignor rates / Flat %" may wrap to two lines on a narrow phone rather than overflow. */
   #tab-scanner .sc-rules .sc-seg-btn{flex:1 1 auto;padding:5px 10px;white-space:normal;text-align:center;}
@@ -948,7 +949,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   }
   #tab-scanner .sc-earlier-main:active .title{color:var(--sc-steel-ink);}
   #tab-scanner .sc-row-grade{
-    display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--sc-fill-card-bg);
+    display:grid;place-items:center;width:40px;height:40px;border-radius:11px;background:var(--sc-grade-bg);box-shadow:inset 0 0 0 1px rgba(176,184,232,.34), inset 0 1px 0 rgba(255,255,255,.12);
     color:var(--sc-ink);font-size:var(--sc-fs-body);font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em;
   }
   #tab-scanner .sc-row-grade.sc-unk{--sc-i:var(--i-barcode);color:var(--sc-muted);}
@@ -1012,7 +1013,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   }
   #tab-scanner .sc-hide-btn::before{position:relative;z-index:1;width:19px;height:19px;}
   #tab-scanner .sc-hide-btn span{position:relative;z-index:1;white-space:nowrap;}
-  #tab-scanner .sc-hide-btn::after{content:"";position:absolute;inset:0;background:rgba(59,151,151,.45);transform:scaleX(0);transform-origin:left center;}
+  #tab-scanner .sc-hide-btn::after{content:"";position:absolute;inset:0;background:rgba(52,120,245,.5);transform:scaleX(0);transform-origin:left center;}
   #tab-scanner .sc-hide-btn.holding::after{transform:scaleX(1);transition:transform 1s linear;}
   #tab-scanner .sc-hide-btn[aria-pressed="true"]{--sc-i:var(--i-eye);color:var(--sc-muted);}
   #tab-scanner .sc-type-btn{display:none;}
@@ -1063,8 +1064,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
      'mid' arrangement. */
   html:has(#tab-scanner.tab.active) body:has(.sc-native-cam){
     background:
-      radial-gradient(260px 190px at 90% -30px, rgba(59,151,151,.15), rgba(59,151,151,0) 72%) no-repeat,
-      linear-gradient(180deg, #0F1D33 0, #0A1424 280px) no-repeat #0A1424;
+      radial-gradient(380px 200px at 50% -40px, rgba(191,9,47,.20), rgba(191,9,47,0) 74%) no-repeat,
+      linear-gradient(180deg, #121B2A 0, #0A0F18 300px) no-repeat #0A0F18;
   }
   body:has(.sc-native-cam) .main{padding-top:22px;}
   #tab-scanner .scanner-layout.sc-native-cam{
@@ -1109,8 +1110,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
     -webkit-tap-highlight-color:transparent;
   }
   #tab-scanner .scanner-layout.sc-native-cam .sc-type-btn[aria-expanded="true"]{
-    background:linear-gradient(180deg, var(--sc-teal-top), var(--sc-teal));color:#0B1626;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.22), 0 1px 2px rgba(0,0,0,.35);
+    background:linear-gradient(180deg, var(--sc-blue-top), var(--sc-blue-bot));color:#fff;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 1px 2px rgba(0,0,0,.45);
   }
   #tab-scanner .scanner-layout.sc-native-cam:not(.sc-type-open){--sc-dock-h:calc(var(--sc-dock-pad-top) + var(--sc-dock-ctl) + var(--sc-dock-pad-bottom));}
   #tab-scanner .scanner-layout.sc-native-cam:not(.sc-type-open) .sc-dock{gap:0;}
@@ -1166,11 +1167,10 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result{padding:10px 14px 10px 12px;}
   #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-head{align-items:center;gap:12px;}
   #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-grade-dot{
-    width:36px;height:36px;font-size:var(--sc-fs-body);
-    box-shadow:0 0 0 2px var(--sc-card-top), 0 0 0 3.5px rgba(111,177,224,.55);
+    width:36px;height:36px;border-radius:10px;font-size:var(--sc-fs-body);
   }
   #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-words{padding-top:0;}
-  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-id{margin-top:2px;}
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-id{flex-direction:row;flex-wrap:wrap;align-items:center;gap:2px 6px;margin-top:2px;}
   #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-line{display:flex;align-items:center;gap:5px;min-width:0;max-width:100%;white-space:nowrap;}
   #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-set{display:contents;}
   #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-set-name{min-width:0;overflow:hidden;text-overflow:ellipsis;}
@@ -1325,7 +1325,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
          shill bid, so left out of the average). On the card itself, so a glance shows them without opening it: in the
          Android app's middle stop as a slim strip of prices that clears the dock (see the CSS above). -->
     <div class="sc-recent" id="sc-recent" hidden>
-      <div class="sc-recent-head"><span class="sc-recent-title">Sales</span><span class="sc-recent-shill" id="sc-recent-shill" hidden>Likely shill</span></div>
+      <div class="sc-recent-head"><span class="sc-recent-title">Recent sales</span><span class="sc-recent-shill" id="sc-recent-shill" hidden>Likely shill</span></div>
       <ol class="sc-recent-list" id="sc-recent-list" role="list"></ol>
     </div>
     <div class="sc-result-more">
@@ -1336,7 +1336,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
             <dd class="sc-pair-val" id="sc-avg3">-</dd>
           </div>
           <div class="sc-pair-cell">
-            <dt class="sc-key sc-key-clv">CL</dt>
+            <dt class="sc-key sc-key-clv">CL value</dt>
             <dd class="sc-pair-val" id="sc-clv">-</dd>
           </div>
         </dl>
@@ -7255,17 +7255,17 @@ window.CardView = {
       }
 
       dom.pileTotals.hidden = false;
-      dom.pileCount.textContent = t.count + (t.count === 1 ? ' card' : ' cards');
+      dom.pileCount.textContent = t.count + (t.count === 1 ? ' card' : ' cards') + ' scanned';
       dom.pileMarket.textContent = money(t.marketValueCents) + (t.marketValueUnknownCount > 0 ? '+' : '');
       dom.pileUnknown.hidden = t.marketValueUnknownCount === 0;
       if (t.marketValueUnknownCount > 0) {
-        dom.pileUnknown.textContent = t.marketValueUnknownCount + ' not valued';
+        dom.pileUnknown.textContent = t.marketValueUnknownCount + (t.marketValueUnknownCount === 1 ? ' card' : ' cards') + ' not valued yet';
       }
       dom.pilePayout.textContent = money(t.buyPayoutCents);
       var how = []; // Normal is the default and the dock already shows it: only the exceptions are worth a word
       if (choice.rule !== 'normal') how.push(OfferRules.ruleTitle(choice));
       if (choice.mode === 'lower') how.push('Lower');
-      dom.pileBuyCount.textContent = t.buyCount + ' of ' + t.count + (t.count === 1 ? ' card' : ' cards') +
+      dom.pileBuyCount.textContent = 'for ' + t.buyCount + ' of ' + t.count + (t.count === 1 ? ' card' : ' cards') +
         (how.length ? ' · ' + how.join(', ') : '');
       dom.clearCount.textContent = String(entries.length);
 
