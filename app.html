@@ -5456,14 +5456,20 @@ window.AvgClient = {
 // The Scanner's fallback for a day Triumph is down. Triumph (the triumph-sourcer lookup) only ever
 // supplies a card's Card Ladder value, and its credential can be revoked or the service can fail. The
 // page used to stop with an error and price nothing; now a failed lookup that means "Triumph itself is
-// unavailable" (any 5xx, or the lookup timing out) puts the card in the pile as just its cert and takes
+// unavailable" (our server answered 5xx) puts the card in the pile as just its cert and takes
 // the Card Ladder value, card name and grade from the SAME Card Ladder lookup the sales average already
 // comes from (AvgClient's `done` answer carries clValueCents / cardName / grade). Slower, same prices:
 // the filled-in card goes through the one pricing path every Triumph card goes through.
 //
+// A lookup that gets NO answer at all (no response, or an answer cut off mid-read) is not Triumph being
+// down: the page asks once more, and when that gets nothing either it takes the same fallback with
+// SLOW_NOTE ("Slow connection") instead of DOWN_NOTE, because the connection is the suspect, not Triumph
+// (the 2026-11-13 incident: our server answered in 2.5 s and the phone still said Triumph was down).
+//
 // This file is only the decisions, so they can be unit-tested without a page:
-//   isTriumphDown(failure)      is this failed lookup "Triumph is down" (and so worth the fallback)?
-//   downFacts(...)              the facts a card starts with when its lookup failed that way
+//   isTriumphDown(failure)      is this failed lookup "Triumph is down"? Only an HTTP 5xx answer is.
+//   downFacts(...)              the facts a card starts with when its lookup failed that way (or got no answer)
+//   noteFor(facts)              the staff note for a fallback card that is waiting: DOWN_NOTE or SLOW_NOTE
 //   fillFromAverage(...)        the facts once the average's answer arrives (CL value, name, grade)
 //   waitingForValue(facts)      a fallback card still waiting on its CL value (the page says so, staff only)
 //   marketValue(facts, current) the number the pile holds as the card's market value
@@ -5483,6 +5489,11 @@ window.AvgClient = {
  *  shows the note's card, and nothing else on the page mentions Triumph. No em dash: on-screen copy. */
 var DOWN_NOTE = 'Triumph is down: getting the Card Ladder value with the average';
 
+/** The ONE line staff see while a fallback card waits for its value because the lookup got no answer at
+ *  all, twice (a slow or stuck connection, which says nothing about Triumph). Staff view only, like
+ *  DOWN_NOTE, and no em dash: on-screen copy. */
+var SLOW_NOTE = 'Slow connection: using the Card Ladder value';
+
 /** Any 5xx answer: the service (or the credential behind it) is not working. A 4xx is the cert or the
  *  sign-in, a 2xx is an answer: neither is "Triumph is down". */
 function isDownStatus(status) {
@@ -5490,18 +5501,15 @@ function isDownStatus(status) {
 }
 
 /**
- * failure = { status?, name?, online? }: `status` when the lookup got an HTTP answer, `name` (the
- * error's name) when it threw, `online` the device's own navigator.onLine reading if it has one.
- * A status decides on its own. Otherwise only the lookup's own timeout counts (an AbortError), and not
- * on a phone that is offline: there the timeout is a lost signal, and the page's no-signal wording and
- * Retry stay what handle it. Any other thrown error (a fetch that never reached the server) is NOT
- * Triumph being down.
+ * failure = { status? }: `status` when the lookup got an HTTP answer. ONLY an HTTP 5xx answer from our
+ * server is "Triumph is down" (it answers 502/503 when Triumph itself fails or the credential is gone).
+ * A lookup that threw or timed out is never it, whatever its error's name (an AbortError included): no
+ * answer says nothing about Triumph, so the page asks again and, failing that, blames the connection
+ * (SLOW_NOTE) or, on a phone that is offline, the lost signal. Any other field is ignored.
  */
 function isTriumphDown(failure) {
   if (!failure || typeof failure !== 'object') return false;
-  if (typeof failure.status === 'number') return isDownStatus(failure.status);
-  if (failure.name === 'AbortError') return failure.online !== false;
-  return false;
+  return isDownStatus(failure.status);
 }
 
 /** The same grade-number reading the page uses for a Triumph grade ("10" -> 10, "9.5" -> 9.5,
@@ -5537,27 +5545,36 @@ function carryAverage(prev) {
 }
 
 /**
- * The facts for a card whose Triumph lookup failed because Triumph is down (the same fields the page's
- * onLookup builds for a Triumph answer, with no value, name or grade known yet). `prev` is whatever
- * facts the pile already holds for this cert (or null).
+ * The facts for a card whose Triumph lookup failed because Triumph is down, or got no answer (the same
+ * fields the page's onLookup builds for a Triumph answer, with no value, name or grade known yet). `prev`
+ * is whatever facts the pile already holds for this cert (or null). `why` is 'slow' for a lookup that got
+ * no answer: the card then carries `downWhy: 'slow'`, which noteFor words as SLOW_NOTE. Anything else
+ * (the default) is Triumph being down.
  *   - prev already has a CL value (Triumph's, or an earlier fallback's): it stands. The card keeps its
  *     name/grade/value and just asks again for the average.
  *   - otherwise: a fresh fallback card, titled by its cert ("PSA 12345678"), `clvFromAvg` set so the
  *     average's answer may fill its value in.
  */
-function downFacts(cert, grader, prev, deps) {
+function downFacts(cert, grader, prev, deps, why) {
   var g = String(grader || '').toLowerCase();
   var avg = carryAverage(prev);
   if (prev && typeof prev === 'object' && prev.clvCents != null) return Object.assign({}, prev, avg);
   var title = g.toUpperCase() + ' ' + cert;
   var tf = titleFacts(title, deps);
-  return {
+  var facts = {
     cert: cert, grader: g, title: title, clvCents: null,
     grade: null, gradeText: null, confidence: null,
     sport: tf.sport, year: tf.year, language: tf.language,
     avgStatus: avg.avgStatus, avg3Cents: avg.avg3Cents, avgReason: avg.avgReason,
     clvFromAvg: true,
   };
+  if (why === 'slow') facts.downWhy = 'slow';
+  return facts;
+}
+
+/** The staff note for a fallback card that is waiting for its value: the words say why it is waiting. */
+function noteFor(facts) {
+  return facts && facts.downWhy === 'slow' ? SLOW_NOTE : DOWN_NOTE;
 }
 
 /** True while a fallback card still waits on its CL value: nothing known yet and the average (which
@@ -5602,9 +5619,11 @@ function marketValue(facts, current) {
 
 window.TriumphDown = {
   DOWN_NOTE: DOWN_NOTE,
+  SLOW_NOTE: SLOW_NOTE,
   isDownStatus: isDownStatus,
   isTriumphDown: isTriumphDown,
   downFacts: downFacts,
+  noteFor: noteFor,
   waitingForValue: waitingForValue,
   fillFromAverage: fillFromAverage,
   marketValue: marketValue,
@@ -7013,14 +7032,22 @@ window.CardView = {
         Triumph answer's facts go through. */
     var fallbackDeps = { sportCore: SportCore, priceCore: PriceCore, gradeNum: gradeNum };
 
-    /** The Triumph lookup failed because Triumph itself is down (TriumphDown.isTriumphDown: any 5xx, the
-        revoked credential's 503 included, or the lookup timing out). Nothing stops: the card goes in the
-        pile as just its cert, with no CL value yet, and the average is asked for exactly as always. That
-        answer carries the Card Ladder value, name and grade, and setAverage fills them in. A Triumph value
-        the card already has stands (downFacts). */
+    /** The Triumph lookup failed because Triumph itself is down (TriumphDown.isTriumphDown: our server
+        answered 5xx, the revoked credential's 503 included). Nothing stops: the card goes in the pile as
+        just its cert, with no CL value yet, and the average is asked for exactly as always. That answer
+        carries the Card Ladder value, name and grade, and setAverage fills them in. A Triumph value the
+        card already has stands (downFacts). */
     function onTriumphDown(cert, grader) {
       var g = String(grader || '').toLowerCase();
       takeCard(cert, g, TriumphDown.downFacts(cert, g, pileFactsFor(cert, g), fallbackDeps));
+    }
+
+    /** Neither lookup request got an answer (LOOKUP_FIRST_MS, then one fresh try for LOOKUP_RETRY_MS): a slow
+        or stuck connection, which says nothing about Triumph. The same fallback as onTriumphDown, so the card
+        still prices, with the note that says what happened (TriumphDown.SLOW_NOTE). */
+    function onSlowConnection(cert, grader) {
+      var g = String(grader || '').toLowerCase();
+      takeCard(cert, g, TriumphDown.downFacts(cert, g, pileFactsFor(cert, g), fallbackDeps, 'slow'));
     }
 
     /**
@@ -7113,10 +7140,10 @@ window.CardView = {
 
     /** The small explanation under the squares (staff only). The squares themselves stay uncluttered. */
     function renderNote(f, priced) {
-      // Triumph is down and this card is still waiting for the CL value that comes with its average: say
-      // so (staff only: hide mode hides this whole card). A missing rate sheet or percent is the more
-      // actionable problem, so those notes still win.
-      if (TriumphDown.waitingForValue(f) && !(priced && (priced.noSheet || priced.noPct))) { showNote(TriumphDown.DOWN_NOTE, false, 'down'); return; }
+      // Triumph is down (or the connection was too slow to ask it) and this card is still waiting for the CL
+      // value that comes with its average: say which (TriumphDown.noteFor; staff only: hide mode hides this
+      // whole card). A missing rate sheet or percent is the more actionable problem, so those notes still win.
+      if (TriumphDown.waitingForValue(f) && !(priced && (priced.noSheet || priced.noPct))) { showNote(TriumphDown.noteFor(f), false, 'down'); return; }
       if (!priced) { showNote(''); return; }
       if (priced.noSheet) {
         showNote(priced.rule === 'consignor'
@@ -7292,9 +7319,15 @@ window.CardView = {
     }
 
     // ── scans that arrive while a lookup is running wait their turn instead of being dropped (the
-    // beep/haptic already told Josh it was read). One Triumph LOOKUP at a time, each capped at
-    // LOOKUP_TIMEOUT_MS by an AbortController so a hung request can never leave `busy` stuck. ──────
-    var LOOKUP_TIMEOUT_MS = 20000;
+    // beep/haptic already told Josh it was read). One Triumph LOOKUP at a time. A lookup that gets no
+    // answer is cut loose and asked again ONCE, as a fresh request: the first waits LOOKUP_FIRST_MS for the
+    // server's response headers, the second LOOKUP_RETRY_MS (8 + 12 keeps the worst case at the old 20 s).
+    // Those clocks stop the moment the headers arrive, so reading the answer is never cut by them; the read
+    // has its own, generous guard (LOOKUP_BODY_MS), there only so a dead connection can never leave `busy`
+    // stuck. ────────────────────────────────────────────────────────────────────────────────────────
+    var LOOKUP_FIRST_MS = 8000;
+    var LOOKUP_RETRY_MS = 12000;
+    var LOOKUP_BODY_MS = 15000;
     var scanQueue = [];
     function drainScanQueue() {
       if (busy || !scanQueue.length) return;
@@ -7322,32 +7355,88 @@ window.CardView = {
         // 9-digit cert read off ITF) is 100106046, "00412345" (an old label) is 412345. The text as read
         // stays what the page shows and dedupes on (by its zero-stripped key).
         var lookupCert = grader === 'psa' ? Certs.certKey(cert) : cert;
-        function lookupOnce() {
-          var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-          if (ctl) setTimeout(function () { ctl.abort(); }, LOOKUP_TIMEOUT_MS); // harmless once it has answered
-          return authFetch(TRIUMPH_URL, {
-            method: 'POST', headers: { authorization: 'Bearer ' + session.access_token },
-            body: JSON.stringify({ action: 'lookup', certs: [lookupCert] }),
-            signal: ctl ? ctl.signal : undefined
+        /** One request, one verdict. Resolves { res, body } once the answer is in: the headers AND the body (the
+            body of a 401 that a refresh is about to answer is never read, a 5xx's never matters; `afterRefresh`
+            marks the request that follows a refresh, which is read whatever its status). Rejects with `noAnswer`
+            set when the connection gave nothing back in time: no response headers within `headersMs`, or headers
+            that came and a body that did not finish within LOOKUP_BODY_MS or died mid-read. That says nothing
+            about Triumph. Every other failure keeps its own error: a fetch that never reached the server (no
+            signal), a body that arrived and is not JSON. The headers clock stops the moment the headers arrive,
+            so reading the body is never cut by it, and a request that has answered is never aborted. */
+        function lookupOnce(headersMs, afterRefresh) {
+          return new Promise(function (resolve, reject) {
+            var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            var over = false;
+            var timer = null;
+            function finish(ok, value) {
+              if (over) return;
+              over = true;
+              clearTimeout(timer);
+              if (ok) resolve(value); else reject(value);
+            }
+            function noAnswer(why) {
+              if (over) return;
+              var e = new Error('The lookup got no answer (' + why + ').');
+              e.noAnswer = true;
+              finish(false, e);
+              if (ctl) { try { ctl.abort(); } catch (x) { /* nothing left to cut loose */ } }
+            }
+            timer = setTimeout(function () { noAnswer('no response in ' + (headersMs / 1000) + ' s'); }, headersMs);
+            var sent;
+            try {
+              sent = authFetch(TRIUMPH_URL, {
+                method: 'POST', headers: { authorization: 'Bearer ' + session.access_token },
+                body: JSON.stringify({ action: 'lookup', certs: [lookupCert] }),
+                signal: ctl ? ctl.signal : undefined
+              });
+            } catch (e) { finish(false, e); return; }
+            sent.then(function (res) {
+              if (over) return;
+              clearTimeout(timer); // the headers are in: that clock is done, and none of it reaches the body
+              if (res.status === 401 && !afterRefresh) { finish(true, { res: res, body: null }); return; }
+              timer = setTimeout(function () { noAnswer('answer not finished in ' + (LOOKUP_BODY_MS / 1000) + ' s'); }, LOOKUP_BODY_MS);
+              return res.json().then(function (j) { finish(true, { res: res, body: j }); }, function (readErr) {
+                if (over) return;
+                // A gateway's own error page is not JSON, but a 5xx still means Triumph is down: a body that
+                // will not read must never turn that into some other error.
+                if (TriumphDown.isTriumphDown({ status: res.status })) { finish(true, { res: res, body: null }); return; }
+                // Text that arrived and is not JSON keeps its own error; anything else is the connection
+                // dying mid-answer (a network error, an abort): no answer.
+                if (readErr && readErr.name === 'SyntaxError') { finish(false, readErr); return; }
+                noAnswer('answer cut off');
+              });
+            }, function (e) {
+              if (over) return;
+              if (e && e.name === 'AbortError') { noAnswer('request aborted'); return; }
+              finish(false, e);
+            }).catch(function (e) { finish(false, e); });
           });
         }
 
-        return lookupOnce().then(function (res) {
-          if (res.status !== 401) return res;
-          return refreshSession().then(function (r) {
-            if (r.ok) return lookupOnce();
-            if (r.noSignal) { var eSig = new Error(Signal.NO_SIGNAL_ERROR); eSig.noSignal = true; throw eSig; }
-            session = null; saveSession(null);
-            var eOut = new Error('signed out'); eOut.signedOut = true; throw eOut;
+        /** One try: the request, and once more after a 401 and a fresh session (a sign-in lapses quietly). */
+        function lookupTry(headersMs) {
+          return lookupOnce(headersMs).then(function (r) {
+            if (r.res.status !== 401) return r;
+            return refreshSession().then(function (rs) {
+              if (rs.ok) return lookupOnce(headersMs, true);
+              if (rs.noSignal) { var eSig = new Error(Signal.NO_SIGNAL_ERROR); eSig.noSignal = true; throw eSig; }
+              session = null; saveSession(null);
+              var eOut = new Error('signed out'); eOut.signedOut = true; throw eOut;
+            });
           });
-        }).then(function (res) {
-          // A gateway's own error page is not JSON, but a 5xx still means Triumph is down: a body that
-          // will not parse must never turn that into some other error.
-          return res.json().then(function (j) { return { res: res, body: j }; }, function (parseErr) {
-            if (TriumphDown.isTriumphDown({ status: res.status })) return { res: res, body: null };
-            throw parseErr;
+        }
+
+        /** The lookup: one try, and when it got NO answer, one fresh try (a new request, a new AbortController).
+            Nothing reaches the pile until the final answer is handled below, once, so a retry can never add a
+            card twice, and `busy` stays held across both tries. */
+        function lookupWithRetry() {
+          return lookupTry(LOOKUP_FIRST_MS).then(null, function (e) {
+            if (!(e && e.noAnswer)) throw e;
+            return lookupTry(LOOKUP_RETRY_MS);
           });
-        }).then(function (r) {
+        }
+
+        return lookupWithRetry().then(function (r) {
           busy = false;
           if (!r.res.ok) {
             // Triumph itself is down (any 5xx, the revoked credential's 503 included): not an error, the
@@ -7367,11 +7456,16 @@ window.CardView = {
           busy = false;
           if (e && e.signedOut) { renderNotSignedIn(cert, grader, Signal.SIGNED_OUT_MESSAGE); return; }
           if (e && e.noSignal) { applyFailure(cert, grader, attempt, describeFailure(Signal.NO_SIGNAL_ERROR, attempt)); return; }
-          if (e && e.name === 'AbortError') {
-            // The lookup timing out is Triumph hanging, so the average carries on (unless this phone is
-            // offline: then it is a lost signal, and the no-signal wording and Retry below are right).
-            if (TriumphDown.isTriumphDown({ name: e.name, online: onlineHint() })) { onTriumphDown(cert, grader); return; }
-            applyFailure(cert, grader, attempt, describeFailure('The lookup took longer than ' + (LOOKUP_TIMEOUT_MS / 1000) + ' seconds.', attempt));
+          if (e && e.noAnswer) {
+            // Neither request got an answer. On a phone that is offline that is a lost signal: the no-signal
+            // wording and Retry are right. Otherwise the connection is slow or stuck, which says nothing about
+            // Triumph (only a 5xx answer from our server does): the card is priced from the Card Ladder value,
+            // as in the 5xx case, with a note that says what happened.
+            if (onlineHint() === false) {
+              applyFailure(cert, grader, attempt, describeFailure('The lookup took longer than ' + ((LOOKUP_FIRST_MS + LOOKUP_RETRY_MS) / 1000) + ' seconds.', attempt));
+              return;
+            }
+            onSlowConnection(cert, grader);
             return;
           }
           applyFailure(cert, grader, attempt, describeFailure(e, attempt));
