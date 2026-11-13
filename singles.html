@@ -2352,13 +2352,9 @@ window.SinglesValidate = {
         return '<option value="' + esc(p[0]) + '"' + (String(p[0]) === String(value) ? ' selected' : '') + '>' + esc(p[1]) + '</option>';
       }).join('');
     }
-    // BGS has no sales data (Card Ladder sales are read for PSA and CGC only), so a BGS slab cannot price on Avg 3,
-    // Lowest of 2 or Last sale: it skips such a row. Say so on the row instead of letting it fall through quietly.
+    // BGS prices from Card Ladder sales like PSA and CGC (the helper searches Beckett certs with grader=bgs), so no row is skipped for want of sales.
     function bgsNoSalesNote(r) {
-      var g = r && r.grader;
-      var hasBgs = String(Array.isArray(g) ? g.join('+') : g || '').toUpperCase().indexOf('BGS') >= 0;
-      if (!hasBgs || ['avg3', 'last', 'lowest'].indexOf(r.basis) < 0) return '';
-      return '<span class="bgs-note" style="font-size:11px" title="BGS has no sales data, so BGS slabs skip this row">BGS has no sales data here: BGS slabs skip this row</span>';
+      return '';
     }
     function basisOptions(sel) {
       var keys = SV.BASIS_KEYS || [], labels = SV.BASIS_LABEL || {};

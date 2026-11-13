@@ -4441,7 +4441,7 @@ function certKeyOf(cert) {
 // The only graders the table takes (the migration's CHECK on `grader`). Any other grader (BGS, SGC,
 // TAG...) has no average here: asking for it under 'psa' would read a different card's average, so it
 // is never asked at all and ends as an 'error' with this reason.
-const AVG_GRADERS = ['psa', 'cgc'];
+const AVG_GRADERS = ['psa', 'cgc', 'bgs'];
 const NO_GRADER_AVG_REASON = 'No average for this grader';
 
 /** The grader as the table spells it: trimmed and lower-cased, a missing one as 'psa' (as it always was). */
