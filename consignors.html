@@ -144,6 +144,9 @@ html::after{
 /* FORM */
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .form-group{margin-bottom:14px;}
+.ovl-wrap{display:flex;align-items:center;gap:8px;}
+.ovl-wrap .form-input{flex:0 1 110px;min-width:0;}
+.ovl-suffix{font-size:13px;color:var(--dim);}
 .form-label{font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);display:block;margin-bottom:7px;}
 .form-input,.form-select,.form-textarea{width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:var(--font-ui);font-size:13px;outline:none;transition:border-color 0.2s;}
 .form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--buy);}
@@ -496,6 +499,10 @@ code{font-family:var(--font-mono);font-size:.92em;}
     </div>
     <div class="scr-status" id="scr-status" role="status" aria-live="polite"></div>
     <div id="scr-body" hidden>
+    <div class="form-group scr-setting">
+      <label class="form-label" for="scr-overlap">Higher row wins when rates differ by at least</label>
+      <div class="ovl-wrap"><input class="form-input" id="scr-overlap" type="number" inputmode="numeric" min="0" max="100" step="1" placeholder="5" title="When a card fits more than one rate row and their rates differ by at least this many points, the higher-rate row pays. 0 = always the higher row; 100 = always the lowest payout."><span class="ovl-suffix">points</span></div>
+    </div>
     <div class="wtb-group scr-rows" id="scr-rows"></div>
     <div class="scr-actions">
       <button type="button" class="btn btn-ghost btn-sm" id="scr-copy">Start from the consignor rates</button>
@@ -753,14 +760,28 @@ const SPORT_SHORT                         = {
 /** What a row with sport 'sports' covers: every league, so one row can price all of them at once. */
 const SPORT_LEAGUES = ['nba', 'nfl', 'mlb', 'nhl', 'soccer', 'racing', 'fighting', 'golf', 'sports'];
 
-/** The bot never buys BGS or SGC, so they are not offered. '*' takes both of the ones we do buy. */
-const GRADER_KEYS = ['*', 'PSA', 'CGC'];
+/**
+ * The graders a row can name. SGC and TAG are not offered. '*' (the default, and what every sheet saved
+ * before BGS existed uses) takes PSA and CGC and NEVER BGS: a BGS slab is quoted only by a row that names
+ * BGS, so an old sheet quotes exactly what it always did.
+ */
+const GRADER_KEYS = ['*', 'PSA', 'CGC', 'BGS'];
+
+/** The specific graders (no '*'): what a row's list is made of, in the order a list is stored. */
+const GRADER_LIST_KEYS = ['PSA', 'CGC', 'BGS'];
 
 const GRADER_LABEL                         = {
-  '*': 'Any grader',
+  '*': 'PSA or CGC',
   PSA: 'PSA',
   CGC: 'CGC',
+  BGS: 'BGS',
+  'PSA+BGS': 'PSA / BGS',
+  'CGC+BGS': 'CGC / BGS',
+  'PSA+CGC+BGS': 'PSA / CGC / BGS',
 };
+
+/** What the editors' grader dropdown offers: one grader, or a list joined with '+' ('CGC+BGS' = one row for both). */
+const GRADER_CHOICES = ['*', 'PSA', 'CGC', 'BGS', 'PSA+BGS', 'CGC+BGS', 'PSA+CGC+BGS'];
 
 /** Every grade a dropdown offers: whole and half steps, 1 through 10. */
 const GRADE_STEPS = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
@@ -776,14 +797,15 @@ const LANGUAGE_LABEL                           = {
   chinese: ['CN', 'Chinese'],
 };
 
-/** Payout basis keys. Same three the bot uses: rules.js BASIS_KEYS. */
-const BASIS_KEYS = ['clv', 'avg3', 'lowest'];
+/** Payout basis keys. Same four the bot uses: rules.js BASIS_KEYS. 'last' = the newest Card Ladder sale. */
+const BASIS_KEYS = ['clv', 'avg3', 'lowest', 'last'];
 
 /** Plain-English name per basis, used in both the page and the error messages. */
 const BASIS_LABEL                         = {
   clv: 'CL Value',
   avg3: 'Avg 3',
   lowest: 'Lowest of 2',
+  last: 'Last sale',
 };
 
 const CERT_RULES = ['any', 'new'];
@@ -841,6 +863,9 @@ const DEFAULT_MAX_SLABS = 200;
  *  floor off entirely. Dollars, same as a row's own from/to — not cents, unlike validate-singles.ts's
  *  unrelated minMarketCents. */
 const DEFAULT_MIN_LOT_MARKET = 2000;
+/** When rows overlap and the highest fitting rate is at least this many percent points above the lowest, the
+ *  higher-rate row wins (owner 2026-11). 0 = always the higher row; 100 = never (the old lowest-payout rule). */
+const DEFAULT_OVERLAP_POINTS = 5;
 
 // KEEP IN SYNC BY HAND with ticketHours.js's DEFAULT_WINDOWS / DEFAULT_TIMEZONE — this file can't
 // import that module (see file header), so the literal is duplicated here on purpose.
@@ -849,9 +874,60 @@ const DEFAULT_TICKET_TIMEZONE = 'America/New_York';
 
 // ── shapes ───────────────────────────────────────────────────────────────────
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                                                              
 
+
+
+
+
+
+
        
+
+
+
+
+
+
+
+
+
 
 // ── small helpers (no exports the page does not need) ────────────────────────
 
@@ -926,6 +1002,7 @@ function defaults()           {
     specialKeywords: [],
     maxSlabsPerComp: DEFAULT_MAX_SLABS,
     minLotMarket: DEFAULT_MIN_LOT_MARKET,
+    overlapPoints: DEFAULT_OVERLAP_POINTS,
     paused: false,
     pausedMessage: '',
     ticketsOpen: true,
@@ -971,6 +1048,7 @@ function normalize(raw         )          {
     specialKeywords: normKeywords(src.specialKeywords),
     maxSlabsPerComp: normNumber(src.maxSlabsPerComp, DEFAULT_MAX_SLABS),
     minLotMarket: normMoney(src.minLotMarket, DEFAULT_MIN_LOT_MARKET),
+    overlapPoints: normNumber(src.overlapPoints, DEFAULT_OVERLAP_POINTS),
     paused: normBool(src.paused),
     pausedMessage: src.pausedMessage == null ? '' : String(src.pausedMessage),
     ticketsOpen: src.ticketsOpen == null || src.ticketsOpen === '' ? true : normBool(src.ticketsOpen),
@@ -1089,6 +1167,7 @@ function migrateV1(src                         )          {
     specialKeywords: normKeywords(src.specialKeywords),
     maxSlabsPerComp: normNumber(src.maxSlabsPerComp, DEFAULT_MAX_SLABS),
     minLotMarket: normMoney(src.minLotMarket, DEFAULT_MIN_LOT_MARKET),
+    overlapPoints: normNumber(src.overlapPoints, DEFAULT_OVERLAP_POINTS),
     paused: normBool(src.paused),
     pausedMessage: src.pausedMessage == null ? '' : String(src.pausedMessage),
     ticketsOpen: src.ticketsOpen == null || src.ticketsOpen === '' ? true : normBool(src.ticketsOpen),
@@ -1129,12 +1208,35 @@ function normKey(x         )          {
   return typeof x === 'string' ? x.trim().toLowerCase() : x;
 }
 
-/** The grader keys are the only upper-case vocabulary, so 'psa' typed by hand still lands on 'PSA'. */
+/**
+ * The grader keys are the only upper-case vocabulary, so 'psa' typed by hand still lands on 'PSA'. A list
+ * ('CGC+BGS' from the editor's dropdown, 'cgc, bgs', or an array) becomes an array of keys in stored order
+ * with the duplicates dropped; a one-grader list is that grader, PSA + CGC is '*' (the same takers), and a
+ * list with '*' in it is '*'. An unknown word is left as typed so the validator can name it.
+ */
 function normGrader(x         )          {
-  if (typeof x !== 'string') return x;
-  const s = x.trim();
-  const hit = GRADER_KEYS.find((k) => k.toLowerCase() === s.toLowerCase());
-  return hit || s;
+  const parts = Array.isArray(x) ? x : typeof x === 'string' && /[+,/|]/.test(x) ? x.split(/[+,/|]/) : null;
+  if (!parts) {
+    if (typeof x !== 'string') return x;
+    const s = x.trim();
+    const hit = GRADER_KEYS.find((k) => k.toLowerCase() === s.toLowerCase());
+    return hit || s;
+  }
+  const keys           = [];
+  for (const p of parts) {
+    if (typeof p !== 'string') return x;
+    const s = p.trim();
+    if (!s) continue;
+    const hit = GRADER_KEYS.find((k) => k.toLowerCase() === s.toLowerCase());
+    if (!hit) return x;
+    if (hit === '*') return '*';
+    if (keys.indexOf(hit) < 0) keys.push(hit);
+  }
+  if (!keys.length) return '*';
+  const ordered = GRADER_LIST_KEYS.filter((k) => keys.indexOf(k) >= 0);
+  if (ordered.length === 1) return ordered[0];
+  if (ordered.length === 2 && ordered[0] === 'PSA' && ordered[1] === 'CGC') return '*';
+  return ordered;
 }
 
 /**
@@ -1327,6 +1429,18 @@ function validateSettings(raw         )                 {
     }
   }
 
+  // overlapPoints: a whole number of percent points, 0-100. 0 is deliberate ("always the higher row"), so only
+  // null/'' fall back to the default.
+  let overlapPoints = DEFAULT_OVERLAP_POINTS;
+  if (s.overlapPoints != null && s.overlapPoints !== '') {
+    const o = num(s.overlapPoints);
+    if (o === null || !Number.isInteger(o) || o < 0 || o > 100) {
+      errors.push('Higher row wins when rates differ by at least must be a whole number of points between 0 and 100.');
+    } else {
+      overlapPoints = o;
+    }
+  }
+
   // paused
   let paused = false;
   if (s.paused != null && s.paused !== '') {
@@ -1413,6 +1527,7 @@ function validateSettings(raw         )                 {
       specialKeywords,
       maxSlabsPerComp,
       minLotMarket,
+      overlapPoints,
       paused,
       pausedMessage,
       ticketsOpen,
@@ -1539,11 +1654,20 @@ function validateRow(raw         , n        , errors          )                 
   }
 
   // grader
-  let grader = '*';
+  let grader                    = '*';
   if (r.grader != null && r.grader !== '') {
-    if (typeof r.grader !== 'string' || GRADER_KEYS.indexOf(r.grader) < 0) {
-      errors.push(at + 'Grader must be ' + listNames(GRADER_KEYS, GRADER_LABEL) + '.');
-    } else grader = r.grader;
+    const g = r.grader;
+    const listOk =
+      Array.isArray(g) &&
+      g.length >= 2 &&
+      g.every((k) => typeof k === 'string' && GRADER_LIST_KEYS.indexOf(k) >= 0) &&
+      new Set(g).size === g.length &&
+      // stored order, and never PSA + CGC alone (that is '*'): one spelling per meaning
+      g.join('+') === GRADER_LIST_KEYS.filter((k) => g.indexOf(k) >= 0).join('+') &&
+      g.join('+') !== 'PSA+CGC';
+    if (typeof g === 'string' && GRADER_KEYS.indexOf(g) >= 0) grader = g;
+    else if (listOk) grader = (g            ).slice();
+    else errors.push(at + 'Grader must be PSA, CGC, BGS, a list of them (like CGC and BGS), or PSA or CGC.');
   }
 
   // gradeMin / gradeMax
@@ -1700,7 +1824,9 @@ window.RatesValidate = {
   SPORT_SHORT: SPORT_SHORT,
   SPORT_LEAGUES: SPORT_LEAGUES,
   GRADER_KEYS: GRADER_KEYS,
+  GRADER_LIST_KEYS: GRADER_LIST_KEYS,
   GRADER_LABEL: GRADER_LABEL,
+  GRADER_CHOICES: GRADER_CHOICES,
   GRADE_STEPS: GRADE_STEPS,
   LANGUAGE_KEYS: LANGUAGE_KEYS,
   LANGUAGE_LABEL: LANGUAGE_LABEL,
@@ -1713,6 +1839,7 @@ window.RatesValidate = {
   DEFAULT_VINTAGE_YEAR: DEFAULT_VINTAGE_YEAR,
   DEFAULT_MAX_SLABS: DEFAULT_MAX_SLABS,
   DEFAULT_MIN_LOT_MARKET: DEFAULT_MIN_LOT_MARKET,
+  DEFAULT_OVERLAP_POINTS: DEFAULT_OVERLAP_POINTS,
   DEFAULT_TICKET_WINDOWS: DEFAULT_TICKET_WINDOWS,
   DEFAULT_TICKET_TIMEZONE: DEFAULT_TICKET_TIMEZONE,
   defaults: defaults,
@@ -1749,7 +1876,7 @@ function toFormRow(r) {
     _uid: 'scr' + uidSeq,
     sort: str(r.sort == null ? 0 : r.sort),
     sport: str(r.sport || '*'),
-    grader: str(r.grader || '*'),
+    grader: Array.isArray(r.grader) ? r.grader.join('+') : str(r.grader || '*'),
     gradeMin: str(r.gradeMin == null ? 1 : r.gradeMin),
     gradeMax: str(r.gradeMax == null ? 10 : r.gradeMax),
     from: str(r.from == null ? 0 : r.from),
@@ -2721,7 +2848,8 @@ window.ScanSheet = {
       save: document.getElementById('scr-save'),
       errors: document.getElementById('scr-errors'),
       toggle: document.getElementById('scr-toggle'),
-      body: document.getElementById('scr-body')
+      body: document.getElementById('scr-body'),
+      overlap: document.getElementById('scr-overlap')
     };
     if (!dom.card || !V || !S) return null;
     // The card is first on the dashboard and folded to its title and status, so it never pushes the ledger down;
@@ -2760,7 +2888,7 @@ window.ScanSheet = {
     function rowHtml(r) {
       var sep = '<span class="sep">·</span>';
       var sports = V.SPORT_KEYS.map(function (k) { return [k, (V.SPORT_SHORT && V.SPORT_SHORT[k]) || k]; });
-      var graders = V.GRADER_KEYS.map(function (k) { return [k, (V.GRADER_LABEL && V.GRADER_LABEL[k]) || k]; });
+      var graders = (V.GRADER_CHOICES || V.GRADER_KEYS).map(function (k) { return [k, (V.GRADER_LABEL && V.GRADER_LABEL[k]) || k]; });
       var grades = V.GRADE_STEPS.map(function (g) { return [g, g]; });
       var bases = V.BASIS_KEYS.map(function (k) { return [k, (V.BASIS_LABEL && V.BASIS_LABEL[k]) || k]; });
       var certs = V.CERT_RULES.map(function (k) { return [k, (V.CERT_RULE_LABEL && V.CERT_RULE_LABEL[k]) || k]; });
@@ -2799,6 +2927,17 @@ window.ScanSheet = {
         ? rows.map(rowHtml).join('')
         : '<div class="scr-empty">No bands yet. Start from the consignor rates, or add a band.</div>';
       dom.save.disabled = busy || !base;
+      if (dom.overlap) {
+        dom.overlap.disabled = busy || !base;
+        dom.overlap.value = base && base.overlapPoints != null ? String(base.overlapPoints) : '5';
+      }
+    }
+    if (dom.overlap) {
+      dom.overlap.addEventListener('input', function () {
+        if (!base) return;
+        base.overlapPoints = dom.overlap.value;
+        setStatus('Not saved yet.');
+      });
     }
     function rowOf(target) {
       var tier = target.closest('.wtb-tier');

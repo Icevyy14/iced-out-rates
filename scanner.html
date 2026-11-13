@@ -144,6 +144,9 @@ html::after{
 /* FORM */
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .form-group{margin-bottom:14px;}
+.ovl-wrap{display:flex;align-items:center;gap:8px;}
+.ovl-wrap .form-input{flex:0 1 110px;min-width:0;}
+.ovl-suffix{font-size:13px;color:var(--dim);}
 .form-label{font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);display:block;margin-bottom:7px;}
 .form-input,.form-select,.form-textarea{width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:var(--font-ui);font-size:13px;outline:none;transition:border-color 0.2s;}
 .form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--buy);}
@@ -1512,6 +1515,21 @@ function lowestOf(...cents) {
   return vals.length ? Math.min(...vals) : null;
 }
 
+/**
+ * The most recent sale's cents out of a sales list ({ cents, date: 'YYYY-MM-DD' | null }, newest first, as
+ * clHelper's toClResult builds it): the newest DATE when any sale has one (the first on a tie, so list order
+ * breaks it), else the first in the list. A sale that is not a positive number is not a sale; null when none.
+ */
+function lastSaleCents(sales) {
+  const list = (Array.isArray(sales) ? sales : []).filter(s => s && typeof s.cents === 'number' && Number.isFinite(s.cents) && s.cents > 0);
+  if (!list.length) return null;
+  let best = null;
+  for (const s of list) {
+    if (typeof s.date === 'string' && s.date && (best == null || best.date == null || s.date > best.date)) best = s;
+  }
+  return (best || list[0]).cents;
+}
+
 // Owner's rule (2026-11-05): "if sales are like 500, 500, 800, 500, it should put averages as 500 -
 // disregarding the super high sales." A single freak sale must never drag a sale average up.
 //
@@ -1637,6 +1655,7 @@ window.Money = {
   AVG_OUTLIER_MULTIPLIER: AVG_OUTLIER_MULTIPLIER,
   AVG_OUTLIER_MADS: AVG_OUTLIER_MADS,
   lowestOf: lowestOf,
+  lastSaleCents: lastSaleCents,
   sumCents: sumCents,
   fmt: fmt,
 };
@@ -1733,28 +1752,81 @@ function parseCerts(input, opts = {}) {
 // parseCerts above is the Discord ticket parser and stays exactly as it is: chat must never start
 // accepting short numbers or links. parseOneCert is for one barcode, one QR link or one typed box on
 // the Scanner page, where the label generation can be told from the RAW digits before any zero is
-// stripped:
+// stripped. Every PSA label still in circulation reads here:
+//   1991 to Jun 2017 labels: a 1D barcode only (ITF is the one type ever named for PSA; Code 128 and
+//     Code 39 are read too). Old certs are printed and barcoded zero-padded to 8 digits ("00123456").
+//   Jun 2017 on (Lighthouse and today's): the same 1D barcode plus a back QR holding
+//     https://www.psacard.com/cert/<n>/ (any case, maybe /psa or /dna, a query or #fragment after it).
+//   9-digit certs (late 2024 on, 1xx,xxx,xxx) in ITF, which only holds an even digit count, read as
+//     "0" + 9 digits: 10 digits, a single leading zero, so 9 significant digits = PSA.
+// The rules, in order:
+//   a grader named in the text ("BGS 0012345678") or by the link's HOST (psacard.com = PSA,
+//     cgccards.com = CGC; another host's /certlookup/ = CGC) wins over the length rules. Only the host
+//     counts: a cgccards.com link with "psacard" in its query is still CGC.
+//   an ITF read (opts.format) of 8 digits starting "01" could be a 9-digit cert ("01xxxxxxxx" in ITF) cut
+//     short, so it is not priced from the read alone: the caller asks staff to check the label and tap
+//     PSA (needsGrader). An "00" one is priced: it is a 1990s cert padded to 8 (a BGS "00xxxxxxxx" cut
+//     short could read the same, but the bot doesn't buy BGS, and the app wants two matching ITF reads).
 //   13 digits                 -> CGC (its newer cert format)
 //   10 digits starting "00"   -> a BGS-style serial: never priced as PSA, the caller asks for the grader
 //   7-12 digits after zeros   -> today's rule (graderByLength: 10+ = CGC, else PSA)
-//   fewer than 7 after zeros  -> an old short PSA cert, accepted ONLY when opts.scan says a barcode
-//                                was read (PSA's ITF barcodes zero-pad old certs to 8 digits); typed
-//                                or pasted, it is refused as too short, like a ticket paste.
-// A grader named in the text ("BGS 0012345678") or by the link (/certlookup/ and cgccards.com are
-// CGC, psacard.com is PSA) wins over the length rules.
+//   fewer than 7 after zeros  -> an old PSA cert, accepted in its printed 8-digit zero-padded form
+//                                ("00123456", scanned or typed); typed with PSA named only with 4+
+//                                significant digits or the 8-digit form ("PSA 10" is a grade, not a
+//                                cert); from a psacard.com link always. Scanned in another length: a
+//                                checked type (Code 128, QR, ...) or an unknown one with 6 significant
+//                                digits is PSA ("412345", "0412345"); ITF (often cut short) or fewer
+//                                digits is refused as a partial read, with a hint to type "PSA <number>".
+// A reader's wrapping is taken off first: Code 39's "*" start/stop and an AIM symbology prefix ("]C1",
+// "]I0") that a keyboard-style hardware scanner can type. A typed "#", "Cert #" or "Cert no." label in
+// front of a lone number is dropped too.
 
 const BOUGHT_BY_SCAN = ['psa', 'cgc'];
 const NOT_A_CERT = "That doesn't look like a cert number.";
+/** How PSA prints (and barcodes) an old cert: zero-padded to 8 digits, "00123456". */
+const PSA_PRINTED_LENGTH = 8;
+/** The fewest significant digits a typed "PSA <n>" may have: "PSA 10", "PSA 9", "psa 123" are grades or noise. */
+const MIN_NAMED_PSA_DIGITS = 4;
+/** The fewest significant digits a short scan not in the printed 8-digit form may have (an old label's 5-digit
+    side number is not a cert). */
+const MIN_SCANNED_PSA_DIGITS = 6;
+const PART_READ = 'Only part of that barcode was read. Hold steady and scan it again, or type PSA and the number.';
+const TOO_SHORT_TYPED = 'That number is too short to be a cert. Type an old PSA cert as printed, 8 digits with its zeros, or put PSA in front.';
+const TOO_SHORT_PSA = 'That number is too short to be a PSA cert (is it a grade?). Type an old cert as printed, 8 digits with its zeros.';
 
-/** A PSA (/cert/<n>) or CGC (/certlookup/<n>) link -> { digits, grader|null }, any case, with or without a trailing slash. */
+/** A barcode type's name in either reader's spelling ("ITF" / "itf", "Code128" / "code_128") -> "itf", "code128". */
+function formatKey(format) { return String(format == null ? '' : format).toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+/** The host of a link ("www.psacard.com"), lower case, or '' when the text doesn't start with one. */
+function linkHost(s) {
+  const m = String(s).trim().match(/^(?:[a-z][a-z0-9+.-]*:\/\/)?([^\/?#\s]+)/i);
+  if (!m || /^\d+$/.test(m[1])) return '';
+  return m[1].replace(/:\d+$/, '').replace(/^[^@]*@/, '').toLowerCase();
+}
+
+/** A PSA (/cert/<n>) or CGC (/certlookup/<n>) link -> { digits, grader|null }, any case, with or without a trailing
+    slash, /psa or /dna, a query or a fragment after it. The link's HOST decides the grader before the path
+    does; nothing else in the text (a query, a fragment) can. */
 function linkInfo(text) {
   const s = String(text == null ? '' : text);
-  const m = s.match(/\/(certlookup|cert)\/(\d{1,20})(?!\d)/i);
+  const m = s.match(/\/(certlookup|cert)\/(\d{1,20})(?!\w)/i);
   if (!m) return null;
+  const host = linkHost(s);
+  const isHost = name => host === name || host.endsWith('.' + name);
   let grader = null;
-  if (/cgccards\./i.test(s) || m[1].toLowerCase() === 'certlookup') grader = 'cgc';
-  else if (/psacard\./i.test(s)) grader = 'psa';
-  return { digits: m[2], grader };
+  if (isHost('psacard.com')) grader = 'psa';
+  else if (isHost('cgccards.com') || m[1].toLowerCase() === 'certlookup') grader = 'cgc';
+  return { digits: m[2], grader, host };
+}
+
+/** Takes off what a barcode reader can wrap round the text: an AIM symbology prefix ("]C1", "]I0", "]Q1") and
+    Code 39's "*" start/stop characters. Anything else comes back as it was (trimmed). */
+function unwrapScan(text) {
+  let t = String(text == null ? '' : text).trim();
+  t = t.replace(/^\][A-Za-z][0-9A-Za-z]/, '');
+  const star = t.match(/^\*([^*]*)\*$/);
+  if (star) t = star[1];
+  return t.trim();
 }
 
 /** The cert digits out of a PSA/CGC link, or the text back unchanged when it isn't one. */
@@ -1764,26 +1836,41 @@ function certFromLink(text) {
 }
 
 /**
- * parseOneCert(raw, { scan }) -> { ok: true, cert, certKey, grader }
- *                              | { ok: false, why, needsGrader?, cert?, grader? }
- * `cert` is the digits as read (text, never a Number); `certKey` the zero-stripped dedupe key.
- * `needsGrader: true` (with `cert`) means a BGS-style serial: show a grader picker, then call again
- * with the grader word in front ("PSA 0012345678"). Never throws.
+ * parseOneCert(raw, { scan, format, buyGraders }) -> { ok: true, cert, certKey, grader }
+ *                                      | { ok: false, why, needsGrader?, checkLabel?, cert?, grader? }
+ * `cert` is the digits as read (text, never a Number); `certKey` the zero-stripped dedupe key (what a PSA
+ * lookup sends). `scan: true` for a barcode the camera or the app read; `format` that barcode's type in
+ * either reader's spelling ("ITF", "itf", "Code128", "qr_code"; missing = unknown, an older app build).
+ * `needsGrader: true` (with `cert`) means show the grader picker, then call again with the grader word in
+ * front ("PSA 0012345678"): a BGS-style serial, or (`checkLabel: true`) an 8-digit ITF read that could be
+ * a longer code read cut short, where staff check the cert on the label and tap PSA. Never throws.
  */
 function parseOneCert(raw, opts) {
   const scan = !!(opts && opts.scan);
-  const text = String(raw == null ? '' : raw).trim();
+  // The graders this one-cert reader accepts: PSA and CGC, plus whatever the caller adds (the Scanner passes
+  // BGS when a rate sheet has a BGS row: opts.buyGraders). A BGS serial still has to come from the grader picker.
+  const bought = opts && Array.isArray(opts.buyGraders) && opts.buyGraders.length
+    ? opts.buyGraders.map(g => String(g).toLowerCase())
+    : BOUGHT_BY_SCAN;
+  const format = scan ? formatKey(opts && opts.format) : '';
+  const itf = format === 'itf';
+  const text = unwrapScan(raw);
   if (!text) return { ok: false, why: NOT_A_CERT };
 
-  let digits = null, named = null;
+  let digits = null, named = null, viaLink = false;
   const link = linkInfo(text);
   // A decimal is a price or a grade, never a cert: "12345678.0" must not be read as 123456780.
   if (!link && /\d\.\d/.test(text)) return { ok: false, why: 'That looks like a price or a decimal, not a cert number.' };
+  // A lone number behind a "#", "Cert #", "Cert no." or "Cert:" label ("#00412345", "Cert #00412345").
+  const unlabelled = text.replace(/^(?:cert(?:ificate)?\b\.?\s*(?:(?:no|num|number)\b\.?)?|(?:no|num|number)\b\.?)?\s*[#:]?\s*/i, '');
   if (link) {
     digits = link.digits;
     named = link.grader;
+    viaLink = named === 'psa';
   } else if (/^\d+$/.test(text.replace(/\s+/g, ''))) {
     digits = text.replace(/\s+/g, '');
+  } else if (unlabelled !== text && /^\d+$/.test(unlabelled.replace(/\s+/g, ''))) {
+    digits = unlabelled.replace(/\s+/g, '');
   } else {
     if (/https?:\/\//i.test(text)) return { ok: false, why: NOT_A_CERT };
     // Typed with a grader word: one grader word and one number ("cgc 4012345001234", "BGS 0012345678").
@@ -1795,7 +1882,7 @@ function parseOneCert(raw, opts) {
       named = words[0];
     } else {
       // Anything messier reads exactly as a ticket paste would.
-      const found = parseCerts(text);
+      const found = parseCerts(text, { buyGraders: bought });
       if (found.certs.length) return { ok: true, cert: found.certs[0].cert, certKey: found.certs[0].certKey, grader: found.certs[0].grader };
       if (found.notBought.length) return { ok: false, grader: found.notBought[0].grader, why: found.notBought[0].grader.toUpperCase() + ' is not a grader we buy.' };
       if (found.unreadable.length) return { ok: false, why: 'Could not read that cert: ' + found.unreadable[0].why + '.' };
@@ -1805,8 +1892,15 @@ function parseOneCert(raw, opts) {
 
   const key = certKey(digits);
   if (/^0+$/.test(digits)) return { ok: false, why: 'That number is all zeros, not a cert.' };
-  if (named && !BOUGHT_BY_SCAN.includes(named)) {
+  if (named && !bought.includes(named)) {
     return { ok: false, grader: named, cert: digits, why: named.toUpperCase() + ' is not a grader we buy.' };
+  }
+  // ITF holds an even digit count and is often read cut short: "0153427845" (a 9-digit PSA cert) can come
+  // back as "01534278", which is also a real 1999-era cert. Never priced from the read alone: staff check
+  // the label and tap PSA. "00" + 6 (a 1990s cert, "00412345") is priced: old labels are what this is for.
+  if (itf && !named && digits.length === PSA_PRINTED_LENGTH && digits.startsWith('01')) {
+    return { ok: false, needsGrader: true, checkLabel: true, cert: digits,
+      why: 'Old label? Check the cert on the slab reads ' + digits + ', then tap PSA. If it is longer, scan again.' };
   }
 
   let grader = named;
@@ -1820,8 +1914,19 @@ function parseOneCert(raw, opts) {
   const fitsLength = (digits.length === 13 && grader !== 'psa') || (key.length >= 7 && key.length <= 12);
   if (!fitsLength) {
     if (key.length > 12) return { ok: false, why: 'That number is too long to be a cert.' };
-    if (!(scan && grader !== 'cgc')) return { ok: false, why: 'That number is too short to be a cert.' };
-    grader = 'psa'; // an old short PSA cert, read off a barcode
+    if (grader === 'cgc') return { ok: false, why: 'That number is too short to be a cert.' };
+    // An old PSA cert (fewer than 7 digits once the zeros go).
+    if (grader === 'psa') {
+      // A psacard.com link names its cert; a typed "PSA 10" / "PSA 8 MINT" is a grade, not a cert.
+      if (!viaLink && digits.length !== PSA_PRINTED_LENGTH && key.length < MIN_NAMED_PSA_DIGITS) return { ok: false, why: TOO_SHORT_PSA };
+    } else if (digits.length !== PSA_PRINTED_LENGTH) {
+      // Not the printed 8-digit form. Typed: too short. Scanned: a type with a check (Code 128, QR, ...),
+      // or an unknown type, with 6 significant digits is an old cert as barcoded ("412345", "0412345");
+      // ITF (often cut short) or fewer digits is a partial read.
+      if (!scan) return { ok: false, why: TOO_SHORT_TYPED };
+      if (itf || key.length < MIN_SCANNED_PSA_DIGITS) return { ok: false, why: PART_READ };
+    }
+    grader = 'psa';
   }
   if (!grader) grader = graderByLength(digits);
   return { ok: true, cert: digits, certKey: key, grader };
@@ -1835,6 +1940,7 @@ window.Certs = {
   GRADER_WORDS: GRADER_WORDS,
   parseOneCert: parseOneCert,
   certFromLink: certFromLink,
+  unwrapScan: unwrapScan,
 };
 })();
 
@@ -1940,6 +2046,34 @@ function buySideOf(settings) {
   for (const k of BUY_SIDE_KEYS) out[k] = !(block && typeof block === 'object' && block[k] === false);
   return out;
 }
+// OVERLAP POINTS (sheet setting `overlapPoints`): when several rows fit a slab and the highest fitting RATE is at
+// least this many percent points above the lowest fitting rate, the higher-rate row wins (a rate tie keeps the
+// higher dollar payout); under that gap the lowest dollar payout still wins. 0 = always the higher row, a huge
+// number = the old rule. Absent or not a whole number 0-100 = 5 (owner, 2026-11: "since the difference is so
+// big put it in the higher row if it fits").
+const DEFAULT_OVERLAP_POINTS = 5;
+function overlapPointsOf(settings) {
+  // Same contract as the portal validator: a whole number of points 0-100 (a numeric string counts); anything else = default.
+  let n = settings && typeof settings === 'object' ? settings.overlapPoints : null;
+  if (typeof n === 'string' && n.trim() !== '') n = Number(n);
+  return typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 100 ? n : DEFAULT_OVERLAP_POINTS;
+}
+/** The winner among `hits` (every row that fits, in sort order): see DEFAULT_OVERLAP_POINTS. */
+function pickOverlap(hits, points) {
+  let lowest = null, minPct = Infinity, maxPct = -Infinity;
+  for (const h of hits) {
+    if (!lowest || h.payoutCents < lowest.payoutCents) lowest = h; // strictly lower only: a tie keeps the earlier row
+    if (h.pct < minPct) minPct = h.pct;
+    if (h.pct > maxPct) maxPct = h.pct;
+  }
+  if (!lowest || Math.round((maxPct - minPct) * 1e6) < Math.round(points * 1e6)) return lowest;
+  let top = null;
+  for (const h of hits) {
+    if (h.pct !== maxPct) continue;
+    if (!top || h.payoutCents > top.payoutCents) top = h; // a rate tie: the higher dollar payout, then the earlier row
+  }
+  return top;
+}
 const SCHEMA = 'iced-out-rates-v2';
 const SCHEMA_V1 = 'iced-out-rates-v1';
 
@@ -1948,12 +2082,14 @@ const BASIS_LABEL = {
   clv: 'CL value',
   avg3: 'Avg of last 3 sales',
   lowest: 'Lowest of CL value & 3-avg',
+  last: 'Last sale',
 };
 /** The same keys, short enough for the staff sheet's narrow "Paid on" column. */
 const BASIS_SHORT = {
   clv: 'CLV',
   avg3: '3 avg',
   lowest: 'lowest',
+  last: 'last sale',
 };
 const BASIS_KEYS = Object.keys(BASIS_LABEL);
 const isBasis = b => typeof b === 'string' && Object.prototype.hasOwnProperty.call(BASIS_LABEL, b);
@@ -1974,9 +2110,19 @@ const SPORT_SHORT = Object.freeze({
   racing: 'Racing', fighting: 'Fighting', golf: 'Golf',
   sports: 'Sports', other: 'Other', '*': 'Any sport',
 });
-/** The bot never buys BGS or SGC, so a row can only ask for PSA, CGC or both. */
-const GRADER_KEYS = Object.freeze(['*', 'PSA', 'CGC']);
-const GRADER_SHORT = Object.freeze({ '*': 'Any grader', PSA: 'PSA', CGC: 'CGC' });
+/**
+ * A row can ask for PSA, CGC, BGS, or a list of them ('*' = PSA and CGC, the default every older sheet
+ * has, and it NEVER takes BGS: a BGS slab is quoted only by a row that names BGS). SGC/TAG are not bought.
+ */
+const GRADER_KEYS = Object.freeze(['*', 'PSA', 'CGC', 'BGS']);
+const GRADER_LIST_KEYS = Object.freeze(['PSA', 'CGC', 'BGS']);
+const GRADER_SHORT = Object.freeze({ '*': 'PSA or CGC', PSA: 'PSA', CGC: 'CGC', BGS: 'BGS' });
+
+/** A row's grader as the words staff read: 'CGC', or 'CGC / BGS' for a list. */
+function graderShort(grader) {
+  if (Array.isArray(grader)) return grader.map(g => GRADER_SHORT[g] || g).join(' / ');
+  return GRADER_SHORT[grader == null ? '*' : grader] || String(grader);
+}
 /** The four languages we buy. A row listing all four does not gate on language at all. */
 const LANGUAGE_KEYS = Object.freeze(['english', 'japanese', 'korean', 'chinese']);
 const MIN_GRADE = 1;
@@ -2087,10 +2233,26 @@ function sportFits(rowSport, slabSport) {
   return rowSport === slabSport;
 }
 
-/** Whether a row's grader takes a slab's: '*' both, 'PSA' only psa, 'CGC' only cgc, unknown neither. */
+/**
+ * Whether a row's grader takes a slab's: '*' (or none) takes everything but BGS, exactly as it always
+ * did (BGS never reached a row before); 'PSA'/'CGC'/'BGS' only that grader; a list ('CGC','BGS') any of
+ * them; an unknown grader fits only '*'.
+ */
 function graderFits(rowGrader, slabGrader) {
-  if (rowGrader == null || rowGrader === '*') return true;
-  return typeof slabGrader === 'string' && slabGrader.toLowerCase() === rowGrader.toLowerCase();
+  const slab = typeof slabGrader === 'string' ? slabGrader.toLowerCase() : null;
+  if (rowGrader == null || rowGrader === '*') return slab !== 'bgs';
+  if (slab == null) return false;
+  if (Array.isArray(rowGrader)) return rowGrader.some(g => typeof g === 'string' && g.toLowerCase() === slab);
+  return typeof rowGrader === 'string' && slab === rowGrader.toLowerCase();
+}
+
+/** The bot's buyable graders ('psa', 'cgc'), plus BGS when a rate row names it: BGS is bought only where a sheet says so. */
+function buyGradersFor(base, settings) {
+  const out = (Array.isArray(base) && base.length ? base : ['psa', 'cgc']).map(g => String(g).toLowerCase());
+  const rows = (settings && Array.isArray(settings.rates)) ? settings.rates : [];
+  const namesBgs = r => r && (Array.isArray(r.grader) ? r.grader.includes('BGS') : r.grader === 'BGS');
+  if (rows.some(namesBgs) && !out.includes('bgs')) out.push('bgs');
+  return out;
 }
 
 /**
@@ -2139,6 +2301,8 @@ function resolveBasisCents(basis, slab) {
     case 'clv': return clv;
     case 'avg3': return avg3;
     case 'lowest': return money.lowestOf(clv, avg3);
+    // The newest Card Ladder sale. Missing -> null, exactly like avg3 with no average: the row is skipped.
+    case 'last': return slab.lastSaleCents ?? null;
     default: return null;
   }
 }
@@ -2175,7 +2339,9 @@ function orderedRates(rates) {
  * old basis list is translated first (normalizeBasis), so an old ticket prices instead of failing.
  * Rows are walked in ascending `sort`. With the buy-side `lowestOverlap` rule OFF the FIRST row that takes
  * the slab wins (the owner's app's rule: a sheet reads top to bottom like a price list); with it ON (the
- * default) the row that pays the LOWEST dollar payout wins, an earlier row on a tie. Three outcomes, and
+ * default) the row that pays the LOWEST dollar payout wins, an earlier row on a tie, UNLESS the highest fitting
+ * rate is at least settings.overlapPoints (default 5) above the lowest fitting one: then the highest-rate row
+ * wins (see pickOverlap). Three outcomes, and
  * only the first is a price:
  *   1. a row takes the slab -> { row, rateName, pct, basis, basisCents, payoutCents }
  *   2. the slab HAS a value (some row's basis resolved) but NO row takes it -> { rejected: true, why }.
@@ -2190,6 +2356,7 @@ function priceSlab(slab, settings, opts = {}) {
   const buy = buySideOf(settings);
   let sawAnyValue = false;
   let chosen = null;
+  const hits = [];
   for (const row of orderedRates(settings.rates)) {
     // settings.defaultBasis is a defensive last resort only: a validated settings object never has
     // one (see the file header), so row.basis alone decides for every real rate sheet.
@@ -2203,10 +2370,12 @@ function priceSlab(slab, settings, opts = {}) {
       payoutCents: money.pctOf(basisCents, row.pct),
     };
     if (!buy.lowestOverlap) { chosen = hit; break; } // today's rule: the first row that takes the slab
-    // Overlapping bands: the LOWEST dollar payout across every row that takes it (dollars, never percents,
-    // because bands pay on different bases). Strictly lower only, so a tie keeps the earlier row.
-    if (!chosen || hit.payoutCents < chosen.payoutCents) chosen = hit;
+    // Overlapping bands: collect every row that takes it, then pickOverlap decides (a big enough rate gap sends
+    // it to the higher row, otherwise the LOWEST dollar payout wins; dollars, never percents, because bands pay
+    // on different bases).
+    hits.push(hit);
   }
+  if (buy.lowestOverlap && hits.length) chosen = pickOverlap(hits, overlapPointsOf(settings));
   if (chosen) {
     // Only ever a flag in place of a price, never a raise. A slab no band takes stays rejected, as before.
     // 'Other' (German, French...) is a language we read but do not buy with confidence: flagged too, since a band
@@ -2288,7 +2457,8 @@ function avgRowCouldMatch(row, hint, settings, triumphValueCents) {
   if (hint.language != null && !languagesFit(row.languages || settings.buyLanguages, slabLanguage(hint.language))) return false;
   if (!vintageOrSpecialCouldMatch(row, hint, settings)) return false;
 
-  if (row.basis === 'lowest') return true;
+  // 'last' is one sale, which can sit far from the value: like 'lowest', no safe boundary to margin around.
+  if (row.basis === 'lowest' || row.basis === 'last') return true;
 
   const fromCents = money.toCents(row.from) ?? 0;
   const toCents = row.to == null ? null : money.toCents(row.to);
@@ -2315,9 +2485,9 @@ function avgRowCouldMatch(row, hint, settings, triumphValueCents) {
 function needsCardLadder(hint, settings, marketBasis) {
   if (hint.triumphValueCents == null) return true;
   const override = normalizeBasis(marketBasis);
-  if (override === 'avg3' || override === 'lowest') return true;
+  if (override === 'avg3' || override === 'lowest' || override === 'last') return true;
   if (override === 'clv') return false;
-  const rows = ((settings && settings.rates) || []).filter(r => r.basis === 'avg3' || r.basis === 'lowest');
+  const rows = ((settings && settings.rates) || []).filter(r => r.basis === 'avg3' || r.basis === 'lowest' || r.basis === 'last');
   if (!rows.length) return false;
   return rows.some(row => avgRowCouldMatch(row, hint, settings, hint.triumphValueCents));
 }
@@ -2347,6 +2517,8 @@ window.PriceCore = {
   SPORT_SHORT: SPORT_SHORT,
   GRADER_KEYS: GRADER_KEYS,
   GRADER_SHORT: GRADER_SHORT,
+  graderShort: graderShort,
+  buyGradersFor: buyGradersFor,
   LANGUAGE_KEYS: LANGUAGE_KEYS,
   SLAB_LANGUAGES: SLAB_LANGUAGES,
   NEW_CERT_FROM: NEW_CERT_FROM,
@@ -2532,19 +2704,45 @@ window.ScanPick = {
 // build step; only the pure, framework-free logic was worth lifting out to a shared, testable module.
 'use strict';
 
-/** Slab labels: PSA, CGC and BGS print the cert as a 1D barcode, newer PSA labels add a QR link. */
-var ZXING_FORMATS = ['Code128', 'Code39', 'Code93', 'ITF', 'EANUPC', 'QRCode', 'DataMatrix'];
+/**
+ * Slab labels: PSA, CGC and BGS print the cert as a 1D barcode, PSA labels from June 2017 on add a QR
+ * link (https://www.psacard.com/cert/<n>/). Older PSA labels (1991 on) use Interleaved 2 of 5 (ITF), the
+ * only type ever named for them; Code 128 and Code 39 are read too, since no source pins every era.
+ * EAN/UPC are NOT read: they are box/product codes, and their check digit means no grader could put an
+ * arbitrary cert number in one, so anything they carry is never a slab.
+ */
+var ZXING_FORMATS = ['Code128', 'Code39', 'Code93', 'ITF', 'QRCode', 'DataMatrix'];
 
 /** The same list in BarcodeDetector's own names. */
-var DETECTOR_FORMATS = ['code_128', 'code_39', 'code_93', 'itf', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'qr_code', 'data_matrix'];
+var DETECTOR_FORMATS = ['code_128', 'code_39', 'code_93', 'itf', 'qr_code', 'data_matrix'];
 
 /**
- * A label always carries one of these two. Ported straight off scanCamera.ts's pickDecoder gate:
- * BarcodeDetector is only worth using over zxing when it covers BOTH, not merely "has some formats" -
- * a BarcodeDetector that reads neither a 1D cert barcode nor the newer QR link would just send every
- * slab down the "nothing found" path while claiming to be the fast one.
+ * Every type a PSA label of any era may carry. BarcodeDetector is only worth using over zxing when it
+ * covers ALL of them, not merely "has some formats": a BarcodeDetector without `itf` would never read an
+ * older PSA label's barcode (and would never fall back to zxing, which does), one without `qr_code`
+ * never a newer label's QR link. Missing any one -> zxing, which reads them all.
  */
-var REQUIRED_DETECTOR_FORMATS = ['code_128', 'qr_code'];
+var REQUIRED_DETECTOR_FORMATS = ['code_128', 'code_39', 'itf', 'qr_code'];
+
+/** Box/product codes (EAN/UPC in zxing's and BarcodeDetector's names), never a slab: dropped if a reader returns one anyway. */
+var PRODUCT_FORMATS = ['EAN13', 'EAN8', 'UPCA', 'UPCE', 'EANUPC', 'ean_13', 'ean_8', 'upc_a', 'upc_e'];
+
+/**
+ * Types with no check digit the reader validates (ITF, Code 39), in either reader's spelling. One misread
+ * frame of these could be a wrong cert and a wrong price, and ITF often gives a cut-short read, so the camera
+ * takes one only after the same text was read in two frames (the Android app does the same: Sightings.kt).
+ */
+var UNCHECKED_FORMATS = ['ITF', 'Code39', 'itf', 'code_39'];
+
+function formatKey(format) { return String(format == null ? '' : format).toLowerCase().replace(/[^a-z0-9]/g, ''); }
+function inList(list, format) {
+  var k = formatKey(format);
+  return list.some(function (f) { return formatKey(f) === k; });
+}
+/** True for an EAN/UPC (box/product) code, in zxing's or BarcodeDetector's spelling. */
+function isProductFormat(format) { return inList(PRODUCT_FORMATS, format); }
+/** True for a type that needs two matching reads before it is taken (ITF, Code 39). */
+function needsTwoReads(format) { return inList(UNCHECKED_FORMATS, format); }
 
 /**
  * Which engine reads the camera. `hasDetector` = `typeof window.BarcodeDetector === 'function'`.
@@ -2603,6 +2801,10 @@ window.ScanDecode = {
   ZXING_FORMATS: ZXING_FORMATS,
   DETECTOR_FORMATS: DETECTOR_FORMATS,
   REQUIRED_DETECTOR_FORMATS: REQUIRED_DETECTOR_FORMATS,
+  PRODUCT_FORMATS: PRODUCT_FORMATS,
+  UNCHECKED_FORMATS: UNCHECKED_FORMATS,
+  isProductFormat: isProductFormat,
+  needsTwoReads: needsTwoReads,
   chooseEngine: chooseEngine,
   readerOptions: readerOptions,
   toFound: toFound,
@@ -2672,6 +2874,8 @@ var SEEN_MS = 700;
 var HARD_MS = 1000;
 /** At least this long between two reads while watching, to spare the battery. */
 var MIN_GAP_MS = 45;
+/** An ITF/Code 39 text read again within this long counts as its second matching read (countReads). */
+var READ_MEMORY_MS = 2500;
 
 /** Watching starts at this frame size (long side, px) and adapts up/down from here - see nextTrackSide. */
 var INITIAL_TRACK_SIDE = 1280;
@@ -2839,6 +3043,37 @@ function mergeSeen(prevTracks, freshFound, at, keepMs) {
     return !fresh.some(function (f) { return f.text === t.text; });
   });
   return fresh.concat(kept);
+}
+
+/**
+ * Two matching reads for a type with no validated check digit (ITF, Code 39 - see scanDecode.needsTwoReads):
+ * how many frames lately read each text. `memory` is { [text]: { reads, at } } (or null); every DISTINCT
+ * text in this frame's `freshFound` counts one more read, stamped `at`; a text not read for longer than
+ * `windowMs` is forgotten (its count starts again). Longer than KEEP_MS on purpose: a slow phone's frames
+ * can come further apart than an outline is kept, and the same text read twice is the whole test. Pure.
+ */
+function countReads(memory, freshFound, at, windowMs) {
+  windowMs = windowMs == null ? READ_MEMORY_MS : windowMs;
+  var next = {};
+  Object.keys(memory || {}).forEach(function (text) {
+    if (at - memory[text].at <= windowMs) next[text] = memory[text];
+  });
+  var counted = {};
+  (freshFound || []).forEach(function (f) {
+    if (!f || !f.text || counted[f.text]) return;
+    counted[f.text] = true;
+    next[f.text] = { reads: (next[f.text] ? next[f.text].reads : 0) + 1, at: at };
+  });
+  return next;
+}
+
+/** Whether a seen barcode may be taken: always for a type with a check (Code 128, QR, ...), and for ITF or
+    Code 39 only once `memory` (countReads) has its text read in at least 2 frames. Pure. */
+function isTakeable(item, memory, needsTwoReads) {
+  if (!item) return false;
+  if (!needsTwoReads || !needsTwoReads(item.format)) return true;
+  var m = memory && memory[item.text];
+  return !!m && m.reads >= 2;
 }
 
 /** Barcodes still "in view" as far as a tap is concerned: read within the last `seenMs`. */
@@ -3070,6 +3305,7 @@ function openCamera(video, opts) {
     ? navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices) : null);
 
   var tracks = []; // Seen[]: { text, format, corners, at }
+  var readMemory = {}; // countReads: how many frames lately read each text
   var box = { w: 0, h: 0 };
   var digitalZoom = 1, hwZoom = 1, zoomGoing = false, zoomWanted = null;
   var stopped = false;
@@ -3181,6 +3417,9 @@ function openCamera(video, opts) {
 
   function merge(found) {
     var at = now();
+    // A box/product code (EAN/UPC) is never a slab: not outlined, never taken, even if a reader returns one.
+    found = (found || []).filter(function (f) { return !(scanDecode.isProductFormat && scanDecode.isProductFormat(f.format)); });
+    readMemory = countReads(readMemory, found, at, READ_MEMORY_MS);
     tracks = mergeSeen(tracks, found, at, KEEP_MS);
     events.onSeen && events.onSeen(seen(at));
   }
@@ -3301,6 +3540,11 @@ function openCamera(video, opts) {
   }
 
   // ── capture: a tap/shutter press ────────────────────────────────────────────────────────────────
+  function takeable(item) { return isTakeable(item, readMemory, scanDecode.needsTwoReads); }
+  /** Only what may be taken now: an ITF/Code 39 code read once is left out, so a QR or Code 128 beside it
+      (the back of a 2017+ label) is taken at once instead of waiting on the ITF. */
+  function takeableNow(list) { return list.filter(takeable); }
+
   function pick(list, tapBox) {
     var m = mapping();
     var items = list.map(function (s) { return { s: s, corners: onScreen(s, m) }; });
@@ -3324,7 +3568,12 @@ function openCamera(video, opts) {
           var schedule = hardLookPass(passNum, aim, v);
           var thisPass = passNum++;
           return Promise.resolve(decoder.find(schedule.region, schedule.maxSide, true, thisPass)).then(function (found) {
-            if (found && found.length) { merge(found); return pick(seen(), tapBox); }
+            if (found && found.length) {
+              merge(found);
+              // An ITF/Code 39 read once is not taken yet: keep looking until it (or another code) can be.
+              var ready = takeableNow(seen());
+              if (ready.length) return pick(ready, tapBox);
+            }
             return tryPass();
           }, function (e) {
             trouble(e);
@@ -3338,16 +3587,20 @@ function openCamera(video, opts) {
 
   /**
    * Takes one barcode: with a tap (box pixels) the one under it or the nearest one; without, the
-   * most central/largest. If nothing is in view it looks hard for about a second (see takeHard) and
-   * takes the first thing found. Resolves null when there's truly nothing there. Only one capture
+   * most central/largest, out of the codes that can be taken now. If none can, it looks hard for about a
+   * second (see takeHard) and takes the first one that can. An ITF or Code 39 code (no check digit) can be
+   * taken only once its text was read in two frames (countReads/isTakeable); read once, it is left out, so
+   * a QR or Code 128 in view is taken instead, and with nothing else it is looked at hard until a second
+   * read matches. Resolves null when there's truly nothing there (or nothing that read twice). Only one capture
    * runs at a time - a second call while one is in flight gets the SAME promise, never a second
    * concurrent hard look.
    */
   function capture(tapBox) {
     if (capturing) return capturing;
     capturing = Promise.resolve().then(function () {
-      var inView = seen();
-      if (inView.length) return pick(inView, tapBox);
+      var ready = takeableNow(seen());
+      if (ready.length) return pick(ready, tapBox);
+      // Nothing in view that can be taken (nothing at all, or only an ITF/Code 39 read once so far): look hard.
       if (stopped || !video.videoWidth) return null;
       return takeHard(tapBox);
     }).finally(function () { capturing = null; });
@@ -3364,6 +3617,7 @@ function openCamera(video, opts) {
     try { video.srcObject = null; } catch (e) { /* some fake videos reject a null srcObject */ }
     if (video.style) video.style.transform = '';
     tracks = [];
+    readMemory = {};
   }
 
   return openStream(getUserMedia).then(function (s) {
@@ -3422,7 +3676,7 @@ function openCamera(video, opts) {
 // rates-portal/build-portal.js) splits this block on top-level commas, and a comment containing a
 // comma of its own (English prose almost always has one) would corrupt that split. Every name here is
 // documented where it's defined above instead: tuning constants, the pure camera-free parts
-// (cameraAsks/classifyCameraError/stopsLadder/openStream/hardLookPass/cropAround/mergeSeen/
+// (cameraAsks/classifyCameraError/stopsLadder/openStream/hardLookPass/cropAround/mergeSeen/countReads/isTakeable/
 // seenWithin/minGapDelay/nextTrackSide/zoomRangeFromCaps/clampZoom - see scanCamera.test.js), and the
 // real thing, openCamera.
 
@@ -3431,6 +3685,7 @@ window.ScanCamera = {
   SEEN_MS: SEEN_MS,
   HARD_MS: HARD_MS,
   MIN_GAP_MS: MIN_GAP_MS,
+  READ_MEMORY_MS: READ_MEMORY_MS,
   INITIAL_TRACK_SIDE: INITIAL_TRACK_SIDE,
   MIN_TRACK_SIDE: MIN_TRACK_SIDE,
   MAX_TRACK_SIDE: MAX_TRACK_SIDE,
@@ -3445,6 +3700,8 @@ window.ScanCamera = {
   hardLookPass: hardLookPass,
   cropAround: cropAround,
   mergeSeen: mergeSeen,
+  countReads: countReads,
+  isTakeable: isTakeable,
   seenWithin: seenWithin,
   minGapDelay: minGapDelay,
   nextTrackSide: nextTrackSide,
@@ -3903,7 +4160,7 @@ function fromJSON(raw) {
   for (const c of data.cards) {
     if (!c || typeof c !== 'object') continue; // e.g. a number or string sitting in the array
     if (typeof c.cert !== 'string' && typeof c.cert !== 'number') continue;
-    if (c.grader !== 'psa' && c.grader !== 'cgc') continue; // the only two graders a session ever holds
+    if (c.grader !== 'psa' && c.grader !== 'cgc' && c.grader !== 'bgs') continue; // the graders a session holds (BGS only where a sheet row names it)
     if (!normalizeCertKey(c.cert)) continue; // no digits at all - not a cert
     // Present and a real, finite number -> trust it. Anything else (missing entirely - a v1 snapshot;
     // null; a corrupt non-number) -> null, i.e. "unknown", never a guessed 0. See the migration note above.
@@ -5322,7 +5579,7 @@ window.TriumphDown = {
 var RULES = ['normal', 'consignor', 'flat'];
 var MODES = ['normal', 'lower'];
 var FLAT_BASES = ['value', 'avg3'];
-var BASIS_WORDS = { clv: 'CL value', avg3: 'Avg of 3', lowest: 'Lower of CL and avg' };
+var BASIS_WORDS = { clv: 'CL value', avg3: 'Avg of 3', lowest: 'Lower of CL and avg', last: 'Last sale' };
 
 /** A typed percent -> a number in (0, 100] with at most two decimals, or null. "87.5 %" -> 87.5. */
 function parsePct(v) {
@@ -5361,19 +5618,34 @@ function lowerOf(a, b) {
   return Math.min(a, b);
 }
 
+/** The newest sale in a card's sales list ({ date, cents }, newest first): the newest date, else the first. */
+function lastSaleOf(sales) {
+  var best = null;
+  if (!Array.isArray(sales)) return null;
+  for (var i = 0; i < sales.length; i++) {
+    var s = sales[i];
+    if (!s || typeof s.cents !== 'number' || !isFinite(s.cents) || s.cents <= 0) continue;
+    if (best == null) { best = s; continue; }
+    if (typeof s.date === 'string' && s.date && (typeof best.date !== 'string' || !best.date || s.date > best.date)) best = s;
+  }
+  return best ? best.cents : null;
+}
+
 function factsOf(card) {
   var avgDone = card.avgStatus === 'done';
   return {
     avgDone: avgDone,
     avgPending: card.avgStatus === 'pending',
     avg3: avgDone && typeof card.avg3Cents === 'number' ? card.avg3Cents : null,
+    // From the same Card Ladder answer as the average, so it only counts once that answer is in.
+    last: avgDone ? lastSaleOf(card.sales) : null,
     clv: typeof card.clvCents === 'number' ? card.clvCents : null,
   };
 }
 
 function slabOf(card, f) {
   return {
-    clvCents: f.clv, avg3Cents: f.avg3, grade: card.grade, confidence: card.confidence, cert: card.cert,
+    clvCents: f.clv, avg3Cents: f.avg3, lastSaleCents: f.last, grade: card.grade, confidence: card.confidence, cert: card.cert,
     title: card.title, year: card.year, sport: card.sport, grader: card.grader, language: card.language,
   };
 }
@@ -5594,7 +5866,7 @@ window.ViewPrefs = {
 // page posts it JSON messages - {type: 'openScanner' | 'closeScanner' | 'haptic' | 'saveFile' |
 // 'copyText' | 'setSheet', ...fields} - through `window.penguinNative.postMessage(text)` (a WebView
 // JavaScript interface only takes text, so the message goes over as a JSON string). The app's own
-// scanner hands each barcode back by calling `window.penguinScan(raw)` with the raw barcode string,
+// scanner hands each barcode back by calling `window.penguinScan(raw, format)` with the raw barcode string (and its type),
 // which the page runs through the same parse-and-price path as its browser camera.
 //
 // Without the app (a phone's browser), `isAvailable()` is false, nothing is ever posted, and the page
@@ -5667,13 +5939,15 @@ function layoutStop(o) {
   return o.keyboardOpen ? 'mid' : o.stop;
 }
 
-/** Installs window.penguinScan(raw) -> onScan(String(raw)). Returns an uninstall function. A handler
- *  error is swallowed here: it must never throw back into the app's own code. */
+/** Installs window.penguinScan(raw, format) -> onScan(String(raw), String(format)). `format` is the barcode
+ *  type the app read it as ('itf', 'code_128', 'qr_code'...; BarcodeDetector's names), '' from an app build
+ *  that sends none. Returns an uninstall function. A handler error is swallowed here: it must never throw
+ *  back into the app's own code. */
 function installScanReceiver(win, onScan) {
   if (!win) return function () {};
   var prev = win.penguinScan;
-  win.penguinScan = function (raw) {
-    try { onScan(raw == null ? '' : String(raw)); } catch (e) { /* the page shows its own error */ }
+  win.penguinScan = function (raw, format) {
+    try { onScan(raw == null ? '' : String(raw), format == null ? '' : String(format)); } catch (e) { /* the page shows its own error */ }
   };
   return function uninstall() { win.penguinScan = prev; };
 }
@@ -6426,6 +6700,8 @@ window.CardView = {
       }).catch(function () { /* no signal: keep whatever was loaded */ });
     }
     function normalRates() { return OfferRules.normalSheet(scannerSettings, settings); }
+    // PSA and CGC always; BGS only while a loaded rate sheet has a row naming it (PriceCore.buyGradersFor).
+    function scanBuyGraders() { return PriceCore.buyGradersFor(PriceCore.buyGradersFor(null, normalRates()), consignorSettings); }
 
     function ensureSettings() {
       if (settingsLoaded) return Promise.resolve();
@@ -7059,7 +7335,9 @@ window.CardView = {
     function priceCert(cert, grader, attempt) {
       attempt = attempt || 0;
       if (busy) {
-        var already = scanQueue.some(function (q) { return q.cert === cert && q.grader === grader; });
+        // The same slab read two ways ("01234567" off an old ITF label, "1234567" typed) is one card: compare
+        // the zero-stripped key, never the text as read.
+        var already = scanQueue.some(function (q) { return Certs.certKey(q.cert) === Certs.certKey(cert) && q.grader === grader; });
         if (!already) scanQueue.push({ cert: cert, grader: grader });
         return false;
       }
@@ -7068,12 +7346,16 @@ window.CardView = {
       ensureSettings().then(function () {
         if (!session) { busy = false; renderNotSignedIn(cert, grader); return; }
 
+        // A PSA cert is looked up by its number without the zeros a label pads it with: "0100106046" (a
+        // 9-digit cert read off ITF) is 100106046, "00412345" (an old label) is 412345. The text as read
+        // stays what the page shows and dedupes on (by its zero-stripped key).
+        var lookupCert = grader === 'psa' ? Certs.certKey(cert) : cert;
         function lookupOnce() {
           var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
           if (ctl) setTimeout(function () { ctl.abort(); }, LOOKUP_TIMEOUT_MS); // harmless once it has answered
           return authFetch(TRIUMPH_URL, {
             method: 'POST', headers: { authorization: 'Bearer ' + session.access_token },
-            body: JSON.stringify({ action: 'lookup', certs: [cert] }),
+            body: JSON.stringify({ action: 'lookup', certs: [lookupCert] }),
             signal: ctl ? ctl.signal : undefined
           });
         }
@@ -7127,10 +7409,13 @@ window.CardView = {
     }
 
     // ── one cert in: the bot's own one-cert reader (certs.js parseOneCert via window.Certs), so the page
-    // and the tests read a label exactly the same way. `scan: true` only for a barcode the camera or
-    // the app actually read: that is what lets an old short PSA cert (ITF zero-padded) through, where
-    // a typed one is still refused as too short. A BGS-style 10-digit "00" serial is never priced as
-    // PSA: it opens the grader picker instead. ──────────────────────────────────────────────────────
+    // and the tests read a label exactly the same way. Every PSA label generation reads: an old cert
+    // as printed and barcoded (8 digits with its zeros, "00123456"), typed or scanned; a 9-digit cert
+    // in ITF ("0" + 9 digits); the back QR link in any form. `scan: true` only for a barcode the camera
+    // or the app actually read, with its type (`format`): a cut-short scan ("1234", or a 6-digit ITF read)
+    // is refused as a partial read, scan again. A BGS-style 10-digit "00" serial is never priced as PSA, and
+    // an 8-digit ITF read starting "01" (maybe a 9-digit cert cut short, "01534278") is not priced from
+    // the read alone: both open the grader picker instead (tap PSA once the label is checked). ──────────────
     var pickCert = null; // the serial the grader picker is asking about
     function showGraderPick(cert, why) {
       pickCert = cert;
@@ -7154,19 +7439,20 @@ window.CardView = {
     }
 
     function submitTyped() {
-      var parsed = Certs.parseOneCert(dom.certInput.value);
+      var parsed = Certs.parseOneCert(dom.certInput.value, { buyGraders: scanBuyGraders() });
       if (takeParsed(parsed)) dom.certInput.value = '';
     }
 
     function pickGrader(grader) {
       if (!pickCert) return;
-      takeParsed(Certs.parseOneCert(grader.toUpperCase() + ' ' + pickCert));
+      takeParsed(Certs.parseOneCert(grader.toUpperCase() + ' ' + pickCert, { buyGraders: scanBuyGraders() }));
     }
 
     /** A barcode from the browser camera (`viaApp` false) or the Android app's scanner (true): the
-        same parse-and-price path either way. */
-    function handleScanned(raw, viaApp) {
-      var parsed = Certs.parseOneCert(raw, { scan: true });
+        same parse-and-price path either way. `format` is the barcode's type as the reader named it
+        ("ITF", "itf", "code_128"...), or '' from an app build that doesn't send one. */
+    function handleScanned(raw, viaApp, format) {
+      var parsed = Certs.parseOneCert(raw, { scan: true, format: format || '', buyGraders: scanBuyGraders() });
       var say = function (text) { if (cam) dom.vfStatus.textContent = text; else dom.vfOffText.textContent = text; };
       if (!parsed.ok) {
         feedback.play('bad');
@@ -7179,7 +7465,7 @@ window.CardView = {
       say('Read ' + parsed.grader.toUpperCase() + ' ' + parsed.cert);
       takeParsed(parsed);
     }
-    NativeBridge.installScanReceiver(window, function (raw) { handleScanned(raw, true); });
+    NativeBridge.installScanReceiver(window, function (raw, format) { handleScanned(raw, true, format); });
 
     // ── the self-hosted zxing-wasm reader (see rates-portal/vendor/zxing/README.md): resolved to an
     // absolute URL up front, against THIS page's own address, never a CDN - this page is published
@@ -7312,7 +7598,7 @@ window.CardView = {
       feedback.unlock();
       cam.capture(tapBox).then(function (found) {
         if (!found) { feedback.play('nothing'); dom.vfStatus.textContent = 'Nothing found - try again or type it below'; return; }
-        handleScanned(found.text, false);
+        handleScanned(found.text, false, found.format);
       });
     }
 
