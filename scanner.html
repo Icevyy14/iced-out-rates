@@ -1958,6 +1958,9 @@ const SPORT_WORDS = [
   [/one\s*piece/i, 'one_piece'],
   [/dragon\s*ball/i, 'dragon_ball'],
   [/pok[eé]mon/i, 'pokemon'],
+  // PSA's terse titles often drop the word ("2019 TGPI/CLFA/IGLYBF.GX #094 TAG TEAM GX ALL STARS"). These card-type words
+  // exist only in the Pokemon game, so reading them is not a guess; names (Pikachu, Umbreon) are never read.
+  [/\b(gx|vmax|vstar|v-?union)\b/i, 'pokemon'],
   [/\b(nfl|football)\b/i, 'nfl'],
   [/\b(nba|basketball)\b/i, 'nba'],
   [/\b(mlb|baseball)\b/i, 'mlb'],
@@ -7011,7 +7014,7 @@ window.CardView = {
         confidence: lookup.confidence != null ? lookup.confidence : null,
         // Same fallback the bot uses when Triumph gives no category/year (triumph.js's mapSport/mapYear):
         // read it off the card title. SportCore IS that code.
-        sport: SportCore.sportFromTitle(title), year: SportCore.yearFromTitle(title), language: PriceCore.languageOf(title),
+        sport: SportCore.mapSport({ category: lookup.category }, title), year: SportCore.mapYear({ year: lookup.year }, title), language: PriceCore.languageOf(title),
         avgStatus: 'pending', avg3Cents: null, avgReason: null
       };
       if (prev && prev.avgStatus === 'done') { // a re-scan shows the average it already had while it re-checks
