@@ -6609,13 +6609,12 @@ window.CardView = {
             saveSession(session);
             dom.password.value = '';
             renderAuthState();
-            // signed in: the private Scanner sheet can be read now, and "Normal" prices on it
-            loadScannerSheet().then(function () {
-              repriceAll();
-              renderRuleControls();
-              renderPile();
-              if (currentKey) renderCurrent();
-            });
+            // signed in: the private Scanner sheet can be read now, and "Normal" prices on it. Nothing is known
+            // about THIS login's sheet until it answers: a scan waits for it (ensureSettings) and a card in the pile
+            // keeps its price, instead of "Normal" falling back on the consignor rates meanwhile.
+            refreshFlight = null; // a refresh of the login before this one is not this one's to share
+            scannerSettings = null; scannerKnown = false;
+            loadScannerSheet().then(repaintForSheets);
           } else {
             dom.signinErr.textContent = String((r.body && (r.body.error_description || r.body.msg || r.body.error)) || 'Sign-in failed.');
             dom.signinErr.hidden = false;
@@ -6632,25 +6631,82 @@ window.CardView = {
       return (typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean') ? navigator.onLine : undefined;
     }
 
+    /** How long one scan waits on something that is not the lookup itself: a session refresh, the rate sheets.
+        Neither had a limit, so a request that never answered held `busy` for good and every later scan only
+        queued behind it (the scanner looked frozen until the app was reopened). After this long the wait is
+        over and the scan goes on the way it does when a signal is lost. The request behind a wait is never cut. */
+    var SETUP_WAIT_MS = 8000;
+    /** A session refresh that has not answered after this long is dead for good: the next caller sends a fresh
+        one (see refreshSession). Until then every caller shares the one that is out. */
+    var REFRESH_FLIGHT_MS = 30000;
+    /** `promise`'s answer, or `onTimeout()`'s once `ms` have passed without one. The request behind `promise`
+        is NOT aborted: it answers into its own handlers whenever it does, and an answer that comes after the
+        wait is over is dropped here. */
+    function answerWithin(promise, ms, onTimeout) {
+      return new Promise(function (resolve, reject) {
+        var timer = setTimeout(function () {
+          try { resolve(onTimeout()); } catch (e) { reject(e); }
+        }, ms);
+        promise.then(function (v) { clearTimeout(timer); resolve(v); }, function (e) { clearTimeout(timer); reject(e); });
+      });
+    }
+
     /**
      * Returns `{ ok, noSignal }` instead of a bare boolean - this is the one spot that can tell apart
      * "the refresh token really is no good any more" from "we couldn't even reach Supabase to ask",
      * and that distinction must survive out of here. A fetch() that throws (no signal) is NOT evidence
      * the token is bad, so it must never be treated as a sign-out - see signal.js's own header on why
      * a quietly-lapsed token must never read as "permission denied" to the owner.
+     *
+     * Only an answer that says no to the token is a refusal (`noSignal: false`: a 4xx that is not a 408 or a 429, or
+     * JSON with no session in it). A refusal signs the lookup's login out, and reads as "this login has no Scanner
+     * sheet" to the sheet read. Anything that says nothing about the token is a lost signal (`noSignal: true`): a
+     * fetch that never reached the server, a 5xx, a 408, a 429, a body that is not JSON (a gateway's error page, a
+     * page in the way) or does not finish, and no answer within SETUP_WAIT_MS. The request is not cut: if it answers
+     * late, the chain below still stores the new tokens, which it must (the server spends the old refresh token the
+     * moment it answers).
+     *
+     * ONE refresh request is out at a time, and every caller waits on that one (each for its own SETUP_WAIT_MS): a
+     * second request with the same refresh token while the first is still out is what refresh-token reuse
+     * detection revokes a whole session for (a Retry after a give-up used to send exactly that). A request that
+     * has not answered after REFRESH_FLIGHT_MS is dead, and the next caller sends a fresh one, with the same
+     * refresh token: when the dead one lands after all, the replacement is refused (the server spent that token).
+     * A refusal that arrives once the session holds another refresh token (that landing, or a new sign-in) is about
+     * a token nobody holds any more: it is ignored, the session in hand stands and is what the caller goes on with
+     * (`ok`). A refresh that was given up on and lands after all gives the private Scanner sheet its second chance
+     * (sessionCameLate).
      */
+    var refreshFlight = null; // { at, gaveUp, token, promise }: the refresh request that is out, and the refresh token it was sent with
     function refreshSession() {
       if (!session || !session.refresh_token) return Promise.resolve({ ok: false, noSignal: false });
-      return authFetch(SB_URL + '/auth/v1/token?grant_type=refresh_token', {
-        method: 'POST', headers: { apikey: SB_ANON }, body: JSON.stringify({ refresh_token: session.refresh_token })
-      }).then(function (res) { return res.json(); }).then(function (j) {
-        if (!j || !j.access_token) return { ok: false, noSignal: false };
-        session = { access_token: j.access_token, refresh_token: j.refresh_token || session.refresh_token, email: session.email };
-        saveSession(session);
-        return { ok: true, noSignal: false };
-      }).catch(function (e) {
-        return { ok: false, noSignal: Signal.isNoSignal(e, { online: onlineHint() }) };
-      });
+      var flight = refreshFlight;
+      var age = flight ? Date.now() - flight.at : 0;
+      if (!flight || age < 0 || age >= REFRESH_FLIGHT_MS) {
+        var sent = flight = refreshFlight = { at: Date.now(), gaveUp: false, token: session.refresh_token, promise: null };
+        sent.promise = authFetch(SB_URL + '/auth/v1/token?grant_type=refresh_token', {
+          method: 'POST', headers: { apikey: SB_ANON }, body: JSON.stringify({ refresh_token: sent.token })
+        }).then(function (res) {
+          // The server could not say (busy, down, rate-limited): nothing is known about the token.
+          if (res.status >= 500 || res.status === 408 || res.status === 429) return { ok: false, noSignal: true };
+          return res.json().then(function (j) {
+            if (!j || !j.access_token) return { ok: false, noSignal: false };
+            session = { access_token: j.access_token, refresh_token: j.refresh_token || session.refresh_token, email: session.email };
+            saveSession(session);
+            return { ok: true, noSignal: false };
+          }, function () {
+            return { ok: false, noSignal: true }; // not JSON, or cut off: no answer
+          });
+        }).catch(function (e) {
+          return { ok: false, noSignal: Signal.isNoSignal(e, { online: onlineHint() }) };
+        }).then(function (r) {
+          if (refreshFlight === sent) refreshFlight = null;
+          if (!r.ok && !r.noSignal && session && session.refresh_token !== sent.token) r = { ok: true, noSignal: false };
+          if (r.ok && sent.gaveUp) { try { sessionCameLate(); } catch (e) { /* the tokens are stored: the next scan asks for the sheet itself */ } }
+          return r;
+        });
+      }
+      var waited = flight;
+      return answerWithin(waited.promise, SETUP_WAIT_MS, function () { waited.gaveUp = true; return { ok: false, noSignal: true }; });
     }
 
     function renderAuthState() {
@@ -6659,7 +6715,9 @@ window.CardView = {
 
     // ── rate bands: the same public GET the rates editor reads, then the bot's own priceSlab ──────
     var settings = null;
-    var settingsLoaded = false;
+    // The public rate sheet has answered: with a sheet, or with nothing (a 404, a failed read: every price copes with a
+    // sheet that is null, and it is one try per page load). That is not the same as `settings != null`.
+    var publicAnswered = false;
     // "Consignor rates" = the live sheet above (slab-rates GET /settings), the one the Discord bot
     // quotes sellers. Kept as its own name so the rule toggle reads plainly.
     var consignorSettings = null;
@@ -6670,33 +6728,129 @@ window.CardView = {
         return res.json();
       }).then(function (j) { return (j && j.settings) || null; }, function () { return null; });
     }
+    function loadPublicSheet() {
+      return getSheet('settings').then(function (sheet) {
+        // a failed read (null) never wipes a sheet that another, late answer filled in
+        if (sheet) { settings = sheet; consignorSettings = sheet; } // the consignor rates ARE the live sheet the bot quotes sellers
+        publicAnswered = true;
+        sheetsMoved();
+      });
+    }
     // Our PRIVATE Scanner sheet (slab-rates GET /scanner): what "Normal" offers when one is saved, else
     // the consignor rates above (OfferRules.normalSheet). Never public: it is read with this phone's own
     // signed-in session (owner or active sourcer), so it loads after sign-in, and a 401 refreshes the
-    // session once. No sheet, no session or no signal all just mean "Normal = the consignor rates".
+    // session once. "No sheet saved" (404), "not this login's to read" (403) and "nobody is signed in" are
+    // ANSWERS: Normal = the consignor rates. A read that gave no answer (slow, no signal, a 5xx or a 429, a
+    // refresh that has not landed) is NOT one: `scannerKnown` stays false, so a scan fails like a lost signal
+    // instead of pricing on the consignor rates by mistake, and a card already priced keeps its price, until
+    // an answer comes in (it fills in whenever it lands, and the pile is repriced).
     var scannerSettings = null;
+    var scannerKnown = false;
     function loadScannerSheet(retried) {
-      if (!session || !session.access_token) { scannerSettings = null; return Promise.resolve(); }
+      if (!session || !session.access_token) { scannerSettings = null; scannerKnown = true; sheetsMoved(); return Promise.resolve(); }
       return fetch(api('scanner'), { headers: { authorization: 'Bearer ' + session.access_token } }).then(function (res) {
         if (res.status === 401 && !retried) {
-          return refreshSession().then(function (r) { return r.ok ? loadScannerSheet(true) : null; });
+          return refreshSession().then(function (r) {
+            if (r.ok) return loadScannerSheet(true);
+            // No answer to the refresh (refreshSession says so for a lost signal, a 5xx, a 408, a 429 or a page that is
+            // not JSON): still not known. Only the login itself being refused means there is no sheet to read as it
+            // (the lookup finds out it is signed out), as it always was.
+            if (!r.noSignal) { scannerKnown = true; sheetsMoved(); }
+          });
         }
-        if (!res.ok) { scannerSettings = null; return null; }
-        return res.json().then(function (j) { scannerSettings = (j && j.settings) || null; });
-      }).catch(function () { /* no signal: keep whatever was loaded */ });
+        if (res.ok) {
+          return res.json().then(function (j) { scannerSettings = (j && j.settings) || null; scannerKnown = true; sheetsMoved(); });
+        }
+        if (res.status >= 500 || res.status === 408 || res.status === 429) return; // the server could not say
+        scannerSettings = null; scannerKnown = true; // no sheet saved, or not this login's to read
+        sheetsMoved();
+      }).catch(function () { /* no signal, or an answer that is not JSON: not known, and whatever was loaded stays */ });
+    }
+    /** A refresh that was given up on has landed after all, and its new tokens are stored. When the private
+        Scanner sheet's answer never came in meanwhile (the wait for it, through that refresh, is what ran out),
+        it is asked for again with the new session (`retried`: no second refresh) and every card is priced again. */
+    function sessionCameLate() {
+      if (scannerKnown) return;
+      loadScannerSheet(true).then(repaintForSheets);
     }
     function normalRates() { return OfferRules.normalSheet(scannerSettings, settings); }
+    /** What "Normal" is PRICED on: normalRates() once the Scanner sheet's answer is in, else nothing (a card in
+        the pile keeps its price, a scan waits or fails), never the consignor rates by default. */
+    function pricingRates() { return scannerKnown ? normalRates() : null; }
     // PSA and CGC always; BGS only while a loaded rate sheet has a row naming it (PriceCore.buyGradersFor).
     function scanBuyGraders() { return PriceCore.buyGradersFor(PriceCore.buyGradersFor(null, normalRates()), consignorSettings); }
 
-    function ensureSettings() {
-      if (settingsLoaded) return Promise.resolve();
-      // one try per page load; every price copes with a sheet that is null
-      return Promise.all([getSheet('settings'), loadScannerSheet()]).then(function (all) {
-        settings = all[0];
-        consignorSettings = all[0]; // the consignor rates ARE the live sheet the bot quotes sellers
-        settingsLoaded = true;
+    /** Our sheets are in (or the wait for them is over): every card is priced against the one picked. */
+    function repaintForSheets() {
+      repriceAll();
+      renderRuleControls();
+      renderPile();
+      if (currentKey) renderCurrent();
+    }
+
+    /** The rate sheets a card is priced from are in, for `rule` (the one picked on this phone, or 'all': the tab's own
+        load, which wants both). Flat prices on a typed percent: no sheet. Consignor prices on the public sheet. Normal
+        prices on the private Scanner sheet, which takes its answer to be KNOWN (`scannerKnown`: the sheet is in, or
+        the server said there is none) and, while none is saved, on the public sheet too (Normal = the consignor
+        rates then). A sheet that answered with nothing counts as in: the card is priced with what there is. */
+    function sheetsInFor(rule) {
+      if (rule === 'flat') return true;
+      if (rule === 'consignor') return publicAnswered;
+      if (rule === 'all') return scannerKnown && publicAnswered;
+      return scannerKnown && (scannerSettings != null || publicAnswered);
+    }
+
+    /** -> { ok, noSignal }, and never a rejection. A scan asks for the sheets ITS rule prices on and waits for nothing
+        else: when those are in it goes on at once (a sheet its rule does not use is not waited for, and never makes
+        a scan fail). Otherwise the ask joins the ONE attempt that is running, or starts one: a read of every sheet
+        that has not answered, and one verdict at SETUP_WAIT_MS, so the scans that queue up behind it are not made to
+        wait their own 8 s one after the other. Each ask is answered the moment the sheets its rule prices on are in
+        (`ok`), or, once every read has answered or the 8 s are up and they are not, with `noSignal`: the caller
+        treats that as a lost signal, so a card is never priced on the wrong sheet (the consignor rates, while the
+        Scanner sheet's answer is out), and Retry asks again. A request that answers after the verdict is never cut:
+        it fills in whenever it lands and the pile is repriced (sheetsMoved). The next ask is a fresh attempt. */
+    var SHEETS_READY = { ok: true, noSignal: false };
+    var SHEETS_NOT_IN = { ok: false, noSignal: true };
+    var sheetsAttempt = null; // the attempt in progress: { over, timer, waiting: [{ all, done }] }
+    function ensureSettings(all) {
+      if (sheetsInFor(all ? 'all' : choice.rule)) return Promise.resolve(SHEETS_READY);
+      var round = sheetsAttempt || startSheetsAttempt();
+      return new Promise(function (resolve) {
+        round.waiting.push({ all: !!all, done: resolve });
+        settleSheets(round, false); // a read that answered at once may have decided it already
       });
+    }
+    function startSheetsAttempt() {
+      var round = sheetsAttempt = { over: false, timer: null, waiting: [] };
+      var reads = [];
+      if (!publicAnswered) reads.push(loadPublicSheet());
+      if (!scannerKnown) reads.push(loadScannerSheet());
+      function end() {
+        if (round.over) return;
+        round.over = true;
+        clearTimeout(round.timer);
+        if (sheetsAttempt === round) sheetsAttempt = null;
+        settleSheets(round, true);
+      }
+      round.timer = setTimeout(end, SETUP_WAIT_MS);
+      Promise.all(reads).then(end, end);
+      return round;
+    }
+    /** Answers the asks of `round` whose sheets are in; at the end of the attempt (`over`) every ask that is left is
+        answered, ok or not. The rule is the one picked NOW: that is the one the card will be priced under. */
+    function settleSheets(round, over) {
+      round.waiting = round.waiting.filter(function (w) {
+        var inNow = sheetsInFor(w.all ? 'all' : choice.rule);
+        if (!inNow && !over) return true;
+        w.done(inNow ? SHEETS_READY : SHEETS_NOT_IN);
+        return false;
+      });
+    }
+    /** A sheet's answer is in: the asks that waited for it go on, and every card is priced again against what is loaded
+        (a card priced before the sheet landed, a card in the pile after a reload). */
+    function sheetsMoved() {
+      if (sheetsAttempt) settleSheets(sheetsAttempt, false);
+      try { repaintForSheets(); } catch (e) { /* drawing must never hold up what a scan waits on */ }
     }
 
     // ── Card Ladder's sales averages: live, via the PC bot's avgQueue.js (see avgQueue.js's,
@@ -6789,7 +6943,7 @@ window.CardView = {
       dom.retryBtn.onclick = null;
       syncFlag();
     }
-    function showRetry(cert, grader, attempt, retryAfterMs) {
+    function showRetry(cert, grader, attempt, retryAfterMs, alongside) {
       var remaining = Math.max(1, Math.ceil((retryAfterMs || 0) / 1000));
       dom.retry.hidden = false;
       syncFlag();
@@ -6807,7 +6961,12 @@ window.CardView = {
           dom.retryBtn.textContent = 'Retry (' + remaining + 's)';
         }
       }, 1000);
-      dom.retryBtn.onclick = function () { hideRetry(); priceCert(cert, grader, attempt + 1); };
+      dom.retryBtn.onclick = function () {
+        hideRetry();
+        priceCert(cert, grader, attempt + 1);
+        // the scans that failed together with this one come back with it, in the order they were scanned (they queue behind it)
+        (alongside || []).forEach(function (q) { priceCert(q.cert, q.grader); });
+      };
     }
 
     /** Every network failure in this tab reads through here, never through the browser's own wording -
@@ -6818,10 +6977,10 @@ window.CardView = {
       return Signal.classifyError(err, { attempt: attempt, getItem: authGetItem, online: onlineHint() });
     }
 
-    function applyFailure(cert, grader, attempt, info) {
+    function applyFailure(cert, grader, attempt, info, alongside) {
       if (info.signedOut) { renderNotSignedIn(cert, grader, info.message); return; }
       renderError(cert, grader, info.message);
-      if (info.retry) showRetry(cert, grader, attempt, info.retryAfterMs); else hideRetry();
+      if (info.retry) showRetry(cert, grader, attempt, info.retryAfterMs, alongside); else hideRetry();
     }
 
     // ── the three squares. `setSquare` writes a number big, or a few words smaller (sc-words), so
@@ -6961,16 +7120,17 @@ window.CardView = {
       return null;
     }
     function offerCtx() {
-      return { priceCore: PriceCore, money: PriceCore.money, settings: normalRates(), consignorSettings: consignorSettings };
+      return { priceCore: PriceCore, money: PriceCore.money, settings: pricingRates(), consignorSettings: consignorSettings };
     }
     function repriceAll() {
       var ctx = offerCtx();
       pile.list().forEach(function (e) {
         var meta = pileMeta[pileMetaKey(e.grader, e.certKey)];
         if (!meta || !meta.facts) return; // saved before the toggle existed: keep what it was priced at
-        // No rate sheet this visit (a dropped signal at a show): an offer already in the pile from
-        // that same sheet keeps its price rather than every card going blank at once.
-        var sheet = choice.rule === 'consignor' ? consignorSettings : choice.rule === 'normal' ? normalRates() : true;
+        // No rate sheet this visit (a dropped signal at a show), or "Normal" while the Scanner sheet's answer is
+        // out (pricingRates): an offer already in the pile from that same sheet keeps its price rather than every
+        // card going blank at once, or being repriced on the consignor rates by mistake.
+        var sheet = choice.rule === 'consignor' ? consignorSettings : choice.rule === 'normal' ? ctx.settings : true;
         // The market value the pile holds: the card's own, except a card priced while Triumph was down,
         // whose value arrives later with its average (scanner/triumphDown.js).
         var mv = TriumphDown.marketValue(meta.facts, e.marketValueCents);
@@ -7124,7 +7284,7 @@ window.CardView = {
       // The rule line: the band's math, and while no Scanner sheet is saved, that Normal is borrowing the
       // consignor rates (staff only: hide mode never shows this card).
       var math = OfferRules.ruleMath(price) || '';
-      var borrowed = choice.rule === 'normal' && settingsLoaded ? OfferRules.normalNote(scannerSettings) : '';
+      var borrowed = choice.rule === 'normal' && scannerKnown ? OfferRules.normalNote(scannerSettings) : '';
       dom.ruleMath.textContent = math && borrowed ? math + String.fromCharCode(10) + borrowed : (math || borrowed);
       renderNote(f, price);
       renderSales(f);
@@ -7233,10 +7393,10 @@ window.CardView = {
       dom.flat.hidden = choice.rule !== 'flat';
       if (choice.rule !== 'flat') dom.flatErr.hidden = true;
       dom.rateLabel.textContent = OfferRules.ruleTitle(choice) +
-        (choice.rule === 'normal' && settingsLoaded ? (scannerSettings ? ' (Scanner rates)' : ' ' + OfferRules.normalNote(null)) : '') +
+        (choice.rule === 'normal' && scannerKnown ? (scannerSettings ? ' (Scanner rates)' : ' ' + OfferRules.normalNote(null)) : '') +
         (choice.mode === 'lower' ? ' · Lower' : '');
       var hint = '';
-      if (choice.rule === 'consignor' && settingsLoaded && !consignorSettings) hint = 'The consignor rates could not be loaded: no signal, or the rates server is down.';
+      if (choice.rule === 'consignor' && publicAnswered && !consignorSettings) hint = 'The consignor rates could not be loaded: no signal, or the rates server is down.';
       else if (choice.rule === 'flat' && choice.mode === 'lower') hint = 'Lower is on: the percent applies to the lower of CL value and avg of 3.';
       dom.ruleHint.textContent = hint;
       dom.ruleHint.hidden = !hint;
@@ -7249,6 +7409,7 @@ window.CardView = {
       repriceAll();
       renderPile();
       if (currentKey) renderCurrent();
+      if (sheetsAttempt) settleSheets(sheetsAttempt, false); // a scan waiting on the sheets of the old rule goes on if the new one's are in
     }
 
     // Each pill's look (sc-chip-*): blue while it waits on an average, teal for one staff prices by hand, grey
@@ -7328,6 +7489,12 @@ window.CardView = {
     var LOOKUP_FIRST_MS = 8000;
     var LOOKUP_RETRY_MS = 12000;
     var LOOKUP_BODY_MS = 15000;
+    // The WHOLE lookup, both tries and every body read in them, is also held to LOOKUP_TOTAL_MS (the same 20 s):
+    // however the connection behaves, the card is priced (from Triumph, or from the Card Ladder value) about 20 s
+    // after its lookup starts, never ~46 s. A 5xx is decided from its status line alone (its body is never read).
+    // What a scan waits on BEFORE the lookup, the rate sheets and a session refresh, has its own limit
+    // (SETUP_WAIT_MS), so `busy` is always released.
+    var LOOKUP_TOTAL_MS = 20000;
     var scanQueue = [];
     function drainScanQueue() {
       if (busy || !scanQueue.length) return;
@@ -7348,22 +7515,51 @@ window.CardView = {
       }
       busy = true;
       renderLoading(cert, grader);
-      ensureSettings().then(function () {
+      ensureSettings().then(function (ready) {
+        if (!ready.ok) {
+          // The rate sheets this card's rule prices on are not in: none is loaded, or the private Scanner sheet's
+          // answer is not in and "Normal" would be priced on the consignor rates by mistake. The connection, not the
+          // card. The same words and Retry as a lost signal (Retry asks for the sheets afresh). The scans queued
+          // behind this one waited on the same attempt, so they get the same verdict now, at once and not 8 s apart,
+          // and none of them is dropped: the one Retry on the screen brings them all back, in the order they were
+          // scanned (showRetry).
+          busy = false;
+          var failed = [];
+          scanQueue.splice(0, scanQueue.length).forEach(function (q) {
+            var seen = (Certs.certKey(q.cert) === Certs.certKey(cert) && q.grader === grader) ||
+              failed.some(function (f) { return Certs.certKey(f.cert) === Certs.certKey(q.cert) && f.grader === q.grader; });
+            if (!seen) failed.push({ cert: q.cert, grader: q.grader });
+          });
+          applyFailure(cert, grader, attempt, describeFailure(Signal.NO_SIGNAL_ERROR, attempt), failed);
+          return;
+        }
         if (!session) { busy = false; renderNotSignedIn(cert, grader); return; }
 
         // A PSA cert is looked up by its number without the zeros a label pads it with: "0100106046" (a
         // 9-digit cert read off ITF) is 100106046, "00412345" (an old label) is 412345. The text as read
         // stays what the page shows and dedupes on (by its zero-stripped key).
         var lookupCert = grader === 'psa' ? Certs.certKey(cert) : cert;
-        /** One request, one verdict. Resolves { res, body } once the answer is in: the headers AND the body (the
-            body of a 401 that a refresh is about to answer is never read, a 5xx's never matters; `afterRefresh`
-            marks the request that follows a refresh, which is read whatever its status). Rejects with `noAnswer`
-            set when the connection gave nothing back in time: no response headers within `headersMs`, or headers
-            that came and a body that did not finish within LOOKUP_BODY_MS or died mid-read. That says nothing
-            about Triumph. Every other failure keeps its own error: a fetch that never reached the server (no
-            signal), a body that arrived and is not JSON. The headers clock stops the moment the headers arrive,
-            so reading the body is never cut by it, and a request that has answered is never aborted. */
-        function lookupOnce(headersMs, afterRefresh) {
+        /** The error a lookup ends with when it got no answer: no response headers in time, an answer that did not
+            finish or died mid-read, or the whole lookup out of time. It says nothing about Triumph. */
+        function noAnswerError(why) {
+          var e = new Error('The lookup got no answer (' + why + ').');
+          e.noAnswer = true;
+          return e;
+        }
+        var ranOut = 'the whole lookup took longer than ' + (LOOKUP_TOTAL_MS / 1000) + ' s';
+
+        /** One request, one verdict. Resolves { res, body } once the answer is in: the headers AND the body. Two
+            bodies are never read: a 401 that a refresh is about to answer, and a 5xx, which the status line alone
+            makes "Triumph is down" (so a body that is slow, stalled or not JSON can neither delay that nor turn it
+            into some other error); `afterRefresh` marks the request that follows a refresh, which is read whatever
+            its status but a 5xx. Rejects with `noAnswer` set when the connection gave nothing back in time: no
+            response headers within `headersMs`, headers that came and a body that did not finish within
+            LOOKUP_BODY_MS or died mid-read, or the whole lookup out of time (`scope`, see lookupWithRetry: no
+            request is sent after that, and the one still out is cut). That says nothing about Triumph. Every other
+            failure keeps its own error: a fetch that never reached the server (no signal), a body that arrived and
+            is not JSON. The headers clock stops the moment the headers arrive, so reading the body is never cut by
+            it, and a request that has answered is never aborted. */
+        function lookupOnce(headersMs, afterRefresh, scope) {
           return new Promise(function (resolve, reject) {
             var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
             var over = false;
@@ -7372,15 +7568,17 @@ window.CardView = {
               if (over) return;
               over = true;
               clearTimeout(timer);
+              if (scope.cut === cut) scope.cut = null;
               if (ok) resolve(value); else reject(value);
             }
             function noAnswer(why) {
               if (over) return;
-              var e = new Error('The lookup got no answer (' + why + ').');
-              e.noAnswer = true;
-              finish(false, e);
+              finish(false, noAnswerError(why));
               if (ctl) { try { ctl.abort(); } catch (x) { /* nothing left to cut loose */ } }
             }
+            function cut() { noAnswer(ranOut); }
+            if (scope.over) { cut(); return; } // the whole lookup ran out of time between two requests: none is sent
+            scope.cut = cut;
             timer = setTimeout(function () { noAnswer('no response in ' + (headersMs / 1000) + ' s'); }, headersMs);
             var sent;
             try {
@@ -7394,12 +7592,13 @@ window.CardView = {
               if (over) return;
               clearTimeout(timer); // the headers are in: that clock is done, and none of it reaches the body
               if (res.status === 401 && !afterRefresh) { finish(true, { res: res, body: null }); return; }
+              // Triumph itself is down (our server answers 5xx, the revoked credential's 503 included): decided
+              // from the status line alone. The body is not read, so one that is slow, stalled or not JSON can
+              // neither hold the fallback up nor turn it into some other error.
+              if (TriumphDown.isTriumphDown({ status: res.status })) { finish(true, { res: res, body: null }); return; }
               timer = setTimeout(function () { noAnswer('answer not finished in ' + (LOOKUP_BODY_MS / 1000) + ' s'); }, LOOKUP_BODY_MS);
               return res.json().then(function (j) { finish(true, { res: res, body: j }); }, function (readErr) {
                 if (over) return;
-                // A gateway's own error page is not JSON, but a 5xx still means Triumph is down: a body that
-                // will not read must never turn that into some other error.
-                if (TriumphDown.isTriumphDown({ status: res.status })) { finish(true, { res: res, body: null }); return; }
                 // Text that arrived and is not JSON keeps its own error; anything else is the connection
                 // dying mid-answer (a network error, an abort): no answer.
                 if (readErr && readErr.name === 'SyntaxError') { finish(false, readErr); return; }
@@ -7414,11 +7613,11 @@ window.CardView = {
         }
 
         /** One try: the request, and once more after a 401 and a fresh session (a sign-in lapses quietly). */
-        function lookupTry(headersMs) {
-          return lookupOnce(headersMs).then(function (r) {
+        function lookupTry(headersMs, scope) {
+          return lookupOnce(headersMs, false, scope).then(function (r) {
             if (r.res.status !== 401) return r;
             return refreshSession().then(function (rs) {
-              if (rs.ok) return lookupOnce(headersMs, true);
+              if (rs.ok) return lookupOnce(headersMs, true, scope);
               if (rs.noSignal) { var eSig = new Error(Signal.NO_SIGNAL_ERROR); eSig.noSignal = true; throw eSig; }
               session = null; saveSession(null);
               var eOut = new Error('signed out'); eOut.signedOut = true; throw eOut;
@@ -7427,12 +7626,26 @@ window.CardView = {
         }
 
         /** The lookup: one try, and when it got NO answer, one fresh try (a new request, a new AbortController).
-            Nothing reaches the pile until the final answer is handled below, once, so a retry can never add a
-            card twice, and `busy` stays held across both tries. */
+            Nothing reaches the pile until the final answer is handled below, once, so a retry can never add a card
+            twice, and `busy` stays held across both tries. The whole thing, both tries and every body read in
+            them, has ONE more clock, LOOKUP_TOTAL_MS: when it runs out the request still out is cut, no further
+            one starts, and the lookup ends as a no-answer, so the card is priced (from the Card Ladder value, when
+            Triumph never answered) about 20 s after it started, however the connection behaves. */
         function lookupWithRetry() {
-          return lookupTry(LOOKUP_FIRST_MS).then(null, function (e) {
-            if (!(e && e.noAnswer)) throw e;
-            return lookupTry(LOOKUP_RETRY_MS);
+          return new Promise(function (resolve, reject) {
+            var scope = { over: false, cut: null }; // `cut` ends the request that is out
+            var cap = setTimeout(function () { end(false, noAnswerError(ranOut)); }, LOOKUP_TOTAL_MS);
+            function end(ok, value) {
+              if (scope.over) return;
+              scope.over = true;
+              clearTimeout(cap);
+              if (scope.cut) scope.cut();
+              if (ok) resolve(value); else reject(value);
+            }
+            lookupTry(LOOKUP_FIRST_MS, scope).then(null, function (e) {
+              if (!(e && e.noAnswer)) throw e;
+              return lookupTry(LOOKUP_RETRY_MS, scope);
+            }).then(function (r) { end(true, r); }, function (e) { end(false, e); });
           });
         }
 
@@ -7457,12 +7670,12 @@ window.CardView = {
           if (e && e.signedOut) { renderNotSignedIn(cert, grader, Signal.SIGNED_OUT_MESSAGE); return; }
           if (e && e.noSignal) { applyFailure(cert, grader, attempt, describeFailure(Signal.NO_SIGNAL_ERROR, attempt)); return; }
           if (e && e.noAnswer) {
-            // Neither request got an answer. On a phone that is offline that is a lost signal: the no-signal
-            // wording and Retry are right. Otherwise the connection is slow or stuck, which says nothing about
-            // Triumph (only a 5xx answer from our server does): the card is priced from the Card Ladder value,
-            // as in the 5xx case, with a note that says what happened.
+            // Neither request got an answer (or the whole lookup ran out of its clock). On a phone that is
+            // offline that is a lost signal: the no-signal wording and Retry are right. Otherwise the connection
+            // is slow or stuck, which says nothing about Triumph (only a 5xx answer from our server does): the
+            // card is priced from the Card Ladder value, as in the 5xx case, with a note that says what happened.
             if (onlineHint() === false) {
-              applyFailure(cert, grader, attempt, describeFailure('The lookup took longer than ' + ((LOOKUP_FIRST_MS + LOOKUP_RETRY_MS) / 1000) + ' seconds.', attempt));
+              applyFailure(cert, grader, attempt, describeFailure('The lookup took longer than ' + (LOOKUP_TOTAL_MS / 1000) + ' seconds.', attempt));
               return;
             }
             onSlowConnection(cert, grader);
@@ -7877,11 +8090,8 @@ window.CardView = {
     function activate() {
       wireOnce();
       applyPageHiding();
-      ensureSettings().then(function () {
-        repriceAll(); // our sheets are in: every card is priced against the one picked
-        renderRuleControls();
-        renderPile();
-        if (currentKey) renderCurrent();
+      ensureSettings(true).then(function () { // the tab loads both sheets, whatever rule is picked
+        repaintForSheets(); // our sheets are in: every card is priced against the one picked
         if (!resumed && session) { resumed = true; resumeAveragePolls(); }
       });
     }
