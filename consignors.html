@@ -472,10 +472,16 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-consignors .cons-badge{margin-left:8px;}
   #tab-consignors .lot-note{flex:0 0 100%;min-width:0;margin-top:-4px;font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   #stat-strip .arrived-note{grid-column:1 / -1;justify-self:start;}
+  /* The week switch above the tiles, and the one line under them that shows the Payout tile adding up. */
+  #tab-consignors .week-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:0 0 14px;}
+  #tab-consignors .week-range{font-size:12px;color:var(--dim);font-family:var(--font-mono);}
+  #tab-consignors .week-note{flex:0 0 100%;font-size:12px;color:var(--dim);}
+  #tab-consignors .stat-math{margin:-8px 4px 16px;font-size:11px;line-height:1.5;color:var(--dim);font-family:var(--font-mono);}
   /* The status filter grew to 8 chips: let it wrap instead of widening the phone layout. Phone tap targets: 44px. */
   #master-status-filter{flex-wrap:wrap;}
   @media (max-width:768px){
     #master-status-filter .filter-chip,#tab-consignors .cons-actions .btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;}
+    #week-switch .filter-chip{min-height:44px;display:inline-flex;align-items:center;justify-content:center;}
   }
 </style>
 <div class="tab active" id="tab-consignors">
@@ -523,6 +529,16 @@ code{font-family:var(--font-mono);font-size:.92em;}
     #scr-card .scr-empty{padding:14px;font-size:13px;color:var(--dim);}
   </style>
 
+  <section class="week-bar" id="week-bar" aria-label="Which week to show">
+    <div class="filter-group" id="week-switch" role="group" aria-label="Week">
+      <button type="button" class="filter-chip active" data-week="this" aria-pressed="true" title="Lots quoted since Friday 8 PM Eastern">This week</button>
+      <button type="button" class="filter-chip" data-week="last" aria-pressed="false" title="Last week&#39;s lots, plus every older lot that is still owed">Last week</button>
+      <button type="button" class="filter-chip" data-week="all" aria-pressed="false" title="Every lot on file">All</button>
+    </div>
+    <div class="week-range" id="week-range" role="status" aria-live="polite"></div>
+    <div class="week-note" id="week-note" hidden></div>
+  </section>
+
   <section class="stat-strip" id="stat-strip" aria-label="Ledger totals">
     <div class="wtb-total-card"><div class="lbl">Slabs in</div><div class="val" id="stat-slabs">—</div></div>
     <div class="wtb-total-card"><div class="lbl">Market value</div><div class="val" id="stat-market">—</div></div>
@@ -532,6 +548,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
     <div class="wtb-total-card"><div class="lbl">Consignments</div><div class="val" id="stat-consignments">—</div></div>
     <span class="status-pill st-received arrived-note" id="lg-arrived-note" hidden role="status"></span>
   </section>
+  <p class="stat-math" id="stat-math"></p>
 
   <section class="partner-strip" id="partner-strip" aria-label="By partner">
     <div class="partner-card p-josh">
@@ -1933,6 +1950,335 @@ window.ScanSheet = {
 </script>
 
 <script>
+/* WEEK-CORE:START - generated from weekOf.js + ledgerView.js by build-portal.js, do not edit by hand */
+(function () {
+'use strict';
+// weekOf.js: the ONE place that says where a week starts.
+//
+// A week starts Friday 8:00 PM America/New_York and repeats weekly. Friday 20:00 is when the owner opens
+// tickets for the next round of sellers (the first ticket lands a little after, about 8:20), so everything
+// that happens from then until the next Friday 20:00 belongs to one week. The window is half-open:
+// [start, end). The exact instant of Friday 20:00:00 is already the NEW week, 19:59:59.999 is the old one.
+//
+// Pure: no clock of its own (the caller passes the instant), no require, no network. That is on purpose.
+// The Consignors page embeds this whole file (rates-portal/build-portal.js -> window.WeekOf), and the bot
+// can require() it, so the page and the bot can never disagree about which week a moment is in.
+//
+// DST: nothing here uses a fixed UTC offset or the host's own zone (Date#getTimezoneOffset reads the HOST,
+// not New York). Every wall-clock read goes through Intl.DateTimeFormat with timeZone America/New_York, and
+// every wall clock -> instant conversion goes through wallToInstant()'s guess-and-refine loop. A week that
+// spans the November fall-back is 169 hours long, one that spans the March spring-forward is 167. The
+// switch itself happens at 2 AM Sunday, so Friday 20:00 is never a skipped or repeated hour.
+//
+//   const { weekOf } = require('./weekOf');
+//   weekOf(new Date('2026-11-14T01:20:00Z'))
+//     -> { start: Date(2026-11-14T01:00:00Z), end: Date(2026-11-21T01:00:00Z), label: 'Week of Fri 11/13', key: '2026-11-13' }
+//
+// NOT wired into weekBooks.js yet (that is the bot's Monday-to-Sunday workbook week, and changing it needs a
+// bot restart). The new ticket build adopts this function; until then it only feeds the Consignors page.
+
+'use strict';
+
+const TZ = 'America/New_York';
+/** weekday 0 = Sunday ... 5 = Friday ... 6 = Saturday; hour and minute are New York wall clock. */
+const WEEK_START = Object.freeze({ weekday: 5, hour: 20, minute: 0 });
+
+const WEEKDAY = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+const fmt = new Intl.DateTimeFormat('en-US', {
+  timeZone: TZ, hourCycle: 'h23',
+  year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'short',
+  hour: 'numeric', minute: 'numeric', second: 'numeric',
+});
+
+/** The wall clock New York is showing at an instant (epoch ms). */
+function parts(ms) {
+  const p = {};
+  for (const x of fmt.formatToParts(new Date(ms))) p[x.type] = x.value;
+  return { y: +p.year, m: +p.month, d: +p.day, wd: WEEKDAY[p.weekday], h: +p.hour % 24, mi: +p.minute, s: +p.second };
+}
+
+/** The instant a New York wall clock reads y-m-d h:mi. Refines a guess until New York agrees with it. */
+function wallToInstant(y, m, d, h, mi) {
+  const want = Date.UTC(y, m - 1, d, h, mi, 0);
+  let t = want;
+  for (let k = 0; k < 4; k++) {
+    const p = parts(t);
+    const diff = Date.UTC(p.y, p.m - 1, p.d, p.h, p.mi, p.s) - want;
+    if (diff === 0) break;
+    t -= diff;
+  }
+  return new Date(t);
+}
+
+function toMs(input) {
+  const ms = input instanceof Date ? input.getTime() : typeof input === 'number' ? input : Date.parse(input);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/**
+ * The week a moment falls in: { start, end, label, key }, or null when the input is not a real date.
+ *   start  Date, the Friday 20:00 New York that opened the week (inclusive)
+ *   end    Date, the next Friday 20:00 New York (exclusive); also the start of the following week
+ *   label  "Week of Fri 11/13", named for the Friday it starts on (no year, no leading zeros)
+ *   key    "2026-11-13", the same Friday with its year, for storing or comparing
+ * Accepts a Date, epoch ms, or anything Date.parse reads (an ISO string).
+ */
+function weekOf(input) {
+  const ms = toMs(input);
+  if (ms === null) return null;
+  const p = parts(ms);
+  let back = (p.wd - WEEK_START.weekday + 7) % 7; // days since the most recent Friday (0 on a Friday)
+  const secondOfDay = p.h * 3600 + p.mi * 60 + p.s;
+  if (back === 0 && secondOfDay < WEEK_START.hour * 3600 + WEEK_START.minute * 60) back = 7; // Friday, not 8 PM yet
+  // Calendar arithmetic on a UTC date is DST-proof: it only counts days.
+  const fri = new Date(Date.UTC(p.y, p.m - 1, p.d - back));
+  const fy = fri.getUTCFullYear(), fm = fri.getUTCMonth() + 1, fd = fri.getUTCDate();
+  const next = new Date(Date.UTC(fy, fm - 1, fd + 7));
+  const start = wallToInstant(fy, fm, fd, WEEK_START.hour, WEEK_START.minute);
+  const end = wallToInstant(next.getUTCFullYear(), next.getUTCMonth() + 1, next.getUTCDate(), WEEK_START.hour, WEEK_START.minute);
+  const pad = n => String(n).padStart(2, '0');
+  return { start, end, label: 'Week of Fri ' + fm + '/' + fd, key: String(fy).padStart(4, '0') + '-' + pad(fm) + '-' + pad(fd) };
+}
+
+/** The week before `week` (a weekOf() result). */
+function previousWeek(week) {
+  return weekOf(week.start.getTime() - 1);
+}
+
+/** The week after `week` (a weekOf() result). */
+function nextWeek(week) {
+  return weekOf(week.end);
+}
+
+window.WeekOf = {
+  weekOf: weekOf,
+  previousWeek: previousWeek,
+  nextWeek: nextWeek,
+  WEEK_START: WEEK_START,
+  TZ: TZ,
+};
+})();
+
+(function () {
+'use strict';
+// ledgerView.js: what the Consignors page shows for "This week", "Last week" and "All", and the totals
+// for whatever it shows. Pure: rows in, rows and numbers out. The page embeds this whole file
+// (rates-portal/build-portal.js -> window.LedgerView) after weekOf.js, and ledgerView.test.js runs the same
+// file in node, so the page and the tests cannot drift apart.
+//
+// WHICH TIME PLACES A LOT IN A WEEK. A ledger row (ledger-portal/logic.ts, Consignment) carries three times:
+//   quotedAt   when the comp was shared with the seller (the bot sets it on the PUT that creates the row)
+//   updatedAt  the last write of ANY kind (Confirm, tracking, Arrived, Locked, Paid and notes all rewrite it)
+//   paidAt     only once the lot is Paid
+// There is no confirmedAt on a ledger row: Confirm is a status PATCH, and the confirmation time lives only in
+// the bot's own handoff. So every status is placed by quotedAt. updatedAt is not usable as an anchor: a lot
+// confirmed last week and marked Arrived this week would hop weeks and vanish from "Last week", which is the
+// one place its payout gets done. quotedAt never moves once the lot exists, so a lot stays in the week its
+// ticket was quoted in, through accepted, shipped, arrived, locked and paid. (updatedAt is only the fallback
+// when a row has no usable quotedAt.) Known blur: the bot writes the comp time or the share time into
+// quotedAt depending on whether it restarted between the two (forensics F8), so a lot comped just before a
+// Friday 8 PM and shared just after can land on either side. It is the same lot either way.
+//
+// WHAT EACH CHOICE SHOWS
+//   this  rows whose time is at or after the start of this week (Friday 8 PM New York, see weekOf.js)
+//   last  rows from the week before, PLUS every lot still owed (accepted, shipped, received, locked) from
+//         any earlier time, so a payout that slipped two weeks is still on the page where payouts are done
+//   all   every row
+// "This week" never carries old lots forward: it is the clean page the owner asked for.
+//
+// WHAT THE TOTALS MEAN (aggregateRows). Same split the ledger's own /summary uses for Owed and Paid: Owed
+// is the payout of lots in an OWED status, Paid is the payout of lots in 'paid'. The ledger's Payout figure
+// also counted cancelled and quoted lots, which is how the dashboard showed $104,104.06 beside an Owed of
+// $30,841.74 (forensics F6). Here a cancelled lot is dead and counts nowhere in the tiles, and
+//   Payout = Quoted (not confirmed yet) + Owed + Paid
+// exactly, by construction, so the three numbers under the tiles always add up to the tile.
+
+'use strict';
+
+const WeekOf = typeof require === 'function' ? require('./weekOf') : window.WeekOf;
+
+/** Same list as ledger-portal/logic.ts OWED_STATUSES: confirmed, not paid, not cancelled. */
+const OWED_STATUSES = ['accepted', 'shipped', 'received', 'locked'];
+const CHOICES = ['this', 'last', 'all'];
+const PARTNERS = ['josh', 'penguin', 'unknown'];
+
+function cents(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function timeOf(v) {
+  const t = Date.parse(v);
+  return Number.isFinite(t) ? t : null;
+}
+
+/** The instant (epoch ms) that places a lot in a week: quotedAt, else updatedAt, else null. */
+function anchorOf(row) {
+  if (!row) return null;
+  const q = timeOf(row.quotedAt);
+  return q !== null ? q : timeOf(row.updatedAt);
+}
+
+function isOwed(row) {
+  return OWED_STATUSES.indexOf(row && row.status) >= 0;
+}
+
+/** This week and last week at `now` (a Date, epoch ms or ISO string): the two weekOf() results. */
+function weeksAt(now) {
+  const thisWeek = WeekOf.weekOf(now);
+  if (!thisWeek) return null;
+  return { thisWeek, lastWeek: WeekOf.previousWeek(thisWeek) };
+}
+
+/**
+ * The rows `choice` shows at `now`. Returns { rows, carryOver, week }:
+ *   rows       the selected rows, in the order given
+ *   carryOver  for 'last': how many of them are older than last week and shown only because they are
+ *              still owed; 0 for the other choices
+ *   week       the weekOf() result the choice is about ('this' or 'last'), or null for 'all'
+ * An unknown choice, or a `now` that is not a date, returns every row: when the page cannot tell which week
+ * it is, it shows everything rather than hide a payout.
+ */
+function selectRows(rows, choice, now) {
+  const list = Array.isArray(rows) ? rows : [];
+  const w = weeksAt(now);
+  if (choice === 'all' || !w || CHOICES.indexOf(choice) < 0) return { rows: list.slice(), carryOver: 0, week: null };
+  const thisStart = w.thisWeek.start.getTime();
+  if (choice === 'this') {
+    return { rows: list.filter(r => { const t = anchorOf(r); return t !== null && t >= thisStart; }), carryOver: 0, week: w.thisWeek };
+  }
+  const lastStart = w.lastWeek.start.getTime();
+  let carryOver = 0;
+  const out = list.filter(r => {
+    const t = anchorOf(r);
+    if (t !== null && t >= thisStart) return false;
+    if (t !== null && t >= lastStart) return true;
+    if (isOwed(r)) { carryOver++; return true; } // older (or undated) and still owed: never let a payout drop off
+    return false;
+  });
+  return { rows: out, carryOver, week: w.lastWeek };
+}
+
+/**
+ * Lots still owed that "This week" does not show: owed (accepted, shipped, received, locked) and placed before
+ * the start of this week, or with no usable time at all (the same rows "Last week" lists as carry-over, plus
+ * last week's own owed lots). Returns { count, payoutCents }. The page turns it into the one line on This week
+ * that points to the money still outstanding, so the clean week never hides a payout. 'This week' itself is
+ * unchanged: this only counts, it never adds rows to it.
+ */
+function olderOwed(rows, now) {
+  const list = Array.isArray(rows) ? rows : [];
+  const w = weeksAt(now);
+  if (!w) return { count: 0, payoutCents: 0 };
+  const thisStart = w.thisWeek.start.getTime();
+  let count = 0, payoutCents = 0;
+  for (const r of list) {
+    if (!isOwed(r)) continue;
+    const t = anchorOf(r);
+    if (t !== null && t >= thisStart) continue;
+    count++;
+    payoutCents += cents(r.payoutCents);
+  }
+  return { count, payoutCents };
+}
+
+function laterOf(a, b) {
+  const ta = timeOf(a), tb = timeOf(b);
+  if (ta === null) return b;
+  if (tb === null) return a;
+  return tb > ta ? b : a;
+}
+
+/**
+ * The numbers for a set of rows, in the shape the page's renderers read (the ledger /summary shape plus a few
+ * fields). Cancelled lots are left out of every total and every per-seller / per-partner figure (they are still
+ * in byStatus and in `recent`, where their Cancelled pill shows).
+ *   totals.consignments / slabs / marketCents / payoutCents   live (not cancelled) lots
+ *   totals.quotedCents   payout of lots still Quoted (the seller has not confirmed)
+ *   totals.owedCents     payout of lots in an OWED status
+ *   totals.paidCents     payout of Paid lots
+ *   totals.cancelledCents / cancelledConsignments   what was left out
+ *   and always payoutCents === quotedCents + owedCents + paidCents
+ */
+function aggregateRows(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  const totals = {
+    consignments: 0, slabs: 0, marketCents: 0, payoutCents: 0, quotedCents: 0, owedCents: 0, paidCents: 0,
+    cancelledCents: 0, cancelledConsignments: 0,
+  };
+  const byStatus = {};
+  ['quoted', 'accepted', 'shipped', 'received', 'locked', 'paid', 'cancelled'].forEach(s => { byStatus[s] = { consignments: 0, slabs: 0, payoutCents: 0 }; });
+  const byPartner = {};
+  PARTNERS.forEach(p => { byPartner[p] = { consignments: 0, slabs: 0, marketCents: 0, payoutCents: 0, owedCents: 0, paidCents: 0 }; });
+  const sellers = new Map();
+
+  for (const r of list) {
+    const payout = cents(r.payoutCents), market = cents(r.marketCents), slabs = cents(r.slabCount);
+    if (!byStatus[r.status]) byStatus[r.status] = { consignments: 0, slabs: 0, payoutCents: 0 };
+    byStatus[r.status].consignments += 1;
+    byStatus[r.status].slabs += slabs;
+    byStatus[r.status].payoutCents += payout;
+
+    if (r.status === 'cancelled') {
+      totals.cancelledConsignments += 1;
+      totals.cancelledCents += payout;
+      continue;
+    }
+    const owed = isOwed(r);
+    const paid = r.status === 'paid';
+    totals.consignments += 1;
+    totals.slabs += slabs;
+    totals.marketCents += market;
+    totals.payoutCents += payout;
+    if (owed) totals.owedCents += payout;
+    else if (paid) totals.paidCents += payout;
+    else totals.quotedCents += payout; // 'quoted', and any status the page does not know yet: not confirmed, not owed
+
+    const pk = PARTNERS.indexOf(r.sourcedBy) >= 0 ? r.sourcedBy : 'unknown';
+    const pt = byPartner[pk];
+    pt.consignments += 1; pt.slabs += slabs; pt.marketCents += market; pt.payoutCents += payout;
+    if (owed) pt.owedCents += payout;
+    if (paid) pt.paidCents += payout;
+
+    const at = laterOf(r.quotedAt, r.updatedAt);
+    let s = sellers.get(r.sellerId);
+    if (!s) {
+      s = {
+        sellerId: r.sellerId, sellerName: r.sellerName, sellerHandle: r.sellerHandle, sourcedBy: r.sourcedBy,
+        consignments: 0, slabs: 0, marketCents: 0, payoutCents: 0, owedCents: 0, paidCents: 0,
+        lastAt: at, sellerSheetUrl: r.sellerSheetUrl,
+      };
+      sellers.set(r.sellerId, s);
+    }
+    s.consignments += 1; s.slabs += slabs; s.marketCents += market; s.payoutCents += payout;
+    if (owed) s.owedCents += payout;
+    if (paid) s.paidCents += payout;
+    if (laterOf(s.lastAt, at) === at) { // the newest lot names the seller, as the ledger's own /summary does
+      s.lastAt = at; s.sellerSheetUrl = r.sellerSheetUrl; s.sellerName = r.sellerName; s.sellerHandle = r.sellerHandle; s.sourcedBy = r.sourcedBy;
+    }
+  }
+
+  const bySeller = Array.from(sellers.values()).sort((a, b) => b.owedCents - a.owedCents);
+  const recent = list.slice().sort((a, b) => (timeOf(b.quotedAt) || 0) - (timeOf(a.quotedAt) || 0)).slice(0, 20);
+  return { totals, byStatus, byPartner, bySeller, recent };
+}
+
+window.LedgerView = {
+  selectRows: selectRows,
+  aggregateRows: aggregateRows,
+  olderOwed: olderOwed,
+  weeksAt: weeksAt,
+  anchorOf: anchorOf,
+  isOwed: isOwed,
+  OWED_STATUSES: OWED_STATUSES,
+  CHOICES: CHOICES,
+};
+})();
+/* WEEK-CORE:END */
+</script>
+
+<script>
 (function () {
 'use strict';
   var activeTab = 'consignors';
@@ -2116,6 +2462,10 @@ window.ScanSheet = {
       statOwed: document.getElementById('stat-owed'),
       statPaid: document.getElementById('stat-paid'),
       statConsignments: document.getElementById('stat-consignments'),
+      statMath: document.getElementById('stat-math'),
+      weekSwitch: document.getElementById('week-switch'),
+      weekRange: document.getElementById('week-range'),
+      weekNote: document.getElementById('week-note'),
       unknownWarning: document.getElementById('lg-unknown-warning'),
       arrivedNote: document.getElementById('lg-arrived-note'),
       owedTbody: document.getElementById('owed-tbody'),
@@ -2135,9 +2485,14 @@ window.ScanSheet = {
       foot: document.getElementById('lg-foot')
     };
 
+    var LedgerView = window.LedgerView; // ledgerView.js: which week a lot is in, and the totals (see its header)
     var statusData = null;
     var statusOk = false;
-    var summaryData = null;
+    var allLots = [];      // every ledger row, as GET /consignments returns them (no items)
+    var weekChoice = 'this'; // 'this' | 'last' | 'all'. Not remembered: every visit opens on This week (see the week switch)
+    var weekSel = null;    // what the choice shows now: { rows, carryOver, week }
+    var selectedIds = {};  // lot id -> true, for the lots in weekSel
+    var summaryData = null; // aggregateRows(weekSel.rows): the tiles, partner cards and seller tables read this
     var masterRows = [];
     var masterTotal = 0;
     var sellerStages = {}; // sellerId -> { received, shipped } lot counts, see buildSellerStages()
@@ -2147,7 +2502,6 @@ window.ScanSheet = {
     var msgCache = { text: '', kind: '' };
 
     var expanded = {};
-    var sellerCache = {};
 
     var sellersSort = { field: 'owedCents', dir: 'desc' };
     var masterSort = { field: 'quotedAt', dir: 'desc' };
@@ -2178,14 +2532,15 @@ window.ScanSheet = {
     function statusLabelOf(s) { return STATUS_LABEL[s] || (s ? (String(s).charAt(0).toUpperCase() + String(s).slice(1)) : '—'); }
     function statusPillHtml(s) { return '<span class="status-pill ' + statusClass(s) + '">' + esc(statusLabelOf(s)) + '</span>'; }
 
-    // ── arrival cues ─────────────────────────────────────────────────────────
-    // /summary's bySeller carries money per consignor, not lot statuses, so the "Arrived" and
-    // "In transit" badges are counted from two reads loadAll() makes for them: every received
-    // lot and every shipped lot (GET /consignments?status=...), one row per lot, none missed.
-    function fetchLotsByStatus(status) {
+    // ── every lot, and what the week switch does with them ───────────────────
+    // The page reads the ledger's lots ONCE per load (GET /consignments, every row, 500 a page) and works
+    // out the rest itself: the week switch, the tiles, Who we owe, Who's sending what, Recent and the
+    // Arrived / In transit badges all come from the same rows, so they cannot disagree with each other.
+    // Which time places a lot in a week, and what each total means: ledgerView.js (window.LedgerView).
+    function fetchAllLots() {
       var all = [];
       function next() {
-        var params = { status: status, limit: 500 }; // 500 is the server's page cap
+        var params = { limit: 500 }; // 500 is the server's page cap
         if (all.length) params.offset = all.length;
         return apiGet('/consignments', params).then(function (res) {
           var rows = (res && res.rows) || [];
@@ -2196,17 +2551,14 @@ window.ScanSheet = {
       }
       return next();
     }
-    function buildSellerStages(receivedLots, shippedLots) {
+    // One entry per consignor: how many of the lots in view are Arrived and how many are in transit.
+    function buildSellerStages(lots) {
       var out = Object.create(null);
-      function add(lots, status) {
-        (lots || []).forEach(function (c) {
-          if (!c || !c.sellerId) return;
-          var o = out[c.sellerId] || (out[c.sellerId] = { received: 0, shipped: 0 });
-          o[status]++;
-        });
-      }
-      add(receivedLots, 'received');
-      add(shippedLots, 'shipped');
+      (lots || []).forEach(function (c) {
+        if (!c || !c.sellerId || (c.status !== 'received' && c.status !== 'shipped')) return;
+        var o = out[c.sellerId] || (out[c.sellerId] = { received: 0, shipped: 0 });
+        o[c.status]++;
+      });
       return out;
     }
     // The list reads (/consignments, /summary) do not select the tracking column, so a lot's
@@ -2356,12 +2708,72 @@ window.ScanSheet = {
       dom.statOwed.textContent = money(t.owedCents);
       dom.statPaid.textContent = money(t.paidCents);
       dom.statConsignments.textContent = t.consignments == null ? '—' : Number(t.consignments).toLocaleString('en-US');
+      // The Payout tile counts every lot that is not cancelled, so it is exactly the three numbers beside it.
+      if (dom.statMath) {
+        var line = '';
+        if (summaryData) {
+          line = 'Payout quoted ' + money(t.payoutCents) + ' = Quoted, not confirmed ' + money(t.quotedCents) + ' + Owed ' + money(t.owedCents) + ' + Paid ' + money(t.paidCents) + '.';
+          if (t.cancelledConsignments > 0) line += ' Cancelled lots are not counted (' + t.cancelledConsignments + ', ' + money(t.cancelledCents) + ').';
+        }
+        dom.statMath.textContent = line;
+      }
       var bs = (summaryData && summaryData.byStatus) || {};
       var arrived = bs.received && typeof bs.received.consignments === 'number' ? bs.received.consignments : 0;
       if (dom.arrivedNote) {
         dom.arrivedNote.hidden = !(arrived > 0);
         dom.arrivedNote.textContent = arrived > 0 ? 'Arrived, not locked: ' + arrived : '';
       }
+    }
+
+    // ── the week switch ──────────────────────────────────────────────────────
+    // Default is This week on every visit. The page does remember a couple of per-device toggles (the Scanner
+    // rates card staying open), but not the filter chips here, and a remembered "Last week" would open on old
+    // lots while the new week's tickets sat one tap away: the opposite of what the switch is for.
+    function fmtEt(d) {
+      try {
+        return d.toLocaleString('en-US', { timeZone: 'America/New_York', weekday: 'short', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }).replace(/,/g, '').replace(/\u202f/g, ' '); // newer ICU puts a narrow no-break space before AM/PM
+      } catch (e) { return ''; }
+    }
+    function renderWeekBar() {
+      var chips = dom.weekSwitch ? dom.weekSwitch.querySelectorAll('.filter-chip') : [];
+      Array.prototype.forEach.call(chips, function (b) {
+        var on = b.getAttribute('data-week') === weekChoice;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      var text = '', note = '';
+      if (weekSel) {
+        if (weekChoice === 'all' || !weekSel.week) text = 'Every lot on file, all weeks.';
+        else text = weekSel.week.label + ': ' + fmtEt(weekSel.week.start) + ' to ' + fmtEt(weekSel.week.end) + ' ET';
+        if (weekChoice === 'last' && weekSel.carryOver > 0) {
+          note = weekSel.carryOver + (weekSel.carryOver === 1 ? ' older lot is' : ' older lots are') + ' still owed, so ' + (weekSel.carryOver === 1 ? 'it is' : 'they are') + ' listed here too and can be paid out.';
+        }
+        if (weekChoice === 'this') {
+          var older = LedgerView.olderOwed(allLots, new Date());
+          if (older.count > 0) note = older.count + (older.count === 1 ? ' older lot, ' : ' older lots, ') + money(older.payoutCents) + ' still owed: see Last week';
+        }
+      }
+      if (dom.weekRange) dom.weekRange.textContent = text;
+      if (dom.weekNote) { dom.weekNote.textContent = note; dom.weekNote.hidden = !note; }
+    }
+
+    // Work out what the choice shows, from the rows already loaded. The clock is read here, every time, so
+    // the week rolls over at Friday 8 PM on the next load or tap even if the page was left open.
+    function recompute() {
+      weekSel = LedgerView.selectRows(allLots, weekChoice, new Date());
+      summaryData = LedgerView.aggregateRows(weekSel.rows);
+      selectedIds = {};
+      weekSel.rows.forEach(function (r) { selectedIds[r.id] = true; });
+      sellerStages = buildSellerStages(weekSel.rows);
+    }
+    function renderAll() {
+      renderWeekBar();
+      renderStats();
+      renderPartners();
+      renderOwed();
+      renderSellers();
+      renderRecent();
+      renderMaster();
     }
 
     function renderPartners() {
@@ -2393,7 +2805,7 @@ window.ScanSheet = {
       var rows = ((summaryData && summaryData.bySeller) || []).filter(function (s) { return (s.owedCents || 0) > 0; });
       rows = sortRows(rows, 'owedCents', 'desc');
       if (!rows.length) {
-        dom.owedTbody.innerHTML = '<tr class="empty-row"><td colspan="7">Nobody is owed anything right now.</td></tr>';
+        dom.owedTbody.innerHTML = '<tr class="empty-row"><td colspan="7">' + (weekChoice === 'this' ? 'Nobody is owed anything yet this week.' : weekChoice === 'last' ? 'Nobody is owed anything from last week.' : 'Nobody is owed anything right now.') + '</td></tr>';
         return;
       }
       var html = '';
@@ -2411,15 +2823,17 @@ window.ScanSheet = {
         html += '<tr class="owed-detail" data-seller-detail="' + esc(s.sellerId) + '"' + (isOpen ? '' : ' hidden') + '><td colspan="7">' + (isOpen ? ownedDetailHtml(s.sellerId) : '') + '</td></tr>';
       });
       dom.owedTbody.innerHTML = html;
-      Object.keys(expanded).forEach(function (id) {
-        if (expanded[id] && !sellerCache[id]) loadSellerConsignments(id);
-      });
     }
 
+    // An opened consignor shows the lots of theirs that are in the view (the same rows the tiles add up),
+    // newest first. They come from the rows already loaded: no read of their own, so a card is never staler
+    // than the tiles above it.
+    function lotsOfSeller(sellerId) {
+      var rows = weekSel ? weekSel.rows.filter(function (c) { return c.sellerId === sellerId; }) : [];
+      return sortRows(rows, 'quotedAt', 'desc');
+    }
     function ownedDetailHtml(sellerId) {
-      var cache = sellerCache[sellerId];
-      if (cache == null || cache === 'loading') return '<div style="color:var(--dim);font-style:italic;padding:6px 0;">Loading…</div>';
-      if (cache === 'error') return '<div style="color:var(--red);padding:6px 0;">Could not load this seller&#39;s consignments.</div>';
+      var cache = lotsOfSeller(sellerId);
       if (!cache.length) return '<div style="color:var(--dim);padding:6px 0;">No consignments found.</div>';
       var html = '';
       cache.forEach(function (c) {
@@ -2453,17 +2867,6 @@ window.ScanSheet = {
       return html;
     }
 
-    function loadSellerConsignments(sellerId) {
-      sellerCache[sellerId] = 'loading';
-      apiGet('/consignments', { seller: sellerId, limit: 200 }).then(function (res) {
-        sellerCache[sellerId] = (res && res.rows) || [];
-        renderOwed();
-      }).catch(function () {
-        sellerCache[sellerId] = 'error';
-        renderOwed();
-      });
-    }
-
     function handleStatusAction(btn) {
       var id = btn.getAttribute('data-id');
       var newStatus = btn.getAttribute('data-status');
@@ -2481,7 +2884,7 @@ window.ScanSheet = {
       });
     }
 
-    // loadAll() drops every opened consignor's lots and renderOwed() reads the open ones again.
+    // loadAll() reads every lot again; the opened consignors redraw from those rows.
     function refreshAfterChange() { return loadAll(); }
 
     dom.owedTbody.addEventListener('click', function (e) {
@@ -2491,7 +2894,6 @@ window.ScanSheet = {
       if (!row) return;
       var sellerId = row.getAttribute('data-seller');
       expanded[sellerId] = !expanded[sellerId];
-      if (expanded[sellerId] && !sellerCache[sellerId]) loadSellerConsignments(sellerId);
       renderOwed();
     });
 
@@ -2600,8 +3002,11 @@ window.ScanSheet = {
       return r.kind === 'single' ? '<span class="kind-pill" title="Raw single card - not a graded slab">Single</span>' : '';
     }
 
+    // The master list follows the week switch: only items of lots that are in the view (All shows everything).
+    function inView(r) { return weekChoice === 'all' || !!selectedIds[r.consignmentId]; }
+
     function masterFiltered() {
-      var rows = masterRows;
+      var rows = masterRows.filter(inView);
       if (masterFilters.status !== 'all') rows = rows.filter(function (r) { return r.consignmentStatus === masterFilters.status; });
       if (masterFilters.partner !== 'all') rows = rows.filter(function (r) { return (r.sourcedBy || 'unknown') === masterFilters.partner; });
       var q = masterFilters.q.trim().toLowerCase();
@@ -2621,7 +3026,7 @@ window.ScanSheet = {
     function renderMaster() {
       var rows = masterFiltered();
       var extra = masterTotal > masterRows.length ? (' (' + masterTotal.toLocaleString('en-US') + ' total on the server)') : '';
-      dom.masterCount.textContent = 'Showing ' + rows.length.toLocaleString('en-US') + ' of ' + masterRows.length.toLocaleString('en-US') + ' loaded' + extra;
+      dom.masterCount.textContent = 'Showing ' + rows.length.toLocaleString('en-US') + ' of ' + masterRows.filter(inView).length.toLocaleString('en-US') + ' loaded' + extra;
       if (!rows.length) {
         dom.masterTbody.innerHTML = '<tr class="empty-row"><td colspan="11">No items match these filters.</td></tr>';
         return;
@@ -2658,6 +3063,15 @@ window.ScanSheet = {
     }
     wireFilterGroup(dom.masterStatusFilter, 'status');
     wireFilterGroup(dom.masterPartnerFilter, 'partner');
+
+    dom.weekSwitch.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('.filter-chip') : null;
+      if (!btn) return;
+      var next = btn.getAttribute('data-week');
+      if (LedgerView.CHOICES.indexOf(next) < 0) return;
+      weekChoice = next; // a tap on the chosen week still redraws, so a page left open past Friday 8 PM catches up
+      if (summaryData) { recompute(); renderAll(); } else renderWeekBar(); // before the first load there is nothing to redraw
+    });
 
     function csvCell(v) {
       var s = String(v == null ? '' : v);
@@ -2715,21 +3129,15 @@ window.ScanSheet = {
       }
       busy = true;
       if (isActive()) el.reload.disabled = true;
-      return Promise.all([apiGet('/summary'), fetchAllMaster(), fetchLotsByStatus('received'), fetchLotsByStatus('shipped')]).then(function (out) {
-        summaryData = out[0];
+      return Promise.all([fetchAllLots(), fetchAllMaster()]).then(function (out) {
+        allLots = out[0];
         masterRows = out[1].rows;
         masterTotal = out[1].total;
-        sellerStages = buildSellerStages(out[2], out[3]);
         lotTracking = buildLotTracking();
-        // Lots read before this load are stale now (a card could still say Shipped, with Shipped's
-        // buttons, for a lot that has arrived). Drop them all; renderOwed() reads the open ones again.
-        sellerCache = {};
-        renderStats();
-        renderPartners();
-        renderOwed();
-        renderSellers();
-        renderRecent();
-        renderMaster();
+        // Every card, badge and total below is redrawn from these rows, so none can be staler than the
+        // read that just finished (a card could otherwise still say Shipped for a lot that has arrived).
+        recompute();
+        renderAll();
       }).catch(function (err) {
         showError('Could not load the ledger: ' + err.message);
       }).then(function () {
@@ -2754,10 +3162,13 @@ window.ScanSheet = {
      * data sitting in the DOM while the dashboard is hidden. */
     function blankDashboardData() {
       summaryData = null;
+      allLots = [];
+      weekChoice = 'this'; // the next unlock opens on This week again
+      weekSel = null;
+      selectedIds = {};
       masterRows = [];
       masterTotal = 0;
       expanded = {};
-      sellerCache = {};
       sellerStages = {};
       lotTracking = {};
       loadedOnce = false;
@@ -2766,6 +3177,7 @@ window.ScanSheet = {
       if (dom.masterTbody) dom.masterTbody.innerHTML = '';
       if (dom.recentList) dom.recentList.innerHTML = '';
       if (dom.masterCount) dom.masterCount.textContent = '';
+      renderWeekBar();
       renderStats();
       renderPartners();
     }
