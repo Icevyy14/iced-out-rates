@@ -878,6 +878,9 @@ code{font-family:var(--font-mono);font-size:.92em;}
     width:8px;height:8px;margin:0 3px;border-radius:50%;background:var(--sc-clv);-webkit-mask:none;mask:none;
     animation:scWait 1.3s ease-in-out infinite alternate;
   }
+  /* The Avg of 3 was not simply the three newest sales (trending down, or a high sale left out): the same quiet
+     note, one line each, right under the two numbers. In the opened card only; hide mode never shows it. */
+  #tab-scanner .sc-note.sc-note-avg{margin-top:10px;white-space:pre-line;}
   #tab-scanner .sc-retry{margin-top:12px;}
   #tab-scanner .sc-retry .sc-btn{min-width:132px;}
   /* The folded card's own button (the Android app's 'up' stop only): the whole row opens the card again. */
@@ -1230,7 +1233,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .scanner-layout.sc-native-cam:not(.sc-sheet-up):not(.sc-card-open) .sc-result:not(.sc-result-flag) .sc-result-more-in{visibility:hidden;transition:visibility 0s linear 200ms;}
   #tab-scanner .scanner-layout.sc-native-cam:not(.sc-sheet-up):not(.sc-card-open) .sc-result:not(.sc-result-flag) .sc-result-open{inset:0;align-items:center;padding:0 14px;}
   #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result.sc-result-flag .sc-pair,
-  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result.sc-result-flag .sc-trend{display:none;}
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result.sc-result-flag .sc-trend,
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result.sc-result-flag .sc-note-avg{display:none;}
   #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-up:not(.sc-card-open) .sc-recent{display:none;}
   #tab-scanner .scanner-layout.sc-native-cam:not(.sc-sheet-up):not(.sc-card-open) .sc-result:not(.sc-result-flag) .sc-result-open{align-items:flex-start;padding-top:14px;}
   /* The middle stop is where the camera opens and the scanning happens, and the sheet cannot scroll there (a
@@ -1363,6 +1367,9 @@ code{font-family:var(--font-mono);font-size:.92em;}
             <dd class="sc-pair-val" id="sc-clv">-</dd>
           </div>
         </dl>
+        <!-- Staff only, like the whole card: when the Avg of 3 was not simply the three newest sales (the newest sale
+             stood in for it because the sales are trending down, or a high sale was left out), one calm line each. -->
+        <div class="sc-note sc-note-avg" id="sc-avg-note" hidden></div>
         <!-- The same sales as a trend line, oldest on the left, against the CL value (its green, dashed). -->
         <div class="sc-trend" id="sc-trend" hidden aria-hidden="true"><div class="sc-spark" id="sc-spark"></div></div>
         <div class="sc-note" id="sc-note" hidden></div>
@@ -5907,6 +5914,39 @@ function ruleMath(price) {
   return BASIS_WORDS[price.basis] + ' × ' + price.pct + '%';
 }
 
+/** True when one of the card's newest five sales carries the outlier flag (`out`): a price far above the rest, left
+ *  out of the Avg of 3 (the same five the card's sales chips read, scanner/cardView.js cleanSales). */
+function highSaleLeftOut(sales) {
+  if (!Array.isArray(sales)) return false;
+  var list = sales.filter(function (s) { return s && typeof s === 'object' && Number.isSafeInteger(s.cents) && s.cents >= 0; }).slice(0, 5);
+  return list.some(function (s) { return s.out === true; });
+}
+
+/**
+ * The staff-only lines under the two numbers when the Avg of 3 was not simply the three newest sales, so a person
+ * can see it and check: [] or up to two short lines.
+ *   "Trending down: priced on last sale $X"   only when the matched rate row reads the average (basis avg3 or
+ *       lowest) AND the downtrend really lowered the value that row priced on (the newest sale is below the
+ *       average and is the number the row used: a CL value that is lower still, or a CL value row, never says it).
+ *   "High sale left out of the average"       when the outlier rule dropped a sale and the matched row reads the
+ *       average. The chip beside the sales says "Likely shill": a different line, so nothing is said twice.
+ * Nothing without a priced row (a pass, a wait, a staff price), and nothing without an average that is in.
+ * `price` is offerFor's answer, `card` the facts it priced, `fmt` the money formatter.
+ */
+function avgNotes(card, price, fmt) {
+  var lines = [];
+  if (!card || !price || typeof price.payoutCents !== 'number') return lines;
+  if (price.basis !== 'avg3' && price.basis !== 'lowest') return lines;
+  var f = factsOf(card);
+  if (!f.avgDone || f.avg3 == null) return lines;
+  var lowered = price.basis !== 'lowest' || f.clv == null || f.last < f.clv;
+  if (f.trend && f.last != null && f.last < f.avg3 && price.basisCents === f.last && lowered) {
+    lines.push('Trending down: priced on last sale ' + fmt(f.last));
+  }
+  if (highSaleLeftOut(card.sales)) lines.push('High sale left out of the average');
+  return lines;
+}
+
 /** Hide mode's ONE line: the market. Never a pay, a percent, an average, a band or a rule. */
 function marketLine(market, fmt) {
   if (market && typeof market.cents === 'number') return 'Market ' + fmt(market.cents);
@@ -5937,6 +5977,7 @@ window.OfferRules = {
   payText: payText,
   payLook: payLook,
   ruleMath: ruleMath,
+  avgNotes: avgNotes,
   marketLine: marketLine,
   marketLook: marketLook,
 };
@@ -6509,6 +6550,7 @@ window.CardView = {
       ruleMath: document.getElementById('sc-rule-math'),
       avg3: document.getElementById('sc-avg3'),
       note: document.getElementById('sc-note'),
+      avgNote: document.getElementById('sc-avg-note'),
       rescanBadge: document.getElementById('sc-rescan-badge'),
       retry: document.getElementById('sc-retry'),
       retryBtn: document.getElementById('sc-retry-btn'),
@@ -7224,6 +7266,15 @@ window.CardView = {
         }).join('');
     }
 
+    /** The lines under the two numbers when the Avg of 3 was not simply the three newest sales: OfferRules.avgNotes
+        (staff only: the note sits in the staff card, so hide mode never shows it). Empty hides it. */
+    function renderAvgNote(f, price) {
+      if (!dom.avgNote) return;
+      var lines = f && price ? OfferRules.avgNotes(f, price, money) : [];
+      dom.avgNote.textContent = lines.join(String.fromCharCode(10));
+      dom.avgNote.hidden = !lines.length;
+    }
+
     function clearSquares(payText, payLook) {
       setSquare(dom.pay, payText || '-', false, payLook);
       setSquare(dom.avg3, '-', false);
@@ -7231,6 +7282,7 @@ window.CardView = {
       dom.ruleMath.textContent = '';
       if (dom.conf) dom.conf.hidden = true;
       renderSales(null);
+      renderAvgNote(null, null);
     }
 
     var CONF_OK = 4; // what the confidence-gated bands ask for; under it the pill is a warning
@@ -7469,6 +7521,7 @@ window.CardView = {
       var borrowed = choice.rule === 'normal' && scannerKnown ? OfferRules.normalNote(scannerSettings) : '';
       dom.ruleMath.textContent = math && borrowed ? math + String.fromCharCode(10) + borrowed : (math || borrowed);
       renderNote(f, price);
+      renderAvgNote(f, price);
       renderSales(f);
       showConf(f);
 
