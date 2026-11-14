@@ -1964,6 +1964,13 @@ window.SinglesValidate = {
     var base = meta && meta.content ? meta.content : location.pathname;
     return base.replace(new RegExp('[/]+$'), '') + '/' + name;
   }
+  // An older slab-rates answers a save with 200 and a sheet built from the keys IT knows, so a setting added since is
+  // dropped without a word. False when the saved sheet in the answer has no CLV cap; true when it does, or when the
+  // answer carries no sheet to look at.
+  function keptClvCap(body) {
+    var s = body && body.settings;
+    return !s || typeof s !== 'object' || s.clvCapPct != null;
+  }
   
 
   function getStoredKey() {

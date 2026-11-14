@@ -2084,6 +2084,24 @@ function pickOverlap(hits, points) {
   }
   return top;
 }
+// CLV CAP (sheet setting `clvCapPct`): a card's CL value can run far ahead of what it actually sells for (a thin card on a
+// stale or inflated Card Ladder estimate). Owner, 2026-11-14: "if CLV is waaay over last sale / avg price it there". After
+// the row is chosen exactly as always (its range, overlap and basis all read today's values), a row paid on CL value whose
+// value is MORE than this many percent above the card's recent sales is paid on those sales instead: the row's own percent
+// of them (see recentSalesOf for which number that is). 0 = off; a whole number 0-500; absent or anything else = 30. It can
+// only ever LOWER a quote (the recent-sales number sits under CLV by construction), and rows paid on the average, the
+// lower of the two or the last sale are never touched.
+const DEFAULT_CLV_CAP_PCT = 30;
+function clvCapPctOf(settings) {
+  // Same contract as the portal validator: a whole number of percent 0-500 (a numeric string counts); anything else = default.
+  let n = settings && typeof settings === 'object' ? settings.clvCapPct : null;
+  if (typeof n === 'string' && n.trim() !== '') n = Number(n);
+  return typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 500 ? n : DEFAULT_CLV_CAP_PCT;
+}
+/** Whether `clvCents` is MORE than `pct` percent above `cmpCents`. Whole cents and a whole percent, so exactly +30% is not over. */
+function clvOverCap(clvCents, cmpCents, pct) {
+  return pct > 0 && clvCents > 0 && cmpCents > 0 && clvCents * 100 > cmpCents * (100 + pct);
+}
 const SCHEMA = 'iced-out-rates-v2';
 const SCHEMA_V1 = 'iced-out-rates-v1';
 
@@ -2169,6 +2187,7 @@ function normalizeBasis(key) {
 }
 
 let cache = { settings: null, at: 0 };
+let portalGood = null;      // the last settings the portal itself answered with: what a later portal blip keeps quoting
 let source = null;          // which place the cached settings came from (settingsSource())
 let keyRejectedLogged = false; // the 401 line is printed once per process, not once per comp
 
@@ -2347,6 +2366,20 @@ function avg3ValueOf(slab) {
 }
 
 /**
+ * What recent sales say a slab is worth, for the CLV cap: { cents, kind, source } or null when nothing is known (no cap).
+ *   - Card Ladder answered (the slab carries an average): the avg of last 3 exactly as the rows read it (avg3ValueOf: a very
+ *     high sale left out upstream, the newest sale standing in while the sales trend down). kind 'avg3', or 'last' when the
+ *     trend put the newest sale in its place.
+ *   - Card Ladder did not answer: Triumph's own last sale for the cert (slab.triumphLastSaleCents). kind 'last'.
+ */
+function recentSalesOf(slab) {
+  const avg = avg3ValueOf(slab);
+  if (avg != null && avg > 0) return { cents: avg, kind: avg === (slab.avg3Cents ?? null) ? 'avg3' : 'last', source: 'cl' };
+  const triumphLast = slab.triumphLastSaleCents ?? null;
+  return typeof triumphLast === 'number' && triumphLast > 0 ? { cents: triumphLast, kind: 'last', source: 'triumph' } : null;
+}
+
+/**
  * The cents a basis is worth for one slab, or null when it can't be worked out. `lowest` ignores the
  * input it doesn't have (money.lowestOf drops nulls), so it is null only when BOTH are missing — a
  * slab with no 3-avg is still paid on its CL value under "lowest of CL value & 3-avg".
@@ -2376,8 +2409,24 @@ function isDonCard(slab) {
   return names.some(n => DON_RE.test(String(n ?? '')));
 }
 
+/**
+ * A women's sports card: the owner's sheets say "(men only)" on every NBA, MLB, NFL and soccer row, and so does Trader's card, but
+ * that was label text (no row read it), so a WNBA or Women's World Cup slab filed under basketball or soccer priced like any other.
+ * Like DON!! it is the rule itself, applied to every row of those four sports (a name string that says WNBA, NWSL, WSL, Women /
+ * Women's / Womens, Lionesses or Ladies, in ANY of the slab's names, in any case), so no band can quietly buy one. Whole words only:
+ * a look-alike (WOMBAT, a team set called MENS) is never blocked. Other games are untouched, whatever their titles say.
+ */
+const MEN_ONLY_SPORTS = ['nba', 'mlb', 'nfl', 'soccer'];
+const WOMENS_RE = /\b(?:WNBA|NWSL|WSL|WOMEN['’]?S?|LIONESSES|LADIES)\b/i;
+function isWomensCard(slab) {
+  if (!slab || !MEN_ONLY_SPORTS.includes(slab.sport)) return false;
+  const names = [slab.title, ...(Array.isArray(slab.titles) ? slab.titles : [])];
+  return names.some(n => WOMENS_RE.test(String(n ?? '')));
+}
+
 function rowMatches(row, slab, basisCents, settings) {
   if (isDonCard(slab)) return false;
+  if (isWomensCard(slab)) return false;
   const fromCents = money.toCents(row.from) ?? 0;
   const toCents = row.to == null ? null : money.toCents(row.to);
   if (!(basisCents > fromCents && (toCents == null || basisCents <= toCents))) return false;
@@ -2402,7 +2451,37 @@ function orderedRates(rates) {
 }
 
 /**
- * slab = { clvCents, avg3Cents, grade, confidence, cert, title, year, sport, grader, language }
+ * The CLV cap on the row priceSlab chose (see DEFAULT_CLV_CAP_PCT). Anything but a CL-value row, a cap of 0, a slab with no
+ * recent-sales number, or a CL value that is not more than the cap above it comes back untouched. Otherwise the row keeps
+ * its rate, name and percent and is paid on the recent sales: `basis` and `basisCents` become the number actually used (so
+ * "Paid on" and "Market" tell the truth) and `clvCap` says what happened, with the one plain-English note staff read.
+ * One exception: where the cap would land on Card Ladder's average and that average rests on fewer than 3 sales
+ * (slab.avg3Thin), the thinSales switch flags the slab for a person, exactly as it does a row read on the average: the
+ * quote would be a percent of a thin average, and a protection must never leave a quote higher than with it off.
+ */
+function capClvHit(hit, slab, settings) {
+  if (hit.basis !== 'clv') return hit;
+  const pct = clvCapPctOf(settings);
+  const cmp = pct > 0 ? recentSalesOf(slab) : null;
+  if (!cmp || !clvOverCap(hit.basisCents, cmp.cents, pct)) return hit;
+  if (cmp.source === 'cl' && slab.avg3Thin && buySideOf(settings).thinSales) {
+    return { staffPrice: true, buySide: true, why: 'the 3-sale average rests on fewer than 3 sales' };
+  }
+  const payoutCents = money.pctOf(cmp.cents, hit.pct);
+  if (payoutCents > hit.payoutCents) return hit; // never a raise: cannot happen (the sales are under the CLV), kept as the guard
+  const words = cmp.kind === 'avg3' ? 'avg of last 3' : 'the last sale';
+  const note = `CL value ${money.fmt(hit.basisCents)} is far above recent sales; priced on ${words} ${money.fmt(cmp.cents)}`
+    + (cmp.source === 'triumph' ? ' (Triumph)' : '');
+  return {
+    ...hit, basis: cmp.kind, basisCents: cmp.cents, payoutCents,
+    clvCap: { clvCents: hit.basisCents, cmpCents: cmp.cents, kind: cmp.kind, source: cmp.source, note },
+  };
+}
+
+/**
+ * slab = { clvCents, avg3Cents, grade, confidence, cert, title, year, sport, grader, language }, plus the optional
+ * lastSaleCents / avg3TrendDown / avg3Thin from Card Ladder and triumphLastSaleCents from Triumph (all read only by the
+ * bases above and the CLV cap).
  * opts.basis = the ticket's Market override (staff's per-seller choice). When it is a known basis it
  * is used for EVERY row, ignoring row.basis (and the settings.defaultBasis escape hatch below); the
  * band range is still checked against that basis's value, exactly as it is for a row's own basis. A key saved under the
@@ -2413,7 +2492,8 @@ function orderedRates(rates) {
  * rate is at least settings.overlapPoints (default 5) above the lowest fitting one: then the highest-rate row
  * wins (see pickOverlap). Three outcomes, and
  * only the first is a price:
- *   1. a row takes the slab -> { row, rateName, pct, basis, basisCents, payoutCents }
+ *   1. a row takes the slab -> { row, rateName, pct, basis, basisCents, payoutCents }, plus `clvCap` when the CLV cap
+ *      re-priced a CL-value row on recent sales (basis/basisCents/payoutCents are then the recent-sales ones)
  *   2. the slab HAS a value (some row's basis resolved) but NO row takes it -> { rejected: true, why }.
  *      Out of range, outside the grade range, under a minimum confidence, the wrong cert rule, not
  *      vintage/special, the wrong language, the wrong sport or grader: all of it means we are not
@@ -2456,7 +2536,7 @@ function priceSlab(slab, settings, opts = {}) {
     if (buy.thinSales && slab.avg3Thin && (chosen.basis === 'avg3' || chosen.basis === 'lowest')) {
       return { staffPrice: true, buySide: true, why: 'the 3-sale average rests on fewer than 3 sales' };
     }
-    return chosen;
+    return capClvHit(chosen, slab, settings);
   }
   if (!sawAnyValue) return { staffPrice: true, why: 'no CLV, average, or sale value known for this slab' };
   return { rejected: true, why: REJECT_WHY };
@@ -2504,13 +2584,27 @@ function vintageOrSpecialCouldMatch(row, hint, settings) {
 }
 
 /**
+ * Every gate of a rate row except its value range, read off what Triumph told us (pass 1): checked exactly as
+ * rowMatches would where Triumph answered (grader and certRule come straight off the cert/item, so they are always
+ * certain), and a gate Triumph left unknown (null) counts as "could still match" rather than ruled out.
+ */
+function hintGatesCouldFit(row, hint, settings) {
+  if (!graderFits(row.grader, hint.grader)) return false;
+  if (row.certRule === 'new' && !isNewCert(hint.cert)) return false;
+  if (hint.sport != null && !sportFits(row.sport, hint.sport)) return false;
+  if (hint.grade != null && !gradeFits(row, hint.grade)) return false;
+  if (hint.confidence != null && row.minConfidence != null && hint.confidence < row.minConfidence) return false;
+  if (hint.language != null && !languagesFit(row.languages || settings.buyLanguages, slabLanguage(hint.language))) return false;
+  return vintageOrSpecialCouldMatch(row, hint, settings);
+}
+
+/**
  * Whether ONE `avg3`/`lowest` rate row could plausibly take a slab we only know from Triumph so far
  * (pass 1) — used only to decide whether Card Ladder (pass 2) is worth calling, never to price
- * anything. Every gate Triumph can answer with certainty (grader and certRule come straight off the
- * cert/item, never from Triumph, so they are always certain) is checked exactly as rowMatches would;
- * a gate Triumph left unknown (null) is treated as "could still match" rather than ruled out, so a
- * terse or partial Triumph record can never talk this check out of a call rowMatches itself would
- * have wanted.
+ * anything. Every gate Triumph can answer with certainty is checked exactly as rowMatches would
+ * (hintGatesCouldFit); a gate Triumph left unknown (null) is treated as "could still match" rather than
+ * ruled out, so a terse or partial Triumph record can never talk this check out of a call rowMatches
+ * itself would have wanted.
  *
  * `lowest` ignores the value entirely once the other gates fit: it needs BOTH numbers to compute the
  * right PAYOUT wherever in its range the value falls (`lowestOf` may pick avg3 under clv even deep
@@ -2519,13 +2613,7 @@ function vintageOrSpecialCouldMatch(row, hint, settings) {
  * band-SELECTION risk, so its own [from, to] is simply widened by CL_RANGE_MARGIN_PCT on both sides.
  */
 function avgRowCouldMatch(row, hint, settings, triumphValueCents) {
-  if (!graderFits(row.grader, hint.grader)) return false;
-  if (row.certRule === 'new' && !isNewCert(hint.cert)) return false;
-  if (hint.sport != null && !sportFits(row.sport, hint.sport)) return false;
-  if (hint.grade != null && !gradeFits(row, hint.grade)) return false;
-  if (hint.confidence != null && row.minConfidence != null && hint.confidence < row.minConfidence) return false;
-  if (hint.language != null && !languagesFit(row.languages || settings.buyLanguages, slabLanguage(hint.language))) return false;
-  if (!vintageOrSpecialCouldMatch(row, hint, settings)) return false;
+  if (!hintGatesCouldFit(row, hint, settings)) return false;
 
   // 'last' is one sale, which can sit far from the value: like 'lowest', no safe boundary to margin around.
   if (row.basis === 'lowest' || row.basis === 'last') return true;
@@ -2551,15 +2639,47 @@ function avgRowCouldMatch(row, hint, settings, triumphValueCents) {
  *     this override, so there is nothing for Card Ladder to add.
  *   - no override (each row keeps its own basis) -> needed when at least one `avg3`/`lowest` row
  *     could plausibly take this slab (avgRowCouldMatch).
+ * On top of those, the CLV cap (clvCapWantsCardLadder) asks for the one cert whose Triumph last sale already
+ * sits far under its CL value and whose price would be paid on CL value: Card Ladder's average is the better number
+ * to cap it on. Every other cert (last sale near its value) is never asked on the cap's account.
  */
 function needsCardLadder(hint, settings, marketBasis) {
   if (hint.triumphValueCents == null) return true;
   const override = normalizeBasis(marketBasis);
   if (override === 'avg3' || override === 'lowest' || override === 'last') return true;
-  if (override === 'clv') return false;
+  if (override === 'clv') return clvCapWantsCardLadder(hint, settings, override);
   const rows = ((settings && settings.rates) || []).filter(r => r.basis === 'avg3' || r.basis === 'lowest' || r.basis === 'last');
-  if (!rows.length) return false;
-  return rows.some(row => avgRowCouldMatch(row, hint, settings, hint.triumphValueCents));
+  if (rows.some(row => avgRowCouldMatch(row, hint, settings, hint.triumphValueCents))) return true;
+  return clvCapWantsCardLadder(hint, settings, override);
+}
+
+/**
+ * Whether the CLV cap is in play for a slab we only know from Triumph so far: the cap is on and a CL-value row could take
+ * the slab at Triumph's value (every row is on CL value under a "CL value" Market override; under any other override every
+ * row is on that basis, so none is). It does NOT ask whether the cap will fire, which needs recent sales: that is Card
+ * Ladder's average, or Triumph's last sale. clvCapWantsCardLadder adds the one reason the bot spends a Card Ladder call on
+ * it; the Scanner, which always has the average coming and prices with it, holds such a card's pay for it (offerRules.js).
+ */
+function clvCapInPlay(hint, settings, override) {
+  const o = normalizeBasis(override);
+  if (o && o !== 'clv') return false;
+  const value = hint.triumphValueCents;
+  if (clvCapPctOf(settings) <= 0 || !(value > 0)) return false;
+  const rows = ((settings && settings.rates) || []).filter(r => o === 'clv' || r.basis === 'clv');
+  const fromCents = row => money.toCents(row.from) ?? 0;
+  const toCents = row => (row.to == null ? null : money.toCents(row.to));
+  return rows.some(row => hintGatesCouldFit(row, hint, settings) && value > fromCents(row) && (toCents(row) == null || value <= toCents(row)));
+}
+
+/**
+ * Whether the CLV cap could apply to a slab we only know from Triumph so far, which is the one reason to spend a Card
+ * Ladder call on it (Card Ladder is the slow source). All of: the cap is in play (clvCapInPlay); Triumph gave both a value
+ * and its own last sale; and the value is MORE than the cap above that last sale (clvOverCap). A card with its last sale
+ * near its value is never asked. Without Card Ladder's answer the cap still prices on Triumph's last sale (recentSalesOf).
+ */
+function clvCapWantsCardLadder(hint, settings, override) {
+  if (!clvOverCap(hint.triumphValueCents, hint.triumphLastSaleCents, clvCapPctOf(settings))) return false;
+  return clvCapInPlay(hint, settings, override);
 }
 
 window.PriceCore = {
@@ -2599,6 +2719,10 @@ window.PriceCore = {
   needsCardLadder: needsCardLadder,
   avgRowCouldMatch: avgRowCouldMatch,
   CL_RANGE_MARGIN_PCT: CL_RANGE_MARGIN_PCT,
+  clvCapPctOf: clvCapPctOf,
+  recentSalesOf: recentSalesOf,
+  clvOverCap: clvOverCap,
+  clvCapInPlay: clvCapInPlay,
   money: money,
 };
 })();
@@ -5653,6 +5777,9 @@ window.TriumphDown = {
 //                     of that (priceSlab's own basis override, 'lowest'). Until the average is back the
 //                     lower is not known, so nothing is priced on a guess.
 //
+// The CLV cap (rules.js clvCapPct) is OFF on 'normal' unless the sheet it prices on carries an explicit clvCapPct
+// (scannerSheetOf); the 'consignor' rule is the bot's own sheet and keeps rules.js's default of 30.
+//
 // Plus the words the page puts on its three squares (payText, ruleMath) and the ONE line hide mode
 // shows a seller (marketLine: the market, nothing else).
 //
@@ -5741,6 +5868,24 @@ function trendingDownOf(sales) {
   return list[0].cents < list[1].cents && list[0].cents < list[2].cents;
 }
 
+/**
+ * True when the Avg of 3 rests on fewer than 3 sales: the bot's avg3Thin (clHelper.toClResult), read off the card's own
+ * sales list. Each sale is { date, cents, out? } and `out` marks one the average passed over (a high sale it left out), so the
+ * sales that are NOT out are the ones the average used: fewer than 3 of them = thin. Only when the list is known (an array,
+ * even an empty one: Card Ladder gave an average and no sales to back it); a card whose sales are null or absent (a row from
+ * before the column) is read as before. A list capped at the newest five can only over-flag (a sale the average topped up from
+ * beyond the list), never miss one: a hand price too many, never a price too many.
+ */
+function thinOf(sales, avg3) {
+  if (avg3 == null || !Array.isArray(sales)) return false;
+  var used = 0;
+  for (var i = 0; i < sales.length; i++) {
+    var s = sales[i];
+    if (s && typeof s.cents === 'number' && isFinite(s.cents) && s.cents > 0 && s.out !== true) used++;
+  }
+  return used < 3;
+}
+
 function factsOf(card) {
   var avgDone = card.avgStatus === 'done';
   var avg3 = avgDone && typeof card.avg3Cents === 'number' ? card.avg3Cents : null;
@@ -5749,10 +5894,14 @@ function factsOf(card) {
   var trend = avgDone && avg3 != null && last != null && trendingDownOf(card.sales);
   var clClv = avgDone && typeof card.clClvCents === 'number' && card.clClvCents > 0 ? card.clClvCents : null;
   var triumph = typeof card.clvCents === 'number' ? card.clvCents : null;
+  // Triumph's own last sale (the lookup, when it carries one): the CLV cap's number while Card Ladder has not answered.
+  var triumphLast = typeof card.triumphLastSaleCents === 'number' && card.triumphLastSaleCents > 0 ? card.triumphLastSaleCents : null;
   return {
     avgDone: avgDone,
     avgPending: card.avgStatus === 'pending',
     avg3: avg3,
+    // The average rests on fewer than 3 sales: the bot's avg3Thin, so a band that prices on the average is a hand price.
+    thin: avgDone && thinOf(card.sales, avg3),
     // The avg of 3 as it is PAID on: the newest sale instead while the sales are trending down.
     avg3e: trend ? Math.min(last, avg3) : avg3,
     trend: trend,
@@ -5761,14 +5910,27 @@ function factsOf(card) {
     clv: triumph != null ? triumph : clClv,
     // Card Ladder's own value, from the same answer (only 'done'); null when unknown or a different grade.
     clClv: clClv,
+    triumphLast: triumphLast,
   };
 }
 
 function slabOf(card, f) {
   return {
-    clvCents: f.clv, avg3Cents: f.avg3, avg3TrendDown: f.trend, lastSaleCents: f.last, grade: card.grade, confidence: card.confidence, cert: card.cert,
+    clvCents: f.clv, avg3Cents: f.avg3, avg3Thin: f.thin, avg3TrendDown: f.trend, lastSaleCents: f.last, triumphLastSaleCents: f.triumphLast, grade: card.grade, confidence: card.confidence, cert: card.cert,
     title: card.title, year: card.year, sport: card.sport, grader: card.grader, language: card.language,
   };
+}
+
+/**
+ * Whether a band that prices on Card Ladder's 3-sale average could take this card (the bot's comp.js avgAnswerMissing
+ * without the "average already present" test, which the caller makes). A newest-sale 'last' band is not counted: it keeps
+ * its own fall-through to the next band. `basis` is 'lowest' in Lower mode, else null.
+ */
+function avgAnswerMissing(sheet, hint, basis, ctx) {
+  if (basis) return basis === 'avg3' || basis === 'lowest';
+  return ((sheet && sheet.rates) || []).some(function (row) {
+    return (row.basis === 'avg3' || row.basis === 'lowest') && ctx.priceCore.avgRowCouldMatch(row, hint, sheet, hint.triumphValueCents);
+  });
 }
 
 /** One of OUR rate sheets through rules.js priceSlab, plus the "an average could still change this" wait. */
@@ -5776,16 +5938,32 @@ function priceOnSheet(card, sheet, rule, ctx, f, lower) {
   var basis = lower ? 'lowest' : null;
   var hint = {
     cert: card.cert, grader: card.grader, triumphValueCents: f.clv, grade: card.grade, confidence: card.confidence,
-    sport: card.sport, year: card.year, title: card.title,
+    sport: card.sport, year: card.year, title: card.title, triumphLastSaleCents: f.triumphLast,
   };
   // While the average is on its way, a card an average band could take is NOT priced on CL value
   // alone: with the lowest-payout rule the average could lower that quote, and a pay figure must
   // never drop after it was shown. rules.js needsCardLadder is the check the bot itself makes.
   var couldNeedAvg = !f.avgDone && ctx.priceCore.needsCardLadder(hint, sheet, basis);
+  // The CLV cap reads that same average and can only lower a CL-value quote, so a card a CL-value row could take waits for
+  // it too (rules.js clvCapInPlay; with the cap at 0 nothing waits). The bot's own ask needs Triumph's last sale for this,
+  // which the lookup does not carry yet, and even a last sale near the value leaves an average far under it still to land.
+  // `clvCapHold` tells the page which wait this is, so staff read the right reason under the square.
+  if (f.avgPending && ctx.priceCore.clvCapInPlay(hint, sheet, basis)) return { awaitingAverage: true, rule: rule, clvCapHold: true };
   if (couldNeedAvg && f.avgPending) return { awaitingAverage: true, rule: rule };
   var slab = slabOf(card, f);
   var opts = lower ? { basis: basis } : {};
   var priced = ctx.priceCore.priceSlab(slab, sheet, opts);
+  // Card Ladder ANSWERED and gave no sale average, and a band that prices on that average could take this card: the value
+  // alone is not what the rule pays on, so a person prices it. Exactly the bot's rule (comp.js avgAnswerMissing, 5f9cfba): an
+  // avg3/lowest row that avgRowCouldMatch says could take it, or Lower mode (the bot's Market "Lowest" names that data
+  // for every card). A failed lookup is not an answer: it keeps pricing on the value, as before.
+  if ((typeof priced.payoutCents === 'number' || priced.rejected) && f.avgDone && f.avg3 == null && f.clv != null
+    && avgAnswerMissing(sheet, hint, basis, ctx)) {
+    return {
+      staffPrice: true, buySide: true, avgMissing: true, rule: rule,
+      why: 'Card Ladder gave no sale average for this card, and a band prices it on that average, so it is not quoted from its value alone',
+    };
+  }
   // Two value sources, exactly as the bot's consignment path (comp.js lowerValue): when Triumph and Card Ladder
   // both gave a value and they differ, price at BOTH through the full band logic and keep the LOWER payout (a
   // lower value can land in a higher-percent band, so the lower value alone is not enough). If today's value
@@ -5804,6 +5982,23 @@ function priceOnSheet(card, sheet, rule, ctx, f, lower) {
   // "needs average", never a pass.
   if (priced.rejected && couldNeedAvg) out.awaitingAverage = true;
   return out;
+}
+
+/**
+ * The sheet the "Normal" rule prices on, with the CLV cap's OWNER DEFAULT for the app (2026-11-14): a sheet with no usable
+ * `clvCapPct` prices with the cap OFF (0). rules.js's own default for an absent key is 30 and the Discord bot's consignment
+ * sheet (and the 'consignor' rule here, which never comes through this function) keeps it, but the app's Triumph lookup
+ * (the triumph-sourcer edge function) returns no last sale, so with the cap on every CL-value scan at a show would wait for
+ * a Card Ladder average before it showed a price. An explicit `clvCapPct` (a whole number 0-500, a numeric string counts,
+ * exactly as rules.js clvCapPctOf reads it) is the owner's choice and applies as written: turning the cap on for the app
+ * later is a change on the Scanner sheet, nothing else. A sheet is never changed in place: a copy carries the 0.
+ */
+function scannerSheetOf(sheet) {
+  if (!sheet || typeof sheet !== 'object') return sheet;
+  var n = sheet.clvCapPct;
+  if (typeof n === 'string' && n.trim() !== '') n = Number(n);
+  if (typeof n === 'number' && n % 1 === 0 && n >= 0 && n <= 500) return sheet;
+  return Object.assign({}, sheet, { clvCapPct: 0 });
 }
 
 /**
@@ -5830,7 +6025,7 @@ function offerFor(card, choice, ctx) {
     };
   }
 
-  var sheet = c.rule === 'consignor' ? ctx.consignorSettings : ctx.settings;
+  var sheet = c.rule === 'consignor' ? ctx.consignorSettings : scannerSheetOf(ctx.settings);
   if (!sheet) return { noSheet: true, rule: c.rule };
   if (lower && f.avgPending) return { awaitingAverage: true, rule: c.rule }; // the lower is not known yet
   return priceOnSheet(card, sheet, c.rule, ctx, f, lower);
@@ -5901,18 +6096,21 @@ function highSaleLeftOut(sales) {
 
 /**
  * The staff-only lines under the two numbers when the Avg of 3 was not simply the three newest sales, so a person
- * can see it and check: [] or up to two short lines.
+ * can see it and check: [] or up to three short lines.
  *   "Trending down: priced on last sale $X"   only when the matched rate row reads the average (basis avg3 or
  *       lowest) AND the downtrend really lowered the value that row priced on (the newest sale is below the
  *       average and is the number the row used: a CL value that is lower still, or a CL value row, never says it).
  *   "High sale left out of the average"       when the outlier rule dropped a sale and the matched row reads the
  *       average. The chip beside the sales says "Likely shill": a different line, so nothing is said twice.
+ *   "CL value $X is far above recent sales; priced on ..."   when the CLV cap re-priced a CL-value row (rules.js
+ *       capClvHit writes the sentence; staff only, like every line here).
  * Nothing without a priced row (a pass, a wait, a staff price), and nothing without an average that is in.
  * `price` is offerFor's answer, `card` the facts it priced, `fmt` the money formatter.
  */
 function avgNotes(card, price, fmt) {
   var lines = [];
   if (!card || !price || typeof price.payoutCents !== 'number') return lines;
+  if (price.clvCap && price.clvCap.note) lines.push(price.clvCap.note);
   if (price.basis !== 'avg3' && price.basis !== 'lowest') return lines;
   var f = factsOf(card);
   if (!f.avgDone || f.avg3 == null) return lines;
@@ -5940,6 +6138,7 @@ function marketLook(market) {
 
 window.OfferRules = {
   trendingDownOf: trendingDownOf,
+  scannerSheetOf: scannerSheetOf,
   RULES: RULES,
   MODES: MODES,
   FLAT_BASES: FLAT_BASES,
@@ -6337,6 +6536,13 @@ window.CardView = {
     var meta = document.querySelector('meta[name="rates-api"]');
     var base = meta && meta.content ? meta.content : location.pathname;
     return base.replace(new RegExp('[/]+$'), '') + '/' + name;
+  }
+  // An older slab-rates answers a save with 200 and a sheet built from the keys IT knows, so a setting added since is
+  // dropped without a word. False when the saved sheet in the answer has no CLV cap; true when it does, or when the
+  // answer carries no sheet to look at.
+  function keptClvCap(body) {
+    var s = body && body.settings;
+    return !s || typeof s !== 'object' || s.clvCapPct != null;
   }
   
 
@@ -7214,9 +7420,14 @@ window.CardView = {
       var g = String(grader || '').toLowerCase();
       var title = lookup.card || (g.toUpperCase() + ' ' + cert);
       var clvCents = lookup.marketValue != null ? Math.round(Number(lookup.marketValue) * 100) : null;
+      // Triumph's own last sale for the cert, when the lookup carries one (dollars, like marketValue): the CLV cap's
+      // number when Card Ladder's average never comes (rules.js recentSalesOf). The triumph-sourcer lookup carries none yet;
+      // either way a CL-value card waits for the average before it is priced (scanner/offerRules.js priceOnSheet).
+      var lastSale = lookup.lastSale != null ? Number(lookup.lastSale) : null;
+      var triumphLastSaleCents = lastSale != null && isFinite(lastSale) && lastSale > 0 ? Math.round(lastSale * 100) : null;
       var prev = pileFactsFor(cert, g);
       var facts = {
-        cert: cert, grader: g, title: title, titles: [title, lookup.cardTitle, lookup.cardName].filter(Boolean), clvCents: clvCents,
+        cert: cert, grader: g, title: title, titles: [title, lookup.cardTitle, lookup.cardName].filter(Boolean), clvCents: clvCents, triumphLastSaleCents: triumphLastSaleCents,
         grade: gradeNum(lookup.grade), gradeText: lookup.grade ? String(lookup.grade) : null,
         confidence: lookup.confidence != null ? lookup.confidence : null,
         // Same fallback the bot uses when Triumph gives no category/year (triumph.js's mapSport/mapYear):
@@ -7382,7 +7593,9 @@ window.CardView = {
         showNote('Flat % prices every card at the percent you type below.', true);
       } else if (priced.awaitingAverage) {
         if (f.avgStatus === 'pending') {
-          showNote(choice.mode === 'lower'
+          showNote(priced.clvCapHold
+            ? 'A CL value far above recent sales is paid on them instead, so this waits for the average.'
+            : choice.mode === 'lower'
             ? 'Lower uses the lower of CL value and avg of 3, so this waits for the average.'
             : 'Does not fit a band on CL value alone, but an avg-of-3 band might still take it - not a pass yet.', true);
         } else if (f.avgStatus === 'timeout') {

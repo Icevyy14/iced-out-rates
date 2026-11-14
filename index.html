@@ -502,6 +502,10 @@ code{font-family:var(--font-mono);font-size:.92em;}
         <label class="form-label" for="overlapPoints">Higher row wins when rates differ by at least</label>
         <div class="ovl-wrap"><input class="form-input" id="overlapPoints" type="number" inputmode="numeric" min="0" max="100" step="1" placeholder="5" title="When a card fits more than one rate row and their rates differ by at least this many points, the higher-rate row pays. 0 = always the higher row; 100 = always the lowest payout."><span class="ovl-suffix">points</span></div>
       </div>
+      <div class="form-group">
+        <label class="form-label" for="clvCapPct">Price on recent sales when CL value is more than</label>
+        <div class="ovl-wrap"><input class="form-input" id="clvCapPct" type="number" inputmode="numeric" min="0" max="500" step="1" placeholder="30" title="When a CL-value rate row would pay on a CL value more than this many percent above the card's recent sales (the avg of its last 3, else its last sale), it pays its rate on those sales instead. 0 = off."><span class="ovl-suffix">% above them (0 = off)</span></div>
+      </div>
     </div>
     <div class="pause-row">
       <label class="check" for="paused">
@@ -778,6 +782,10 @@ const DEFAULT_MIN_LOT_MARKET = 2000;
 /** When rows overlap and the highest fitting rate is at least this many percent points above the lowest, the
  *  higher-rate row wins (owner 2026-11). 0 = always the higher row; 100 = never (the old lowest-payout rule). */
 const DEFAULT_OVERLAP_POINTS = 5;
+/** A CL-value row is paid on the card's recent sales (avg of last 3, else the last sale) instead when its CL value is
+ *  more than this many percent above them (owner 2026-11-14: "if CLV is waaay over last sale / avg price it there").
+ *  A whole number 0-500; 0 = off. rules.js's DEFAULT_CLV_CAP_PCT is the bot's copy of the same number. */
+const DEFAULT_CLV_CAP_PCT = 30;
 
 // KEEP IN SYNC BY HAND with ticketHours.js's DEFAULT_WINDOWS / DEFAULT_TIMEZONE — this file can't
 // import that module (see file header), so the literal is duplicated here on purpose.
@@ -823,6 +831,8 @@ const DEFAULT_TICKET_TIMEZONE = 'America/New_York';
 
 
                                                              
+
+
 
 
 
@@ -915,6 +925,7 @@ function defaults()           {
     maxSlabsPerComp: DEFAULT_MAX_SLABS,
     minLotMarket: DEFAULT_MIN_LOT_MARKET,
     overlapPoints: DEFAULT_OVERLAP_POINTS,
+    clvCapPct: DEFAULT_CLV_CAP_PCT,
     paused: false,
     pausedMessage: '',
     ticketsOpen: true,
@@ -961,6 +972,7 @@ function normalize(raw         )          {
     maxSlabsPerComp: normNumber(src.maxSlabsPerComp, DEFAULT_MAX_SLABS),
     minLotMarket: normMoney(src.minLotMarket, DEFAULT_MIN_LOT_MARKET),
     overlapPoints: normNumber(src.overlapPoints, DEFAULT_OVERLAP_POINTS),
+    clvCapPct: normNumber(src.clvCapPct, DEFAULT_CLV_CAP_PCT),
     paused: normBool(src.paused),
     pausedMessage: src.pausedMessage == null ? '' : String(src.pausedMessage),
     ticketsOpen: src.ticketsOpen == null || src.ticketsOpen === '' ? true : normBool(src.ticketsOpen),
@@ -1080,6 +1092,7 @@ function migrateV1(src                         )          {
     maxSlabsPerComp: normNumber(src.maxSlabsPerComp, DEFAULT_MAX_SLABS),
     minLotMarket: normMoney(src.minLotMarket, DEFAULT_MIN_LOT_MARKET),
     overlapPoints: normNumber(src.overlapPoints, DEFAULT_OVERLAP_POINTS),
+    clvCapPct: normNumber(src.clvCapPct, DEFAULT_CLV_CAP_PCT),
     paused: normBool(src.paused),
     pausedMessage: src.pausedMessage == null ? '' : String(src.pausedMessage),
     ticketsOpen: src.ticketsOpen == null || src.ticketsOpen === '' ? true : normBool(src.ticketsOpen),
@@ -1353,6 +1366,17 @@ function validateSettings(raw         )                 {
     }
   }
 
+  // clvCapPct: a whole number of percent, 0-500. 0 is deliberate ("never cap"), so only null/'' fall back to the default.
+  let clvCapPct = DEFAULT_CLV_CAP_PCT;
+  if (s.clvCapPct != null && s.clvCapPct !== '') {
+    const c = num(s.clvCapPct);
+    if (c === null || !Number.isInteger(c) || c < 0 || c > 500) {
+      errors.push('Price on recent sales when CL value is more than a percent above them must be a whole number between 0 and 500.');
+    } else {
+      clvCapPct = c;
+    }
+  }
+
   // paused
   let paused = false;
   if (s.paused != null && s.paused !== '') {
@@ -1440,6 +1464,7 @@ function validateSettings(raw         )                 {
       maxSlabsPerComp,
       minLotMarket,
       overlapPoints,
+      clvCapPct,
       paused,
       pausedMessage,
       ticketsOpen,
@@ -1752,6 +1777,7 @@ window.RatesValidate = {
   DEFAULT_MAX_SLABS: DEFAULT_MAX_SLABS,
   DEFAULT_MIN_LOT_MARKET: DEFAULT_MIN_LOT_MARKET,
   DEFAULT_OVERLAP_POINTS: DEFAULT_OVERLAP_POINTS,
+  DEFAULT_CLV_CAP_PCT: DEFAULT_CLV_CAP_PCT,
   DEFAULT_TICKET_WINDOWS: DEFAULT_TICKET_WINDOWS,
   DEFAULT_TICKET_TIMEZONE: DEFAULT_TICKET_TIMEZONE,
   defaults: defaults,
@@ -1857,6 +1883,13 @@ window.RatesValidate = {
     var base = meta && meta.content ? meta.content : location.pathname;
     return base.replace(new RegExp('[/]+$'), '') + '/' + name;
   }
+  // An older slab-rates answers a save with 200 and a sheet built from the keys IT knows, so a setting added since is
+  // dropped without a word. False when the saved sheet in the answer has no CLV cap; true when it does, or when the
+  // answer carries no sheet to look at.
+  function keptClvCap(body) {
+    var s = body && body.settings;
+    return !s || typeof s !== 'object' || s.clvCapPct != null;
+  }
 
 
   // ── state ──────────────────────────────────────────────────────────────────
@@ -1894,7 +1927,7 @@ window.RatesValidate = {
     botPill: document.getElementById('bot-pill')
   });
 
-  var TOP_FIELDS = ['vintageMaxYear', 'maxSlabsPerComp', 'minLotMarket', 'overlapPoints', 'specialKeywords', 'pausedMessage',
+  var TOP_FIELDS = ['vintageMaxYear', 'maxSlabsPerComp', 'minLotMarket', 'overlapPoints', 'clvCapPct', 'specialKeywords', 'pausedMessage',
     'ticketTimeZone', 'ticketsClosedMessage'];
 
   // ── ticket opening ─────────────────────────────────────────────────────────
@@ -2000,6 +2033,7 @@ window.RatesValidate = {
       maxSlabsPerComp: str(settings.maxSlabsPerComp),
       minLotMarket: str(settings.minLotMarket),
       overlapPoints: settings.overlapPoints == null ? '5' : str(settings.overlapPoints),
+      clvCapPct: settings.clvCapPct == null ? '30' : str(settings.clvCapPct),
       paused: !!settings.paused,
       pausedMessage: str(settings.pausedMessage),
       ticketsOpen: settings.ticketsOpen !== false,
@@ -2054,6 +2088,7 @@ window.RatesValidate = {
       maxSlabsPerComp: state.maxSlabsPerComp,
       minLotMarket: state.minLotMarket,
       overlapPoints: state.overlapPoints,
+      clvCapPct: state.clvCapPct,
       paused: state.paused,
       pausedMessage: state.paused ? state.pausedMessage : '',
       ticketsOpen: !!state.ticketsOpen,
@@ -2089,6 +2124,7 @@ window.RatesValidate = {
         maxSlabsPerComp: state.maxSlabsPerComp,
         minLotMarket: state.minLotMarket,
         overlapPoints: state.overlapPoints,
+        clvCapPct: state.clvCapPct,
         pausedMessage: state.pausedMessage,
         paused: !!state.paused,
         ticketTimeZone: state.ticketTimeZone,
@@ -2103,7 +2139,7 @@ window.RatesValidate = {
   function countChanges() {
     if (!baseline || !state) return 0;
     var n = 0;
-    ['vintageMaxYear', 'specialKeywords', 'maxSlabsPerComp', 'minLotMarket', 'overlapPoints', 'pausedMessage',
+    ['vintageMaxYear', 'specialKeywords', 'maxSlabsPerComp', 'minLotMarket', 'overlapPoints', 'clvCapPct', 'pausedMessage',
       'ticketTimeZone', 'ticketsClosedMessage'].forEach(function (k) {
       if (str(state[k]) !== str(baseline.top[k])) n++;
     });
@@ -2851,7 +2887,8 @@ window.RatesValidate = {
       justSaved = true;
       updateDirty();
       renderStatus();
-      setMsg('Saved ' + (fmtTime(savedAt) || 'just now'), 'ok');
+      if (keptClvCap(out.body)) setMsg('Saved ' + (fmtTime(savedAt) || 'just now'), 'ok');
+      else setMsg('Saved, but the rates server did not keep the CLV cap: the slab-rates function needs its update.', 'err');
     }).catch(function (err) {
       apiUp = false;
       renderStatus();

@@ -509,6 +509,10 @@ code{font-family:var(--font-mono);font-size:.92em;}
       <label class="form-label" for="scr-overlap">Higher row wins when rates differ by at least</label>
       <div class="ovl-wrap"><input class="form-input" id="scr-overlap" type="number" inputmode="numeric" min="0" max="100" step="1" placeholder="5" title="When a card fits more than one rate row and their rates differ by at least this many points, the higher-rate row pays. 0 = always the higher row; 100 = always the lowest payout."><span class="ovl-suffix">points</span></div>
     </div>
+    <div class="form-group scr-setting">
+      <label class="form-label" for="scr-clvcap">Price on recent sales when CL value is more than</label>
+      <div class="ovl-wrap"><input class="form-input" id="scr-clvcap" type="number" inputmode="numeric" min="0" max="500" step="1" placeholder="0" title="When a CL-value rate row would pay on a CL value more than this many percent above the card's recent sales (the avg of its last 3, else its last sale), it pays its rate on those sales instead. 0 = off. On the Scanner it starts off: the app's Triumph lookup returns no last sale, so with it on every CL-value scan would wait for a Card Ladder average."><span class="ovl-suffix">% above them (0 = off, the default here)</span></div>
+    </div>
     <div class="wtb-group scr-rows" id="scr-rows"></div>
     <div class="scr-actions">
       <button type="button" class="btn btn-ghost btn-sm" id="scr-copy">Start from the consignor rates</button>
@@ -883,6 +887,10 @@ const DEFAULT_MIN_LOT_MARKET = 2000;
 /** When rows overlap and the highest fitting rate is at least this many percent points above the lowest, the
  *  higher-rate row wins (owner 2026-11). 0 = always the higher row; 100 = never (the old lowest-payout rule). */
 const DEFAULT_OVERLAP_POINTS = 5;
+/** A CL-value row is paid on the card's recent sales (avg of last 3, else the last sale) instead when its CL value is
+ *  more than this many percent above them (owner 2026-11-14: "if CLV is waaay over last sale / avg price it there").
+ *  A whole number 0-500; 0 = off. rules.js's DEFAULT_CLV_CAP_PCT is the bot's copy of the same number. */
+const DEFAULT_CLV_CAP_PCT = 30;
 
 // KEEP IN SYNC BY HAND with ticketHours.js's DEFAULT_WINDOWS / DEFAULT_TIMEZONE — this file can't
 // import that module (see file header), so the literal is duplicated here on purpose.
@@ -928,6 +936,8 @@ const DEFAULT_TICKET_TIMEZONE = 'America/New_York';
 
 
                                                              
+
+
 
 
 
@@ -1020,6 +1030,7 @@ function defaults()           {
     maxSlabsPerComp: DEFAULT_MAX_SLABS,
     minLotMarket: DEFAULT_MIN_LOT_MARKET,
     overlapPoints: DEFAULT_OVERLAP_POINTS,
+    clvCapPct: DEFAULT_CLV_CAP_PCT,
     paused: false,
     pausedMessage: '',
     ticketsOpen: true,
@@ -1066,6 +1077,7 @@ function normalize(raw         )          {
     maxSlabsPerComp: normNumber(src.maxSlabsPerComp, DEFAULT_MAX_SLABS),
     minLotMarket: normMoney(src.minLotMarket, DEFAULT_MIN_LOT_MARKET),
     overlapPoints: normNumber(src.overlapPoints, DEFAULT_OVERLAP_POINTS),
+    clvCapPct: normNumber(src.clvCapPct, DEFAULT_CLV_CAP_PCT),
     paused: normBool(src.paused),
     pausedMessage: src.pausedMessage == null ? '' : String(src.pausedMessage),
     ticketsOpen: src.ticketsOpen == null || src.ticketsOpen === '' ? true : normBool(src.ticketsOpen),
@@ -1185,6 +1197,7 @@ function migrateV1(src                         )          {
     maxSlabsPerComp: normNumber(src.maxSlabsPerComp, DEFAULT_MAX_SLABS),
     minLotMarket: normMoney(src.minLotMarket, DEFAULT_MIN_LOT_MARKET),
     overlapPoints: normNumber(src.overlapPoints, DEFAULT_OVERLAP_POINTS),
+    clvCapPct: normNumber(src.clvCapPct, DEFAULT_CLV_CAP_PCT),
     paused: normBool(src.paused),
     pausedMessage: src.pausedMessage == null ? '' : String(src.pausedMessage),
     ticketsOpen: src.ticketsOpen == null || src.ticketsOpen === '' ? true : normBool(src.ticketsOpen),
@@ -1458,6 +1471,17 @@ function validateSettings(raw         )                 {
     }
   }
 
+  // clvCapPct: a whole number of percent, 0-500. 0 is deliberate ("never cap"), so only null/'' fall back to the default.
+  let clvCapPct = DEFAULT_CLV_CAP_PCT;
+  if (s.clvCapPct != null && s.clvCapPct !== '') {
+    const c = num(s.clvCapPct);
+    if (c === null || !Number.isInteger(c) || c < 0 || c > 500) {
+      errors.push('Price on recent sales when CL value is more than a percent above them must be a whole number between 0 and 500.');
+    } else {
+      clvCapPct = c;
+    }
+  }
+
   // paused
   let paused = false;
   if (s.paused != null && s.paused !== '') {
@@ -1545,6 +1569,7 @@ function validateSettings(raw         )                 {
       maxSlabsPerComp,
       minLotMarket,
       overlapPoints,
+      clvCapPct,
       paused,
       pausedMessage,
       ticketsOpen,
@@ -1857,6 +1882,7 @@ window.RatesValidate = {
   DEFAULT_MAX_SLABS: DEFAULT_MAX_SLABS,
   DEFAULT_MIN_LOT_MARKET: DEFAULT_MIN_LOT_MARKET,
   DEFAULT_OVERLAP_POINTS: DEFAULT_OVERLAP_POINTS,
+  DEFAULT_CLV_CAP_PCT: DEFAULT_CLV_CAP_PCT,
   DEFAULT_TICKET_WINDOWS: DEFAULT_TICKET_WINDOWS,
   DEFAULT_TICKET_TIMEZONE: DEFAULT_TICKET_TIMEZONE,
   defaults: defaults,
@@ -2321,6 +2347,13 @@ window.LedgerView = {
     var meta = document.querySelector('meta[name="rates-api"]');
     var base = meta && meta.content ? meta.content : location.pathname;
     return base.replace(new RegExp('[/]+$'), '') + '/' + name;
+  }
+  // An older slab-rates answers a save with 200 and a sheet built from the keys IT knows, so a setting added since is
+  // dropped without a word. False when the saved sheet in the answer has no CLV cap; true when it does, or when the
+  // answer carries no sheet to look at.
+  function keptClvCap(body) {
+    var s = body && body.settings;
+    return !s || typeof s !== 'object' || s.clvCapPct != null;
   }
   
 
@@ -3261,7 +3294,8 @@ window.LedgerView = {
       errors: document.getElementById('scr-errors'),
       toggle: document.getElementById('scr-toggle'),
       body: document.getElementById('scr-body'),
-      overlap: document.getElementById('scr-overlap')
+      overlap: document.getElementById('scr-overlap'),
+      clvCap: document.getElementById('scr-clvcap')
     };
     if (!dom.card || !V || !S) return null;
     // The card is first on the dashboard and folded to its title and status, so it never pushes the ledger down;
@@ -3343,11 +3377,24 @@ window.LedgerView = {
         dom.overlap.disabled = busy || !base;
         dom.overlap.value = base && base.overlapPoints != null ? String(base.overlapPoints) : '5';
       }
+      if (dom.clvCap) {
+        dom.clvCap.disabled = busy || !base;
+        // The Scanner's cap is OFF unless this sheet says otherwise (scanner/offerRules.js scannerSheetOf), so a sheet with no
+        // setting shows 0 here, never the bot's 30.
+        dom.clvCap.value = base && base.clvCapPct != null && base.clvCapPct !== '' ? String(base.clvCapPct) : '0';
+      }
     }
     if (dom.overlap) {
       dom.overlap.addEventListener('input', function () {
         if (!base) return;
         base.overlapPoints = dom.overlap.value;
+        setStatus('Not saved yet.');
+      });
+    }
+    if (dom.clvCap) {
+      dom.clvCap.addEventListener('input', function () {
+        if (!base) return;
+        base.clvCapPct = dom.clvCap.value;
         setStatus('Not saved yet.');
       });
     }
@@ -3413,21 +3460,30 @@ window.LedgerView = {
         return res.json();
       }).then(function (j) {
         base = j.settings;
+        base.clvCapPct = 0; // the bot's CLV cap setting is not copied: on the app it stays off until it is set here
         rows = S.toFormRows(base);
-        setStatus('A copy of the consignor rates. Change what you like, then Save.');
+        setStatus('A copy of the consignor rates. Change what you like, then Save. The CLV cap starts off for the app.');
         render();
       }, function () { setStatus('Could not load the consignor rates.', true); });
     });
 
     dom.add.addEventListener('click', function () {
-      if (!base) base = V.defaults(); // a sheet built from scratch carries the default sheet-wide settings
+      if (!base) { base = V.defaults(); base.clvCapPct = 0; } // a sheet built from scratch carries the default sheet-wide settings; the Scanner's CLV cap starts OFF
       rows.push(S.blankRow(rows));
       setStatus('Not saved yet.');
       render();
     });
 
+    // An older slab-rates answers a save with a sheet that has no clvCapPct. With no key on the Scanner sheet the app prices with the cap OFF,
+    // which is exactly what a saved 0 asks for, so a dropped 0 loses nothing and is not reported as a failed save; only a cap that was
+    // turned ON (a number above 0) and not kept is.
+    function scannerKeptClvCap(body, sentPct) { return Number(sentPct) === 0 || keptClvCap(body); }
+
     dom.save.addEventListener('click', function () {
       if (busy || !base) return;
+      // A blank or never-set cap is saved as an explicit 0: the validator's own default is the bot's 30, and a routine save
+      // of the Scanner rates must never turn the cap on for the app (scanner/offerRules.js scannerSheetOf).
+      if (base.clvCapPct == null || String(base.clvCapPct).trim() === '') base.clvCapPct = '0';
       var checked = V.validateSettings(V.normalize(S.fromFormRows(base, rows)));
       if (!checked.ok) { showErrors(checked.errors); setStatus(checked.errors.length + ' problem(s) to fix.', true); return; }
       showErrors(null);
@@ -3450,7 +3506,8 @@ window.LedgerView = {
         if (out.status < 200 || out.status >= 300) { setStatus('Save failed (' + out.status + ').', true); render(); return; }
         base = out.body.settings;
         rows = S.toFormRows(base);
-        setStatus('Saved. The Scanner prices Normal on these now.');
+        if (scannerKeptClvCap(out.body, checked.settings.clvCapPct)) setStatus('Saved. The Scanner prices Normal on these now.');
+        else setStatus('Saved, but the rates server did not keep the CLV cap: the slab-rates function needs its update.', true);
         render();
       }, function () { busy = false; setStatus('Could not reach the rates server.', true); render(); });
     });
