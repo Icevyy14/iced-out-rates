@@ -19,6 +19,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
 <style>
+/* Two quick taps never zoom the page (owner, 11/16: deleting certs fast on the iPhone zoomed in). Safari and Chrome
+   treat a fast second tap as "double-tap to zoom"; manipulation keeps taps, scrolling and pinch-zoom and drops only
+   that, for every element (an element's touch-action is limited by its ancestors'). The camera's own touch-action:none
+   areas stay as they are. */
+html{touch-action:manipulation}
 /* ═══════════════════════════════════════════════════════════════════════════
    Iced Out Penguin rates — skinned to match the owner app's 💰 Pricing tab.
    Theme: Synthwave, re-coloured blue / black / red (owner's call, 2026-11-04)
@@ -794,62 +799,9 @@ const DEFAULT_TICKET_TIMEZONE = 'America/New_York';
 
 // ── shapes ───────────────────────────────────────────────────────────────────
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                                                              
 
-
-
-
-
-
-
-
-
        
-
-
-
-
-
-
-
-
-
 
 // ── small helpers (no exports the page does not need) ────────────────────────
 
@@ -1798,9 +1750,7 @@ window.RatesValidate = {
   var activeTab = 'rules';   // 'rules' | 'singles' | 'consignors' - which tab owns the shared header
 
   var V = window.RatesValidate || {};
-
   var KEY_STORE = 'iopRatesEditKey';
-
 
   // ── vocabulary ─────────────────────────────────────────────────────────────
   // Schema v2 publishes all of this on window.RatesValidate. The fallbacks below
@@ -1874,7 +1824,6 @@ window.RatesValidate = {
   function langFull(k) { return langPair(k)[1]; }
 
   // ── api ────────────────────────────────────────────────────────────────────
-
   // The function is served at .../functions/v1/slab-rates with no trailing slash, so a
   // literal "./settings" would resolve one level too high. Build the sibling path from
   // whatever path this page was loaded at; still host-relative, works behind any domain.
@@ -1890,7 +1839,6 @@ window.RatesValidate = {
     var s = body && body.settings;
     return !s || typeof s !== 'object' || s.clvCapPct != null;
   }
-
 
   // ── state ──────────────────────────────────────────────────────────────────
   var state = null;        // form values (strings), never coerced until save time
@@ -2177,13 +2125,11 @@ window.RatesValidate = {
   }
 
   // ── html helpers ───────────────────────────────────────────────────────────
-
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
-
 
   function opts(pairs, value) {
     return pairs.map(function (p) {
@@ -2392,7 +2338,6 @@ window.RatesValidate = {
   }
 
   // ── status line ────────────────────────────────────────────────────────────
-
   function fmtTime(iso) {
     if (!iso) return null;
     var d = new Date(iso);
@@ -2403,7 +2348,6 @@ window.RatesValidate = {
       ? { hour: 'numeric', minute: '2-digit' }
       : { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   }
-
 
   function renderStatus() {
     if (activeTab !== 'rules') return;
@@ -2707,7 +2651,6 @@ window.RatesValidate = {
   }
 
   // ── save ───────────────────────────────────────────────────────────────────
-
   function getStoredKey() {
     try { return localStorage.getItem(KEY_STORE); } catch (e) { return null; }
   }
@@ -2720,13 +2663,11 @@ window.RatesValidate = {
     try { localStorage.removeItem(KEY_STORE); } catch (e) { /* nothing to forget */ }
   }
 
-
   // ── lock card: the key gate every page shows before it will let you edit or
   // read anything that needs the key. Verifies against the ledger API (the
   // rates API's own GET routes are public and cannot check a key), and once a
   // key passes it is remembered in this browser (KEY_STORE) so the lock does
   // not come back until the key stops working or "Change key" is used.
-
   var lockEl = {
     card: document.getElementById('lock-card'),
     input: document.getElementById('lock-key'),
@@ -2833,7 +2774,6 @@ window.RatesValidate = {
       else showLock('Could not check the key, try again');
     });
   })();
-
 
   function setBusy(on) {
     busy = on;

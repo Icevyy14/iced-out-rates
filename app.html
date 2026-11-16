@@ -19,6 +19,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
 <style>
+/* Two quick taps never zoom the page (owner, 11/16: deleting certs fast on the iPhone zoomed in). Safari and Chrome
+   treat a fast second tap as "double-tap to zoom"; manipulation keeps taps, scrolling and pinch-zoom and drops only
+   that, for every element (an element's touch-action is limited by its ancestors'). The camera's own touch-action:none
+   areas stay as they are. */
+html{touch-action:manipulation}
 /* ═══════════════════════════════════════════════════════════════════════════
    Iced Out Penguin rates — skinned to match the owner app's 💰 Pricing tab.
    Theme: Synthwave, re-coloured blue / black / red (owner's call, 2026-11-04)
@@ -943,7 +948,19 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-clear-confirm-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   #tab-scanner .sc-clear-confirm-btns .sc-btn{min-height:46px;}
   #tab-scanner #sc-earlier-list{padding-bottom:2px;}
-  #tab-scanner .sc-earlier-row{position:relative;display:flex;align-items:flex-start;}
+  /* Swipe a row left to delete it (owner, 11/16; scanner/swipeRow.js decides, the ✕ button's remove does it). The row keeps
+     vertical scrolling (pan-y) and only a clearly leftward drag is taken; .sc-earlier-slide follows the finger and
+     .sc-earlier-del, the red Delete behind it, is as wide as the gap it leaves. */
+  #tab-scanner .sc-earlier-row{position:relative;overflow:hidden;touch-action:pan-y;}
+  #tab-scanner .sc-earlier-slide{position:relative;display:flex;align-items:flex-start;transition:transform 200ms ease-out;}
+  #tab-scanner .sc-earlier-row.sc-swiping .sc-earlier-slide{transition:none;}
+  #tab-scanner .sc-earlier-del{
+    position:absolute;top:1px;bottom:1px;right:0;width:0;display:flex;align-items:center;justify-content:flex-end;overflow:hidden;
+    border-radius:16px;background:linear-gradient(158deg, #CE0F37 0%, #BF092F 50%, #A1062A 100%);color:#fff;
+    font-size:var(--sc-fs-row);font-weight:800;white-space:nowrap;pointer-events:none;transition:width 200ms ease-out;
+  }
+  #tab-scanner .sc-earlier-del span{padding:0 20px;}
+  #tab-scanner .sc-earlier-row.sc-swiping .sc-earlier-del{transition:none;}
   #tab-scanner .sc-earlier-row + .sc-earlier-row::before{content:"";position:absolute;top:0;left:66px;right:0;height:1px;background:var(--sc-line);}
   #tab-scanner .sc-earlier-main{
     flex:1 1 auto;min-width:0;display:grid;grid-template-columns:40px minmax(0,1fr) auto;column-gap:12px;align-items:start;
@@ -1235,6 +1252,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   @media (prefers-reduced-motion:reduce){
     #tab-scanner .sc-result-more,#tab-scanner .sc-result-more-in,#tab-scanner .sc-grade-dot,#tab-scanner .sc-result{transition:none !important;}
     #tab-scanner .sc-wait,#tab-scanner .sc-note.sc-note-down::before{animation:none;}
+    #tab-scanner .sc-earlier-slide,#tab-scanner .sc-earlier-del{transition:none !important;}
   }
 
   @starting-style{
@@ -6513,6 +6531,128 @@ window.CardView = {
   salesView: salesView,
 };
 })();
+
+(function () {
+'use strict';
+// Swipe left to delete a pile row (owner, 11/16: "Make it so I can swipe to the left and it deletes").
+//
+// The decisions only: which way a finger is going, how far the row follows it, and whether letting go deletes
+// the card or springs the row back. The page (rates-portal/page.html, the scanner module) owns the Pointer
+// Events, the row's transform and the delete itself, which is the very function the row's ✕ button calls.
+//
+//   - Nothing is decided until the finger has moved LOCK_PX. Before that it is still a tap.
+//   - Only a clearly horizontal LEFT move is ours ('swipe'). Anything else ('pass': up, down, right, or a
+//     diagonal) is left to the browser, so a vertical drag keeps scrolling the page or the sheet.
+//   - The row follows the finger to the left only: it never moves right of 0, and never past its own width.
+//   - Letting go deletes when the row is past DELETE_FRACTION of its width, or on a quick leftward flick
+//     (FLICK_PX_PER_MS, over at least FLICK_MIN_PX). A flick back to the right always springs back.
+//
+// Pure, like every scanner/ sibling (embedded whole into the page by rates-portal/build-portal.js): the clock
+// comes in with each point, there is no DOM here. Tested in scanner/swipeRow.test.js.
+'use strict';
+
+var LOCK_PX = 10;            // movement before a direction is picked (a tap wobbles a few px)
+var HORIZONTAL_RATIO = 1.5;  // |dx| must be this many times |dy|: about 34 degrees off horizontal at most
+var DELETE_FRACTION = 0.4;   // past 40% of the row's width, letting go deletes
+var FLICK_PX_PER_MS = 0.5;   // 500 px a second to the left is a flick...
+var FLICK_MIN_PX = 24;       // ...once the row has moved at least this far
+var VELOCITY_WINDOW_MS = 100; // the flick speed is measured over the last 100 ms of the move
+var PAUSE_MS = 60;           // still this long before lifting: no flick
+
+/** -> 'pending' (too little movement to tell, still a tap), 'swipe' (clearly horizontal-left: ours) or
+    'pass' (vertical, rightward or diagonal: the browser's, so it scrolls). */
+function lockDirection(dx, dy, lockPx) {
+  var lock = typeof lockPx === 'number' ? lockPx : LOCK_PX;
+  var ax = Math.abs(dx), ay = Math.abs(dy);
+  if (ax < lock && ay < lock) return 'pending';
+  if (dx < 0 && ax > ay * HORIZONTAL_RATIO) return 'swipe';
+  return 'pass';
+}
+
+/** -> how far the row sits, in px: 0 or less (left only), never past -width. */
+function clampOffset(dx, width) {
+  if (!(dx < 0)) return 0;
+  var w = width > 0 ? width : Infinity;
+  return Math.max(-w, dx);
+}
+
+/** -> px per ms over the last VELOCITY_WINDOW_MS of `samples` ([{x, t}], oldest first); negative is leftward. */
+function velocityOf(samples) {
+  if (!samples || samples.length < 2) return 0;
+  var last = samples[samples.length - 1];
+  // the oldest point still inside the window (or, when the finger paused, the one just before the last)
+  var first = samples[samples.length - 2];
+  for (var i = samples.length - 3; i >= 0 && last.t - samples[i].t <= VELOCITY_WINDOW_MS; i--) first = samples[i];
+  var dt = last.t - first.t;
+  return dt > 0 ? (last.x - first.x) / dt : 0;
+}
+
+/** -> 'delete' or 'back', for a row at `offset` (0 or less) of `width`, let go at `velocity` px/ms. */
+function releaseDecision(offset, width, velocity) {
+  var dist = -Math.min(0, offset || 0);
+  var v = velocity || 0;
+  if (v >= FLICK_PX_PER_MS) return 'back'; // flung back to the right: the finger changed its mind
+  if (width > 0 && dist >= width * DELETE_FRACTION) return 'delete';
+  if (v <= -FLICK_PX_PER_MS && dist >= FLICK_MIN_PX) return 'delete';
+  return 'back';
+}
+
+/**
+ * createSwipe(width) -> { start(x, y, t), move(x, y, t), end(x, y, t), cancel(), state(), offset() }
+ * One finger on one row. move() answers { state, offset }: state is 'pending', 'swipe' or 'pass' (once
+ * 'pass', the gesture is the browser's for good and the row stays at 0). end() answers { outcome, offset }:
+ * outcome 'tap' (never moved enough: the click goes on as usual), 'pass' (it was a scroll), 'delete' or 'back'.
+ */
+function createSwipe(width) {
+  var x0 = 0, y0 = 0, st = 'idle', off = 0, samples = [];
+  function track(x, t) {
+    samples.push({ x: x, t: t });
+    while (samples.length > 2 && t - samples[1].t > VELOCITY_WINDOW_MS) samples.shift();
+  }
+  function move(x, y, t) {
+    if (st === 'idle' || st === 'done') return { state: st, offset: off };
+    var dx = x - x0, dy = y - y0;
+    if (st === 'pending') st = lockDirection(dx, dy);
+    if (st === 'swipe') { off = clampOffset(dx, width); track(x, t); }
+    return { state: st, offset: off };
+  }
+  return {
+    start: function (x, y, t) { x0 = x; y0 = y; st = 'pending'; off = 0; samples = [{ x: x, t: t }]; },
+    move: move,
+    end: function (x, y, t) {
+      if (st === 'idle' || st === 'done') return { outcome: 'tap', offset: 0 };
+      var lastMove = samples[samples.length - 1];
+      if (typeof x === 'number' && (!lastMove || x !== lastMove.x)) move(x, y, t); // a real last step, not the lift itself
+      // A finger that stopped before it lifted is not flicking, however fast it moved before.
+      var paused = typeof t === 'number' && samples.length && t - samples[samples.length - 1].t > PAUSE_MS;
+      var was = st;
+      st = 'done';
+      if (was === 'pending') return { outcome: 'tap', offset: 0 };
+      if (was === 'pass') return { outcome: 'pass', offset: 0 };
+      var outcome = releaseDecision(off, width, paused ? 0 : velocityOf(samples));
+      return { outcome: outcome, offset: outcome === 'delete' ? off : 0 };
+    },
+    cancel: function () { st = 'done'; off = 0; samples = []; },
+    state: function () { return st; },
+    offset: function () { return off; },
+  };
+}
+
+window.SwipeRow = {
+  LOCK_PX: LOCK_PX,
+  HORIZONTAL_RATIO: HORIZONTAL_RATIO,
+  DELETE_FRACTION: DELETE_FRACTION,
+  FLICK_PX_PER_MS: FLICK_PX_PER_MS,
+  FLICK_MIN_PX: FLICK_MIN_PX,
+  VELOCITY_WINDOW_MS: VELOCITY_WINDOW_MS,
+  PAUSE_MS: PAUSE_MS,
+  lockDirection: lockDirection,
+  clampOffset: clampOffset,
+  velocityOf: velocityOf,
+  releaseDecision: releaseDecision,
+  createSwipe: createSwipe,
+};
+})();
 /* SCANNER-CORE:END */
 </script>
 
@@ -7717,6 +7857,7 @@ window.CardView = {
         market value and pricing basis are kept as two separate numbers, and why "unknown" must never
         read as "$0". The payout total is whatever the CURRENT choice offers (repriceAll). */
     function renderPile() {
+      pileSwipeReset(); // the rows are about to be redrawn: a row mid-swipe is dropped, never left half-swiped
       var entries = pile.list();
       var t = pile.totals();
       dom.earlier.hidden = entries.length === 0;
@@ -7744,7 +7885,9 @@ window.CardView = {
         (how.length ? ' · ' + how.join(', ') : '');
       dom.clearCount.textContent = String(entries.length);
 
-      dom.earlierList.innerHTML = entries.slice().reverse().map(function (c) {
+      dom.earlierList.innerHTML = entries.slice().reverse().filter(function (c) {
+        return !pileLeaving[pileMetaKey(c.grader, c.certKey)]; // swiped away, gone in a moment
+      }).map(function (c) {
         var meta = pileMeta[pileMetaKey(c.grader, c.certKey)] || {};
         var title = CardView.splitTitle(meta.card || (c.grader.toUpperCase() + ' ' + c.cert));
         var valueText = c.price && typeof c.price.payoutCents === 'number'
@@ -7753,7 +7896,10 @@ window.CardView = {
         var key = pileMetaKey(c.grader, c.certKey);
         var g = gradeNum(meta.grade);
         // A row: the grade in a circle, the card's name over its cert (and its pill), the amount on the right.
+        // The red Delete sits behind the row and .sc-earlier-slide moves over it when the row is swiped left.
         return '<div class="sc-earlier-row">' +
+          '<span class="sc-earlier-del" aria-hidden="true"><span>Delete</span></span>' +
+          '<div class="sc-earlier-slide">' +
           '<button type="button" class="sc-earlier-main" data-cert="' + esc(c.cert) + '" data-grader="' + esc(c.grader) + '">' +
             '<span class="sc-row-grade' + (g == null ? ' sc-unk' : '') + '" aria-hidden="true">' + (g == null ? '' : esc(String(g))) + '</span>' +
             '<span class="name"><span class="title">' + esc(title.name) + '</span>' +
@@ -7762,8 +7908,110 @@ window.CardView = {
             '<span class="val">' + valueText + '</span>' +
           '</button>' +
           '<button type="button" class="sc-earlier-remove" data-cert="' + esc(c.cert) + '" data-grader="' + esc(c.grader) + '" data-key="' + esc(key) + '" aria-label="Remove ' + esc(c.cert) + '">✕</button>' +
+          '</div>' +
         '</div>';
       }).join('');
+    }
+
+    /** Takes one card out of the pile: what its ✕ button does, and what swiping its row left does (both hand in
+        that row's ✕ button, which carries the card's cert, grader and key). */
+    function removePileRow(rm) {
+      var rmKey = rm.getAttribute('data-key');
+      delete pileLeaving[rmKey];
+      pile.removeCard(rm.getAttribute('data-cert'), rm.getAttribute('data-grader'));
+      stopAveragePoll(rmKey);
+      delete pileMeta[rmKey];
+      if (rmKey === currentKey) { // the card on screen is gone: clear it from both views
+        currentKey = null;
+        sellerView = null;
+        dom.result.hidden = true;
+        clearSquares(); // We pay sits in the scoreboard, outside the card: not the removed card's price any more
+        renderSeller();
+      }
+      savePile();
+      renderPile();
+    }
+
+    // ── swipe a pile row left to delete it (owner, 11/16). scanner/swipeRow.js (window.SwipeRow) makes every
+    // decision: a tap stays a tap, a vertical drag stays the browser's scroll (the row is touch-action:pan-y), the
+    // row follows a leftward finger only, and letting go past 40% of the row or on a quick flick deletes, through
+    // removePileRow, the ✕ button's own remove. Otherwise the row springs back. One row at a time: a second
+    // finger, a pointercancel or a redraw of the pile puts a row mid-swipe back at 0. ──────────────────────────
+    var pileSwipe = null;      // { row, slide, del, rm, id, width, swipe } while a finger is down on a row
+    var pileSwipeEatUntil = 0; // the click a drag's own release can make is not a tap on the card or its ✕
+    var pileLeaving = {};      // keys of rows sliding out (200 ms): a redraw meanwhile leaves them out, never back
+    function pileReducedMotion() {
+      try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }
+    }
+    function pileSwipeShow(s, offset) {
+      s.slide.style.transform = offset ? 'translateX(' + offset + 'px)' : '';
+      s.del.style.width = offset ? (-offset) + 'px' : '';
+    }
+    function pileSwipeRelease(s) {
+      try { if (s.row.hasPointerCapture && s.row.hasPointerCapture(s.id)) s.row.releasePointerCapture(s.id); } catch (e) { /* gone */ }
+    }
+    function pileSwipeReset() {
+      var s = pileSwipe;
+      pileSwipe = null;
+      if (!s) return;
+      s.swipe.cancel();
+      s.row.classList.remove('sc-swiping');
+      pileSwipeShow(s, 0);
+      pileSwipeRelease(s);
+    }
+    function pileSwipeDown(ev) {
+      pileSwipeEatUntil = 0; // a new touch: a drag that made no click must not eat this tap's click
+      if (pileSwipe) pileSwipeReset(); // a second finger, or a row left mid-swipe: it goes back first
+      if (ev.isPrimary !== false && !(ev.button > 0)) pileSwipeStart(ev); // a second finger starts nothing
+    }
+    function pileSwipeStart(ev) {
+      var row = ev.target && ev.target.closest ? ev.target.closest('.sc-earlier-row') : null;
+      if (!row || row.classList.contains('sc-leaving')) return;
+      var rmBtn = row.querySelector('.sc-earlier-remove');
+      var slide = row.querySelector('.sc-earlier-slide');
+      var del = row.querySelector('.sc-earlier-del');
+      // Only a row whose ✕ is on show can be swiped away (hide mode hides the whole pile, ✕ and all).
+      if (!rmBtn || !slide || !del || !rmBtn.getClientRects().length) return;
+      var width = row.getBoundingClientRect().width;
+      var s = { row: row, slide: slide, del: del, rm: rmBtn, id: ev.pointerId, width: width, swipe: SwipeRow.createSwipe(width) };
+      s.swipe.start(ev.clientX, ev.clientY, ev.timeStamp);
+      pileSwipe = s;
+    }
+    function pileSwipeMove(ev) {
+      var s = pileSwipe;
+      if (!s || ev.pointerId !== s.id) return;
+      var r = s.swipe.move(ev.clientX, ev.clientY, ev.timeStamp);
+      if (r.state === 'pass') { pileSwipe = null; return; } // a scroll (or a right swipe): the browser's, the row stays put
+      if (r.state !== 'swipe') return; // still a tap so far
+      if (!s.row.classList.contains('sc-swiping')) {
+        s.row.classList.add('sc-swiping');
+        try { s.row.setPointerCapture(s.id); } catch (e) { /* the moves still bubble here */ }
+      }
+      pileSwipeShow(s, r.offset);
+    }
+    function pileSwipeUp(ev) {
+      var s = pileSwipe;
+      if (!s || ev.pointerId !== s.id) return;
+      pileSwipe = null;
+      var r = s.swipe.end(ev.clientX, ev.clientY, ev.timeStamp);
+      s.row.classList.remove('sc-swiping');
+      pileSwipeRelease(s);
+      if (r.outcome === 'tap' || r.outcome === 'pass') return; // a tap goes on to its click as before
+      pileSwipeEatUntil = Date.now() + 350;
+      if (r.outcome !== 'delete') { pileSwipeShow(s, 0); return; } // springs back
+      var rmBtn = s.rm;
+      if (pileReducedMotion()) { removePileRow(rmBtn); return; }
+      s.row.classList.add('sc-leaving');
+      pileLeaving[rmBtn.getAttribute('data-key')] = true; // a redraw in the next 200 ms leaves it out
+      pileSwipeShow(s, -s.width); // slides out, then goes
+      setTimeout(function () { removePileRow(rmBtn); }, 200);
+    }
+    function pileSwipeCancel(ev) {
+      if (pileSwipe && ev.pointerId === pileSwipe.id) pileSwipeReset();
+    }
+    function pileSwipeLost(ev) {
+      // Only the row losing ITS capture: taking it fires this on the button that held the touch's implicit capture.
+      if (pileSwipe && ev.pointerId === pileSwipe.id && ev.target === pileSwipe.row) pileSwipeReset();
     }
 
     // ── scans that arrive while a lookup is running wait their turn instead of being dropped (the
@@ -8214,26 +8462,17 @@ window.CardView = {
       dom.signinGo.addEventListener('click', doSignIn);
       dom.password.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); doSignIn(); } });
       dom.earlierList.addEventListener('click', function (ev) {
+        if (Date.now() < pileSwipeEatUntil) { pileSwipeEatUntil = 0; return; } // the click a swipe's own release makes
         var rm = ev.target.closest('.sc-earlier-remove');
-        if (rm) {
-          var rmKey = rm.getAttribute('data-key');
-          pile.removeCard(rm.getAttribute('data-cert'), rm.getAttribute('data-grader'));
-          stopAveragePoll(rmKey);
-          delete pileMeta[rmKey];
-          if (rmKey === currentKey) { // the card on screen is gone: clear it from both views
-            currentKey = null;
-            sellerView = null;
-            dom.result.hidden = true;
-            clearSquares(); // We pay sits in the scoreboard, outside the card: not the removed card's price any more
-            renderSeller();
-          }
-          savePile();
-          renderPile();
-          return;
-        }
+        if (rm) { removePileRow(rm); return; }
         var main = ev.target.closest('.sc-earlier-main');
         if (main) priceCert(main.getAttribute('data-cert'), main.getAttribute('data-grader'));
       });
+      dom.earlierList.addEventListener('pointerdown', pileSwipeDown);
+      dom.earlierList.addEventListener('pointermove', pileSwipeMove);
+      dom.earlierList.addEventListener('pointerup', pileSwipeUp);
+      dom.earlierList.addEventListener('pointercancel', pileSwipeCancel);
+      dom.earlierList.addEventListener('lostpointercapture', pileSwipeLost);
       // Starting a new seller must never be a single accidental tap - a 40-card pile lost mid-
       // negotiation is the worst thing this tool can do - so "New seller" only opens a confirm row;
       // nothing is cleared until that second, deliberate tap on "Yes, clear it".
