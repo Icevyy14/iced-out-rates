@@ -12,6 +12,218 @@
 <meta name="supabase-anon-key" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwZmhncnVycXV2bHlhYnR5bWJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MjYyNjcsImV4cCI6MjA5MTEwMjI2N30.ZcEPKRHI3kb3aA6iXmf1Mo42Dyqj9fx1I9ZMT2xk0fg">
 <title>Iced Out Penguin · Scanner</title>
 <meta name="theme-color" content="#040308">
+<!-- The Scanner's colour theme, applied here in the head so the first paint is already in the chosen colours
+     (scanner/theme.js: the list, the saved choice, window.IOPTheme). build-portal.js keeps this block on the two
+     Scanner pages only (the browser one and the app one) and drops it from the others. With nothing saved it paints
+     Iced Out, the Scanner's look as it always was. -->
+<script>
+/* THEME-CORE:START (generated from scanner/theme.js by rates-portal/build-portal.js: edit that file, never this copy) */
+(function () {
+'use strict';
+// The Scanner's colour themes (owner, 11/16: "in the settings i also want there to be a theme settings so we can
+// change the way our app looks", then "i want there to be the default look which is how it looks now. a darker red
+// crimson theme, a darker bluer theme, and all other contrasting themes you like").
+//
+// Eight choices, in this order, ids and names fixed (the phone apps' own Settings sheet lists the same eight and
+// sends these ids back with window.IOPTheme.set('<id>')):
+//   auto     "Match phone"  Daylight while the phone is in light mode, Iced Out while it is in dark mode, and it
+//                           follows the phone switching over live (matchMedia).
+//   iced     "Iced Out"     today's look, untouched: the DEFAULT. Its colours are the --sc-* values the Scanner
+//                           panel's own <style> has always had, so with nothing saved the page is exactly as it was.
+//   crimson  "Crimson"      the whole look goes dark red: wine and oxblood surfaces, brand red #E3263F buttons.
+//   deepblue "Deep Blue"    darker and bluer than Iced Out: ink-blue surfaces, brand blue #2F7CF6 buttons.
+//   midnight "Midnight"     true black (an OLED phone's pixels switch off), the Iced Out blue.
+//   daylight "Daylight"     a light theme that stays readable in bright sun at a card show.
+//   glacier  "Glacier"      ice blue on deep navy.
+//   gold     "Gold"         gold on near black.
+// A theme only ever changes COLOURS: never a size, a font, the layout or what anything does. The colours themselves
+// live in rates-portal/page.html (the Scanner panel's <style>, one html[data-iop-theme="<id>"] block per theme);
+// what lives here is the list, which one is chosen, and the two colours the app is told about. The page background
+// (`bg`) and the accent (`accent`) below must be the very values those CSS blocks set as --sc-page and --sc-blue
+// (scanner/theme.test.js reads page.html and holds them to it).
+//
+// Where the choice lives: this device's localStorage, key "iopTheme" (the id, as plain text). Every read and write is
+// wrapped: a private window or blocked storage still renders, in the default theme, and simply forgets the choice.
+//
+// When it is applied: before the page is first painted. build-portal.js copies this file into a small script in
+// the head of the two Scanner pages only (the browser one and the app one; the dev view page.html too), between the
+// THEME-CORE markers, and runs installThemes(window) right there, so <html data-iop-theme="..."> is set before the
+// body exists and there is no flash of the wrong colours.
+//
+// The page's API, for the Settings sheet on the page and for the phone apps (which run it in the web view):
+//   window.IOPTheme.list()  -> [{ id, name }, ...] the eight, in order
+//   window.IOPTheme.get()   -> the chosen id ('auto' stays 'auto')
+//   window.IOPTheme.set(id) -> true, applied and saved at once; an unknown id is ignored (false)
+// Each time a theme is applied (on load, on set, and when 'auto' follows the phone) the page fires a window event
+// 'iopthemechange' whose detail is themeMessage(): { id, light, bg, accent }. The Scanner module forwards that to
+// the app as the bridge's 'setTheme' message (scanner/nativeBridge.js), so the app's own background, status bar and
+// sheet match the page.
+//
+// Pure apart from installThemes, which only touches the window it is handed and never throws.
+'use strict';
+
+var THEME_KEY = 'iopTheme';
+var DEFAULT_THEME = 'iced';
+var AUTO_THEME = 'auto';
+// What 'Match phone' turns into.
+var AUTO_LIGHT_THEME = 'daylight';
+var AUTO_DARK_THEME = 'iced';
+
+// `light`: a light theme (dark text). `bg`: the page background behind everything. `accent`: the buttons' colour.
+// 'auto' has none of its own: it borrows Daylight's or Iced Out's.
+var THEMES = [
+  { id: 'auto', name: 'Match phone', light: null, bg: null, accent: null },
+  { id: 'iced', name: 'Iced Out', light: false, bg: '#0A0F18', accent: '#3478F5' },
+  { id: 'crimson', name: 'Crimson', light: false, bg: '#12060A', accent: '#E3263F' },
+  { id: 'deepblue', name: 'Deep Blue', light: false, bg: '#040A1C', accent: '#2F7CF6' },
+  { id: 'midnight', name: 'Midnight', light: false, bg: '#000000', accent: '#3478F5' },
+  { id: 'daylight', name: 'Daylight', light: true, bg: '#EEF1F6', accent: '#1D5BE0' },
+  { id: 'glacier', name: 'Glacier', light: false, bg: '#06121C', accent: '#7CC4FA' },
+  { id: 'gold', name: 'Gold', light: false, bg: '#0B0A07', accent: '#E8B94A' },
+];
+
+/** The eight, in order, as { id, name } (copies: a caller can never change the list). */
+function listThemes() {
+  return THEMES.map(function (t) { return { id: t.id, name: t.name }; });
+}
+
+/** true for one of the eight ids, exactly as written. */
+function isThemeId(id) {
+  if (typeof id !== 'string') return false;
+  for (var i = 0; i < THEMES.length; i++) if (THEMES[i].id === id) return true;
+  return false;
+}
+
+/** The entry for an id; anything unknown is the default (Iced Out). */
+function themeOf(id) {
+  for (var i = 0; i < THEMES.length; i++) if (THEMES[i].id === id) return THEMES[i];
+  return themeOf(DEFAULT_THEME);
+}
+
+/** The theme actually painted for a choice: 'auto' becomes Daylight or Iced Out by the phone's mode. */
+function resolveTheme(choice, prefersLight) {
+  if (choice === AUTO_THEME) return prefersLight ? AUTO_LIGHT_THEME : AUTO_DARK_THEME;
+  return isThemeId(choice) ? choice : DEFAULT_THEME;
+}
+
+/** The saved choice, or the default when nothing (or nothing valid) is saved, or storage is blocked. */
+function loadThemeChoice(storage) {
+  try {
+    var raw = storage && storage.getItem(THEME_KEY);
+    return isThemeId(raw) ? raw : DEFAULT_THEME;
+  } catch (e) {
+    return DEFAULT_THEME;
+  }
+}
+
+/** Saves a choice; false (never a throw) for an unknown id or storage that refuses. */
+function saveThemeChoice(storage, id) {
+  if (!isThemeId(id) || !storage) return false;
+  try { storage.setItem(THEME_KEY, id); return true; } catch (e) { return false; }
+}
+
+/**
+ * What the app is told: the CHOSEN id (so its Settings sheet ticks 'Match phone', not what that turned into), and
+ * the colours actually on screen: `light` (dark status bar icons), `bg` (the page background, #rrggbb) and `accent`
+ * (#rrggbb).
+ */
+function themeMessage(choice, prefersLight) {
+  var id = isThemeId(choice) ? choice : DEFAULT_THEME;
+  var shown = themeOf(resolveTheme(id, prefersLight));
+  return { id: id, light: shown.light === true, bg: shown.bg, accent: shown.accent };
+}
+
+/**
+ * Sets the theme up on a real page: reads the saved choice, paints it (<html data-iop-theme>, plus the
+ * color-scheme and theme-color metas), follows the phone for 'auto', and publishes window.IOPTheme. Every step is
+ * guarded, so a page with no matchMedia, no storage or an unusual document still gets the default look and a
+ * working API. Returns the API (or null with no window).
+ */
+function installThemes(win) {
+  if (!win) return null;
+  var doc = null, root = null, storage = null, mq = null;
+  try { doc = win.document || null; root = doc && doc.documentElement; } catch (e) { root = null; }
+  try { storage = win.localStorage || null; } catch (e) { storage = null; }
+  try { if (typeof win.matchMedia === 'function') mq = win.matchMedia('(prefers-color-scheme: light)'); } catch (e) { mq = null; }
+
+  function meta(name) {
+    try { return doc && typeof doc.querySelector === 'function' ? doc.querySelector('meta[name="' + name + '"]') : null; } catch (e) { return null; }
+  }
+  // The head's own theme-color (shared with the other pages) is what the default theme keeps, untouched.
+  var themeColorMeta = meta('theme-color');
+  var schemeMeta = meta('color-scheme');
+  var themeColorAsShipped = null, schemeAsShipped = null;
+  try { themeColorAsShipped = themeColorMeta ? themeColorMeta.content || null : null; } catch (e) { themeColorAsShipped = null; }
+  try { schemeAsShipped = schemeMeta ? schemeMeta.content || null : null; } catch (e) { schemeAsShipped = null; }
+
+  var choice = loadThemeChoice(storage);
+  function prefersLight() { try { return !!(mq && mq.matches); } catch (e) { return false; } }
+
+  function apply() {
+    var shownId = resolveTheme(choice, prefersLight());
+    var shown = themeOf(shownId);
+    try {
+      if (root && typeof root.setAttribute === 'function') {
+        root.setAttribute('data-iop-theme', shownId);
+        root.setAttribute('data-iop-theme-choice', choice);
+      }
+    } catch (e) { /* the default look stays */ }
+    try {
+      if (schemeMeta) schemeMeta.content = shownId === DEFAULT_THEME && schemeAsShipped ? schemeAsShipped : (shown.light ? 'light' : 'dark');
+      if (themeColorMeta) themeColorMeta.content = shownId === DEFAULT_THEME && themeColorAsShipped ? themeColorAsShipped : shown.bg;
+    } catch (e) { /* only the browser's own bar colour is affected */ }
+    try {
+      if (typeof win.dispatchEvent === 'function' && typeof win.CustomEvent === 'function') {
+        win.dispatchEvent(new win.CustomEvent('iopthemechange', { detail: themeMessage(choice, prefersLight()) }));
+      }
+    } catch (e) { /* nobody listening yet */ }
+  }
+
+  // 'Match phone' follows the phone switching between light and dark while the page is open.
+  function onPhoneMode() { if (choice === AUTO_THEME) apply(); }
+  try {
+    if (mq && typeof mq.addEventListener === 'function') mq.addEventListener('change', onPhoneMode);
+    else if (mq && typeof mq.addListener === 'function') mq.addListener(onPhoneMode); // older Safari
+  } catch (e) { /* it still applies on the next load */ }
+
+  var api = {
+    list: listThemes,
+    get: function () { return choice; },
+    set: function (id) {
+      if (!isThemeId(id)) return false;
+      choice = id;
+      saveThemeChoice(storage, id);
+      apply();
+      return true;
+    },
+    /** What the app should be told right now (see themeMessage). */
+    message: function () { return themeMessage(choice, prefersLight()); },
+  };
+  try { win.IOPTheme = api; } catch (e) { /* a frozen window: the page keeps the default */ }
+  apply();
+  return api;
+}
+
+window.ScannerTheme = {
+  THEME_KEY: THEME_KEY,
+  DEFAULT_THEME: DEFAULT_THEME,
+  AUTO_THEME: AUTO_THEME,
+  AUTO_LIGHT_THEME: AUTO_LIGHT_THEME,
+  AUTO_DARK_THEME: AUTO_DARK_THEME,
+  THEMES: THEMES,
+  listThemes: listThemes,
+  isThemeId: isThemeId,
+  themeOf: themeOf,
+  resolveTheme: resolveTheme,
+  loadThemeChoice: loadThemeChoice,
+  saveThemeChoice: saveThemeChoice,
+  themeMessage: themeMessage,
+  installThemes: installThemes,
+};
+})();
+/* THEME-CORE:END */
+try { if (window.ScannerTheme) window.ScannerTheme.installThemes(window); } catch (e) { /* the default look */ }
+</script>
 <!-- Our Discord logo (the penguin), copied next to every page by build-portal.js (vendor/brand/). -->
 <link rel="icon" type="image/png" href="vendor/brand/penguin-icon-180.png">
 <link rel="apple-touch-icon" href="vendor/brand/penguin-icon-180.png">
@@ -507,6 +719,26 @@ code{font-family:var(--font-mono);font-size:.92em;}
     --sc-surface-bg:linear-gradient(160deg, #1B2332 0%, #141A25 100%);
     --sc-steel-orb:linear-gradient(155deg, #2A3652 0%, #1A2238 60%, #141A2B 100%);
     --sc-grade-bg:linear-gradient(155deg, #3B3F7A 0%, #2A3169 28%, #19214E 58%, #25102A 100%); /* the grade badges: indigo with a wine shade */
+    --sc-unk-badge-bg:var(--sc-grade-bg); /* a pile row with no grade yet: the same badge with the barcode in muted ink. Daylight
+                                              gives it a light face, or its dark muted icon would vanish on the dark badge */
+    --sc-danger-bg:linear-gradient(158deg, #CE0F37 0%, #BF092F 50%, #A1062A 100%); --sc-danger-ink:#fff; /* can't be undone: Yes, clear it
+                                              and the swipe's Delete. A theme whose accent is red (Crimson) moves it off red */
+    /* Colours that used to be written straight into the rules below, made tokens so a theme (the
+       html[data-iop-theme] blocks further down) can change them. Each one's value here is exactly what the
+       rule had, so the default theme, Iced Out, is unchanged. */
+    --sc-on-accent:#fff; /* text and icons on the blue (accent) buttons */
+    --sc-accent-glow:rgba(52,120,245,.55); --sc-hold-fill:rgba(52,120,245,.5);
+    --sc-select:rgba(59,151,151,.28);
+    --sc-mark-ring:rgba(255,255,255,.1); /* the penguin's ring in the wordmark */
+    --sc-off-1:#1A283E; --sc-off-2:#091221; --sc-off-ink:var(--sc-muted); /* the camera frame before Start */
+    --sc-scanline:rgba(191,9,47,.8);
+    --sc-pay-1:#D32549; --sc-pay-2:#BF092F; --sc-pay-3:#7A0A1F; --sc-pay-ring:rgba(255,150,170,.34); --sc-pay-glow:rgba(191,9,47,.55);
+    --sc-orb-ring:rgba(111,177,224,.35);
+    --sc-grade-ring:rgba(176,184,232,.42); --sc-grade-ring-row:rgba(176,184,232,.34); --sc-grade-ink:var(--sc-ink);
+    --sc-chip-edge:rgba(255,255,255,.09); --sc-chip-hi:rgba(255,255,255,.07);
+    --sc-out-1:rgba(120,16,40,.62); --sc-out-2:rgba(70,14,30,.62); --sc-out-ring:rgba(255,120,145,.5);
+    --sc-dock-hi:rgba(255,255,255,.10); --sc-dock-sh:rgba(0,0,0,.7);
+    --sc-spark:#6FB1E0; /* the shading under the trend line (its gradient is drawn by the script) */
     --sc-r-card:22px;
     --sc-r-tile:20px;
     --sc-ease:cubic-bezier(.16, 1, .3, 1);
@@ -538,28 +770,40 @@ code{font-family:var(--font-mono);font-size:.92em;}
     --i-keypad:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 8h.01M12 12h.01M14 8h.01M16 12h.01M18 8h.01M6 8h.01M7 16h10M8 12h.01'/%3E%3Crect width='20' height='16' x='2' y='4' rx='2'/%3E%3C/svg%3E");
     --i-arrow:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14'/%3E%3Cpath d='m12 5 7 7-7 7'/%3E%3C/svg%3E");
     --i-pencil:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z'/%3E%3Cpath d='m15 5 4 4'/%3E%3C/svg%3E");
+    --i-check:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
     --i-ban:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m4.9 4.9 14.2 14.2'/%3E%3C/svg%3E");
 
     font-family:var(--sc-font);font-weight:500;color:var(--sc-ink);
     -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;caret-color:var(--sc-steel-ink);
   }
   #tab-scanner button,#tab-scanner input{font-family:inherit;}
-  #tab-scanner ::selection{background:rgba(59,151,151,.28);color:var(--sc-ink);}
+  #tab-scanner ::selection{background:var(--sc-select);color:var(--sc-ink);}
   #tab-scanner :focus-visible{outline:3px solid var(--sc-focus);outline-offset:2px;}
 
   /* The page around the scanner: its own dark base instead of the rate sheets' glow and scan lines, and
      scanner.html's site header in the same colours (colours only: the header keeps its layout). */
-  html:has(#tab-scanner.tab.active) body{background:#0A0F18;}
+  /* The page's own colours as tokens on <html> (the body and the site header sit OUTSIDE #tab-scanner, so they
+     cannot see its --sc-* tokens). Same values as before; a theme block below changes them. */
+  :root{
+    --sc-page:#0A0F18; --sc-page-nav:#0E121A; --sc-page-line:rgba(255,255,255,.08);
+    --sc-page-status:#8D97C4; /* the browser Scanner page's header status ("Loading the sheet…"): the portal's own --dim, as before */
+    --i-settings:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E"); /* on <html>: on the browser page the gear sits in the site header, outside #tab-scanner */
+    --sc-page-ink:#F2F6FA; --sc-page-muted:#A9B9CC; --sc-page-thumb:#252D3D;
+    --sc-page-tab-top:#3070E8; --sc-page-tab-bot:#2762DC; --sc-page-on-accent:#fff;
+    --sc-page-top:#121B2A; --sc-page-glow:rgba(191,9,47,.20); --sc-page-glow-0:rgba(191,9,47,0); /* the app's sheet */
+  }
+  html:has(#tab-scanner.tab.active) body{background:var(--sc-page);}
   html:has(#tab-scanner.tab.active)::before,html:has(#tab-scanner.tab.active)::after{display:none;}
-  html:has(#tab-scanner.tab.active) .nav{background:#0E121A;border-bottom-color:rgba(255,255,255,.08);}
-  html:has(#tab-scanner.tab.active) .logo{background:none;-webkit-text-fill-color:#F2F6FA;color:#F2F6FA;filter:none;}
-  html:has(#tab-scanner.tab.active) .logo-sub{color:#A9B9CC;}
-  html:has(#tab-scanner.tab.active) .nav-tabs{background:#0A0F18;}
-  html:has(#tab-scanner.tab.active) .nav-tab{color:#A9B9CC;}
-  html:has(#tab-scanner.tab.active) .nav-tab:hover{color:#F2F6FA;}
-  html:has(#tab-scanner.tab.active) .nav-tab.active,html:has(#tab-scanner.tab.active) .nav-tab.active:hover{background:linear-gradient(180deg, #3070E8, #2762DC);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.22);}
-  html:has(#tab-scanner.tab.active) ::-webkit-scrollbar-track{background:#0A0F18;}
-  html:has(#tab-scanner.tab.active) ::-webkit-scrollbar-thumb{background:#252D3D;}
+  html:has(#tab-scanner.tab.active) .nav{background:var(--sc-page-nav);border-bottom-color:var(--sc-page-line);}
+  html:has(#tab-scanner.tab.active) .logo{background:none;-webkit-text-fill-color:var(--sc-page-ink);color:var(--sc-page-ink);filter:none;}
+  html:has(#tab-scanner.tab.active) .logo-sub{color:var(--sc-page-muted);}
+  html:has(#tab-scanner.tab.active) .saved,html:has(#tab-scanner.tab.active) .msg:not(.ok):not(.err){color:var(--sc-page-status);}
+  html:has(#tab-scanner.tab.active) .nav-tabs{background:var(--sc-page);}
+  html:has(#tab-scanner.tab.active) .nav-tab{color:var(--sc-page-muted);}
+  html:has(#tab-scanner.tab.active) .nav-tab:hover{color:var(--sc-page-ink);}
+  html:has(#tab-scanner.tab.active) .nav-tab.active,html:has(#tab-scanner.tab.active) .nav-tab.active:hover{background:linear-gradient(180deg, var(--sc-page-tab-top), var(--sc-page-tab-bot));color:var(--sc-page-on-accent);box-shadow:inset 0 1px 0 rgba(255,255,255,.22);}
+  html:has(#tab-scanner.tab.active) ::-webkit-scrollbar-track{background:var(--sc-page);}
+  html:has(#tab-scanner.tab.active) ::-webkit-scrollbar-thumb{background:var(--sc-page-thumb);}
 
   /* One icon recipe: a currentColor square cut out by the icon's mask (--sc-i). */
   #tab-scanner .sc-vf-round::before,#tab-scanner .sc-vf-pill::before,#tab-scanner .sc-start::before,
@@ -568,7 +812,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-row-grade.sc-unk::before,#tab-scanner #sc-cert-go::after,#tab-scanner #sc-clear::before,
   #tab-scanner .sc-pile-unknown::before,#tab-scanner .sc-sheet-cue::before,#tab-scanner .sc-result-open::after,
   #tab-scanner .sc-chip-no::before,#tab-scanner .sc-chip-hand::before,#tab-scanner .sc-chip-err::before,
-  #tab-scanner .sc-chip-out::after,#tab-scanner .sc-recent-shill::before{
+  #tab-scanner .sc-chip-out::after,#tab-scanner .sc-recent-shill::before,#tab-scanner .sc-brand-gear::before{
     content:"";flex:none;width:20px;height:20px;background:currentColor;
     -webkit-mask:var(--sc-i) center / contain no-repeat;mask:var(--sc-i) center / contain no-repeat;
   }
@@ -588,7 +832,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   header.nav ~ .main #tab-scanner .sc-brand{display:none;}
   #tab-scanner .sc-brand-mark{
     flex:none;width:40px;height:40px;border-radius:50%;object-fit:cover;background:var(--sc-navy);
-    box-shadow:0 0 0 1px rgba(255,255,255,.1);
+    box-shadow:0 0 0 1px var(--sc-mark-ring);
   }
   #tab-scanner .sc-brand-words{min-width:0;display:flex;flex-direction:column;}
   #tab-scanner .sc-brand-name{font-size:var(--sc-fs-body);font-weight:800;line-height:1.2;letter-spacing:-.01em;color:var(--sc-ink);}
@@ -644,7 +888,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-vf-off{
     position:relative;min-height:var(--sc-vf-h);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
     padding:28px 24px;text-align:center;
-    background:radial-gradient(135% 58% at 50% 40%, #1A283E 0%, #091221 56%, #060D18 100%);
+    background:radial-gradient(135% 58% at 50% 40%, var(--sc-off-1) 0%, var(--sc-off-2) 56%, var(--sc-cam) 100%);
   }
   #tab-scanner .sc-vf-off::before{
     content:"";position:absolute;inset:16px;pointer-events:none;--k:28px;
@@ -654,13 +898,13 @@ code{font-family:var(--font-mono);font-size:.92em;}
   }
   #tab-scanner .sc-start-row{
     align-self:stretch;display:flex;justify-content:center;
-    background:linear-gradient(90deg, transparent 6%, rgba(191,9,47,.8) 30%, rgba(191,9,47,.8) 70%, transparent 94%) center / 100% 1.5px no-repeat;
+    background:linear-gradient(90deg, transparent 6%, var(--sc-scanline) 30%, var(--sc-scanline) 70%, transparent 94%) center / 100% 1.5px no-repeat;
   }
   #tab-scanner .sc-start{
     --sc-i:var(--i-scan);
     position:relative;display:inline-flex;align-items:center;justify-content:center;gap:10px;max-width:100%;
     min-height:52px;padding:12px 22px 12px 18px;border:0;border-radius:999px;cursor:pointer;
-    background:linear-gradient(180deg, var(--sc-blue-top), var(--sc-blue-bot));color:#fff;
+    background:linear-gradient(180deg, var(--sc-blue-top), var(--sc-blue-bot));color:var(--sc-on-accent);
     font-size:var(--sc-fs-body);font-weight:800;line-height:1.2;text-align:center;white-space:normal;
     box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 10px 22px -14px rgba(0,0,0,.9);
     transition:filter 150ms ease-out, transform 150ms ease-out;
@@ -668,7 +912,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-start:hover{filter:brightness(1.08);}
   #tab-scanner .sc-start:active{transform:scale(.98);}
   #tab-scanner .sc-start:disabled{background:var(--sc-fill);color:var(--sc-muted);cursor:default;transform:none;filter:none;box-shadow:none;}
-  #tab-scanner .sc-vf-off-text{position:relative;max-width:300px;font-size:var(--sc-fs-row);line-height:1.45;color:var(--sc-muted);}
+  #tab-scanner .sc-vf-off-text{position:relative;max-width:300px;font-size:var(--sc-fs-row);line-height:1.45;color:var(--sc-off-ink);}
 
   /* ── the scoreboard: We pay for the card on screen, and what this visit comes to, side by side ── */
   #tab-scanner .sc-score{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:8px;container-type:inline-size;}
@@ -678,8 +922,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-tile .sc-key{font-size:var(--sc-fs-label);font-weight:800;line-height:1.3;letter-spacing:.09em;text-transform:uppercase;}
   #tab-scanner .sc-tile-pay{
     isolation:isolate;color:#fff;
-    background:linear-gradient(158deg, #D32549 0%, #BF092F 38%, #7A0A1F 100%);
-    box-shadow:inset 0 0 0 1px rgba(255,150,170,.34), inset 0 1px 0 rgba(255,255,255,.22), 0 1px 1px rgba(0,0,0,.25), 0 14px 26px -14px rgba(191,9,47,.55);
+    background:linear-gradient(158deg, var(--sc-pay-1) 0%, var(--sc-pay-2) 38%, var(--sc-pay-3) 100%);
+    box-shadow:inset 0 0 0 1px var(--sc-pay-ring), inset 0 1px 0 rgba(255,255,255,.22), 0 1px 1px rgba(0,0,0,.25), 0 14px 26px -14px var(--sc-pay-glow);
   }
   /* The tile's one ornament: a large soft arc in its top-right corner, the faint facet pattern only inside
      it. Drawn (and masked) inside the tile's own box, so the tile never has to clip its number. */
@@ -740,12 +984,12 @@ code{font-family:var(--font-mono);font-size:.92em;}
   }
   #tab-scanner .sc-btn:active{transform:scale(.98);}
   #tab-scanner .sc-btn:disabled{opacity:.55;cursor:default;transform:none;filter:none;}
-  #tab-scanner .sc-btn-primary{background:linear-gradient(180deg, var(--sc-blue-top), var(--sc-blue-bot));color:#fff;font-size:var(--sc-fs-body);box-shadow:inset 0 1px 0 rgba(255,255,255,.18);}
+  #tab-scanner .sc-btn-primary{background:linear-gradient(180deg, var(--sc-blue-top), var(--sc-blue-bot));color:var(--sc-on-accent);font-size:var(--sc-fs-body);box-shadow:inset 0 1px 0 rgba(255,255,255,.18);}
   #tab-scanner .sc-btn-primary:hover{filter:brightness(.93);}
   #tab-scanner .sc-btn-quiet{background:var(--sc-fill);color:var(--sc-ink);box-shadow:var(--sc-hi), var(--sc-ring);}
   #tab-scanner .sc-card .sc-btn-quiet{background:var(--sc-fill-card-bg);}
   #tab-scanner .sc-btn-quiet:hover{filter:brightness(1.12);}
-  #tab-scanner .sc-btn-danger{background:linear-gradient(158deg, #CE0F37 0%, #BF092F 50%, #A1062A 100%);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.16);}
+  #tab-scanner .sc-btn-danger{background:var(--sc-danger-bg);color:var(--sc-danger-ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.16);}
   #tab-scanner .sc-btn-danger:hover{filter:brightness(1.06);}
   #tab-scanner .sc-btn-block{width:100%;min-height:50px;}
 
@@ -761,7 +1005,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-badge{
     --sc-i:var(--i-lock);
     flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;
-    background:var(--sc-steel-orb);color:#fff;box-shadow:0 0 0 1px rgba(111,177,224,.35);
+    background:var(--sc-steel-orb);color:#fff;box-shadow:0 0 0 1px var(--sc-orb-ring);
   }
   #tab-scanner .sc-badge::before{width:18px;height:18px;}
   #tab-scanner .sc-field{display:flex;flex-direction:column;gap:6px;}
@@ -789,7 +1033,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
     flex:none;display:grid;place-items:center;width:52px;height:52px;border-radius:15px;
     background:var(--sc-grade-bg);color:#fff;font-size:calc(var(--sc-fs-num) * 1.2);font-weight:800;line-height:1;
     font-variant-numeric:tabular-nums;letter-spacing:-.02em;
-    box-shadow:inset 0 0 0 1.5px rgba(176,184,232,.42), inset 0 1px 0 rgba(255,255,255,.16), 0 0 0 2px rgba(6,10,18,.4), 0 5px 12px -5px rgba(0,0,0,.75);
+    box-shadow:inset 0 0 0 1.5px var(--sc-grade-ring), inset 0 1px 0 rgba(255,255,255,.16), 0 0 0 2px rgba(6,10,18,.4), 0 5px 12px -5px rgba(0,0,0,.75);
     transition:width 200ms var(--sc-ease), height 200ms var(--sc-ease), font-size 200ms var(--sc-ease);
   }
   #tab-scanner .sc-grade-dot.sc-unk{--sc-i:var(--i-barcode);background:var(--sc-grey-tint);color:var(--sc-muted);}
@@ -844,19 +1088,20 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-recent-list{display:grid;grid-template-columns:repeat(5, minmax(0, 1fr));gap:5px;margin:0;padding:0;list-style:none;}
   #tab-scanner .sc-chip{
     display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0;padding:5px 2px 6px;border-radius:9px;
-    background:var(--sc-fill-card-bg);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09), inset 0 1px 0 rgba(255,255,255,.07);color:var(--sc-muted);text-align:center;
+    background:var(--sc-fill-card-bg);box-shadow:inset 0 0 0 1px var(--sc-chip-edge), inset 0 1px 0 var(--sc-chip-hi);color:var(--sc-muted);text-align:center;
   }
   #tab-scanner .sc-chip-price{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--sc-fs-label);font-weight:800;line-height:1.25;letter-spacing:-.01em;font-variant-numeric:tabular-nums;}
   /* No fading on top of --sc-muted: on a plain chip that would drop the age under 4.5:1 (it is 4.8:1 as is). */
   #tab-scanner .sc-chip-age{font-size:12px;font-weight:700;line-height:1.2;}
-  #tab-scanner .sc-chip-avg{color:var(--sc-ink);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09), inset 0 -2px 0 var(--sc-avg);}
-  #tab-scanner .sc-chip-out{--sc-i:var(--i-alert);position:relative;background:linear-gradient(180deg, rgba(120,16,40,.62), rgba(70,14,30,.62));color:var(--sc-err-ink);box-shadow:inset 0 0 0 1px rgba(255,120,145,.5);}
+  #tab-scanner .sc-chip-avg{color:var(--sc-ink);box-shadow:inset 0 0 0 1px var(--sc-chip-edge), inset 0 -2px 0 var(--sc-avg);}
+  #tab-scanner .sc-chip-out{--sc-i:var(--i-alert);position:relative;background:linear-gradient(180deg, var(--sc-out-1), var(--sc-out-2));color:var(--sc-err-ink);box-shadow:inset 0 0 0 1px var(--sc-out-ring);}
   #tab-scanner .sc-chip-out::after{position:absolute;top:-6px;right:-4px;width:14px;height:14px;}
   #tab-scanner .sc-trend{margin:6px 6px 2px;}
   #tab-scanner .sc-trend[hidden]{display:none;}
   #tab-scanner .sc-spark{position:relative;height:44px;}
   #tab-scanner .sc-spark-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
   #tab-scanner .sc-spark-area{fill:url(#sc-spark-fill);stroke:none;}
+  #tab-scanner .sc-spark-svg stop{stop-color:var(--sc-spark);} /* beats the script's stop-color attribute (same colour by default) */
   #tab-scanner .sc-spark-line{fill:none;stroke:var(--sc-avg);stroke-width:2;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke;}
   #tab-scanner .sc-spark-clv{stroke:var(--sc-clv);stroke-width:1.5;stroke-dasharray:4 4;vector-effect:non-scaling-stroke;}
   #tab-scanner .sc-spark-dot{
@@ -948,8 +1193,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-card .sc-seg-btn{color:var(--sc-ink);}
   #tab-scanner .sc-seg-btn:hover{color:var(--sc-ink);}
   #tab-scanner .sc-seg-btn[aria-pressed="true"]{
-    background:linear-gradient(180deg, var(--sc-blue-top), var(--sc-blue-bot));color:#fff;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 1px 2px rgba(0,0,0,.45), 0 6px 14px -6px rgba(52,120,245,.55);
+    background:linear-gradient(180deg, var(--sc-blue-top), var(--sc-blue-bot));color:var(--sc-on-accent);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 1px 2px rgba(0,0,0,.45), 0 6px 14px -6px var(--sc-accent-glow);
   }
   /* "Normal rates / Consignor rates / Flat %" may wrap to two lines on a narrow phone rather than overflow. */
   #tab-scanner .sc-rules .sc-seg-btn{flex:1 1 auto;padding:5px 10px;white-space:normal;text-align:center;}
@@ -979,7 +1224,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-earlier-row.sc-swiping .sc-earlier-slide{transition:none;}
   #tab-scanner .sc-earlier-del{
     position:absolute;top:1px;bottom:1px;right:0;width:0;display:flex;align-items:center;justify-content:flex-end;overflow:hidden;
-    border-radius:16px;background:linear-gradient(158deg, #CE0F37 0%, #BF092F 50%, #A1062A 100%);color:#fff;
+    border-radius:16px;background:var(--sc-danger-bg);color:var(--sc-danger-ink);
     font-size:var(--sc-fs-row);font-weight:800;white-space:nowrap;pointer-events:none;transition:width 200ms ease-out;
   }
   #tab-scanner .sc-earlier-del span{padding:0 20px;}
@@ -992,10 +1237,10 @@ code{font-family:var(--font-mono);font-size:.92em;}
   }
   #tab-scanner .sc-earlier-main:active .title{color:var(--sc-steel-ink);}
   #tab-scanner .sc-row-grade{
-    display:grid;place-items:center;width:40px;height:40px;border-radius:11px;background:var(--sc-grade-bg);box-shadow:inset 0 0 0 1px rgba(176,184,232,.34), inset 0 1px 0 rgba(255,255,255,.12);
-    color:var(--sc-ink);font-size:var(--sc-fs-body);font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em;
+    display:grid;place-items:center;width:40px;height:40px;border-radius:11px;background:var(--sc-grade-bg);box-shadow:inset 0 0 0 1px var(--sc-grade-ring-row), inset 0 1px 0 rgba(255,255,255,.12);
+    color:var(--sc-grade-ink);font-size:var(--sc-fs-body);font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em;
   }
-  #tab-scanner .sc-row-grade.sc-unk{--sc-i:var(--i-barcode);color:var(--sc-muted);}
+  #tab-scanner .sc-row-grade.sc-unk{--sc-i:var(--i-barcode);color:var(--sc-muted);background:var(--sc-unk-badge-bg);}
   #tab-scanner .sc-row-grade.sc-unk::before{width:18px;height:18px;}
   #tab-scanner .sc-earlier-row .name{display:flex;flex-direction:column;align-items:flex-start;min-width:0;}
   #tab-scanner .sc-earlier-row .title{
@@ -1036,7 +1281,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
     padding:var(--sc-dock-pad-top) max(16px, calc((100vw - 520px) / 2)) calc(var(--sc-dock-pad-bottom) + env(safe-area-inset-bottom));
     background:linear-gradient(180deg, var(--sc-dock-top) 0, var(--sc-dock) 100%);
     border-radius:24px 24px 0 0;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.10), 0 -12px 28px -10px rgba(0,0,0,.7);
+    box-shadow:inset 0 1px 0 var(--sc-dock-hi), 0 -12px 28px -10px var(--sc-dock-sh);
   }
   /* With the on-screen keyboard up the dock would sit on the field being typed in. Keyed on the keyboard
      itself (the scanner script sets .sc-kbd-open from the visual viewport, or in the Android app from the
@@ -1056,7 +1301,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   }
   #tab-scanner .sc-hide-btn::before{position:relative;z-index:1;width:19px;height:19px;}
   #tab-scanner .sc-hide-btn span{position:relative;z-index:1;white-space:nowrap;}
-  #tab-scanner .sc-hide-btn::after{content:"";position:absolute;inset:0;background:rgba(52,120,245,.5);transform:scaleX(0);transform-origin:left center;}
+  #tab-scanner .sc-hide-btn::after{content:"";position:absolute;inset:0;background:var(--sc-hold-fill);transform:scaleX(0);transform-origin:left center;}
   #tab-scanner .sc-hide-btn.holding::after{transform:scaleX(1);transition:transform 1s linear;}
   #tab-scanner .sc-hide-btn[aria-pressed="true"]{--sc-i:var(--i-eye);color:var(--sc-muted);}
   #tab-scanner .sc-type-btn{display:none;}
@@ -1107,8 +1352,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
      'mid' arrangement. */
   html:has(#tab-scanner.tab.active) body:has(.sc-native-cam){
     background:
-      radial-gradient(380px 200px at 50% -40px, rgba(191,9,47,.20), rgba(191,9,47,0) 74%) no-repeat,
-      linear-gradient(180deg, #121B2A 0, #0A0F18 300px) no-repeat #0A0F18;
+      radial-gradient(380px 200px at 50% -40px, var(--sc-page-glow), var(--sc-page-glow-0) 74%) no-repeat,
+      linear-gradient(180deg, var(--sc-page-top) 0, var(--sc-page) 300px) no-repeat var(--sc-page);
   }
   body:has(.sc-native-cam) .main{padding-top:22px;}
   #tab-scanner .scanner-layout.sc-native-cam{
@@ -1140,7 +1385,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
     padding:var(--sc-dock-pad-top) max(16px, calc((100vw - 520px) / 2)) calc(var(--sc-dock-pad-bottom) + env(safe-area-inset-bottom));
     background:linear-gradient(180deg, var(--sc-dock-top) 0, var(--sc-dock) 100%);
     border-radius:24px 24px 0 0;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.10), 0 -12px 28px -10px rgba(0,0,0,.7);
+    box-shadow:inset 0 1px 0 var(--sc-dock-hi), 0 -12px 28px -10px var(--sc-dock-sh);
   }
   #tab-scanner .scanner-layout.sc-native-cam .sc-controls{position:static;padding:0;background:none;border-radius:0;box-shadow:none;}
   #tab-scanner .scanner-layout.sc-native-cam .sc-label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
@@ -1153,7 +1398,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
     -webkit-tap-highlight-color:transparent;
   }
   #tab-scanner .scanner-layout.sc-native-cam .sc-type-btn[aria-expanded="true"]{
-    background:linear-gradient(180deg, var(--sc-blue-top), var(--sc-blue-bot));color:#fff;
+    background:linear-gradient(180deg, var(--sc-blue-top), var(--sc-blue-bot));color:var(--sc-on-accent);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 1px 2px rgba(0,0,0,.45);
   }
   #tab-scanner .scanner-layout.sc-native-cam:not(.sc-type-open){--sc-dock-h:calc(var(--sc-dock-pad-top) + var(--sc-dock-ctl) + var(--sc-dock-pad-bottom));}
@@ -1278,6 +1523,286 @@ code{font-family:var(--font-mono);font-size:.92em;}
     #tab-scanner .sc-earlier-slide,#tab-scanner .sc-earlier-del{transition:none !important;}
   }
 
+  /* ── Settings: the gear in the wordmark row and the sheet it opens (owner, 11/16: "in the settings i also want
+     there to be a theme settings"). The gear is 44px to tap but takes the wordmark's own 40px in the row (its
+     margin pulls 2px back on each side), so the row and everything under it stay where they were. It is a staff
+     control, so hide mode drops it with the rest. The browser page keeps its site header for the logo and hides this
+     row, as it always has: there the page script moves the gear into the header's right side (next to "Loading the
+     sheet…"), where it takes no new row, so nothing under the header moves. ── */
+  #tab-scanner .sc-brand-gear{
+    --sc-i:var(--i-settings);
+    flex:none;display:grid;place-items:center;width:44px;height:44px;margin:-2px -2px -2px auto;padding:0;border:0;border-radius:50%;
+    cursor:pointer;background:var(--sc-fill);color:var(--sc-ink);box-shadow:var(--sc-hi), var(--sc-ring);
+    -webkit-tap-highlight-color:transparent;transition:filter 150ms ease-out;
+  }
+  #tab-scanner .sc-brand-gear:hover{filter:brightness(1.12);}
+  #tab-scanner .sc-brand-gear::before{width:21px;height:21px;}
+  /* The gear in the browser page's site header: 44px to tap, drawn as a 36px ring in the header's own colours. Its margin
+     pulls 15px back top and bottom, so in the row it is no taller than the status line beside it and the header
+     keeps the height it had. Seller mode drops it (it is staff only), and hide mode already drops the whole
+     header right side. */
+  header.nav .nav-right .sc-brand-gear{display:none;}
+  html:has(#tab-scanner.tab.active) header.nav .nav-right .sc-brand-gear{
+    flex:none;display:grid;place-items:center;width:44px;height:44px;margin:-15px 0;padding:0;border:0;border-radius:50%;
+    cursor:pointer;color:var(--sc-page-muted);
+    background:radial-gradient(circle closest-side, transparent calc(100% - 5px), var(--sc-page-line) calc(100% - 5px) calc(100% - 4px), transparent calc(100% - 4px));
+    -webkit-tap-highlight-color:transparent;
+  }
+  html:has(#tab-scanner.tab.active) header.nav .nav-right .sc-brand-gear:hover{color:var(--sc-page-ink);}
+  html:has(#tab-scanner.tab.active) header.nav .nav-right .sc-brand-gear::before{
+    content:"";width:21px;height:21px;background:currentColor;
+    -webkit-mask:var(--i-settings) center / contain no-repeat;mask:var(--i-settings) center / contain no-repeat;
+  }
+  html:has(#tab-scanner .scanner-layout.sc-seller-mode) header.nav .nav-right .sc-brand-gear{display:none;}
+  /* On a phone the header's first row is the logo and this right side. On a narrow phone (360px) the gear's extra
+     54px would push the right side onto a row of its own and move the whole Scanner down. The page script checks
+     (fitHeaderGear): only when the gear itself made the header taller does the header get .sc-gear-squeeze, where
+     the right side takes just the room the logo leaves and the status wraps onto two lines instead. */
+  header.nav.sc-gear-squeeze .nav-right{flex:1 1 0;min-width:0;flex-wrap:nowrap;justify-content:flex-end;}
+  header.nav.sc-gear-squeeze .nav-right .saved{min-width:0;text-align:right;}
+
+  /* The sheet: a <dialog> opened as a modal (so it sits above everything, the rest of the page can't be tapped
+     and Escape closes it), sliding up from the bottom like the dock. Done, the dimmed backdrop or Escape close
+     it; a theme applies the moment it is tapped. */
+  #tab-scanner .sc-settings{
+    position:fixed;top:auto;bottom:0;left:0;right:0;z-index:40;box-sizing:border-box;
+    width:100%;max-width:520px;height:auto;max-height:min(88vh, 680px);margin:0 auto;
+    padding:6px 16px calc(16px + env(safe-area-inset-bottom));overflow:auto;overscroll-behavior:contain;
+    border:0;border-radius:24px 24px 0 0;
+    background:linear-gradient(180deg, var(--sc-dock-top) 0, var(--sc-dock) 100%);color:var(--sc-ink);
+    box-shadow:inset 0 1px 0 var(--sc-dock-hi), 0 -12px 28px -10px var(--sc-dock-sh);
+    font-family:var(--sc-font);font-weight:500;
+  }
+  #tab-scanner .sc-settings:not([open]){display:none;}
+  #tab-scanner .sc-settings::backdrop{background:rgba(0,0,0,.55);}
+  #tab-scanner .sc-settings-head{
+    position:sticky;top:-6px;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px;
+    margin:0 -16px;padding:12px 16px 10px;background:var(--sc-dock-top);
+  }
+  #tab-scanner .sc-settings-title{margin:0;font-size:var(--sc-fs-body);font-weight:800;line-height:1.25;color:var(--sc-ink);}
+  #tab-scanner .sc-settings-section{margin-top:6px;}
+  #tab-scanner .sc-settings-section-title{margin:0 4px 8px;font-size:var(--sc-fs-label);font-weight:800;line-height:1.3;letter-spacing:.09em;text-transform:uppercase;color:var(--sc-muted);}
+  #tab-scanner .sc-theme-list{
+    display:flex;flex-direction:column;gap:2px;padding:4px;border-radius:var(--sc-r-tile);
+    background:var(--sc-card-bg);box-shadow:var(--sc-sh-card);
+  }
+  #tab-scanner .sc-theme-opt{
+    display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:0 12px;border:0;border-radius:16px;
+    background:none;color:var(--sc-ink);font:inherit;font-size:var(--sc-fs-body);font-weight:700;line-height:1.2;text-align:left;cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #tab-scanner .sc-theme-opt:hover{background:var(--sc-fill-card-bg);}
+  #tab-scanner .sc-theme-opt[aria-checked="true"]{background:var(--sc-fill-card-bg);box-shadow:inset 0 0 0 1.5px var(--sc-steel-ink);}
+  #tab-scanner .sc-theme-sw{flex:none;width:28px;height:28px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(128,128,128,.55);}
+  #tab-scanner .sc-theme-name{flex:1 1 auto;min-width:0;}
+  #tab-scanner .sc-theme-opt::after{
+    content:"";flex:none;width:22px;height:22px;background:currentColor;color:var(--sc-steel-ink);visibility:hidden;
+    -webkit-mask:var(--i-check) center / contain no-repeat;mask:var(--i-check) center / contain no-repeat;
+  }
+  #tab-scanner .sc-theme-opt[aria-checked="true"]::after{visibility:visible;}
+
+  /* ── The themes (scanner/theme.js has the list; the choice sits on <html data-iop-theme>, set in the page head
+     before the first paint). Each block only re-colours: it sets the same tokens the rules above already use,
+     on <html> (the page around the scanner) and on #tab-scanner (an id and an attribute: it beats the defaults
+     at the top of this <style>). No block for Iced Out: its colours ARE those defaults. For every theme:
+       - body text (ink, muted, and faint where it is words) is at least 4.5:1 on its cards and its page, and
+         the big numbers at least 3:1 (scanner/theme.test.js measures them);
+       - the meaning colours stay what they mean and stay apart from the theme's accent: the CL value is green,
+         errors are red or pink (and carry their alert icon), the hand-priced chip is teal, Avg of 3 is blue,
+         We pay is the red tile and Delete is red;
+       - the camera itself (the live picture, its glass buttons and marks) is the same in every theme.
+     --sc-page and --sc-blue are the bg and accent the app is told about: theme.js lists the same two. ── */
+
+  /* Crimson: the whole look goes dark red. Wine and oxblood surfaces, brand red buttons; errors move to a
+     brighter pink so they never read as just "the colour of the app". */
+  html[data-iop-theme="crimson"],html[data-iop-theme="crimson"] #tab-scanner{
+    --sc-page:#12060A; --sc-page-nav:#1A080E; --sc-page-line:rgba(255,200,215,.10);
+    --sc-page-ink:#FBF1F3; --sc-page-muted:#D9B8C1; --sc-page-thumb:#3A1622;
+    --sc-page-tab-top:#E3263F; --sc-page-tab-bot:#B8142E; --sc-page-on-accent:#fff;
+    --sc-page-top:#2A0C15; --sc-page-glow:rgba(227,38,63,.24); --sc-page-glow-0:rgba(227,38,63,0);
+    --sc-navy:#2A0C15; --sc-cam:#0E0408;
+    --sc-card-top:#2C1019; --sc-card-bot:#1A090F; --sc-surface:#1E0A10;
+    --sc-dock-top:#210B12; --sc-dock:#170710;
+    --sc-ink:#FBF1F3; --sc-muted:#D9B8C1; --sc-faint:#BC97A2; --sc-ph:#C4A0AA;
+    --sc-line:rgba(255,200,215,.10);
+    --sc-fill:#220C14; --sc-fill-card:#3A1622; --sc-fill-focus:#2C1019;
+    --sc-edge:#8A5262; --sc-edge-card:#A06878;
+    --sc-steel-ink:#FF8593; --sc-avg:#6EA2FF;
+    --sc-blue-top:#E3263F; --sc-blue-bot:#B8142E; --sc-blue:#E3263F;
+    --sc-wait-tint:rgba(255,133,147,.16);
+    --sc-err-tint:rgba(255,92,196,.18); --sc-err-ink:#FF9CE0;
+    --sc-danger-bg:linear-gradient(158deg, #B0186E 0%, #98125E 50%, #7A0C4B 100%); /* Delete and Yes, clear it go magenta, the error
+                                              family: the red is every button here, so a red one would read as "go ahead" */
+    --sc-grey-tint:#36141F;
+    --sc-focus:rgba(255,133,147,.65); --sc-focus-soft:rgba(255,133,147,.35);
+    --sc-card-bg:linear-gradient(160deg, #2E111B 0%, #230C15 48%, #1A090F 100%);
+    --sc-fill-card-bg:linear-gradient(180deg, #3D1825 0%, #31131E 100%);
+    --sc-surface-bg:linear-gradient(160deg, #2A0F18 0%, #1C0910 100%);
+    --sc-steel-orb:linear-gradient(155deg, #4A1A2A 0%, #33101E 60%, #240A14 100%);
+    --sc-grade-bg:linear-gradient(155deg, #5E1D33 0%, #461428 30%, #2C0B19 62%, #1E0710 100%);
+    --sc-grade-ring:rgba(255,170,190,.40); --sc-grade-ring-row:rgba(255,170,190,.32); --sc-orb-ring:rgba(255,150,170,.35);
+    --sc-accent-glow:rgba(227,38,63,.55); --sc-hold-fill:rgba(227,38,63,.5);
+    --sc-select:rgba(227,38,63,.32);
+    --sc-off-1:#3A1220; --sc-off-2:#16060C;
+    --sc-pay-1:#E3263F; --sc-pay-2:#C0102D; --sc-pay-3:#6E0718; --sc-pay-ring:rgba(255,170,190,.42);
+    --sc-out-1:rgba(150,20,110,.55); --sc-out-2:rgba(90,12,70,.55); --sc-out-ring:rgba(255,140,220,.55);
+  }
+
+  /* Deep Blue: darker and bluer than Iced Out. Ink-blue surfaces, brand blue #2F7CF6, a cooler blue-grey ink. */
+  html[data-iop-theme="deepblue"],html[data-iop-theme="deepblue"] #tab-scanner{
+    --sc-page:#040A1C; --sc-page-nav:#071230; --sc-page-line:rgba(120,160,255,.12);
+    --sc-page-ink:#EEF4FF; --sc-page-muted:#A7BCE2; --sc-page-thumb:#16294F;
+    --sc-page-tab-top:#2B6FE6; --sc-page-tab-bot:#1F5BD0; --sc-page-on-accent:#fff;
+    --sc-page-top:#0B1A3A; --sc-page-glow:rgba(47,124,246,.22); --sc-page-glow-0:rgba(47,124,246,0);
+    --sc-navy:#0B1A3A; --sc-cam:#030817;
+    --sc-card-top:#10234A; --sc-card-bot:#081430; --sc-surface:#0B1A3A;
+    --sc-dock-top:#0A1838; --sc-dock:#071230;
+    --sc-ink:#EEF4FF; --sc-muted:#A7BCE2; --sc-faint:#869DCB; --sc-ph:#90A7D3;
+    --sc-line:rgba(120,160,255,.12);
+    --sc-fill:#0A1736; --sc-fill-card:#142A57; --sc-fill-focus:#102452;
+    --sc-edge:#4A6AAE; --sc-edge-card:#5F80C2;
+    --sc-steel-ink:#7DB0FF; --sc-avg:#6AA4FF;
+    --sc-blue-top:#2B6FE6; --sc-blue-bot:#1F5BD0; --sc-blue:#2F7CF6;
+    --sc-wait-tint:rgba(125,176,255,.16);
+    --sc-grey-tint:#16294F;
+    --sc-focus:rgba(125,176,255,.65); --sc-focus-soft:rgba(125,176,255,.35);
+    --sc-card-bg:linear-gradient(160deg, #11254D 0%, #0C1C40 48%, #081430 100%);
+    --sc-fill-card-bg:linear-gradient(180deg, #17305F 0%, #122752 100%);
+    --sc-surface-bg:linear-gradient(160deg, #0E1F44 0%, #091633 100%);
+    --sc-steel-orb:linear-gradient(155deg, #1E3A72 0%, #142A58 60%, #0D1D42 100%);
+    --sc-accent-glow:rgba(47,124,246,.6); --sc-hold-fill:rgba(47,124,246,.5);
+    --sc-select:rgba(47,124,246,.32);
+    --sc-off-1:#10265A; --sc-off-2:#06102A;
+    --sc-spark:#7DB0FF;
+  }
+
+  /* Midnight: true black, so an OLED phone switches those pixels off; the Iced Out blue. */
+  html[data-iop-theme="midnight"],html[data-iop-theme="midnight"] #tab-scanner{
+    --sc-page:#000000; --sc-page-nav:#000000; --sc-page-line:rgba(255,255,255,.10);
+    --sc-page-ink:#F5F7FA; --sc-page-muted:#AEB6C2; --sc-page-thumb:#22252B;
+    --sc-page-top:#000000; --sc-page-glow:rgba(0,0,0,0); --sc-page-glow-0:rgba(0,0,0,0);
+    --sc-navy:#0D0E10;
+    --sc-cam:#000000;
+    --sc-card-top:#141519; --sc-card-bot:#0A0A0C; --sc-surface:#0D0E10;
+    --sc-dock-top:#0B0B0D; --sc-dock:#000000;
+    --sc-ink:#F5F7FA; --sc-muted:#AEB6C2; --sc-faint:#8C95A3; --sc-ph:#959EAC;
+    --sc-line:rgba(255,255,255,.10);
+    --sc-fill:#111215; --sc-fill-card:#1E2026; --sc-fill-focus:#17191D;
+    --sc-edge:#4D5562; --sc-edge-card:#5E6775;
+    --sc-grey-tint:#1E2026;
+    --sc-card-bg:linear-gradient(160deg, #141519 0%, #0E0F12 48%, #0A0A0C 100%);
+    --sc-fill-card-bg:linear-gradient(180deg, #202329 0%, #191B20 100%);
+    --sc-surface-bg:linear-gradient(160deg, #111215 0%, #0A0A0C 100%);
+    --sc-steel-orb:linear-gradient(155deg, #262A33 0%, #1A1D24 60%, #121419 100%);
+    --sc-off-1:#101418; --sc-off-2:#050608;
+  }
+
+  /* Daylight: light and plain, for bright sun at a show. Near-black text on white cards, a deeper blue, and the
+     meaning colours darkened until they read on white (the CL value's green, errors' red, teal). The camera
+     frame stays dark: it is a viewfinder. */
+  html[data-iop-theme="daylight"],html[data-iop-theme="daylight"] #tab-scanner{
+    --sc-page:#EEF1F6; --sc-page-nav:#FFFFFF; --sc-page-line:rgba(10,20,40,.12);
+    --sc-page-ink:#0B1220; --sc-page-muted:#3F4C5F; --sc-page-thumb:#C3CBD7;
+    --sc-page-tab-top:#2563EB; --sc-page-tab-bot:#1D4ED8; --sc-page-on-accent:#fff;
+    --sc-page-top:#EEF1F6; --sc-page-glow:rgba(29,91,224,0); --sc-page-glow-0:rgba(29,91,224,0);
+    --sc-navy:#132440;
+    --sc-card-top:#FFFFFF; --sc-card-bot:#F3F6FA; --sc-surface:#FFFFFF;
+    --sc-dock-top:#FFFFFF; --sc-dock:#F1F4F8;
+    --sc-ink:#0B1220; --sc-muted:#3F4C5F; --sc-faint:#566377; --sc-ph:#566377;
+    --sc-line:rgba(10,20,40,.12);
+    --sc-fill:#E3E8F0; --sc-fill-card:#E9EDF3; --sc-fill-focus:#DCE3EE;
+    --sc-edge:#7D8A9E; --sc-edge-card:#7D8A9E;
+    --sc-steel-ink:#1D4ED8; --sc-avg:#1D5BE0;
+    --sc-blue-top:#2563EB; --sc-blue-bot:#1D4ED8; --sc-blue:#1D5BE0;
+    --sc-teal-ink:#0F766E; --sc-teal-top:#0F766E;
+    --sc-clv:#15803D;
+    --sc-wait-tint:rgba(29,78,216,.10);
+    --sc-teal-tint:rgba(15,118,110,.14); --sc-teal-chip:#0F625C;
+    --sc-err-tint:rgba(191,9,47,.10); --sc-err-ink:#B0102F;
+    --sc-grey-tint:#E3E8F0; --sc-unk-badge-bg:var(--sc-grey-tint); /* the no-grade badge gets a light face, like the big grade dot's */
+    --sc-page-status:#3F4C5F;
+    --sc-focus:rgba(29,78,216,.6); --sc-focus-soft:rgba(29,78,216,.25);
+    --sc-hi:inset 0 1px 0 rgba(255,255,255,.8);
+    --sc-ring:inset 0 0 0 1px rgba(10,20,40,.12);
+    --sc-sh-card:var(--sc-hi), var(--sc-ring), 0 1px 2px rgba(10,20,40,.08), 0 10px 22px -14px rgba(10,20,40,.35);
+    --sc-card-bg:linear-gradient(160deg, #FFFFFF 0%, #FAFBFD 48%, #F3F6FA 100%);
+    --sc-fill-card-bg:linear-gradient(180deg, #EEF2F7 0%, #E6EBF2 100%);
+    --sc-surface-bg:linear-gradient(160deg, #FFFFFF 0%, #F4F6FA 100%);
+    --sc-grade-ink:#FFFFFF;
+    --sc-mark-ring:rgba(10,20,40,.14);
+    --sc-chip-edge:rgba(10,20,40,.12); --sc-chip-hi:rgba(255,255,255,.7);
+    --sc-out-1:rgba(191,9,47,.10); --sc-out-2:rgba(191,9,47,.06); --sc-out-ring:rgba(191,9,47,.45);
+    --sc-dock-hi:rgba(255,255,255,.9); --sc-dock-sh:rgba(10,20,40,.20);
+    --sc-accent-glow:rgba(29,78,216,.35); --sc-hold-fill:rgba(29,78,216,.25);
+    --sc-select:rgba(29,78,216,.22);
+    --sc-off-ink:#A9B9CC;
+    --sc-pay-ring:rgba(122,10,31,.35); --sc-pay-glow:rgba(191,9,47,.35);
+    --sc-spark:#1D5BE0;
+  }
+  html[data-iop-theme="daylight"] #tab-scanner .sc-settings::backdrop{background:rgba(10,20,40,.35);}
+
+  /* Glacier: ice blue on deep navy. The accent leans blue and the hand-priced chip a little greener, so the two
+     never read as one colour; the buttons carry dark text. */
+  html[data-iop-theme="glacier"],html[data-iop-theme="glacier"] #tab-scanner{
+    --sc-page:#06121C; --sc-page-nav:#081826; --sc-page-line:rgba(160,230,255,.10);
+    --sc-page-ink:#ECFAFF; --sc-page-muted:#A8C8D8; --sc-page-thumb:#173447;
+    --sc-page-tab-top:#9AD4FF; --sc-page-tab-bot:#62B4F2; --sc-page-on-accent:#062033;
+    --sc-page-top:#0C2233; --sc-page-glow:rgba(124,196,250,.16); --sc-page-glow-0:rgba(124,196,250,0);
+    --sc-navy:#0C2233; --sc-cam:#040E16;
+    --sc-card-top:#112B3E; --sc-card-bot:#0A1A27; --sc-surface:#0C1E2C;
+    --sc-dock-top:#0B1D2C; --sc-dock:#071521;
+    --sc-ink:#ECFAFF; --sc-muted:#A8C8D8; --sc-faint:#83A7BA; --sc-ph:#8CB0C2;
+    --sc-line:rgba(160,230,255,.10);
+    --sc-fill:#0B1C2A; --sc-fill-card:#173447; --sc-fill-focus:#12293A;
+    --sc-edge:#4F7A90; --sc-edge-card:#6290A7;
+    --sc-steel-ink:#9AD4FF; --sc-avg:#8CA8FF;
+    --sc-blue-top:#9AD4FF; --sc-blue-bot:#62B4F2; --sc-blue:#7CC4FA;
+    --sc-on-accent:#062033;
+    --sc-teal-chip:#5CCFC4; /* a greener teal than the ice: the hand-priced chip stays its own colour */
+    --sc-wait-tint:rgba(154,212,255,.14);
+    --sc-grey-tint:#173447;
+    --sc-focus:rgba(154,212,255,.65); --sc-focus-soft:rgba(154,212,255,.32);
+    --sc-card-bg:linear-gradient(160deg, #122D41 0%, #0E2232 48%, #0A1A27 100%);
+    --sc-fill-card-bg:linear-gradient(180deg, #19384C 0%, #142E40 100%);
+    --sc-surface-bg:linear-gradient(160deg, #0F2536 0%, #0A1A27 100%);
+    --sc-steel-orb:linear-gradient(155deg, #1E4A63 0%, #15364B 60%, #0E2636 100%);
+    --sc-accent-glow:rgba(124,196,250,.45); --sc-hold-fill:rgba(124,196,250,.45);
+    --sc-select:rgba(124,196,250,.30);
+    --sc-off-1:#12324A; --sc-off-2:#071724;
+    --sc-scanline:rgba(154,212,255,.8);
+    --sc-spark:#8CA8FF;
+  }
+
+  /* Gold: gold on near black, warm cream text; the buttons carry dark text. */
+  html[data-iop-theme="gold"],html[data-iop-theme="gold"] #tab-scanner{
+    --sc-page:#0B0A07; --sc-page-nav:#110F0A; --sc-page-line:rgba(255,230,170,.10);
+    --sc-page-ink:#FBF6E9; --sc-page-muted:#CFC3A3; --sc-page-thumb:#2A261A;
+    --sc-page-tab-top:#F2CC5B; --sc-page-tab-bot:#D9A93A; --sc-page-on-accent:#1F1600;
+    --sc-page-top:#1A160C; --sc-page-glow:rgba(217,169,58,.14); --sc-page-glow-0:rgba(217,169,58,0);
+    --sc-navy:#1A160C; --sc-cam:#080705;
+    --sc-card-top:#201C12; --sc-card-bot:#13110B; --sc-surface:#15130D;
+    --sc-dock-top:#15130D; --sc-dock:#0E0C08;
+    --sc-ink:#FBF6E9; --sc-muted:#CFC3A3; --sc-faint:#AA9E80; --sc-ph:#B4A888;
+    --sc-line:rgba(255,230,170,.10);
+    --sc-fill:#17150E; --sc-fill-card:#2A261A; --sc-fill-focus:#201D13;
+    --sc-edge:#6E6346; --sc-edge-card:#857958;
+    --sc-steel-ink:#F2CC5B;
+    --sc-blue-top:#F2CC5B; --sc-blue-bot:#D9A93A; --sc-blue:#E8B94A;
+    --sc-on-accent:#1F1600;
+    --sc-wait-tint:rgba(242,204,91,.14);
+    --sc-grey-tint:#2A261A;
+    --sc-focus:rgba(242,204,91,.6); --sc-focus-soft:rgba(242,204,91,.3);
+    --sc-card-bg:linear-gradient(160deg, #221E13 0%, #1A170F 48%, #13110B 100%);
+    --sc-fill-card-bg:linear-gradient(180deg, #2C281B 0%, #242015 100%);
+    --sc-surface-bg:linear-gradient(160deg, #1B180F 0%, #12100A 100%);
+    --sc-steel-orb:linear-gradient(155deg, #3E3520 0%, #2C2616 60%, #1E1A0F 100%);
+    --sc-grade-bg:linear-gradient(155deg, #5C4A1C 0%, #433614 30%, #2B230C 62%, #1C1608 100%);
+    --sc-grade-ring:rgba(242,204,91,.42); --sc-grade-ring-row:rgba(242,204,91,.32); --sc-orb-ring:rgba(242,204,91,.35);
+    --sc-accent-glow:rgba(217,169,58,.5); --sc-hold-fill:rgba(217,169,58,.5);
+    --sc-select:rgba(242,204,91,.28);
+    --sc-off-1:#2A2414; --sc-off-2:#0D0B06;
+  }
+
   @starting-style{
     #tab-scanner .sc-result{opacity:0;}
   }
@@ -1291,6 +1816,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
       <div class="sc-brand-name">Iced Out Penguin</div>
       <div class="sc-brand-sub">Pricing</div>
     </div>
+    <button type="button" class="sc-brand-gear sc-staff-only" id="sc-settings-open" aria-label="Settings" title="Settings" aria-haspopup="dialog" aria-controls="sc-settings"></button>
   </header>
 
   <section class="sc-card sc-signin sc-staff-only" id="sc-signin" hidden>
@@ -1495,6 +2021,20 @@ code{font-family:var(--font-mono);font-size:.92em;}
   </section>
 
 </div>
+
+<!-- Settings (the gear above): one Theme section for now, one row per theme (the script fills it from
+     window.IOPTheme.list(), see scanner/theme.js). Tapping a row applies it at once; Done, the backdrop or
+     Escape close the sheet. -->
+<dialog class="sc-settings" id="sc-settings" aria-labelledby="sc-settings-title">
+  <div class="sc-settings-head">
+    <h2 class="sc-settings-title" id="sc-settings-title">Settings</h2>
+    <button type="button" class="sc-btn sc-btn-quiet" id="sc-settings-done">Done</button>
+  </div>
+  <section class="sc-settings-section" aria-labelledby="sc-theme-title">
+    <h3 class="sc-settings-section-title" id="sc-theme-title">Theme</h3>
+    <div class="sc-theme-list" id="sc-theme-list" role="radiogroup" aria-labelledby="sc-theme-title"></div>
+  </section>
+</dialog>
 </div>
 
 </main>
@@ -6275,7 +6815,7 @@ window.ViewPrefs = {
 'use strict';
 // The Scanner page inside the Android app (a WebView). The app injects `window.penguinNative`; the
 // page posts it JSON messages - {type: 'openScanner' | 'closeScanner' | 'haptic' | 'saveFile' |
-// 'copyText' | 'setSheet', ...fields} - through `window.penguinNative.postMessage(text)` (a WebView
+// 'copyText' | 'setSheet' | 'setTheme', ...fields} - through `window.penguinNative.postMessage(text)` (a WebView
 // JavaScript interface only takes text, so the message goes over as a JSON string). The app's own
 // scanner hands each barcode back by calling `window.penguinScan(raw, format)` with the raw barcode string (and its type),
 // which the page runs through the same parse-and-price path as its browser camera.
@@ -6291,12 +6831,24 @@ window.ViewPrefs = {
 // with {type: 'setSheet', stop}. App 1.3 (version 1) never sends the event and is never sent setSheet:
 // with no event the page simply keeps its 'mid' arrangement.
 //
+// The theme (app 1.8, `penguinNative.version >= 3`): each time the page applies a colour theme (on load, when one
+// is picked, and when 'Match phone' follows the phone) it sends {type: 'setTheme', id, light, bg, accent}: the
+// chosen id (scanner/theme.js), whether it is a light theme (dark status bar icons), the page background and the
+// accent, both '#rrggbb'. The app paints its own background, status bar and Settings sheet to match and remembers
+// the last one, so its next launch opens in the right colours before the page loads. Older apps (Android 1.4-1.7,
+// iPhone 1.7: version 2) are never sent it: they ignore message types they do not know anyway, but holding it back
+// keeps their message stream exactly what it was. The app asks for a theme the other way, by running
+// `window.IOPTheme && window.IOPTheme.set('<id>')` in the page.
+//
 // Pure (embedded whole into the page by rates-portal/build-portal.js): the window is handed in.
 'use strict';
 
-var MESSAGE_TYPES = ['openScanner', 'closeScanner', 'haptic', 'saveFile', 'copyText', 'setSheet'];
+var MESSAGE_TYPES = ['openScanner', 'closeScanner', 'haptic', 'saveFile', 'copyText', 'setSheet', 'setTheme'];
 var SHEET_STOPS = ['down', 'mid', 'up'];
 var SHEETS_FROM_VERSION = 2;
+var THEMES_FROM_VERSION = 3;
+var HEX_COLOUR = /^#[0-9A-Fa-f]{6}$/;
+var THEME_ID = /^[a-z]{1,24}$/;
 
 function createNativeBridge(win) {
   function native() {
@@ -6315,9 +6867,15 @@ function createNativeBridge(win) {
     var n = native();
     return !!n && Number(n.version) >= SHEETS_FROM_VERSION;
   }
+  /** The app takes the theme message (version 3 and up: app 1.8). */
+  function themesSupported() {
+    var n = native();
+    return !!n && Number(n.version) >= THEMES_FROM_VERSION;
+  }
   return {
     isAvailable: function () { return !!native(); },
     sheetsSupported: sheetsSupported,
+    themesSupported: themesSupported,
     post: post,
     openScanner: function () { return post('openScanner'); },
     closeScanner: function () { return post('closeScanner'); },
@@ -6327,7 +6885,26 @@ function createNativeBridge(win) {
       if (!sheetsSupported() || SHEET_STOPS.indexOf(stop) < 0) return false;
       return post('setSheet', { stop: stop });
     },
+    /** Tells the app the theme on screen. Only to an app that takes it, and only a well-formed message (see themeWire). */
+    setTheme: function (msg) {
+      var wire = themeWire(msg);
+      if (!wire || !themesSupported()) return false;
+      return post('setTheme', wire);
+    },
   };
+}
+
+/**
+ * The exact fields of a 'setTheme' message, or null when anything is off: `id` a theme id (lower-case letters),
+ * `light` a real boolean, `bg` and `accent` '#rrggbb'. Nothing else is ever copied across.
+ */
+function themeWire(msg) {
+  if (!msg || typeof msg !== 'object') return null;
+  if (typeof msg.id !== 'string' || !THEME_ID.test(msg.id)) return null;
+  if (typeof msg.light !== 'boolean') return null;
+  if (typeof msg.bg !== 'string' || !HEX_COLOUR.test(msg.bg)) return null;
+  if (typeof msg.accent !== 'string' || !HEX_COLOUR.test(msg.accent)) return null;
+  return { id: msg.id, light: msg.light, bg: msg.bg, accent: msg.accent };
 }
 
 /** The stop a 'penguinsheet' event names, or null for anything else. */
@@ -6366,7 +6943,9 @@ function installScanReceiver(win, onScan) {
 window.NativeBridge = {
   MESSAGE_TYPES: MESSAGE_TYPES,
   SHEET_STOPS: SHEET_STOPS,
+  THEMES_FROM_VERSION: THEMES_FROM_VERSION,
   createNativeBridge: createNativeBridge,
+  themeWire: themeWire,
   sheetStopOf: sheetStopOf,
   layoutStop: layoutStop,
   installScanReceiver: installScanReceiver,
@@ -7030,6 +7609,16 @@ window.SwipeRow = {
     // ── the Android app (scanner/nativeBridge.js): when it wraps this page, its own scanner replaces
     // the browser camera and hands every barcode to window.penguinScan. ───────────────────────────
     var bridge = NativeBridge.createNativeBridge(window);
+    // The colour theme (scanner/theme.js, already applied in the page head): the app 1.8 is told which one is on screen
+    // now and after every change (bridge.setTheme is a no-op in a browser and for an older app, see nativeBridge.js),
+    // so its own background, status bar and Settings sheet match. An open Settings sheet re-ticks its row too, which
+    // covers a theme picked from the app's own sheet.
+    function sendTheme(msg) {
+      var m = msg || (window.IOPTheme && typeof window.IOPTheme.message === 'function' ? window.IOPTheme.message() : null);
+      if (m) bridge.setTheme(m);
+    }
+    window.addEventListener('iopthemechange', function (ev) { sendTheme(ev && ev.detail); renderThemeRows(); });
+    sendTheme();
     var nativeScannerOpen = false;
     // The app's camera opens ABOVE this page (the page becomes a sheet under it), so while it is open the
     // page's own camera frame has nothing to show: it folds away (.sc-native-cam), and comes back with its
@@ -8593,10 +9182,135 @@ window.SwipeRow = {
     dom.zoom.addEventListener('input', function () { if (cam) cam.setZoom(parseFloat(dom.zoom.value)); });
     dom.zoom.addEventListener('click', function (ev) { ev.stopPropagation(); });
 
+    // ── Settings (the gear in the wordmark row): one Theme section, a row per theme from window.IOPTheme.list().
+    // A row applies its theme at once (IOPTheme.set saves it on this device and paints it); Done, the backdrop or
+    // Escape close the sheet. A <dialog> opened with showModal() sits above the dock and the site header and keeps
+    // the page behind it untappable; a browser without showModal() just gets the sheet shown, Done still closes it.
+    var settingsUi = {
+      open: document.getElementById('sc-settings-open'),
+      sheet: document.getElementById('sc-settings'),
+      done: document.getElementById('sc-settings-done'),
+      list: document.getElementById('sc-theme-list')
+    };
+    function themeApi() { return window.IOPTheme && typeof window.IOPTheme.list === 'function' ? window.IOPTheme : null; }
+    /** The little two-colour circle on a row: the theme's page colour and its accent ('Match phone': light and dark). */
+    function swatchFor(id) {
+      var T = window.ScannerTheme;
+      if (!T || typeof T.themeOf !== 'function') return '';
+      if (id === T.AUTO_THEME) {
+        return 'linear-gradient(135deg, ' + T.themeOf(T.AUTO_LIGHT_THEME).bg + ' 0 50%, ' + T.themeOf(T.AUTO_DARK_THEME).bg + ' 50% 100%)';
+      }
+      var t = T.themeOf(id);
+      return 'linear-gradient(135deg, ' + t.bg + ' 0 50%, ' + t.accent + ' 50% 100%)';
+    }
+    function settingsOpen() { return !!(settingsUi.sheet && settingsUi.sheet.hasAttribute && settingsUi.sheet.hasAttribute('open')); }
+    function renderThemeRows() {
+      var api = themeApi();
+      if (!api || !settingsUi.list || !settingsOpen()) return; // drawn when the sheet opens
+      var current = api.get();
+      if (!settingsUi.list.firstChild) {
+        api.list().forEach(function (t) {
+          var row = document.createElement('button');
+          row.type = 'button';
+          row.className = 'sc-theme-opt';
+          row.setAttribute('role', 'radio');
+          row.dataset.theme = t.id;
+          var sw = document.createElement('span');
+          sw.className = 'sc-theme-sw';
+          sw.setAttribute('aria-hidden', 'true');
+          sw.style.background = swatchFor(t.id);
+          var name = document.createElement('span');
+          name.className = 'sc-theme-name';
+          name.textContent = t.name;
+          row.appendChild(sw);
+          row.appendChild(name);
+          row.addEventListener('click', function () { api.set(t.id); });
+          settingsUi.list.appendChild(row);
+        });
+      }
+      var rows = settingsUi.list.querySelectorAll('.sc-theme-opt');
+      for (var i = 0; i < rows.length; i++) {
+        var on = rows[i].dataset.theme === current;
+        rows[i].setAttribute('aria-checked', on ? 'true' : 'false');
+        rows[i].tabIndex = on ? 0 : -1;
+      }
+    }
+    function openSettings() {
+      if (!settingsUi.sheet || settingsOpen()) return;
+      try {
+        if (typeof settingsUi.sheet.showModal === 'function') settingsUi.sheet.showModal();
+        else settingsUi.sheet.setAttribute('open', '');
+      } catch (e) { settingsUi.sheet.setAttribute('open', ''); }
+      renderThemeRows();
+      var checked = settingsUi.list && settingsUi.list.querySelector('.sc-theme-opt[aria-checked="true"]');
+      if (checked) checked.focus();
+    }
+    function closeSettings() {
+      if (!settingsUi.sheet || !settingsOpen()) return;
+      try {
+        if (typeof settingsUi.sheet.close === 'function') settingsUi.sheet.close();
+        else settingsUi.sheet.removeAttribute('open');
+      } catch (e) { settingsUi.sheet.removeAttribute('open'); }
+      if (settingsUi.open && settingsUi.open.focus) settingsUi.open.focus();
+    }
+    /** The browser page (site header): the header must be exactly as tall with the gear as without it. If the gear made it taller (its
+     *  width pushed the right side onto a row of its own), squeeze the right side (.sc-gear-squeeze: the status
+     *  wraps instead); if even that changes the height, leave it as it was without the squeeze. */
+    function fitHeaderGear() {
+      var gear = settingsUi.open, nav = gear && gear.closest ? gear.closest('header.nav') : null;
+      if (!nav) return;
+      nav.classList.remove('sc-gear-squeeze');
+      var was = gear.style.display;
+      gear.style.display = 'none';
+      var bare = nav.offsetHeight;
+      gear.style.display = was;
+      if (nav.offsetHeight <= bare) return;
+      nav.classList.add('sc-gear-squeeze');
+      if (nav.offsetHeight !== bare) nav.classList.remove('sc-gear-squeeze');
+    }
+    function wireSettings() {
+      if (!settingsUi.open || !settingsUi.sheet) return;
+      // The browser page has the site header (and hides the wordmark row the gear sits in, as it always has): the gear
+      // moves to the header's right side, so it takes no row of its own and the Scanner below starts where it did.
+      // The apps' page has no site header and keeps it in the wordmark row.
+      var navRight = document.querySelector('header.nav .nav-right');
+      if (navRight) {
+        navRight.appendChild(settingsUi.open);
+        fitHeaderGear();
+        window.addEventListener('resize', fitHeaderGear);
+        // The status beside it changes length ("Loading the sheet…", then the sheet's own status).
+        var savedEl = document.getElementById('st-saved');
+        if (savedEl && typeof MutationObserver === 'function') new MutationObserver(fitHeaderGear).observe(savedEl, { childList: true, characterData: true, subtree: true });
+      }
+      settingsUi.open.addEventListener('click', openSettings);
+      if (settingsUi.done) settingsUi.done.addEventListener('click', closeSettings);
+      // Escape: the dialog's own 'cancel'; and any key while it is open, for a browser with no showModal().
+      settingsUi.sheet.addEventListener('cancel', function (ev) { ev.preventDefault(); closeSettings(); });
+      settingsUi.sheet.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape') { ev.preventDefault(); closeSettings(); return; }
+        // Up and down move through the themes like any radio group (and apply, as a tap does).
+        if (ev.key !== 'ArrowDown' && ev.key !== 'ArrowUp') return;
+        var rows = settingsUi.list ? Array.prototype.slice.call(settingsUi.list.querySelectorAll('.sc-theme-opt')) : [];
+        var at = rows.indexOf(document.activeElement);
+        if (at < 0) return;
+        ev.preventDefault();
+        var next = rows[(at + (ev.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length];
+        next.click();
+        next.focus();
+      });
+      // A tap on the dimmed backdrop lands on the dialog itself, outside its box.
+      settingsUi.sheet.addEventListener('click', function (ev) {
+        if (ev.target !== settingsUi.sheet) return;
+        var r = settingsUi.sheet.getBoundingClientRect();
+        if (ev.clientX < r.left || ev.clientX > r.right || ev.clientY < r.top || ev.clientY > r.bottom) closeSettings();
+      });
+    }
+
     var wired = false;
     function wireOnce() {
       if (wired) return;
       wired = true;
+      wireSettings();
       dom.start.addEventListener('click', function () {
         // The Start camera tap is already a user gesture, which is the ONE thing iOS requires before
         // it will ever let an AudioContext leave "suspended" - prime it here so the very first beep
