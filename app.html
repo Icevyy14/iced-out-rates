@@ -1780,6 +1780,58 @@ code{font-family:var(--font-mono);font-size:.92em;}
     --sc-off-1:#2A2414; --sc-off-2:#0D0B06;
   }
 
+  /* ── touch feel: every control answers the finger the moment it lands ──
+     The pressed look comes in with no delay (transition-duration 0 while :active) and eases back out on release, so
+     even a quick tap shows. A phone has no mouse, so the :hover tints are kept for a real pointer only: on a phone
+     they would stick on a button after the finger lifts. iPhone shows :active only because the page listens for
+     touchstart (the small script after </main>). */
+  #tab-scanner button{-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
+  #tab-scanner .sc-btn:active:not(:disabled),#tab-scanner .sc-start:active:not(:disabled){transform:scale(.95);filter:brightness(.86);transition-duration:0s;}
+  #tab-scanner .sc-seg-btn{position:relative;transition:background-color 120ms ease-out, color 120ms ease-out, transform 160ms ease-out;}
+  /* A thumb that lands on the track's 4px padding still hits the nearest button. */
+  #tab-scanner .sc-seg-btn::after{content:"";position:absolute;inset:-4px -1px;}
+  #tab-scanner .sc-seg-btn:active{transform:scale(.94);transition-duration:0s;}
+  #tab-scanner .sc-brand-gear,#tab-scanner .sc-theme-opt{transition:filter 150ms ease-out, transform 160ms ease-out, background-color 150ms ease-out;}
+  #tab-scanner .sc-brand-gear:active{transform:scale(.9);filter:brightness(.85);transition-duration:0s;}
+  #tab-scanner .sc-theme-opt:active{transform:scale(.97);background:var(--sc-fill-card-bg);transition-duration:0s;}
+  html:has(#tab-scanner.tab.active) header.nav .nav-right .sc-brand-gear{transition:transform 160ms ease-out, color 150ms ease-out;}
+  html:has(#tab-scanner.tab.active) header.nav .nav-right .sc-brand-gear:active{transform:scale(.9);color:var(--sc-page-ink);transition-duration:0s;}
+  #tab-scanner .sc-vf-round,#tab-scanner .sc-type-btn,#tab-scanner .sc-hide-btn{transition:background-color 160ms var(--sc-ease), color 160ms var(--sc-ease), transform 160ms ease-out, filter 160ms ease-out;}
+  #tab-scanner .sc-vf-round:active,#tab-scanner .sc-type-btn:active{transform:scale(.9);filter:brightness(.85);transition-duration:0s;}
+  /* Not while holding: the 1-second hold bar fills the button and must not be squeezed. */
+  #tab-scanner .sc-hide-btn:active:not(.holding){transform:scale(.95);filter:brightness(.88);transition-duration:0s;}
+  #tab-scanner .sc-sheet-cue:active,#tab-scanner .sc-result-open:active{background:var(--sc-wait-tint);transition:none;}
+  #tab-scanner .sc-vf-shutter:active span{transition-duration:0s;}
+  #tab-scanner .sc-earlier-main{transition:background-color 150ms ease-out;}
+  #tab-scanner .sc-earlier-main:active{background:var(--sc-fill-card-bg);transition-duration:0s;}
+  #tab-scanner .sc-earlier-row.sc-swiping .sc-earlier-main:active{background:none;}
+  @media (hover:none){
+    #tab-scanner .sc-start:hover,#tab-scanner .sc-btn-primary:hover,#tab-scanner .sc-btn-quiet:hover,
+    #tab-scanner .sc-btn-danger:hover,#tab-scanner .sc-brand-gear:hover:not(:active){filter:none;}
+    #tab-scanner .sc-earlier-remove:hover:not(:active){color:var(--sc-faint);background:transparent;}
+    #tab-scanner .sc-theme-opt:hover:not(:active){background:none;}
+    html:has(#tab-scanner.tab.active) header.nav .nav-right .sc-brand-gear:hover:not(:active){color:var(--sc-page-muted);}
+  }
+
+  /* "Not buying" gets a no-entry mark so it reads at a glance, not as just another word on the tile. */
+  #tab-scanner .sc-pay-val.sc-no{display:flex;align-items:center;gap:8px;}
+  #tab-scanner .sc-pay-val.sc-no::before{content:"";flex:none;width:22px;height:22px;background:currentColor;-webkit-mask:var(--i-ban) center/contain no-repeat;mask:var(--i-ban) center/contain no-repeat;}
+  #tab-scanner .sc-sheet-down .sc-pay-val.sc-no::before{width:16px;height:16px;}
+  /* A warning is a tinted callout, readable at arm's length. */
+  #tab-scanner .sc-note.warn{font-size:var(--sc-fs-row);font-weight:700;padding:10px 12px;border-radius:14px;background:var(--sc-err-tint);}
+  /* Settings slides up from the bottom instead of popping in. */
+  #tab-scanner .sc-settings[open]{animation:scSheetUp 280ms var(--sc-ease);}
+  #tab-scanner .sc-settings[open]::backdrop{animation:scFadeIn 200ms ease-out;}
+  @keyframes scSheetUp{from{transform:translateY(100%)}to{transform:none}}
+
+  @media (prefers-reduced-motion:reduce){
+    #tab-scanner .sc-btn:active,#tab-scanner .sc-start:active,#tab-scanner .sc-seg-btn:active,
+    #tab-scanner .sc-brand-gear:active,#tab-scanner .sc-theme-opt:active,
+    html:has(#tab-scanner.tab.active) header.nav .nav-right .sc-brand-gear:active,
+    #tab-scanner .sc-vf-round:active,#tab-scanner .sc-type-btn:active,#tab-scanner .sc-hide-btn:active{transform:none;}
+    #tab-scanner .sc-settings[open],#tab-scanner .sc-settings[open]::backdrop{animation:none;}
+  }
+
   @starting-style{
     #tab-scanner .sc-result{opacity:0;}
   }
@@ -7976,7 +8028,12 @@ window.SwipeRow = {
     // decided by the code that wrote it and never read back off the wording: 'wait' (still being
     // fetched: it pulses, sc-wait) or 'no' (not buying, or the lookup failed: it turns red, sc-no). ──
     function setSquare(el, text, isMoney, look) {
+      var changed = el.textContent !== text;
       el.textContent = text;
+      // A new price settles in (220 ms) so the eye catches that it changed.
+      if (changed && isMoney && el === dom.pay && typeof el.animate === 'function' && !pileReducedMotion()) {
+        try { el.animate([{ opacity: 0.35, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.16,1,.3,1)' }); } catch (e) { /* no animation */ }
+      }
       el.classList.toggle('sc-words', !isMoney);
       el.classList.toggle('sc-wait', look === 'wait');
       el.classList.toggle('sc-no', look === 'no');
@@ -8446,6 +8503,10 @@ window.SwipeRow = {
         market value and pricing basis are kept as two separate numbers, and why "unknown" must never
         read as "$0". The payout total is whatever the CURRENT choice offers (repriceAll). */
     function renderPile() {
+      // A finger is on the list: a redraw now (an average arriving) would swallow the tap or snap a swipe back.
+      // It waits, and runs the moment the finger lifts (pileTouchEnd).
+      if (pileTouching) { pilePending = true; return; }
+      pilePending = false;
       pileSwipeReset(); // the rows are about to be redrawn: a row mid-swipe is dropped, never left half-swiped
       var entries = pile.list();
       var t = pile.totals();
@@ -8518,6 +8579,7 @@ window.SwipeRow = {
         renderSeller();
       }
       savePile();
+      pileTouching = false; // this redraw is the tap's own result: it never waits
       renderPile();
     }
 
@@ -8529,6 +8591,14 @@ window.SwipeRow = {
     var pileSwipe = null;      // { row, slide, del, rm, id, width, swipe } while a finger is down on a row
     var pileSwipeEatUntil = 0; // the click a drag's own release can make is not a tap on the card or its ✕
     var pileLeaving = {};      // keys of rows sliding out (200 ms): a redraw meanwhile leaves them out, never back
+    var pileTouching = false;  // a finger is down on the list: renderPile waits for it to lift
+    var pilePending = false;   // a redraw was asked for while the finger was down
+    var pileTouchTimer = null; // never wait more than 1.5 s, even if the lift is somehow missed
+    function pileTouchEnd() {
+      if (pileTouchTimer) { clearTimeout(pileTouchTimer); pileTouchTimer = null; }
+      pileTouching = false;
+      if (pilePending) setTimeout(renderPile, 0);
+    }
     function pileReducedMotion() {
       try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }
     }
@@ -8550,6 +8620,9 @@ window.SwipeRow = {
     }
     function pileSwipeDown(ev) {
       pileSwipeEatUntil = 0; // a new touch: a drag that made no click must not eat this tap's click
+      pileTouching = true;
+      if (pileTouchTimer) clearTimeout(pileTouchTimer);
+      pileTouchTimer = setTimeout(pileTouchEnd, 1500);
       if (pileSwipe) pileSwipeReset(); // a second finger, or a row left mid-swipe: it goes back first
       if (ev.isPrimary !== false && !(ev.button > 0)) pileSwipeStart(ev); // a second finger starts nothing
     }
@@ -8579,6 +8652,7 @@ window.SwipeRow = {
       pileSwipeShow(s, r.offset);
     }
     function pileSwipeUp(ev) {
+      pileTouchEnd();
       var s = pileSwipe;
       if (!s || ev.pointerId !== s.id) return;
       pileSwipe = null;
@@ -8596,9 +8670,11 @@ window.SwipeRow = {
       setTimeout(function () { removePileRow(rmBtn); }, 200);
     }
     function pileSwipeCancel(ev) {
+      pileTouchEnd();
       if (pileSwipe && ev.pointerId === pileSwipe.id) pileSwipeReset();
     }
     function pileSwipeLost(ev) {
+      pileTouchEnd();
       // Only the row losing ITS capture: taking it fires this on the button that held the touch's implicit capture.
       if (pileSwipe && ev.pointerId === pileSwipe.id && ev.target === pileSwipe.row) pileSwipeReset();
     }
@@ -8859,6 +8935,7 @@ window.SwipeRow = {
       var say = function (text) { if (cam) dom.vfStatus.textContent = text; else dom.vfOffText.textContent = text; };
       if (!parsed.ok) {
         feedback.play('bad');
+        if (viaApp && typeof navigator.vibrate !== 'function') bridge.haptic('warning');
         say(parsed.why);
         takeParsed(parsed);
         return;
@@ -8999,6 +9076,7 @@ window.SwipeRow = {
       // iOS backgrounding re-suspended" hook feedback.js's own header calls for - cheap and safe to
       // call on every single capture attempt, not just the first.
       feedback.unlock();
+      dom.vfStatus.textContent = 'Looking…'; // the tap answers at once, before the frame is read
       cam.capture(tapBox).then(function (found) {
         if (!found) { feedback.play('nothing'); dom.vfStatus.textContent = 'Nothing found - try again or type it below'; return; }
         handleScanned(found.text, false, found.format);
