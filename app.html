@@ -6249,10 +6249,15 @@ window.AvgClient = {
 // SLOW_NOTE ("Slow connection") instead of DOWN_NOTE, because the connection is the suspect, not Triumph
 // (the 2026-11-13 incident: our server answered in 2.5 s and the phone still said Triumph was down).
 //
+// A Triumph answer with NO PRICE (its failed lookup answers HTTP 200 with marketValue 0 and grade '', cert
+// 148753188) takes the same fill: noPriceFacts marks it, and the average's answer brings its Card Ladder
+// value and the grade (and name) the answer lacked. Without that grade a PSA 7+ band could not take it.
+//
 // This file is only the decisions, so they can be unit-tested without a page:
 //   isTriumphDown(failure)      is this failed lookup "Triumph is down"? Only an HTTP 5xx answer is.
 //   downFacts(...)              the facts a card starts with when its lookup failed that way (or got no answer)
-//   noteFor(facts)              the staff note for a fallback card that is waiting: DOWN_NOTE or SLOW_NOTE
+//   noPriceFacts(facts, prev)   a Triumph answer with no price: the fill marks it like a fallback card
+//   noteFor(facts)              the staff note for a card that is waiting: DOWN_NOTE, SLOW_NOTE or NOPRICE_NOTE
 //   fillFromAverage(...)        the facts once the average's answer arrives (CL value, name, grade)
 //   waitingForValue(facts)      a fallback card still waiting on its CL value (the page says so, staff only)
 //   marketValue(facts, current) the number the pile holds as the card's market value
@@ -6260,7 +6265,8 @@ window.AvgClient = {
 //
 // "Triumph answers" always wins: a card that already has a Triumph value keeps it (downFacts), and the
 // average never replaces a Triumph card's value, name or grade (fillFromAverage only touches a card
-// whose facts carry `clvFromAvg`, set here and nowhere else).
+// whose facts carry `clvFromAvg`, set here and nowhere else, and only fills a name or grade the card
+// does not already have).
 //
 // Pure, like every scanner/ sibling (embedded whole into the page by rates-portal/build-portal.js):
 // no DOM, no network, no require. The page hands in its own generated copies of the code a Triumph
@@ -6276,6 +6282,10 @@ var DOWN_NOTE = 'Triumph is down: getting the Card Ladder value with the average
  *  all, twice (a slow or stuck connection, which says nothing about Triumph). Staff view only, like
  *  DOWN_NOTE, and no em dash: on-screen copy. */
 var SLOW_NOTE = 'Slow connection: using the Card Ladder value';
+
+/** The ONE line staff see while a card Triumph answered WITHOUT a price waits for its value (Triumph is up,
+ *  it just has no number for this cert). Staff view only, like DOWN_NOTE, and no em dash: on-screen copy. */
+var NOPRICE_NOTE = 'Triumph has no price: getting the Card Ladder value with the average';
 
 /** Any 5xx answer: the service (or the credential behind it) is not working. A 4xx is the cert or the
  *  sign-in, a 2xx is an answer: neither is "Triumph is down". */
@@ -6321,6 +6331,13 @@ function titleFacts(title, deps) {
   };
 }
 
+/** True when the card has a name of its own: not the "PSA 12345678" stand-in a card is titled by while
+ *  no answer has named it (downFacts, or a Triumph answer with no card name). */
+function hasOwnName(facts) {
+  if (!facts || typeof facts.title !== 'string' || !facts.title.trim()) return false;
+  return facts.title !== String(facts.grader || '').toUpperCase() + ' ' + facts.cert;
+}
+
 /** What a re-asked card shows for its average meanwhile: the one it already had, else pending. */
 function carryAverage(prev) {
   if (prev && prev.avgStatus === 'done') return { avgStatus: 'done', avg3Cents: prev.avg3Cents, avgReason: null };
@@ -6356,9 +6373,33 @@ function downFacts(cert, grader, prev, deps, why) {
   return facts;
 }
 
-/** The staff note for a fallback card that is waiting for its value: the words say why it is waiting. */
+/**
+ * The facts for a card Triumph ANSWERED but with no price (`facts` as the page's onLookup builds them, with
+ * clvCents null: Triumph's failed lookup answers marketValue 0 and grade ''). Priced as it stands, the card
+ * would sit on Card Ladder's value with no grade, so every PSA 7+ band turns it away or a lower band takes
+ * it. It is marked like a fallback card (`clvFromAvg`, `downWhy: 'noprice'`) so the average's answer fills
+ * its Card Ladder value in, and the grade or name the answer lacked. What Triumph did say (its title, sport,
+ * year, confidence, any grade) stands: fillFromAverage never replaces a name or grade a card already has.
+ * `prev` is what the pile already holds for the cert: a value an earlier average filled in stays while the
+ * card asks again (a re-scan), as downFacts keeps one. A card with a Triumph value comes back unchanged.
+ */
+function noPriceFacts(facts, prev) {
+  if (!facts || typeof facts !== 'object' || validCents(facts.clvCents) != null) return facts;
+  var next = Object.assign({}, facts, { clvCents: null, clvFromAvg: true, downWhy: 'noprice' });
+  var keep = prev && typeof prev === 'object' && prev.clvFromAvg === true && validCents(prev.clvCents) != null &&
+    !(next.grade != null && prev.grade != null && next.grade !== prev.grade); // never a value for another grade
+  if (!keep) return next;
+  next.clvCents = validCents(prev.clvCents);
+  if (next.grade == null && !next.gradeText) { next.grade = prev.grade == null ? null : prev.grade; next.gradeText = prev.gradeText || null; }
+  if (!hasOwnName(next) && hasOwnName(prev)) { next.title = prev.title; next.sport = prev.sport; next.year = prev.year; next.language = prev.language; }
+  return next;
+}
+
+/** The staff note for a card that is waiting for its value: the words say why it is waiting. */
 function noteFor(facts) {
-  return facts && facts.downWhy === 'slow' ? SLOW_NOTE : DOWN_NOTE;
+  if (facts && facts.downWhy === 'slow') return SLOW_NOTE;
+  if (facts && facts.downWhy === 'noprice') return NOPRICE_NOTE;
+  return DOWN_NOTE;
 }
 
 /** True while a fallback card still waits on its CL value: nothing known yet and the average (which
@@ -6369,27 +6410,32 @@ function waitingForValue(facts) {
 
 /**
  * The facts after the average's answer: for a FALLBACK card and a `done` answer, a NEW facts object with
- * the Card Ladder value, card name and grade the answer carries (sport/year/language re-read from the
- * new title). Anything the answer does not carry stays as it was, and a value already known is never
- * blanked by a later answer without one. Returns null when there is nothing to do: not a fallback card
- * (a Triumph card is never touched), not a `done` answer, or no facts at all.
+ * the Card Ladder value the answer carries, and the card name and grade when the card has none of its own
+ * (sport/year/language re-read from the new title). A name or grade the card already has stands (a Triumph
+ * answer with no price may still have named the card), and Card Ladder's value for a DIFFERENT grade than
+ * the card's is not taken (the bot's grade conflict). Anything the answer does not carry stays as it was,
+ * and a value already known is never blanked by a later answer without one. Returns null when there is
+ * nothing to do: not a fallback card (a Triumph card with a value is never touched), not a `done` answer,
+ * or no facts at all.
  */
 function fillFromAverage(facts, avgState, deps) {
   if (!facts || facts.clvFromAvg !== true) return null;
   if (!avgState || avgState.status !== 'done') return null;
   var next = Object.assign({}, facts);
-  var cl = validCents(avgState.clValueCents);
+  var gradeText = avgState.grade != null ? String(avgState.grade).trim() : '';
+  var clGrade = gradeText ? (deps.gradeNum || gradeNumOf)(gradeText) : null;
+  var conflict = clGrade != null && facts.grade != null && clGrade !== facts.grade;
+  var cl = conflict ? null : validCents(avgState.clValueCents);
   if (cl != null) next.clvCents = cl;
   var name = typeof avgState.cardName === 'string' ? avgState.cardName.trim() : '';
-  if (name) {
+  if (name && !hasOwnName(facts)) {
     next.title = name;
     var tf = titleFacts(name, deps);
     next.sport = tf.sport; next.year = tf.year; next.language = tf.language;
   }
-  var gradeText = avgState.grade != null ? String(avgState.grade).trim() : '';
-  if (gradeText) {
+  if (gradeText && facts.grade == null && !facts.gradeText) {
     next.gradeText = gradeText;
-    next.grade = (deps.gradeNum || gradeNumOf)(gradeText);
+    next.grade = clGrade;
   }
   return next;
 }
@@ -6406,9 +6452,11 @@ function marketValue(facts, current) {
 window.TriumphDown = {
   DOWN_NOTE: DOWN_NOTE,
   SLOW_NOTE: SLOW_NOTE,
+  NOPRICE_NOTE: NOPRICE_NOTE,
   isDownStatus: isDownStatus,
   isTriumphDown: isTriumphDown,
   downFacts: downFacts,
+  noPriceFacts: noPriceFacts,
   noteFor: noteFor,
   waitingForValue: waitingForValue,
   fillFromAverage: fillFromAverage,
@@ -6713,14 +6761,19 @@ function marketFor(card, price, mode) {
 }
 
 /**
- * The market value a pile row shows under what we pay ("Mkt $x"): the value the card is priced with, in the order factsOf
- * picks it (Triumph's value, else Card Ladder's, else the avg of 3 as it is paid on). So a card priced on Card Ladder's value
- * or on its average shows that number, and a row reads "-" only when the card has no value at all. Never a 0 or less: a
- * stored Triumph 0 is no value (valueCents). Reads only: the price, the pay figure and the pile totals are untouched.
- * -> integer cents, or null.
+ * The market value a pile row shows under what we pay ("Mkt $x"): the market the pricing USED, so the pay figure over it reads as
+ * the band's percent of it. With a payout that is its basis (price.basisCents: the avg of 3 for an avg-of-3 band, the lower of
+ * value and average in Lower mode, Card Ladder's value when the lower-payout rule picked it). Without one it is the market hide
+ * mode shows (marketFor), else the card's value in the order factsOf picks it (Triumph's, else Card Ladder's, else the avg of 3
+ * as it is paid on), so a row reads "-" only when the card has no value at all. Never a 0 or less: a stored Triumph 0 is no value
+ * (valueCents). `price` is the row's own price and `mode` the pile's Normal/Lower; with neither it is the card's value. Reads only:
+ * the price, the pay figure and the pile totals are untouched. -> integer cents, or null.
  */
-function rowMarketCents(card) {
+function rowMarketCents(card, price, mode) {
   if (!card || typeof card !== 'object') return null;
+  if (price && typeof price.payoutCents === 'number' && valueCents(price.basisCents) != null) return price.basisCents;
+  var market = valueCents(marketFor(card, price, mode).cents);
+  if (market != null) return market;
   var f = factsOf(card);
   var clv = valueCents(f.clv);
   return clv != null ? clv : valueCents(f.avg3e);
@@ -8391,7 +8444,8 @@ window.SwipeRow = {
       var title = lookup.card || (g.toUpperCase() + ' ' + cert);
       // A Triumph value of 0 (or less, or not a number) is "Triumph has no price", never a price: Triumph's failed lookup answers
       // HTTP 200 with marketValue 0 and grade '', and a 0 here would beat Card Ladder's value (offerRules factsOf prefers Triumph's),
-      // price the card "Not buying" and show $0.00. With none the card prices on Card Ladder's, as the bot does (triumph.js mapTriumphResult).
+      // price the card "Not buying" and show $0.00. With none the card prices on Card Ladder's, as the bot does (triumph.js mapTriumphResult),
+      // and TriumphDown.noPriceFacts below has the average's answer fill in that value and the grade Triumph left blank.
       var mvDollars = Number(lookup.marketValue);
       var clvCents = lookup.marketValue != null && isFinite(mvDollars) && mvDollars > 0 ? Math.round(mvDollars * 100) : null;
       // Triumph's own last sale for the cert, when the lookup carries one (dollars, like marketValue): the CLV cap's
@@ -8412,7 +8466,9 @@ window.SwipeRow = {
       if (prev && prev.avgStatus === 'done') { // a re-scan shows the average it already had while it re-checks
         facts.avgStatus = 'done'; facts.avg3Cents = prev.avg3Cents; facts.sales = prev.sales || null; facts.clClvCents = prev.clClvCents == null ? null : prev.clClvCents;
       }
-      takeCard(cert, g, facts);
+      // No Triumph value: without the grade from Card Ladder's answer a PSA 7+ band could not take the card (an NFL PSA 10 read
+      // "Not buying", a Pokemon PSA 10 dropped to the any-grade band). Unchanged for a card Triumph priced.
+      takeCard(cert, g, TriumphDown.noPriceFacts(facts, prev));
     }
 
     /** The facts the pile already holds for a cert (null when it is new). */
@@ -8732,11 +8788,11 @@ window.SwipeRow = {
         // What we pay, or "-" when there is no payout: the pill says why (Not buying, Needs average...), and the market value
         // has its own line under it, so it is never shown twice.
         var valueText = c.price && typeof c.price.payoutCents === 'number' && isFinite(c.price.payoutCents) ? money(c.price.payoutCents) : '-';
-        // The card's market value too, under what we pay (owner, 11/17): the value it is priced with (OfferRules.rowMarketCents:
-        // Triumph's, else Card Ladder's, else the average), so a card priced on Card Ladder or its average shows that number. A card
-        // saved before its facts were kept shows the value the pile holds. "-" only when there is no value, never a $0: a 0 or less
-        // is no market value (Triumph's failed lookup answers 0).
-        var mktCents = meta.facts ? OfferRules.rowMarketCents(meta.facts) : c.marketValueCents;
+        // The card's market value too, under what we pay (owner, 11/17): the market the pay was worked out on (OfferRules.rowMarketCents:
+        // the band's basis, so an avg-of-3 band or Lower mode shows the average it paid on; with no payout, hide mode's market or the
+        // card's value). A card saved before its facts were kept shows the value the pile holds. "-" only when there is no value, never
+        // a $0: a 0 or less is no market value (Triumph's failed lookup answers 0).
+        var mktCents = meta.facts ? OfferRules.rowMarketCents(meta.facts, c.price, choice.mode) : c.marketValueCents;
         var marketText = typeof mktCents === 'number' && isFinite(mktCents) && mktCents > 0 ? money(mktCents) : '-';
         var key = pileMetaKey(c.grader, c.certKey);
         var g = gradeNum(meta.grade);
