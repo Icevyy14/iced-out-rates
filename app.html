@@ -731,6 +731,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
     --sc-field-h:50px;
 
     --i-scan:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7V5a2 2 0 0 1 2-2h2'/%3E%3Cpath d='M17 3h2a2 2 0 0 1 2 2v2'/%3E%3Cpath d='M21 17v2a2 2 0 0 1-2 2h-2'/%3E%3Cpath d='M7 21H5a2 2 0 0 1-2-2v-2'/%3E%3Cpath d='M8 7v10'/%3E%3Cpath d='M12 7v10'/%3E%3Cpath d='M17 7v10'/%3E%3C/svg%3E");
+    --i-camera:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z'/%3E%3Ccircle cx='12' cy='13' r='3'/%3E%3C/svg%3E");
+    --i-camera-off:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 2l20 20'/%3E%3Cpath d='M7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16'/%3E%3Cpath d='M9.5 4h5L17 7h3a2 2 0 0 1 2 2v7.5'/%3E%3Cpath d='M14.121 15.121A3 3 0 1 1 9.88 10.88'/%3E%3C/svg%3E");
     --i-torch:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6c0 2-2 2-2 4v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V10c0-2-2-2-2-4V2h12z'/%3E%3Cline x1='6' x2='18' y1='6' y2='6'/%3E%3Cline x1='12' x2='12' y1='12' y2='12'/%3E%3C/svg%3E");
     --i-sound:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='11 5 6 9 2 9 2 15 6 15 11 19 11 5'/%3E%3Cpath d='M15.54 8.46a5 5 0 0 1 0 7.07'/%3E%3Cpath d='M19.07 4.93a10 10 0 0 1 0 14.14'/%3E%3C/svg%3E");
     --i-sound-off:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='11 5 6 9 2 9 2 15 6 15 11 19 11 5'/%3E%3Cline x1='22' x2='16' y1='9' y2='15'/%3E%3Cline x1='16' x2='22' y1='9' y2='15'/%3E%3C/svg%3E");
@@ -832,16 +834,18 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-vf-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
   #tab-scanner .sc-vf-marks{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
   #tab-scanner .sc-mark{fill:rgba(59,151,151,.22);stroke:#6CCFCB;stroke-width:3;stroke-linejoin:round;filter:drop-shadow(0 0 3px rgba(6,13,24,.8));}
-  #tab-scanner .sc-vf-top{position:absolute;top:12px;left:12px;right:12px;display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:8px;}
-  #tab-scanner #sc-torch{grid-column:1;}
+  #tab-scanner .sc-vf-top{position:absolute;top:12px;left:12px;right:12px;display:grid;grid-template-columns:44px minmax(0,1fr) 44px 44px;align-items:center;gap:8px;}
+  #tab-scanner #sc-torch{grid-column:3;}
+  #tab-scanner .sc-vf-top > *{grid-row:1;} /* one row, whatever order the buttons come in the markup */
   #tab-scanner .sc-vf-pill{grid-column:2;justify-self:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  #tab-scanner #sc-sound{grid-column:3;}
+  #tab-scanner #sc-sound{grid-column:4;}
   #tab-scanner .sc-vf-round{
     display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;border-radius:50%;cursor:pointer;
     background:rgba(6,11,20,.55);color:#fff;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
     transition:background-color 160ms var(--sc-ease), color 160ms var(--sc-ease);
   }
   #tab-scanner #sc-torch{--sc-i:var(--i-torch);}
+  #tab-scanner #sc-cam-off{--sc-i:var(--i-camera-off);grid-column:1;}
   #tab-scanner #sc-sound{--sc-i:var(--i-sound-off);}
   #tab-scanner #sc-sound[aria-pressed="true"]{--sc-i:var(--i-sound);}
   #tab-scanner .sc-vf-round.on{background:#fff;color:var(--sc-cam);}
@@ -860,36 +864,28 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-vf-shutter span{display:block;width:100%;height:100%;border-radius:50%;background:#fff;transition:transform 150ms ease-out;}
   #tab-scanner .sc-vf-shutter:active span{transform:scale(.9);}
 
-  /* Ready to start: the frame itself says "camera" (four corners and a scanner's line), so no picture of a
-     camera and no second box is needed. */
+  /* Camera off (owner, 11/17: "no fake cover"): no full-size panel standing in for the camera, just one slim row -
+     a small round camera button and a short line. The camera turns itself on when the Scanner opens, so this row
+     is only seen once it has been turned off (or where it can't start by itself). The frame shrinks to the row. */
+  #tab-scanner .sc-vf-wrap:has(> .sc-vf[hidden]){min-height:0;background:var(--sc-fill-card-bg);}
   #tab-scanner .sc-vf-off{
-    position:relative;min-height:var(--sc-vf-h);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
-    padding:28px 24px;text-align:center;
-    background:radial-gradient(135% 58% at 50% 40%, var(--sc-off-1) 0%, var(--sc-off-2) 56%, var(--sc-cam) 100%);
+    position:relative;min-height:0;display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:12px;
+    padding:8px 14px 8px 8px;text-align:left;
   }
-  #tab-scanner .sc-vf-off::before{
-    content:"";position:absolute;inset:16px;pointer-events:none;--k:28px;
-    border:3px solid rgba(255,255,255,.72);border-radius:14px;
-    -webkit-mask:conic-gradient(at var(--k) var(--k), #0000 75%, #000 0) 0 0 / calc(100% - var(--k)) calc(100% - var(--k));
-    mask:conic-gradient(at var(--k) var(--k), #0000 75%, #000 0) 0 0 / calc(100% - var(--k)) calc(100% - var(--k));
-  }
-  #tab-scanner .sc-start-row{
-    align-self:stretch;display:flex;justify-content:center;
-    background:linear-gradient(90deg, transparent 6%, var(--sc-scanline) 30%, var(--sc-scanline) 70%, transparent 94%) center / 100% 1.5px no-repeat;
-  }
+  #tab-scanner .sc-start-row{flex:none;display:flex;}
   #tab-scanner .sc-start{
-    --sc-i:var(--i-scan);
-    position:relative;display:inline-flex;align-items:center;justify-content:center;gap:10px;max-width:100%;
-    min-height:52px;padding:12px 22px 12px 18px;border:0;border-radius:999px;cursor:pointer;
+    --sc-i:var(--i-camera);
+    position:relative;display:grid;place-items:center;flex:none;width:48px;height:48px;padding:0;border:0;border-radius:50%;cursor:pointer;
     background:linear-gradient(180deg, var(--sc-blue-top), var(--sc-blue-bot));color:var(--sc-on-accent);
-    font-size:var(--sc-fs-body);font-weight:800;line-height:1.2;text-align:center;white-space:normal;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 10px 22px -14px rgba(0,0,0,.9);
+    font-size:0;line-height:0;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 6px 14px -8px rgba(0,0,0,.9);
     transition:filter 150ms ease-out, transform 150ms ease-out;
   }
+  #tab-scanner .sc-start::before{width:22px;height:22px;}
   #tab-scanner .sc-start:hover{filter:brightness(1.08);}
   #tab-scanner .sc-start:active{transform:scale(.98);}
   #tab-scanner .sc-start:disabled{background:var(--sc-fill);color:var(--sc-muted);cursor:default;transform:none;filter:none;box-shadow:none;}
-  #tab-scanner .sc-vf-off-text{position:relative;max-width:300px;font-size:var(--sc-fs-row);line-height:1.45;color:var(--sc-off-ink);}
+  #tab-scanner .sc-vf-off-text{position:relative;margin:0;min-width:0;font-size:var(--sc-fs-row);line-height:1.35;color:var(--sc-muted);}
 
   /* ── the scoreboard: We pay for the card on screen, and what this visit comes to, side by side ── */
   #tab-scanner .sc-score{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:8px;container-type:inline-size;}
@@ -1354,7 +1350,6 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .scanner-layout.sc-native-cam .sc-vf-off::before,#tab-scanner .scanner-layout.sc-native-cam .sc-vf-off-text{display:none;}
   #tab-scanner .scanner-layout.sc-native-cam .sc-start-row{background:none;}
   #tab-scanner .scanner-layout.sc-native-cam .sc-start{
-    flex:1 1 auto;min-height:48px;font-size:var(--sc-fs-row);
     background:var(--sc-fill);color:var(--sc-steel-ink);box-shadow:var(--sc-hi), var(--sc-ring);
   }
   #tab-scanner .scanner-layout.sc-native-cam .sc-dock{
@@ -1869,6 +1864,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
       <svg class="sc-vf-marks" id="sc-marks"></svg>
       <div class="sc-vf-top">
         <button type="button" class="sc-vf-round" id="sc-torch" title="Flashlight" aria-label="Flashlight" aria-pressed="false" hidden></button>
+        <button type="button" class="sc-vf-round" id="sc-cam-off" title="Turn camera off" aria-label="Turn camera off"></button>
         <span class="sc-vf-pill" id="sc-vf-status">Starting camera…</span>
         <button type="button" class="sc-vf-round" id="sc-sound" title="Sound" aria-label="Sound" aria-pressed="true"></button>
       </div>
@@ -1881,8 +1877,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
       </div>
     </div>
     <div class="sc-vf-off" id="sc-vf-off">
-      <div class="sc-start-row"><button type="button" class="sc-start" id="sc-start">Start scanning</button></div>
-      <p class="sc-vf-off-text" id="sc-vf-off-text">Point at the slab, then tap its barcode. Nothing is read until you tap.</p>
+      <div class="sc-start-row"><button type="button" class="sc-start" id="sc-start" aria-label="Turn camera on" title="Turn camera on">Turn camera on</button></div>
+      <p class="sc-vf-off-text" id="sc-vf-off-text">Camera off. Tap the camera to scan.</p>
     </div>
   </section>
 
@@ -3713,11 +3709,11 @@ var WORKER_FAILURE_LIMIT = 3;
 
 // ── Plain words for why the camera didn't start, and what to do - verbatim from CAMERA_HELP. ───────
 var CAMERA_HELP = {
-  denied: "The camera is blocked for this site. Allow it in your browser's settings (iPhone: Settings, then Safari, then Camera), then tap Start scanning.",
+  denied: "The camera is blocked for this site. Allow it in your browser's settings (iPhone: Settings, then Safari, then Camera), then tap the camera button.",
   none: 'No camera found on this device. Type the cert or use the scanner gun below.',
-  busy: 'Another app is using the camera. Close it, then tap Start scanning.',
+  busy: 'Another app is using the camera. Close it, then tap the camera button.',
   unsupported: "This browser can't use the camera here. Type the cert below instead.",
-  failed: "The camera didn't start. Tap Start scanning to try again."
+  failed: "The camera didn't start. Tap the camera button to try again."
 };
 
 function now() {
@@ -7329,6 +7325,7 @@ window.SwipeRow = {
       shutter: document.getElementById('sc-shutter'),
       torch: document.getElementById('sc-torch'),
       sound: document.getElementById('sc-sound'),
+      camOff: document.getElementById('sc-cam-off'),
       zoomWrap: document.getElementById('sc-zoom-wrap'),
       zoom: document.getElementById('sc-zoom'),
       vfOff: document.getElementById('sc-vf-off'),
@@ -7519,7 +7516,7 @@ window.SwipeRow = {
     // tap" would be false there: it says what that camera says. Asked each time the hint is put back, as the bridge is
     // checked at call time everywhere else.
     var VF_OFF_PROMPT = dom.vfOffText.textContent;
-    var VF_OFF_APP_PROMPT = 'Point at a barcode';
+    var VF_OFF_APP_PROMPT = VF_OFF_PROMPT; // the camera turns itself on now: off reads the same everywhere
     function idlePrompt() { return bridge.isAvailable() && bridge.sheetsSupported() ? VF_OFF_APP_PROMPT : VF_OFF_PROMPT; }
     dom.vfOffText.textContent = idlePrompt();
     var START_LABEL = dom.start.textContent;
@@ -7568,7 +7565,10 @@ window.SwipeRow = {
     function setNativeCamera(open) {
       nativeScannerOpen = !!open;
       dom.layout.classList.toggle('sc-native-cam', nativeScannerOpen);
-      if (bridge.isAvailable()) dom.start.textContent = nativeScannerOpen ? 'Reopen camera' : START_LABEL;
+      if (bridge.isAvailable()) {
+        dom.start.textContent = nativeScannerOpen ? 'Reopen camera' : START_LABEL;
+        dom.start.setAttribute('aria-label', dom.start.textContent);
+      }
       if (!nativeScannerOpen) {
         dom.vfOffText.textContent = idlePrompt();
         sheetStop = null; // the camera closed: so did its sheet
@@ -7577,7 +7577,8 @@ window.SwipeRow = {
       } else if (dom.certInput.value) setTypeOpen(true); // typed before the camera opened: the box stays in view
       applySheet();
     }
-    window.addEventListener('penguinscannerclosed', function () { setNativeCamera(false); });
+    // Done (or back) in the app is the person turning the camera off: it stays off until they turn it back on.
+    window.addEventListener('penguinscannerclosed', function () { cameraTurnedOff = true; setNativeCamera(false); });
 
     // ── the on-screen keyboard: the dock (Normal / Lower and Hide) steps aside for it. A field merely having
     // focus is never the signal (a Bluetooth scanner gun keeps the cert box focused with no keyboard at all),
@@ -7646,6 +7647,7 @@ window.SwipeRow = {
             saveSession(session);
             dom.password.value = '';
             renderAuthState();
+            autoCamera(); // signed in on the Scanner: the camera comes up
             // signed in: the private Scanner sheet can be read now, and "Normal" prices on it. Nothing is known
             // about THIS login's sheet until it answers: a scan waits for it (ensureSettings) and a card in the pile
             // keeps its price, instead of "Normal" falling back on the consignor rates meanwhile.
@@ -9023,6 +9025,44 @@ window.SwipeRow = {
       dom.vfOff.hidden = false;
     }
 
+    // ── the camera turns itself on (owner, 11/17: "like Courtyard: no Start button, just an icon to turn it on and
+    // off"). When the Scanner opens signed in, the camera comes up by itself: the app's own camera, or in a phone's
+    // browser the page's camera once the browser has already been allowed to use it (never a permission prompt out
+    // of nowhere). Turned off (the off button, or Done in the app) it stays off for this visit until the camera
+    // button turns it back on. Signed out it waits: the sign-in form must not sit under a camera. ────────────
+    var cameraTurnedOff = false;
+    var scannerActive = false; // this tab is the one on screen
+    var cameraStarting = false;
+    function turnCameraOn() {
+      // Inside the app its own scanner replaces the browser camera; every barcode it reads
+      // comes back through window.penguinScan -> handleScanned, the same path the camera uses.
+      if (bridge.isAvailable()) {
+        setNativeCamera(bridge.openScanner());
+        if (nativeScannerOpen) return;
+      }
+      if (cam || cameraStarting) return;
+      cameraStarting = true;
+      dom.start.disabled = true;
+      startCamera().catch(function () { /* message already set inside startCamera() */ }).then(function () {
+        cameraStarting = false;
+        dom.start.disabled = false;
+      });
+    }
+    function cameraAllowedAlready() {
+      try {
+        if (!navigator.permissions || typeof navigator.permissions.query !== 'function') return Promise.resolve(false);
+        return navigator.permissions.query({ name: 'camera' }).then(function (p) { return !!p && p.state === 'granted'; }, function () { return false; });
+      } catch (e) { return Promise.resolve(false); }
+    }
+    function autoCamera() {
+      if (!scannerActive || cameraTurnedOff || !session || nativeScannerOpen || cam || cameraStarting) return;
+      if (bridge.isAvailable()) { turnCameraOn(); return; }
+      if (!cameraSupported()) return;
+      cameraAllowedAlready().then(function (ok) {
+        if (ok && scannerActive && !cameraTurnedOff && session && !cam && !cameraStarting) turnCameraOn();
+      });
+    }
+
     function startCamera() {
       if (!cameraSupported()) {
         dom.vfOffText.textContent = 'No camera on this device or browser. Type or paste the cert below instead.';
@@ -9044,7 +9084,7 @@ window.SwipeRow = {
           onTrouble: function (msg) { dom.vfStatus.textContent = msg || 'Point at a barcode'; },
           onEnded: function () {
             closeCamera();
-            dom.vfOffText.textContent = 'The camera stopped. Tap Start scanning to turn it back on.';
+            dom.vfOffText.textContent = 'The camera stopped. Tap the camera to turn it back on.';
           }
         }
       }).then(function (c) {
@@ -9065,7 +9105,7 @@ window.SwipeRow = {
       }, function (err) {
         dom.vf.hidden = true;
         dom.vfOff.hidden = false;
-        dom.vfOffText.textContent = (err && err.message) || "The camera didn't start. Tap Start scanning to try again, or type the cert below.";
+        dom.vfOffText.textContent = (err && err.message) || "The camera didn't start. Tap the camera to try again, or type the cert below.";
         throw err;
       });
     }
@@ -9223,19 +9263,22 @@ window.SwipeRow = {
       wired = true;
       wireSettings();
       dom.start.addEventListener('click', function () {
-        // The Start camera tap is already a user gesture, which is the ONE thing iOS requires before
+        // The camera button tap is a user gesture, which is the ONE thing iOS requires before
         // it will ever let an AudioContext leave "suspended" - prime it here so the very first beep
         // isn't silently swallowed (see feedback.js's header and FeedbackAudio above).
         feedback.unlock();
-        // Inside the Android app its own scanner replaces the browser camera; every barcode it reads
-        // comes back through window.penguinScan -> handleScanned, the same path the camera uses.
-        if (bridge.isAvailable()) {
-          setNativeCamera(bridge.openScanner());
-          if (nativeScannerOpen) return;
-        }
-        dom.start.disabled = true;
-        startCamera().catch(function () { /* message already set inside startCamera() */ }).then(function () { dom.start.disabled = false; });
+        cameraTurnedOff = false;
+        turnCameraOn();
       });
+      // Off: the browser camera's own button (the app's camera has its Done). It stays off until turned back on.
+      if (dom.camOff) dom.camOff.addEventListener('click', function (ev) {
+        ev.stopPropagation(); // sits inside the tap-to-scan viewfinder - must not also read a barcode
+        cameraTurnedOff = true;
+        closeCamera();
+        dom.vfOffText.textContent = idlePrompt();
+      });
+      // The camera now starts with no tap, so the first touch anywhere primes the beep instead (cheap, idempotent).
+      document.addEventListener('pointerdown', function () { feedback.unlock(); }, { capture: true, passive: true });
       if (!cameraSupported() && !bridge.isAvailable()) { dom.start.textContent = 'Camera not available here'; dom.start.disabled = true; }
       function renderSoundButton() {
         var on = feedback.isSoundOn();
@@ -9407,6 +9450,8 @@ window.SwipeRow = {
     var resumed = false;
     function activate() {
       wireOnce();
+      scannerActive = true;
+      autoCamera();
       applyPageHiding();
       ensureSettings(true).then(function () { // the tab loads both sheets, whatever rule is picked
         repaintForSheets(); // our sheets are in: every card is priced against the one picked
@@ -9415,6 +9460,7 @@ window.SwipeRow = {
     }
     function isBusy() { return busy; }
     function deactivate() {
+      scannerActive = false;
       closeCamera();
       stopAllAveragePolls();
       document.body.classList.remove('sc-hiding'); // another tab of the dev view keeps its header
