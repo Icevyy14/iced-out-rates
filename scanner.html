@@ -8,6 +8,7 @@
 <meta name="rates-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/slab-rates">
 <meta name="ledger-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/slab-ledger">
 <meta name="triumph-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/triumph-sourcer">
+<meta name="sourcer-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/sourcer-accounts">
 <meta name="supabase-url" content="https://ppfhgrurquvlyabtymbq.supabase.co">
 <meta name="supabase-anon-key" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwZmhncnVycXV2bHlhYnR5bWJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MjYyNjcsImV4cCI6MjA5MTEwMjI2N30.ZcEPKRHI3kb3aA6iXmf1Mo42Dyqj9fx1I9ZMT2xk0fg">
 <title>Iced Out Penguin · Scanner</title>
@@ -1019,6 +1020,15 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-input:focus-visible{outline:none;}
   #tab-scanner .sc-input::placeholder{color:var(--sc-muted);opacity:1;} /* on a card's lighter field: --sc-ph would be 3.4:1 */
   #tab-scanner #sc-signed-in-as:empty{display:none;}
+  /* the sign-in card's three steps (sign in / create an account with a setup code / paused) and its quiet links */
+  #tab-scanner .sc-signin-step{display:flex;flex-direction:column;gap:12px;}
+  #tab-scanner .sc-signin-link{
+    align-self:center;min-height:44px;padding:0 10px;border:0;border-radius:999px;background:none;cursor:pointer;
+    color:var(--sc-steel-ink);font:inherit;font-size:var(--sc-fs-row);font-weight:700;
+    text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;
+  }
+  #tab-scanner .sc-signin-link:focus-visible{outline:none;box-shadow:0 0 0 3px var(--sc-focus-soft);}
+  #tab-scanner .sc-setup-user{color:var(--sc-ink);font-weight:800;}
   #tab-scanner .sc-box-err,#tab-scanner .sc-signin-err,#tab-scanner .sc-flat-err{font-size:var(--sc-fs-label);font-weight:700;line-height:1.45;color:var(--sc-err-ink);}
 
   /* ── the card on screen: the ringed grade, its name and cert, then Avg of 3 and CL value ── */
@@ -1600,6 +1610,18 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-theme-opt[aria-checked="true"]{background:var(--sc-fill-card-bg);box-shadow:inset 0 0 0 1.5px var(--sc-steel-ink);}
   #tab-scanner .sc-theme-sw{flex:none;width:28px;height:28px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(128,128,128,.55);}
   #tab-scanner .sc-theme-name{flex:1 1 auto;min-width:0;}
+  /* the Account section (signed in only): who this is, Sign out, and Delete my account behind a second, deliberate step */
+  #tab-scanner .sc-settings-section + .sc-settings-section{margin-top:18px;}
+  #tab-scanner .sc-account-card{
+    display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:var(--sc-r-tile);
+    background:var(--sc-card-bg);box-shadow:var(--sc-sh-card);
+  }
+  #tab-scanner .sc-account-card .sc-btn-quiet{background:var(--sc-fill-card-bg);}
+  #tab-scanner .sc-account-who{margin:0;font-size:var(--sc-fs-row);font-weight:700;line-height:1.35;color:var(--sc-ink);overflow-wrap:anywhere;}
+  #tab-scanner .sc-account-confirm{display:flex;flex-direction:column;gap:12px;}
+  #tab-scanner .sc-account-text{margin:0;font-size:var(--sc-fs-row);font-weight:500;line-height:1.45;color:var(--sc-ink);}
+  #tab-scanner .sc-account-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  #tab-scanner .sc-account-btns .sc-btn{min-height:46px;}
   #tab-scanner .sc-theme-opt::after{
     content:"";flex:none;width:22px;height:22px;background:currentColor;color:var(--sc-steel-ink);visibility:hidden;
     -webkit-mask:var(--i-check) center / contain no-repeat;mask:var(--i-check) center / contain no-repeat;
@@ -1916,13 +1938,31 @@ code{font-family:var(--font-mono);font-size:.92em;}
     <div class="sc-signin-head">
       <span class="sc-badge" aria-hidden="true"></span>
       <div>
-        <h2 class="sc-h">Sign in for live prices</h2>
-        <p class="sc-sub">Prices need your scanner login. Ask the owner if you don't have one.</p>
+        <h2 class="sc-h" id="sc-signin-title">Sign in for live prices</h2>
+        <p class="sc-sub" id="sc-signin-sub">Prices need your scanner login. Ask the owner if you don't have one.</p>
       </div>
     </div>
-    <label class="sc-field"><span class="sc-label">Email</span><input class="sc-input" id="sc-email" type="email" autocomplete="username"></label>
-    <label class="sc-field"><span class="sc-label">Password</span><input class="sc-input" id="sc-password" type="password" autocomplete="current-password"></label>
-    <button type="button" class="sc-btn sc-btn-primary sc-btn-block" id="sc-signin-go">Sign in</button>
+    <div class="sc-signin-step" id="sc-signin-form">
+      <label class="sc-field"><span class="sc-label">Username or email</span><input class="sc-input" id="sc-email" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"></label>
+      <label class="sc-field"><span class="sc-label">Password</span><input class="sc-input" id="sc-password" type="password" autocomplete="current-password"></label>
+      <button type="button" class="sc-btn sc-btn-primary sc-btn-block" id="sc-signin-go">Sign in</button>
+      <button type="button" class="sc-signin-link" id="sc-setup-open">Have a setup code? Create your account</button>
+    </div>
+    <div class="sc-signin-step" id="sc-setup" hidden>
+      <label class="sc-field"><span class="sc-label">Username</span><input class="sc-input" id="sc-setup-username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="40"></label>
+      <label class="sc-field"><span class="sc-label">Setup code</span><input class="sc-input" id="sc-setup-code" type="text" inputmode="text" autocomplete="one-time-code" autocapitalize="characters" autocorrect="off" spellcheck="false" maxlength="14" placeholder="ABCDE-FGHJK"></label>
+      <button type="button" class="sc-btn sc-btn-primary sc-btn-block" id="sc-setup-check">Continue</button>
+      <div class="sc-signin-step" id="sc-setup-pw" hidden>
+        <p class="sc-sub">Your username is <strong class="sc-setup-user" id="sc-setup-user"></strong>. You will sign in with it.</p>
+        <label class="sc-field"><span class="sc-label">Choose a password (at least 8 characters)</span><input class="sc-input" id="sc-setup-pass" type="password" autocomplete="new-password"></label>
+        <label class="sc-field"><span class="sc-label">Type it again</span><input class="sc-input" id="sc-setup-pass2" type="password" autocomplete="new-password"></label>
+        <button type="button" class="sc-btn sc-btn-primary sc-btn-block" id="sc-setup-go">Create account</button>
+      </div>
+      <button type="button" class="sc-signin-link" id="sc-setup-back">Back to sign in</button>
+    </div>
+    <div class="sc-signin-step" id="sc-paused" hidden>
+      <button type="button" class="sc-btn sc-btn-quiet sc-btn-block" id="sc-paused-back">Back to sign in</button>
+    </div>
     <span class="sc-sub" id="sc-signed-in-as"></span>
     <div class="sc-signin-err" id="sc-signin-err" role="alert" hidden></div>
   </section>
@@ -2116,9 +2156,10 @@ code{font-family:var(--font-mono);font-size:.92em;}
 
 </div>
 
-<!-- Settings (the gear above): one Theme section for now, one row per theme (the script fills it from
-     window.IOPTheme.list(), see scanner/theme.js). Tapping a row applies it at once; Done, the backdrop or
-     Escape close the sheet. -->
+<!-- Settings (the gear above): a Theme section, one row per theme (the script fills it from
+     window.IOPTheme.list(), see scanner/theme.js), tapping a row applies it at once; and, while signed in, an
+     Account section: Sign out, and Delete my account (IOP Pricing username logins only: a second step with the
+     password, then sourcer-accounts POST /delete). Done, the backdrop or Escape close the sheet. -->
 <dialog class="sc-settings" id="sc-settings" aria-labelledby="sc-settings-title">
   <div class="sc-settings-head">
     <h2 class="sc-settings-title" id="sc-settings-title">Settings</h2>
@@ -2127,6 +2168,23 @@ code{font-family:var(--font-mono);font-size:.92em;}
   <section class="sc-settings-section" aria-labelledby="sc-theme-title">
     <h3 class="sc-settings-section-title" id="sc-theme-title">Theme</h3>
     <div class="sc-theme-list" id="sc-theme-list" role="radiogroup" aria-labelledby="sc-theme-title"></div>
+  </section>
+  <section class="sc-settings-section" id="sc-account" aria-labelledby="sc-account-title" hidden>
+    <h3 class="sc-settings-section-title" id="sc-account-title">Account</h3>
+    <div class="sc-account-card">
+      <p class="sc-account-who" id="sc-account-who"></p>
+      <button type="button" class="sc-btn sc-btn-quiet sc-btn-block" id="sc-signout">Sign out</button>
+      <button type="button" class="sc-signin-link" id="sc-delete-open">Delete my account</button>
+      <div class="sc-account-confirm" id="sc-delete-confirm" hidden>
+        <p class="sc-account-text" id="sc-delete-text">This deletes your IOP Pricing login and password for good. It cannot be undone. Your past tickets stay in Discord and in our records.</p>
+        <label class="sc-field"><span class="sc-label">Your password</span><input class="sc-input" id="sc-delete-pass" type="password" autocomplete="current-password"></label>
+        <div class="sc-account-btns">
+          <button type="button" class="sc-btn sc-btn-danger" id="sc-delete-go">Delete my account</button>
+          <button type="button" class="sc-btn sc-btn-quiet" id="sc-delete-cancel">Cancel</button>
+        </div>
+        <div class="sc-signin-err" id="sc-delete-err" role="alert" hidden></div>
+      </div>
+    </div>
   </section>
 </dialog>
 </div>
@@ -7474,6 +7532,225 @@ window.SwipeRow = {
   createSwipe: createSwipe,
 };
 })();
+
+(function () {
+'use strict';
+/**
+ * Sourcer accounts: the rules BOTH sides must agree on, in one place.
+ *
+ *   - the Scanner page (rates-portal/page.html, as window.ScanAccount: build-portal.js strips the types
+ *     and drops this file into the SCANNER-CORE block, the same way validate.ts reaches the page), and
+ *   - the `sourcer-accounts` edge function (sourcer-portal/index.ts, through logic.ts).
+ *
+ * So a username is turned into the same sign-in email on the phone and on the server, a setup code is
+ * read the same way when it is typed and when it is checked, and the password rule is one rule.
+ *
+ * Pure: no imports, no DOM, no network, no Deno. Only `export function` / `export const` (build-portal.js
+ * collects exactly those). No em dash in any text here: every message is something a sourcer reads.
+ */
+
+// ── usernames and the sign-in email they stand for ─────────────────────────────────────────────────
+
+/** Sourcer logins that are a plain username sign in as `<username>@` this domain. We own the domain;
+ *  Auth never emails these addresses (the accounts are made with email_confirm, never invited). */
+const SOURCER_EMAIL_DOMAIN = 'sourcers.icevyytcg.com';
+const USERNAME_MIN = 2;
+const USERNAME_MAX = 32;
+
+/**
+ * A username out of whatever was typed or came from Discord, or null when nothing usable is left.
+ * Lower case; letters, digits, '.' and '_' only; every other run of characters becomes one '_';
+ * no '.' or '_' at either end and never two in a row. The same function reads the sign-in box, so
+ * "Ice Vyy", "ice vyy" and "ice_vyy" are one login.
+ */
+function usernameFrom(raw         )                {
+  if (typeof raw !== 'string') return null;
+  let s = raw.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  s = s.replace(/[^a-z0-9._]+/g, '_');
+  s = s.replace(/[._]{2,}/g, (run) => run[0]);
+  s = s.replace(/^[._]+/, '').replace(/[._]+$/, '');
+  if (s.length < USERNAME_MIN || s.length > USERNAME_MAX) return null;
+  if (!/[a-z0-9]/.test(s)) return null;
+  return s;
+}
+
+/** The Auth email a username signs in as. */
+function emailForUsername(username        )         {
+  return username + '@' + SOURCER_EMAIL_DOMAIN;
+}
+
+/** The username behind one of our synthetic emails, or null for any other email. */
+function usernameOfEmail(email         )                {
+  if (typeof email !== 'string') return null;
+  const at = email.toLowerCase().lastIndexOf('@');
+  if (at <= 0 || email.toLowerCase().slice(at + 1) !== SOURCER_EMAIL_DOMAIN) return null;
+  return usernameFrom(email.slice(0, at));
+}
+
+/**
+ * What the sign-in box means. Anything with an '@' is an email and is sent exactly as it was typed
+ * (trimmed), the way the page always sent it, so every existing email login is untouched. Anything
+ * else is a username and becomes its synthetic email. null when the box is empty or holds no username.
+ */
+function loginEmailFor(input         )                {
+  const s = typeof input === 'string' ? input.trim() : '';
+  if (!s) return null;
+  if (s.indexOf('@') >= 0) return s;
+  const u = usernameFrom(s);
+  return u ? emailForUsername(u) : null;
+}
+
+// ── setup codes ─────────────────────────────────────────────────────────────────────────────────────
+
+/** No 0/O, 1/I/L: nothing a sourcer can misread off a Discord message. 31 symbols, 10 of them = 31^10, about
+ *  8.2e14 codes (~49.5 bits): with the wrong-code limit per username (sourcer-portal/logic.ts) guessing one is
+ *  hopeless without any cap that everyone shares. */
+const CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+const CODE_LENGTH = 10;
+/** How long a setup code works. */
+const CODE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** A typed code as the server keys it: upper case, spaces and dashes dropped. */
+function normalizeCode(raw         )         {
+  return typeof raw === 'string' ? raw.toUpperCase().replace(/[\s-]+/g, '') : '';
+}
+
+/** True for exactly CODE_LENGTH symbols of CODE_ALPHABET (after normalizeCode). */
+function isCodeShape(code         )          {
+  if (typeof code !== 'string' || code.length !== CODE_LENGTH) return false;
+  for (let i = 0; i < code.length; i++) if (CODE_ALPHABET.indexOf(code[i]) < 0) return false;
+  return true;
+}
+
+/** How a code is shown to people: ABCDE-FGHJK. */
+function formatCode(code        )         {
+  const c = normalizeCode(code);
+  return c.length === CODE_LENGTH ? c.slice(0, CODE_LENGTH / 2) + '-' + c.slice(CODE_LENGTH / 2) : c;
+}
+
+// ── passwords ───────────────────────────────────────────────────────────────────────────────────────
+
+const PASSWORD_MIN = 8;
+/** Auth keeps a bcrypt hash, which reads at most 72 bytes. */
+const PASSWORD_MAX_BYTES = 72;
+
+/** What is wrong with a chosen password (and its confirmation, when given), or null when it is fine. */
+function passwordProblem(password         , confirm          )                {
+  if (typeof password !== 'string' || password.length < PASSWORD_MIN) {
+    return 'Choose a password of at least ' + PASSWORD_MIN + ' characters.';
+  }
+  if (new TextEncoder().encode(password).length > PASSWORD_MAX_BYTES) {
+    return 'That password is too long. Use ' + PASSWORD_MAX_BYTES + ' characters or fewer.';
+  }
+  if (confirm !== undefined && confirm !== password) return 'The two passwords do not match.';
+  return null;
+}
+
+/** When Auth's own password policy (on the shared project) refuses a password our rule allowed. */
+const WEAK_PASSWORD = 'That password was not accepted. Choose a longer one, or one that is harder to guess.';
+
+// ── what the page says ──────────────────────────────────────────────────────────────────────────────
+
+const PAUSED_TITLE = 'Your account is paused.';
+const PAUSED_TEXT = 'Message us in Discord.';
+
+/** The server's error codes (sourcer-accounts POST /code and /redeem) in words a sourcer reads. */
+const CODE_ERROR_TEXT                         = {
+  'bad-code': 'Setup codes are ' + CODE_LENGTH + ' letters and numbers. Check it and try again.',
+  'bad-username': 'Enter the username from your setup message.',
+  'wrong-code': 'That username and setup code do not match. Check both and try again.',
+  'expired': 'That code has expired. Ask us in Discord for a new one.',
+  'used': 'That code was already used. Sign in with your username, or ask us in Discord for a new code.',
+  'locked': 'Too many wrong codes for this username. Ask us in Discord for a new code.',
+  'paused': PAUSED_TITLE + ' ' + PAUSED_TEXT,
+  'too-many': 'Too many tries. Wait 15 minutes and try again.',
+  'bad-password': 'Choose a password of at least ' + PASSWORD_MIN + ' characters.',
+};
+
+function codeErrorText(code         )         {
+  return (typeof code === 'string' && CODE_ERROR_TEXT[code]) || 'Something went wrong. Try again in a minute.';
+}
+
+// ── deleting an account in the app (App Store guideline 5.1.1(v)) ───────────────────────────────────
+
+/** What the confirm step says before an account is deleted: what goes, and what is kept. */
+const DELETE_CONFIRM_TEXT = 'This deletes your IOP Pricing login and password for good. It cannot be undone. Your past tickets stay in Discord and in our records.';
+/** What the sign-in card says once the account is gone. */
+const DELETED_TEXT = 'Your account was deleted.';
+
+/** The server's error codes (sourcer-accounts POST /delete) in words a sourcer reads. */
+const DELETE_ERROR_TEXT                         = {
+  'wrong-password': 'That password is not right. Try again.',
+  'signed-out': 'Sign in again, then delete your account.',
+  'not-deletable': 'This login cannot be deleted in the app. Message us in Discord.',
+  'in-use': 'This account has Triumph records, so it cannot be deleted in the app. Message us in Discord and we will delete it.',
+  'too-many': 'Too many tries. Wait 15 minutes and try again.',
+};
+
+function deleteErrorText(code         )         {
+  return (typeof code === 'string' && DELETE_ERROR_TEXT[code]) || 'Something went wrong. Try again in a minute.';
+}
+
+/**
+ * True when an Auth answer (the JSON body of /auth/v1/token, password or refresh) says the account is
+ * banned, which is how a frozen sourcer reads to Auth. Newer Auth sends error_code 'user_banned';
+ * older ones only the words.
+ */
+function isPausedAuthError(body         )          {
+  if (!body || typeof body !== 'object') return false;
+  const b = body                           ;
+  if (b.error_code === 'user_banned' || b.code === 'user_banned') return true;
+  const words = [b.msg, b.message, b.error_description, b.error].filter((x) => typeof x === 'string').join(' ');
+  return /user (is )?banned/i.test(words);
+}
+
+/** The user id (`sub`) inside an access token, or null. Read only, never trusted for anything but
+ *  asking PostgREST for the caller's own row (which checks the token itself). */
+function jwtSubject(token         )                {
+  if (typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length < 2) return null;
+  try {
+    let s = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (s.length % 4) s += '=';
+    const payload = JSON.parse(atob(s));
+    const sub = payload && payload.sub;
+    return typeof sub === 'string' && /^[0-9a-f-]{36}$/i.test(sub) ? sub : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+window.ScanAccount = {
+  SOURCER_EMAIL_DOMAIN: SOURCER_EMAIL_DOMAIN,
+  USERNAME_MIN: USERNAME_MIN,
+  USERNAME_MAX: USERNAME_MAX,
+  usernameFrom: usernameFrom,
+  emailForUsername: emailForUsername,
+  usernameOfEmail: usernameOfEmail,
+  loginEmailFor: loginEmailFor,
+  CODE_ALPHABET: CODE_ALPHABET,
+  CODE_LENGTH: CODE_LENGTH,
+  CODE_TTL_MS: CODE_TTL_MS,
+  normalizeCode: normalizeCode,
+  isCodeShape: isCodeShape,
+  formatCode: formatCode,
+  PASSWORD_MIN: PASSWORD_MIN,
+  PASSWORD_MAX_BYTES: PASSWORD_MAX_BYTES,
+  passwordProblem: passwordProblem,
+  WEAK_PASSWORD: WEAK_PASSWORD,
+  PAUSED_TITLE: PAUSED_TITLE,
+  PAUSED_TEXT: PAUSED_TEXT,
+  CODE_ERROR_TEXT: CODE_ERROR_TEXT,
+  codeErrorText: codeErrorText,
+  DELETE_CONFIRM_TEXT: DELETE_CONFIRM_TEXT,
+  DELETED_TEXT: DELETED_TEXT,
+  DELETE_ERROR_TEXT: DELETE_ERROR_TEXT,
+  deleteErrorText: deleteErrorText,
+  isPausedAuthError: isPausedAuthError,
+  jwtSubject: jwtSubject,
+};
+})();
 /* SCANNER-CORE:END */
 </script>
 
@@ -7677,6 +7954,22 @@ window.SwipeRow = {
       password: document.getElementById('sc-password'),
       signinGo: document.getElementById('sc-signin-go'),
       signinErr: document.getElementById('sc-signin-err'),
+      signinTitle: document.getElementById('sc-signin-title'),
+      signinSub: document.getElementById('sc-signin-sub'),
+      signinForm: document.getElementById('sc-signin-form'),
+      setupOpen: document.getElementById('sc-setup-open'),
+      setup: document.getElementById('sc-setup'),
+      setupUsername: document.getElementById('sc-setup-username'),
+      setupCode: document.getElementById('sc-setup-code'),
+      setupCheck: document.getElementById('sc-setup-check'),
+      setupPw: document.getElementById('sc-setup-pw'),
+      setupUser: document.getElementById('sc-setup-user'),
+      setupPass: document.getElementById('sc-setup-pass'),
+      setupPass2: document.getElementById('sc-setup-pass2'),
+      setupGo: document.getElementById('sc-setup-go'),
+      setupBack: document.getElementById('sc-setup-back'),
+      paused: document.getElementById('sc-paused'),
+      pausedBack: document.getElementById('sc-paused-back'),
       result: document.getElementById('sc-result'),
       name: document.getElementById('sc-name'),
       nameSet: document.getElementById('sc-set'),
@@ -8025,40 +8318,300 @@ window.SwipeRow = {
       return fetch(url, Object.assign({}, opts, { headers: headers }));
     }
 
-    function doSignIn() {
-      var email = (dom.email.value || '').trim();
-      var password = dom.password.value || '';
-      dom.signinErr.hidden = true;
-      if (!email || !password) { dom.signinErr.textContent = 'Enter an email and password.'; dom.signinErr.hidden = false; return; }
-      dom.signinGo.disabled = true;
-      authFetch(SB_URL + '/auth/v1/token?grant_type=password', {
-        method: 'POST', headers: { apikey: SB_ANON }, body: JSON.stringify({ email: email, password: password })
-      }).then(function (res) { return res.json().then(function (j) { return { ok: res.ok, body: j }; }); })
-        .then(function (r) {
-          dom.signinGo.disabled = false;
-          if (r.ok && r.body && r.body.access_token) {
-            session = { access_token: r.body.access_token, refresh_token: r.body.refresh_token, email: email };
-            saveSession(session);
-            dom.password.value = '';
-            renderAuthState();
-            // signed in on the Scanner: the camera comes up (app 1.10: its camera panel, with the camera off)
-            if (bridge.cameraPanelSupported()) showPanelIfReady(); else autoCamera();
-            // signed in: the private Scanner sheet can be read now, and "Normal" prices on it. Nothing is known
-            // about THIS login's sheet until it answers: a scan waits for it (ensureSettings) and a card in the pile
-            // keeps its price, instead of "Normal" falling back on the consignor rates meanwhile.
-            refreshFlight = null; // a refresh of the login before this one is not this one's to share
-            scannerSettings = null; scannerKnown = false;
-            loadScannerSheet().then(repaintForSheets);
-          } else {
-            dom.signinErr.textContent = String((r.body && (r.body.error_description || r.body.msg || r.body.error)) || 'Sign-in failed.');
-            dom.signinErr.hidden = false;
-          }
-        }, function () {
-          dom.signinGo.disabled = false;
-          dom.signinErr.textContent = 'Could not reach Supabase. Check your connection.';
-          dom.signinErr.hidden = false;
-        });
+    // ── sourcer accounts (IOP Pricing): signing in with a username OR an email, "Have a setup code? Create your
+    // account", and the plain paused screen for a frozen account. The rules (username -> sign-in email, the setup
+    // code, the password, the words) are ScanAccount = sourcer-portal/account.ts, the SAME file the sourcer-accounts
+    // function checks against; this is only the page's half. An email is sent exactly as typed, as it always was. ──
+    /* SOURCER-ACCOUNTS:START */
+    var ACCOUNTS_URL = metaContent('sourcer-api');
+    var SIGNIN_TITLE = 'Sign in for live prices';
+    var SIGNIN_SUB = "Prices need your scanner login. Ask the owner if you don't have one.";
+    var SETUP_TITLE = 'Create your account';
+    var SETUP_SUB = 'Enter the username and setup code we sent you in Discord.';
+    var NO_SERVER = 'Could not reach the server. Check your connection.';
+    var ACCOUNT_READY = 'Your account is ready. Sign in with your username and new password.';
+    var setupCode = null; // the setup code that checked out, held for the password step
+    var setupUsername = null; // ...and the username it checked out with
+
+    function signinError(text) {
+      dom.signinErr.textContent = text || '';
+      dom.signinErr.hidden = !text;
     }
+    /** Which step the sign-in card shows: 'form' (sign in), 'setup' (create an account with a code) or 'paused'. */
+    function showSigninStep(step) {
+      dom.signinForm.hidden = step !== 'form';
+      dom.setup.hidden = step !== 'setup';
+      dom.paused.hidden = step !== 'paused';
+      dom.signinTitle.textContent = step === 'paused' ? ScanAccount.PAUSED_TITLE : step === 'setup' ? SETUP_TITLE : SIGNIN_TITLE;
+      dom.signinSub.textContent = step === 'paused' ? ScanAccount.PAUSED_TEXT : step === 'setup' ? SETUP_SUB : SIGNIN_SUB;
+      signinError('');
+    }
+    /** A frozen account: no session is kept, and the card says so plainly until "Back to sign in". */
+    function showPaused() {
+      session = null;
+      saveSession(null);
+      refreshFlight = null;
+      dom.password.value = '';
+      showSigninStep('paused');
+      renderAuthState();
+    }
+    /** Asks PostgREST for this login's own sourcers row (its RLS lets a sourcer read only its own) with the access
+        token it still holds: Auth may have ended the session already, but the token reads until it expires. Only a
+        row saying active:false is "paused". No row (the owner, an email login that is not a sourcer), a token that
+        no longer works, or no signal changes nothing. */
+    function checkPaused(accessToken) {
+      var uid = ScanAccount.jwtSubject(accessToken);
+      if (!uid || !SB_URL) return Promise.resolve(false);
+      return fetch(SB_URL + '/rest/v1/sourcers?select=active&user_id=eq.' + encodeURIComponent(uid), {
+        headers: { apikey: SB_ANON, authorization: 'Bearer ' + accessToken }
+      }).then(function (res) { return res.ok ? res.json() : null; }).then(function (rows) {
+        var paused = Array.isArray(rows) && rows.length === 1 && !!rows[0] && rows[0].active === false;
+        if (paused) showPaused();
+        return paused;
+      }).catch(function () { return false; });
+    }
+
+    /** Auth's password grant: { ok, body }. A body that is not JSON rejects, as it always did. */
+    function passwordGrant(email, password) {
+      return authFetch(SB_URL + '/auth/v1/token?grant_type=password', {
+        method: 'POST', headers: { apikey: SB_ANON }, body: JSON.stringify({ email: email, password: password })
+      }).then(function (res) { return res.json().then(function (j) { return { ok: res.ok, body: j }; }); });
+    }
+    /** A sign-in that worked: keep the session and price as this login. */
+    function adoptSession(body, email) {
+      session = { access_token: body.access_token, refresh_token: body.refresh_token, email: email };
+      saveSession(session);
+      dom.password.value = '';
+      showSigninStep('form');
+      renderAuthState();
+      // signed in on the Scanner: the camera comes up (app 1.10: its camera panel, with the camera off)
+      if (bridge.cameraPanelSupported()) showPanelIfReady(); else autoCamera();
+      // signed in: the private Scanner sheet can be read now, and "Normal" prices on it. Nothing is known
+      // about THIS login's sheet until it answers: a scan waits for it (ensureSettings) and a card in the pile
+      // keeps its price, instead of "Normal" falling back on the consignor rates meanwhile.
+      refreshFlight = null; // a refresh of the login before this one is not this one's to share
+      scannerSettings = null; scannerKnown = false;
+      loadScannerSheet().then(repaintForSheets);
+    }
+
+    function doSignIn() {
+      var email = ScanAccount.loginEmailFor(dom.email.value || '');
+      var password = dom.password.value || '';
+      signinError('');
+      if (!email || !password) { signinError('Enter your username or email and password.'); return; }
+      dom.signinGo.disabled = true;
+      passwordGrant(email, password).then(function (r) {
+        dom.signinGo.disabled = false;
+        if (r.ok && r.body && r.body.access_token) { adoptSession(r.body, email); return; }
+        if (ScanAccount.isPausedAuthError(r.body)) { showPaused(); return; }
+        signinError(String((r.body && (r.body.error_description || r.body.msg || r.body.error)) || 'Sign-in failed.'));
+      }, function () {
+        dom.signinGo.disabled = false;
+        signinError('Could not reach Supabase. Check your connection.');
+      });
+    }
+
+    /** POST to the sourcer-accounts function: { ok, body } ({} when the answer is not JSON). */
+    function accountsPost(route, payload) {
+      return fetch(ACCOUNTS_URL + '/' + route, {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload)
+      }).then(function (res) {
+        return res.json().then(function (j) { return { ok: res.ok, body: j || {} }; }, function () { return { ok: false, body: {} }; });
+      });
+    }
+    function openSetup() {
+      setupCode = null;
+      setupUsername = null;
+      // a username already typed in the sign-in box is most likely this one (an email never is)
+      var typed = String(dom.email.value || '');
+      dom.setupUsername.value = typed.indexOf('@') < 0 ? (ScanAccount.usernameFrom(typed) || '') : '';
+      dom.setupUsername.disabled = false;
+      dom.setupCode.value = '';
+      dom.setupCode.disabled = false;
+      dom.setupPass.value = '';
+      dom.setupPass2.value = '';
+      dom.setupUser.textContent = '';
+      dom.setupPw.hidden = true;
+      dom.setupCheck.hidden = false;
+      dom.setupCheck.disabled = false;
+      dom.setupGo.disabled = false;
+      showSigninStep('setup');
+      try { (dom.setupUsername.value ? dom.setupCode : dom.setupUsername).focus(); } catch (e) { /* focus is a nicety */ }
+    }
+    function closeSetup() {
+      setupCode = null;
+      setupUsername = null;
+      dom.setupPass.value = '';
+      dom.setupPass2.value = '';
+      showSigninStep('form');
+    }
+    function setupFailed(r) {
+      var err = r && r.body && r.body.error;
+      if (err === 'paused') { showPaused(); return; }
+      signinError((r && r.body && r.body.message) || ScanAccount.codeErrorText(err));
+    }
+    function checkSetupCode() {
+      var username = ScanAccount.usernameFrom(dom.setupUsername.value || '');
+      var code = ScanAccount.normalizeCode(dom.setupCode.value || '');
+      signinError('');
+      if (!username) { signinError(ScanAccount.codeErrorText('bad-username')); return; }
+      if (!ScanAccount.isCodeShape(code)) { signinError(ScanAccount.codeErrorText('bad-code')); return; }
+      dom.setupCheck.disabled = true;
+      accountsPost('code', { username: username, code: code }).then(function (r) {
+        dom.setupCheck.disabled = false;
+        if (!(r.ok && r.body.username)) { setupFailed(r); return; }
+        setupCode = code;
+        setupUsername = r.body.username;
+        dom.setupUser.textContent = r.body.username;
+        dom.setupUsername.disabled = true;
+        dom.setupCode.disabled = true;
+        dom.setupCheck.hidden = true;
+        dom.setupPw.hidden = false;
+        try { dom.setupPass.focus(); } catch (e) { /* focus is a nicety */ }
+      }, function () { dom.setupCheck.disabled = false; signinError(NO_SERVER); });
+    }
+    function createAccount() {
+      var password = dom.setupPass.value || '';
+      var problem = ScanAccount.passwordProblem(password, dom.setupPass2.value || '');
+      signinError('');
+      if (!setupCode || !setupUsername) { openSetup(); return; }
+      if (problem) { signinError(problem); return; }
+      dom.setupGo.disabled = true;
+      accountsPost('redeem', { username: setupUsername, code: setupCode, password: password }).then(function (r) {
+        if (!(r.ok && r.body.email)) { dom.setupGo.disabled = false; setupFailed(r); return; }
+        var email = r.body.email;
+        var username = r.body.username || '';
+        // the account exists now: whatever the sign-in below says, the form is cleared and the username is ready
+        function done() {
+          dom.setupGo.disabled = false;
+          dom.setupPass.value = '';
+          dom.setupPass2.value = '';
+          dom.email.value = username;
+          setupCode = null;
+        }
+        return passwordGrant(email, password).then(function (s) {
+          done();
+          if (s.ok && s.body && s.body.access_token) { adoptSession(s.body, email); return; }
+          if (ScanAccount.isPausedAuthError(s.body)) { showPaused(); return; }
+          showSigninStep('form');
+          signinError(ACCOUNT_READY);
+        }, function () {
+          done();
+          showSigninStep('form');
+          signinError(ACCOUNT_READY);
+        });
+      }, function () { dom.setupGo.disabled = false; signinError(NO_SERVER); });
+    }
+
+    // ── signed in: Settings' Account section. Sign out, and Delete my account (App Store guideline 5.1.1(v)): only
+    // for an IOP Pricing username login (the kind this app creates); the sourcer-accounts function checks that again,
+    // with the account's own access token and its password, and never deletes the owner or an email login. ──
+    var acct = {
+      section: document.getElementById('sc-account'),
+      who: document.getElementById('sc-account-who'),
+      signOut: document.getElementById('sc-signout'),
+      deleteOpen: document.getElementById('sc-delete-open'),
+      confirm: document.getElementById('sc-delete-confirm'),
+      text: document.getElementById('sc-delete-text'),
+      pass: document.getElementById('sc-delete-pass'),
+      deleteGo: document.getElementById('sc-delete-go'),
+      cancel: document.getElementById('sc-delete-cancel'),
+      err: document.getElementById('sc-delete-err')
+    };
+    /** The IOP Pricing username this login signs in as, or null (an email login: the owner, staff, an older sourcer). */
+    function sessionUsername() { return session ? ScanAccount.usernameOfEmail(session.email) : null; }
+    function deleteError(text) {
+      if (!acct.err) return;
+      acct.err.textContent = text || '';
+      acct.err.hidden = !text;
+    }
+    /** Back to the first step: the confirm (and the password typed into it) is put away. */
+    function closeDeleteConfirm() {
+      if (!acct.confirm) return;
+      acct.confirm.hidden = true;
+      acct.pass.value = '';
+      acct.deleteGo.disabled = false;
+      deleteError('');
+      acct.deleteOpen.hidden = !sessionUsername();
+    }
+    /** The Account section: shown only while signed in; "Delete my account" only for a username login. */
+    function renderAccount() {
+      if (!acct.section) return;
+      acct.section.hidden = !session;
+      if (!session) { closeDeleteConfirm(); return; }
+      var username = sessionUsername();
+      acct.who.textContent = 'Signed in as ' + (username || session.email || 'this login');
+      if (acct.text) acct.text.textContent = ScanAccount.DELETE_CONFIRM_TEXT;
+      if (!username || acct.confirm.hidden) closeDeleteConfirm();
+    }
+    /** Step one of two: nothing is deleted until the password is entered and the red button is tapped. */
+    function openDeleteConfirm() {
+      if (!sessionUsername()) return;
+      acct.deleteOpen.hidden = true;
+      acct.confirm.hidden = false;
+      acct.pass.value = '';
+      deleteError('');
+      try { acct.pass.focus(); } catch (e) { /* focus is a nicety */ }
+    }
+    /** Signs this phone out: the session is dropped here and, unless the account is already gone, Auth ends it too
+        (a lost signal changes nothing: the tokens are no longer kept on this phone either way). The pile stays. */
+    function signOut(message, opts) {
+      var was = session;
+      session = null;
+      saveSession(null);
+      refreshFlight = null;
+      dom.password.value = '';
+      showSigninStep('form');
+      if (message) signinError(message);
+      renderAuthState();
+      renderAccount();
+      // no login, no private Scanner sheet: "Normal" prices on the consignor rates again
+      scannerSettings = null; scannerKnown = false;
+      loadScannerSheet().then(repaintForSheets);
+      if (was && was.access_token && SB_URL && !(opts && opts.gone)) {
+        try {
+          fetch(SB_URL + '/auth/v1/logout?scope=local', {
+            method: 'POST', headers: { apikey: SB_ANON, authorization: 'Bearer ' + was.access_token }
+          }).catch(function () { /* signed out here all the same */ });
+        } catch (e) { /* signed out here all the same */ }
+      }
+    }
+    /** Step two: sourcer-accounts POST /delete with this login's own access token and its password. */
+    function deleteAccount() {
+      var password = acct.pass.value || '';
+      deleteError('');
+      if (!session || !sessionUsername()) { closeDeleteConfirm(); return; }
+      if (!password) { deleteError('Enter your password to delete your account.'); return; }
+      acct.deleteGo.disabled = true;
+      function send() {
+        return fetch(ACCOUNTS_URL + '/delete', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: 'Bearer ' + session.access_token },
+          body: JSON.stringify({ password: password })
+        }).then(function (res) {
+          return res.json().then(function (j) { return { ok: res.ok, body: j || {} }; }, function () { return { ok: false, body: {} }; });
+        });
+      }
+      send().then(function (r) {
+        // an access token that ran out while the app sat open: one refresh, then once more
+        if (r.body.error !== 'signed-out' || !session) return r;
+        return refreshSession().then(function (rs) { return rs.ok && session ? send() : r; });
+      }).then(function (r) {
+        acct.deleteGo.disabled = false;
+        if (r.ok && r.body.ok) {
+          acct.pass.value = '';
+          dom.email.value = '';
+          closeSettings();
+          signOut(ScanAccount.DELETED_TEXT, { gone: true });
+          return;
+        }
+        deleteError(ScanAccount.deleteErrorText(r.body.error));
+      }, function () {
+        acct.deleteGo.disabled = false;
+        deleteError(NO_SERVER);
+      });
+    }
+    /* SOURCER-ACCOUNTS:END */
 
     function authGetItem(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
     function onlineHint() {
@@ -8116,14 +8669,15 @@ window.SwipeRow = {
       var flight = refreshFlight;
       var age = flight ? Date.now() - flight.at : 0;
       if (!flight || age < 0 || age >= REFRESH_FLIGHT_MS) {
-        var sent = flight = refreshFlight = { at: Date.now(), gaveUp: false, token: session.refresh_token, promise: null };
+        var sent = flight = refreshFlight = { at: Date.now(), gaveUp: false, token: session.refresh_token, access: session.access_token, promise: null };
         sent.promise = authFetch(SB_URL + '/auth/v1/token?grant_type=refresh_token', {
           method: 'POST', headers: { apikey: SB_ANON }, body: JSON.stringify({ refresh_token: sent.token })
         }).then(function (res) {
           // The server could not say (busy, down, rate-limited): nothing is known about the token.
           if (res.status >= 500 || res.status === 408 || res.status === 429) return { ok: false, noSignal: true };
           return res.json().then(function (j) {
-            if (!j || !j.access_token) return { ok: false, noSignal: false };
+            // a refusal that says the account is banned is a frozen sourcer (sourcer-accounts freeze): paused, below
+            if (!j || !j.access_token) return { ok: false, noSignal: false, paused: ScanAccount.isPausedAuthError(j) };
             session = { access_token: j.access_token, refresh_token: j.refresh_token || session.refresh_token, email: session.email };
             saveSession(session);
             return { ok: true, noSignal: false };
@@ -8135,6 +8689,9 @@ window.SwipeRow = {
         }).then(function (r) {
           if (refreshFlight === sent) refreshFlight = null;
           if (!r.ok && !r.noSignal && session && session.refresh_token !== sent.token) r = { ok: true, noSignal: false };
+          // A refusal about the token this login holds: a frozen sourcer is told so (Auth said banned, or, when the
+          // freeze already ended the session, its own sourcers row says active:false). Anyone else is just signed out.
+          if (!r.ok && !r.noSignal) { if (r.paused) showPaused(); else checkPaused(sent.access); }
           if (r.ok && sent.gaveUp) { try { sessionCameLate(); } catch (e) { /* the tokens are stored: the next scan asks for the sheet itself */ } }
           return r;
         });
@@ -9274,6 +9831,8 @@ window.SwipeRow = {
             // Triumph itself is down (any 5xx, the revoked credential's 503 included): not an error, the
             // average carries the CL value. Staff see only the note, never the 503's own text.
             if (TriumphDown.isTriumphDown({ status: r.res.status })) { onTriumphDown(cert, grader); return; }
+            // 403 is triumph-sourcer turning away a login whose access is off: a frozen sourcer sees the paused screen
+            if (r.res.status === 403 && session) checkPaused(session.access_token);
             var httpMsg = (r.body && r.body.error) || ('Lookup failed (HTTP ' + r.res.status + ').');
             applyFailure(cert, grader, attempt, describeFailure(httpMsg, attempt));
             return;
@@ -9622,11 +10181,13 @@ window.SwipeRow = {
         else settingsUi.sheet.setAttribute('open', '');
       } catch (e) { settingsUi.sheet.setAttribute('open', ''); }
       renderThemeRows();
+      renderAccount();
       var checked = settingsUi.list && settingsUi.list.querySelector('.sc-theme-opt[aria-checked="true"]');
       if (checked) checked.focus();
     }
     function closeSettings() {
       if (!settingsUi.sheet || !settingsOpen()) return;
+      closeDeleteConfirm(); // a password typed into the delete step never waits in a closed sheet
       try {
         if (typeof settingsUi.sheet.close === 'function') settingsUi.sheet.close();
         else settingsUi.sheet.removeAttribute('open');
@@ -9725,6 +10286,22 @@ window.SwipeRow = {
       dom.certInput.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); submitTyped(); } });
       dom.signinGo.addEventListener('click', doSignIn);
       dom.password.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); doSignIn(); } });
+      // sourcer accounts: create an account with a setup code, and the paused screen's way back
+      dom.setupOpen.addEventListener('click', openSetup);
+      dom.setupBack.addEventListener('click', closeSetup);
+      dom.setupCheck.addEventListener('click', checkSetupCode);
+      dom.setupCode.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); checkSetupCode(); } });
+      dom.setupGo.addEventListener('click', createAccount);
+      dom.setupPass2.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); createAccount(); } });
+      dom.pausedBack.addEventListener('click', function () { showSigninStep('form'); });
+      // Settings' Account section: Sign out, and Delete my account (two steps, the second with the password)
+      if (acct.section) {
+        acct.signOut.addEventListener('click', function () { closeSettings(); signOut(''); });
+        acct.deleteOpen.addEventListener('click', openDeleteConfirm);
+        acct.cancel.addEventListener('click', closeDeleteConfirm);
+        acct.deleteGo.addEventListener('click', deleteAccount);
+        acct.pass.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); deleteAccount(); } });
+      }
       dom.earlierList.addEventListener('click', function (ev) {
         if (Date.now() < pileSwipeEatUntil) { pileSwipeEatUntil = 0; return; } // the click a swipe's own release makes
         var rm = ev.target.closest('.sc-earlier-remove');
