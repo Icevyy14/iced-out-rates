@@ -1226,7 +1226,10 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-earlier-row .set-name{min-width:0;overflow:hidden;text-overflow:ellipsis;}
   #tab-scanner .sc-earlier-row .meta .cert{margin-top:0;}
   #tab-scanner .sc-earlier-row .cert{margin-top:3px;font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
-  #tab-scanner .sc-earlier-row .val{font-size:var(--sc-fs-body);font-weight:800;line-height:1.3;color:var(--sc-ink);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right;}
+  #tab-scanner .sc-earlier-row .val{display:flex;flex-direction:column;align-items:flex-end;font-size:var(--sc-fs-body);font-weight:800;line-height:1.3;color:var(--sc-ink);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right;}
+  /* The market value under what we pay: smaller and dimmer (--sc-muted, so every theme keeps it readable) and one line. The two
+     line boxes (16px + 13px at 1.3) stay under the 40px grade circle and the name column, so the row is no taller than before. */
+  #tab-scanner .sc-earlier-row .val-mkt{font-size:var(--sc-fs-label);font-weight:600;line-height:1.3;color:var(--sc-muted);}
   #tab-scanner .sc-earlier-row .status-pill{
     display:inline-flex;align-items:center;gap:5px;height:24px;margin-top:7px;padding:0 9px;border:0;border-radius:999px;
     background:var(--sc-grey-tint);color:var(--sc-muted);
@@ -1344,10 +1347,14 @@ code{font-family:var(--font-mono);font-size:.92em;}
   /* The app's camera is open ABOVE this page: the page's own frame has nothing left to show, so it folds
      down to a slim Reopen camera button at the end of the sheet. The button stays because the app can drop
      the open message, and with the whole frame gone there would be no way back; pressing it while the camera
-     is up does nothing (the app ignores a second open). */
+     is up does nothing (the app ignores a second open). In app 1.10 (.sc-cam-panel, the camera panel with its own
+     switch) this row is not shown at all: see the rule below. */
   #tab-scanner .scanner-layout.sc-native-cam .sc-vf-wrap{order:5;min-height:0;overflow:visible;border-radius:0;background:none;box-shadow:none;}
   #tab-scanner .scanner-layout.sc-native-cam .sc-vf-off{min-height:0;padding:0;background:none;}
   #tab-scanner .scanner-layout.sc-native-cam .sc-vf-off::before,#tab-scanner .scanner-layout.sc-native-cam .sc-vf-off-text{display:none;}
+  /* App 1.10 (the camera panel): the app's own switch turns its camera on and off, so the page's camera row has
+     nothing to do and is not shown. The layout never changes with the camera, only with the panel. */
+  #tab-scanner .scanner-layout.sc-native-cam.sc-cam-panel .sc-vf-off{display:none;}
   #tab-scanner .scanner-layout.sc-native-cam .sc-start-row{background:none;}
   #tab-scanner .scanner-layout.sc-native-cam .sc-start{
     background:var(--sc-fill);color:var(--sc-steel-ink);box-shadow:var(--sc-hi), var(--sc-ring);
@@ -6295,7 +6302,8 @@ function carryAverage(prev) {
 function downFacts(cert, grader, prev, deps, why) {
   var g = String(grader || '').toLowerCase();
   var avg = carryAverage(prev);
-  if (prev && typeof prev === 'object' && prev.clvCents != null) return Object.assign({}, prev, avg);
+  // A stored 0 (a pile saved before the page read Triumph's failed-lookup 0 as no value) is no value, the same as none.
+  if (prev && typeof prev === 'object' && validCents(prev.clvCents) != null) return Object.assign({}, prev, avg);
   var title = g.toUpperCase() + ' ' + cert;
   var tf = titleFacts(title, deps);
   var facts = {
@@ -6317,7 +6325,7 @@ function noteFor(facts) {
 /** True while a fallback card still waits on its CL value: nothing known yet and the average (which
  *  carries it) is still on the way. A failed/timed-out average is not waiting any more. */
 function waitingForValue(facts) {
-  return !!facts && facts.clvFromAvg === true && facts.clvCents == null && facts.avgStatus === 'pending';
+  return !!facts && facts.clvFromAvg === true && validCents(facts.clvCents) == null && facts.avgStatus === 'pending';
 }
 
 /**
@@ -6348,10 +6356,12 @@ function fillFromAverage(facts, avgState, deps) {
 }
 
 /** The market value the pile holds for a card: a fallback card follows its own CL value (unknown until
- *  the answer arrives); every other card keeps whatever the pile already has. */
+ *  the answer arrives); every other card keeps whatever the pile already has, except a 0 or less: a pile
+ *  saved before the page read Triumph's failed-lookup 0 as no value still holds that 0, and it is unknown
+ *  (counted as "not valued yet"), never $0. */
 function marketValue(facts, current) {
-  if (facts && facts.clvFromAvg === true) return typeof facts.clvCents === 'number' ? facts.clvCents : null;
-  return current;
+  if (facts && facts.clvFromAvg === true) return validCents(facts.clvCents);
+  return current == null ? current : validCents(current);
 }
 
 window.TriumphDown = {
@@ -6436,6 +6446,13 @@ function ruleTitle(choice) {
   return 'Normal rates';
 }
 
+/** A stored value only counts when it is a real positive number of cents: a 0, a negative or a non-number is "no value",
+ *  never $0. Triumph's failed lookup answers marketValue 0, and a pile saved on a phone before the page read that 0 as no value
+ *  (badcc58) still holds clvCents 0 for the card. */
+function valueCents(n) {
+  return typeof n === 'number' && isFinite(n) && n > 0 ? n : null;
+}
+
 function lowerOf(a, b) {
   if (a == null) return b == null ? null : b;
   if (b == null) return a;
@@ -6499,7 +6516,8 @@ function factsOf(card) {
   var last = avgDone ? lastSaleOf(card.sales) : null;
   var trend = avgDone && avg3 != null && last != null && trendingDownOf(card.sales);
   var clClv = avgDone && typeof card.clClvCents === 'number' && card.clClvCents > 0 ? card.clClvCents : null;
-  var triumph = typeof card.clvCents === 'number' ? card.clvCents : null;
+  // Triumph's value: a stored 0, negative or non-number is no value (valueCents), so Card Ladder's stands in exactly as for none.
+  var triumph = valueCents(card.clvCents);
   // Triumph's own last sale (the lookup, when it carries one): the CLV cap's number while Card Ladder has not answered.
   var triumphLast = typeof card.triumphLastSaleCents === 'number' && card.triumphLastSaleCents > 0 ? card.triumphLastSaleCents : null;
   return {
@@ -6655,6 +6673,20 @@ function marketFor(card, price, mode) {
   return { cents: null, pending: f.avgPending };
 }
 
+/**
+ * The market value a pile row shows under what we pay ("Mkt $x"): the value the card is priced with, in the order factsOf
+ * picks it (Triumph's value, else Card Ladder's, else the avg of 3 as it is paid on). So a card priced on Card Ladder's value
+ * or on its average shows that number, and a row reads "-" only when the card has no value at all. Never a 0 or less: a
+ * stored Triumph 0 is no value (valueCents). Reads only: the price, the pay figure and the pile totals are untouched.
+ * -> integer cents, or null.
+ */
+function rowMarketCents(card) {
+  if (!card || typeof card !== 'object') return null;
+  var f = factsOf(card);
+  var clv = valueCents(f.clv);
+  return clv != null ? clv : valueCents(f.avg3e);
+}
+
 /** "Normal rates" on the Scanner: our private Scanner sheet (slab-rates GET /scanner, edited on the
  *  Consignors page once unlocked) when one is saved, else the consignor rates (the live sheet). */
 function normalSheet(scannerSheet, consignorSheet) {
@@ -6754,6 +6786,7 @@ window.OfferRules = {
   ruleTitle: ruleTitle,
   offerFor: offerFor,
   marketFor: marketFor,
+  rowMarketCents: rowMarketCents,
   normalSheet: normalSheet,
   normalNote: normalNote,
   payText: payText,
@@ -6840,7 +6873,7 @@ window.ViewPrefs = {
 'use strict';
 // The Scanner page inside the Android app (a WebView). The app injects `window.penguinNative`; the
 // page posts it JSON messages - {type: 'openScanner' | 'closeScanner' | 'haptic' | 'saveFile' |
-// 'copyText' | 'setSheet' | 'setTheme', ...fields} - through `window.penguinNative.postMessage(text)` (a WebView
+// 'copyText' | 'setSheet' | 'setTheme' | 'showScanner' | 'hideScanner' | 'setCamera', ...fields} - through `window.penguinNative.postMessage(text)` (a WebView
 // JavaScript interface only takes text, so the message goes over as a JSON string). The app's own
 // scanner hands each barcode back by calling `window.penguinScan(raw, format)` with the raw barcode string (and its type),
 // which the page runs through the same parse-and-price path as its browser camera.
@@ -6865,13 +6898,32 @@ window.ViewPrefs = {
 // keeps their message stream exactly what it was. The app asks for a theme the other way, by running
 // `window.IOPTheme && window.IOPTheme.set('<id>')` in the page.
 //
+// The camera panel (iPhone and Android 1.10, `penguinNative.version >= 4`): on the Scanner, signed in, the app shows
+// its camera panel above the page at the 'mid' stop with the camera OFF, and a small native switch in the panel turns
+// the camera on and off. Turning it on or off never moves the page: only the panel's dark cover fades. The page asks
+// for the panel with {type: 'showScanner'} and sends it away with {type: 'hideScanner'}; it can ask for the camera
+// with {type: 'setCamera', on: true | false} (a real boolean, nothing else is ever sent). The app tells the page what
+// the camera is doing with `window.dispatchEvent(new CustomEvent('penguincamera', { detail: { on, reason } }))`,
+// reason 'page' | 'switch' | 'denied' | 'show' (cameraStateOf reads it); the page only remembers it and never changes
+// its layout for it. While the panel is shown the app also fires 'penguinsheet' as above. openScanner / closeScanner
+// and 'penguinscannerclosed' stay exactly as they were, for apps older than version 4 (and a version 4 app still
+// takes them from an old page). Nothing in this paragraph is ever sent to an app older than version 4.
+// The rule both apps keep: 'openScanner' from a page is refused only once a page has CLAIMED the panel in this load
+// (sent showScanner since the last navigation commit). A panel merely held (shown at launch from memory, or kept
+// across a reload) is hidden at once, with no animation, when the page sends openScanner instead, and openScanner is
+// honoured (the 1.9 camera). This page, signed out, sends hideScanner once as the Scanner opens, so a panel held from
+// launch never sits over the sign-in form; it ignores 'penguinscannerclosed' while it holds the panel, and on hide keeps
+// its sheet layout for the panel's 320 ms slide.
+//
 // Pure (embedded whole into the page by rates-portal/build-portal.js): the window is handed in.
 'use strict';
 
-var MESSAGE_TYPES = ['openScanner', 'closeScanner', 'haptic', 'saveFile', 'copyText', 'setSheet', 'setTheme'];
+var MESSAGE_TYPES = ['openScanner', 'closeScanner', 'haptic', 'saveFile', 'copyText', 'setSheet', 'setTheme', 'showScanner', 'hideScanner', 'setCamera'];
 var SHEET_STOPS = ['down', 'mid', 'up'];
 var SHEETS_FROM_VERSION = 2;
 var THEMES_FROM_VERSION = 3;
+var CAMERA_PANEL_FROM_VERSION = 4;
+var CAMERA_REASONS = ['page', 'switch', 'denied', 'show'];
 var HEX_COLOUR = /^#[0-9A-Fa-f]{6}$/;
 var THEME_ID = /^[a-z]{1,24}$/;
 
@@ -6897,10 +6949,16 @@ function createNativeBridge(win) {
     var n = native();
     return !!n && Number(n.version) >= THEMES_FROM_VERSION;
   }
+  /** The app has the camera panel with its own on/off switch (version 4 and up: app 1.10). */
+  function cameraPanelSupported() {
+    var n = native();
+    return !!n && Number(n.version) >= CAMERA_PANEL_FROM_VERSION;
+  }
   return {
     isAvailable: function () { return !!native(); },
     sheetsSupported: sheetsSupported,
     themesSupported: themesSupported,
+    cameraPanelSupported: cameraPanelSupported,
     post: post,
     openScanner: function () { return post('openScanner'); },
     closeScanner: function () { return post('closeScanner'); },
@@ -6909,6 +6967,15 @@ function createNativeBridge(win) {
     setSheet: function (stop) {
       if (!sheetsSupported() || SHEET_STOPS.indexOf(stop) < 0) return false;
       return post('setSheet', { stop: stop });
+    },
+    /** Shows the app's camera panel (camera off). Only to an app that has the panel. */
+    showScanner: function () { return cameraPanelSupported() ? post('showScanner') : false; },
+    /** Sends the app's camera panel away. Only to an app that has the panel. */
+    hideScanner: function () { return cameraPanelSupported() ? post('hideScanner') : false; },
+    /** Turns the panel's camera on or off. `on` must be a real true or false; only to an app that has the panel. */
+    setCamera: function (on) {
+      if ((on !== true && on !== false) || !cameraPanelSupported()) return false;
+      return post('setCamera', { on: on });
     },
     /** Tells the app the theme on screen. Only to an app that takes it, and only a well-formed message (see themeWire). */
     setTheme: function (msg) {
@@ -6937,6 +7004,16 @@ function sheetStopOf(ev) {
   var d = ev && ev.detail;
   var stop = d && d.stop;
   return SHEET_STOPS.indexOf(stop) >= 0 ? stop : null;
+}
+
+/**
+ * What a 'penguincamera' event says: { on, reason } with `on` a real boolean and `reason` one of the four the app
+ * sends ('' for any other), or null when `on` is anything but true or false.
+ */
+function cameraStateOf(ev) {
+  var d = ev && ev.detail;
+  if (!d || typeof d !== 'object' || (d.on !== true && d.on !== false)) return null;
+  return { on: d.on, reason: CAMERA_REASONS.indexOf(d.reason) >= 0 ? d.reason : '' };
 }
 
 /**
@@ -6969,9 +7046,11 @@ window.NativeBridge = {
   MESSAGE_TYPES: MESSAGE_TYPES,
   SHEET_STOPS: SHEET_STOPS,
   THEMES_FROM_VERSION: THEMES_FROM_VERSION,
+  CAMERA_PANEL_FROM_VERSION: CAMERA_PANEL_FROM_VERSION,
   createNativeBridge: createNativeBridge,
   themeWire: themeWire,
   sheetStopOf: sheetStopOf,
+  cameraStateOf: cameraStateOf,
   layoutStop: layoutStop,
   installScanReceiver: installScanReceiver,
 };
@@ -7502,6 +7581,16 @@ window.SwipeRow = {
     window.addEventListener('iopthemechange', function (ev) { sendTheme(ev && ev.detail); renderThemeRows(); });
     sendTheme();
     var nativeScannerOpen = false;
+    // The camera panel (app 1.10, bridge version 4, see scanner/nativeBridge.js): signed in on the Scanner the app
+    // shows its camera panel above this page at the 'mid' stop with the camera OFF, and its own small switch turns the
+    // camera on and off in place. The page lays itself out as the sheet under the panel (.sc-native-cam .sc-cam-panel)
+    // BEFORE it asks for the panel, and never changes its layout when the camera goes on or off ('penguincamera' is
+    // only remembered), so the switch never moves the page. Older apps and a browser never get here: they keep the
+    // openScanner path below exactly as it was.
+    var panelShown = false;
+    var nativeCameraOn = false; // what the app last said its panel camera is doing (the app is the source of truth)
+    /** The page is the sheet under an app camera: the legacy one opened by openScanner, or the camera panel. */
+    function appSheet() { return nativeScannerOpen || panelShown; }
     // The app's camera opens ABOVE this page (the page becomes a sheet under it), so while it is open the
     // page's own camera frame has nothing to show: it folds away (.sc-native-cam), and comes back with its
     // usual prompt when the app says the camera closed (Done or back fires 'penguinscannerclosed').
@@ -7534,7 +7623,7 @@ window.SwipeRow = {
       var shown = NativeBridge.layoutStop({
         stop: sheetStop,
         supported: bridge.sheetsSupported(),
-        cameraOpen: nativeScannerOpen,
+        cameraOpen: appSheet(),
         keyboardOpen: dom.layout.classList.contains('sc-kbd-open')
       });
       NativeBridge.SHEET_STOPS.forEach(function (s) { dom.layout.classList.toggle('sc-sheet-' + s, s === shown); });
@@ -7555,8 +7644,8 @@ window.SwipeRow = {
     }
     window.addEventListener('penguinsheet', function (ev) {
       var stop = NativeBridge.sheetStopOf(ev);
-      // Only from an app that has stops, and only while its camera is open: a late one after Done changes nothing.
-      if (!stop || !bridge.sheetsSupported() || !nativeScannerOpen) return;
+      // Only from an app that has stops, and only while its camera (or camera panel) is up: a late one after Done changes nothing.
+      if (!stop || !bridge.sheetsSupported() || !appSheet()) return;
       sheetStop = stop;
       setCardOpen(false);
       applySheet();
@@ -7578,7 +7667,53 @@ window.SwipeRow = {
       applySheet();
     }
     // Done (or back) in the app is the person turning the camera off: it stays off until they turn it back on.
-    window.addEventListener('penguinscannerclosed', function () { cameraTurnedOff = true; setNativeCamera(false); });
+    // App 1.10: while the page holds the camera panel, a 'penguinscannerclosed' is not about it (the panel's own switch
+    // turns its camera off, and says so in 'penguincamera'): ignored, so it never folds the panel layout away.
+    window.addEventListener('penguinscannerclosed', function () { if (panelShown) return; cameraTurnedOff = true; setNativeCamera(false); });
+
+    /** Shows (true) or sends away (false) the app's camera panel (version 4 only). The layout is the sheet's before
+        the panel is asked for, so the page is already in place as the panel slides in. */
+    // On hide the app slides its panel away (PANEL_SLIDE_MS); the page keeps the sheet layout until it is gone, so it
+    // never snaps out from under a panel still on screen. Shown again meanwhile: the timer is cancelled, nothing moves.
+    var PANEL_SLIDE_MS = 320;
+    var panelHideTimer = null;
+    function setPanel(show) {
+      show = !!show;
+      if (show === panelShown) { if (show) bridge.showScanner(); return; } // asked again: the app re-sends its state
+      panelShown = show;
+      if (panelHideTimer !== null) { clearTimeout(panelHideTimer); panelHideTimer = null; }
+      if (show) {
+        dom.layout.classList.add('sc-native-cam');
+        dom.layout.classList.add('sc-cam-panel');
+        sheetStop = sheetStop || 'mid'; // the panel always arrives at 'mid'
+        if (dom.certInput.value) setTypeOpen(true); // typed before: the box stays in view
+        applySheet();
+        bridge.showScanner();
+      } else {
+        bridge.hideScanner();
+        nativeCameraOn = false;
+        sheetStop = null;
+        panelHideTimer = setTimeout(function () {
+          panelHideTimer = null;
+          if (panelShown) return; // shown again meanwhile
+          dom.layout.classList.remove('sc-native-cam');
+          dom.layout.classList.remove('sc-cam-panel');
+          setTypeOpen(false);
+          setCardOpen(false);
+          applySheet();
+        }, PANEL_SLIDE_MS);
+      }
+    }
+    /** The panel goes up when the Scanner is on screen and signed in (version 4 only). */
+    function showPanelIfReady() {
+      if (bridge.cameraPanelSupported() && scannerActive && session) setPanel(true);
+    }
+    // The app says what its panel camera is doing: remembered, and NOTHING else. No class, no layout: on or off, the page stays put.
+    window.addEventListener('penguincamera', function (ev) {
+      var s = NativeBridge.cameraStateOf(ev);
+      if (!s || !panelShown) return;
+      nativeCameraOn = s.on;
+    });
 
     // ── the on-screen keyboard: the dock (Normal / Lower and Hide) steps aside for it. A field merely having
     // focus is never the signal (a Bluetooth scanner gun keeps the cert box focused with no keyboard at all),
@@ -7647,7 +7782,8 @@ window.SwipeRow = {
             saveSession(session);
             dom.password.value = '';
             renderAuthState();
-            autoCamera(); // signed in on the Scanner: the camera comes up
+            // signed in on the Scanner: the camera comes up (app 1.10: its camera panel, with the camera off)
+            if (bridge.cameraPanelSupported()) showPanelIfReady(); else autoCamera();
             // signed in: the private Scanner sheet can be read now, and "Normal" prices on it. Nothing is known
             // about THIS login's sheet until it answers: a scan waits for it (ensureSettings) and a card in the pile
             // keeps its price, instead of "Normal" falling back on the consignor rates meanwhile.
@@ -7750,6 +7886,7 @@ window.SwipeRow = {
 
     function renderAuthState() {
       dom.signin.hidden = !!session;
+      if (!session && panelShown) setPanel(false); // signed out: the sign-in form is never under the camera panel
     }
 
     // ── rate bands: the same public GET the rates editor reads, then the bot's own priceSlab ──────
@@ -8116,7 +8253,7 @@ window.SwipeRow = {
     /** The confidence pill in the We pay tile: on for any card with a value, off while one is loading. */
     function showConf(f) {
       if (!dom.conf) return;
-      var has = !!f && f.clvCents != null;
+      var has = !!f && triumphValue(f) != null;
       dom.conf.hidden = !has;
       if (!has) return;
       var n = f.confidence == null ? NaN : Number(f.confidence);
@@ -8129,6 +8266,12 @@ window.SwipeRow = {
       // a 3.5 that a band needing 4 refuses is amber with its warning, not the lime of a 4.
       var level = !known ? 0 : n >= 5 ? 5 : n >= 4 ? 4 : n >= 3 ? 3 : 0;
       for (var lv = 3; lv <= 5; lv++) dom.conf.classList.toggle('sc-conf-' + lv, level === lv);
+    }
+
+    /** The card's Triumph value as the squares show it: a stored 0, negative or non-number is no value (offerRules factsOf reads it
+        the same way), so a pile saved before Triumph's failed-lookup 0 was read as none never shows $0.00. */
+    function triumphValue(f) {
+      return f && typeof f.clvCents === 'number' && isFinite(f.clvCents) && f.clvCents > 0 ? f.clvCents : null;
     }
 
     var LOOKING_UP = 'Looking up…'; // the wait of a scan (its lookup, or the rate sheets it prices on), and of a rule switch waiting on its sheet
@@ -8207,7 +8350,11 @@ window.SwipeRow = {
     function onLookup(cert, grader, lookup) {
       var g = String(grader || '').toLowerCase();
       var title = lookup.card || (g.toUpperCase() + ' ' + cert);
-      var clvCents = lookup.marketValue != null ? Math.round(Number(lookup.marketValue) * 100) : null;
+      // A Triumph value of 0 (or less, or not a number) is "Triumph has no price", never a price: Triumph's failed lookup answers
+      // HTTP 200 with marketValue 0 and grade '', and a 0 here would beat Card Ladder's value (offerRules factsOf prefers Triumph's),
+      // price the card "Not buying" and show $0.00. With none the card prices on Card Ladder's, as the bot does (triumph.js mapTriumphResult).
+      var mvDollars = Number(lookup.marketValue);
+      var clvCents = lookup.marketValue != null && isFinite(mvDollars) && mvDollars > 0 ? Math.round(mvDollars * 100) : null;
       // Triumph's own last sale for the cert, when the lookup carries one (dollars, like marketValue): the CLV cap's
       // number when Card Ladder's average never comes (rules.js recentSalesOf). The triumph-sourcer lookup carries none yet;
       // either way a CL-value card waits for the average before it is priced (scanner/offerRules.js priceOnSheet).
@@ -8339,8 +8486,9 @@ window.SwipeRow = {
       dom.grader.textContent = f.grader.toUpperCase();
       showGrade(f.gradeText, f.grade);
 
-      var clvWaiting = f.clvCents == null && TriumphDown.waitingForValue(f);
-      setSquare(dom.clv, f.clvCents != null ? money(f.clvCents) : (clvWaiting ? 'Getting value…' : 'No value'), f.clvCents != null, clvWaiting ? 'wait' : null);
+      var tv = triumphValue(f);
+      var clvWaiting = tv == null && TriumphDown.waitingForValue(f);
+      setSquare(dom.clv, tv != null ? money(tv) : (clvWaiting ? 'Getting value…' : 'No value'), tv != null, clvWaiting ? 'wait' : null);
       if (f.avgStatus === 'done') setSquare(dom.avg3, f.avg3Cents != null ? money(f.avg3Cents) : 'Not enough sales', f.avg3Cents != null);
       else setSquare(dom.avg3, f.avgStatus === 'pending' ? 'Getting average…' : 'Not available', false, f.avgStatus === 'pending' ? 'wait' : null);
       // A price that is only missing because its rate sheet is still on its way (a rule picked while that sheet was out) shows
@@ -8542,12 +8690,18 @@ window.SwipeRow = {
       }).map(function (c) {
         var meta = pileMeta[pileMetaKey(c.grader, c.certKey)] || {};
         var title = CardView.splitTitle(meta.card || (c.grader.toUpperCase() + ' ' + c.cert));
-        var valueText = c.price && typeof c.price.payoutCents === 'number'
-          ? money(c.price.payoutCents)
-          : (typeof c.marketValueCents === 'number' ? money(c.marketValueCents) : '-');
+        // What we pay, or "-" when there is no payout: the pill says why (Not buying, Needs average...), and the market value
+        // has its own line under it, so it is never shown twice.
+        var valueText = c.price && typeof c.price.payoutCents === 'number' && isFinite(c.price.payoutCents) ? money(c.price.payoutCents) : '-';
+        // The card's market value too, under what we pay (owner, 11/17): the value it is priced with (OfferRules.rowMarketCents:
+        // Triumph's, else Card Ladder's, else the average), so a card priced on Card Ladder or its average shows that number. A card
+        // saved before its facts were kept shows the value the pile holds. "-" only when there is no value, never a $0: a 0 or less
+        // is no market value (Triumph's failed lookup answers 0).
+        var mktCents = meta.facts ? OfferRules.rowMarketCents(meta.facts) : c.marketValueCents;
+        var marketText = typeof mktCents === 'number' && isFinite(mktCents) && mktCents > 0 ? money(mktCents) : '-';
         var key = pileMetaKey(c.grader, c.certKey);
         var g = gradeNum(meta.grade);
-        // A row: the grade in a circle, the card's name over its cert (and its pill), the amount on the right.
+        // A row: the grade in a circle, the card's name over its cert (and its pill), what we pay on the right with the card's market under it.
         // The red Delete sits behind the row and .sc-earlier-slide moves over it when the row is swiped left.
         return '<div class="sc-earlier-row">' +
           '<span class="sc-earlier-del" aria-hidden="true"><span>Delete</span></span>' +
@@ -8557,7 +8711,7 @@ window.SwipeRow = {
             '<span class="name"><span class="title">' + esc(title.name) + '</span>' +
               ' <span class="meta">' + (title.set ? '<span class="set"><span class="set-name">' + esc(title.setName) + '</span> ' + esc(title.number) + '</span>' : '') +
               '<span class="cert">' + esc(c.grader.toUpperCase()) + ' ' + esc(c.cert) + '</span></span>' + pillFor(c.price) + '</span>' +
-            '<span class="val">' + valueText + '</span>' +
+            '<span class="val"><span class="val-pay">' + valueText + '</span><span class="val-mkt">Mkt ' + marketText + '</span></span>' +
           '</button>' +
           '<button type="button" class="sc-earlier-remove" data-cert="' + esc(c.cert) + '" data-grader="' + esc(c.grader) + '" data-key="' + esc(key) + '" aria-label="Remove ' + esc(c.cert) + '">✕</button>' +
           '</div>' +
@@ -8822,6 +8976,7 @@ window.SwipeRow = {
               if (rs.ok) return lookupOnce(headersMs, true, scope);
               if (rs.noSignal) { var eSig = new Error(Signal.NO_SIGNAL_ERROR); eSig.noSignal = true; throw eSig; }
               session = null; saveSession(null);
+              if (panelShown) setPanel(false);
               var eOut = new Error('signed out'); eOut.signedOut = true; throw eOut;
             });
           });
@@ -9029,11 +9184,22 @@ window.SwipeRow = {
     // off"). When the Scanner opens signed in, the camera comes up by itself: the app's own camera, or in a phone's
     // browser the page's camera once the browser has already been allowed to use it (never a permission prompt out
     // of nowhere). Turned off (the off button, or Done in the app) it stays off for this visit until the camera
-    // button turns it back on. Signed out it waits: the sign-in form must not sit under a camera. ────────────
+    // button turns it back on. Signed out it waits: the sign-in form must not sit under a camera.
+    // App 1.10 (bridge version 4) is the exception (owner, 11/17: "already be on the camera page with the camera off"):
+    // there the Scanner shows the app's camera panel with the camera OFF and the app's own switch turns it on, so
+    // autoCamera() does nothing and the page never moves when the camera does (see setPanel). ────────────
     var cameraTurnedOff = false;
     var scannerActive = false; // this tab is the one on screen
     var cameraStarting = false;
     function turnCameraOn() {
+      // App 1.10 (camera panel): its own switch turns the camera on; this button is hidden there (CSS), but if it is
+      // ever reached it asks the panel for the camera, and never opens the old full camera.
+      if (bridge.cameraPanelSupported()) {
+        if (!session) { if (dom.email) dom.email.focus(); return; } // sign in first: never a camera over the form
+        if (!panelShown) showPanelIfReady();
+        if (panelShown) bridge.setCamera(true);
+        return;
+      }
       // Inside the app its own scanner replaces the browser camera; every barcode it reads
       // comes back through window.penguinScan -> handleScanned, the same path the camera uses.
       if (bridge.isAvailable()) {
@@ -9055,6 +9221,7 @@ window.SwipeRow = {
       } catch (e) { return Promise.resolve(false); }
     }
     function autoCamera() {
+      if (bridge.cameraPanelSupported()) return; // app 1.10: the camera starts OFF, its panel's switch turns it on
       if (!scannerActive || cameraTurnedOff || !session || nativeScannerOpen || cam || cameraStarting) return;
       if (bridge.isAvailable()) { turnCameraOn(); return; }
       if (!cameraSupported()) return;
@@ -9451,7 +9618,10 @@ window.SwipeRow = {
     function activate() {
       wireOnce();
       scannerActive = true;
-      autoCamera();
+      // App 1.10 signed out: a panel the app put back at launch (from memory) is sent away at once, so the sign-in form
+      // is never under it (the app does nothing if no panel is up).
+      if (bridge.cameraPanelSupported() && !session && !panelShown) bridge.hideScanner();
+      if (bridge.cameraPanelSupported()) showPanelIfReady(); else autoCamera();
       applyPageHiding();
       ensureSettings(true).then(function () { // the tab loads both sheets, whatever rule is picked
         repaintForSheets(); // our sheets are in: every card is priced against the one picked
@@ -9466,6 +9636,7 @@ window.SwipeRow = {
       document.body.classList.remove('sc-hiding'); // another tab of the dev view keeps its header
       resumed = false;
       if (nativeScannerOpen) { bridge.closeScanner(); setNativeCamera(false); }
+      if (panelShown) setPanel(false);
     }
 
     return { activate: activate, isBusy: isBusy, deactivate: deactivate };
