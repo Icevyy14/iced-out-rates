@@ -771,6 +771,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
     --i-info:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 16v-4'/%3E%3Cpath d='M12 8h.01'/%3E%3C/svg%3E");
     --i-barcode:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 5v14'/%3E%3Cpath d='M8 5v14'/%3E%3Cpath d='M12 5v14'/%3E%3Cpath d='M17 5v14'/%3E%3Cpath d='M21 5v14'/%3E%3C/svg%3E");
     --i-user-plus:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M19 8v6'/%3E%3Cpath d='M22 11h-6'/%3E%3C/svg%3E");
+    --i-user:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E");
     --i-chevron-up:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m18 15-6-6-6 6'/%3E%3C/svg%3E");
     --i-chevron-down:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     --i-keypad:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 8h.01M12 12h.01M14 8h.01M16 12h.01M18 8h.01M6 8h.01M7 16h10M8 12h.01'/%3E%3Crect width='20' height='16' x='2' y='4' rx='2'/%3E%3C/svg%3E");
@@ -824,7 +825,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-chip-no::before,#tab-scanner .sc-chip-hand::before,#tab-scanner .sc-chip-err::before,
   #tab-scanner .sc-chip-out::after,#tab-scanner .sc-recent-shill::before,#tab-scanner .sc-brand-gear::before,
   #tab-scanner .sc-tool-rates::before,#tab-scanner .sc-rates-reset::before,#tab-scanner #sc-edit-reset::before,
-  #tab-scanner .sc-flag-edit::before,#tab-scanner .sc-step::before{
+  #tab-scanner .sc-flag-edit::before,#tab-scanner .sc-step::before,#tab-scanner .sc-account-entry::before{
     content:"";flex:none;width:20px;height:20px;background:currentColor;
     -webkit-mask:var(--sc-i) center / contain no-repeat;mask:var(--sc-i) center / contain no-repeat;
   }
@@ -1399,6 +1400,22 @@ code{font-family:var(--font-mono);font-size:.92em;}
   /* App 1.10 (the camera panel): the app's own switch turns its camera on and off, so the page's camera row has
      nothing to do and is not shown. The layout never changes with the camera, only with the panel. */
   #tab-scanner .scanner-layout.sc-native-cam.sc-cam-panel .sc-vf-off{display:none;}
+  /* Account: Settings (Sign out, Delete my account) has to stay reachable while the wordmark row and its gear are
+     folded away, which in the app is whenever its camera or camera panel is up (always, on app 1.10+). A quiet
+     entry at the foot of the sheet, after the folded camera row: 44px to tap, the muted ink of the page's other
+     quiet words, the theme's own tokens. Everywhere else the gear is the way in, so it is not shown; it is staff
+     only, like the gear, so hide mode drops it. The 'down' peek drops it with everything else (one swipe up). */
+  #tab-scanner .sc-account-entry{display:none;}
+  #tab-scanner .scanner-layout.sc-native-cam .sc-account-entry{
+    --sc-i:var(--i-user);
+    order:6;align-self:center;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+    min-width:44px;min-height:44px;padding:0 16px 0 13px;border:0;border-radius:999px;background:none;cursor:pointer;
+    color:var(--sc-muted);font-size:var(--sc-fs-row);font-weight:700;line-height:1.2;white-space:nowrap;
+    -webkit-tap-highlight-color:transparent;transition:background-color 150ms ease-out, color 150ms ease-out, transform 160ms ease-out;
+  }
+  #tab-scanner .scanner-layout.sc-native-cam .sc-account-entry::before{width:18px;height:18px;}
+  #tab-scanner .scanner-layout.sc-native-cam .sc-account-entry:hover{color:var(--sc-ink);}
+  #tab-scanner .scanner-layout.sc-native-cam .sc-account-entry:active{transform:scale(.97);background:var(--sc-fill);color:var(--sc-ink);transition-duration:0s;}
   #tab-scanner .scanner-layout.sc-native-cam .sc-start-row{background:none;}
   #tab-scanner .scanner-layout.sc-native-cam .sc-start{
     background:var(--sc-fill);color:var(--sc-steel-ink);box-shadow:var(--sc-hi), var(--sc-ring);
@@ -2004,6 +2021,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
     #tab-scanner .sc-earlier-remove:hover:not(:active){color:var(--sc-faint);background:transparent;}
     #tab-scanner .sc-theme-opt:hover:not(:active){background:none;}
     html:has(#tab-scanner.tab.active) header.nav .nav-right .sc-brand-gear:hover:not(:active){color:var(--sc-page-muted);}
+    #tab-scanner .scanner-layout.sc-native-cam .sc-account-entry:hover:not(:active){color:var(--sc-muted);}
   }
 
   /* "Not buying" gets a no-entry mark so it reads at a glance, not as just another word on the tile. */
@@ -2019,7 +2037,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
 
   @media (prefers-reduced-motion:reduce){
     #tab-scanner .sc-btn:active,#tab-scanner .sc-start:active,#tab-scanner .sc-seg-btn:active,
-    #tab-scanner .sc-brand-gear:active,#tab-scanner .sc-theme-opt:active,
+    #tab-scanner .sc-brand-gear:active,#tab-scanner .sc-theme-opt:active,#tab-scanner .scanner-layout.sc-native-cam .sc-account-entry:active,
     html:has(#tab-scanner.tab.active) header.nav .nav-right .sc-brand-gear:active,
     #tab-scanner .sc-vf-round:active,#tab-scanner .sc-type-btn:active,#tab-scanner .sc-hide-btn:active{transform:none;}
     #tab-scanner .sc-settings[open],#tab-scanner .sc-settings[open]::backdrop{animation:none;}
@@ -2276,6 +2294,10 @@ code{font-family:var(--font-mono);font-size:.92em;}
       <div id="sc-earlier-list"></div>
     </div>
   </section>
+
+  <!-- Account: the same Settings sheet as the gear, for the app with its camera up, where the wordmark row and its
+       gear are folded away (shown only there, at the foot of the sheet: see .sc-account-entry in the CSS). -->
+  <button type="button" class="sc-account-entry sc-staff-only" id="sc-account-open" aria-haspopup="dialog" aria-controls="sc-settings">Account</button>
 
 </div>
 
@@ -7841,7 +7863,7 @@ const CODE_ERROR_TEXT                         = {
   'wrong-code': 'That username and setup code do not match. Check both and try again.',
   'expired': 'That code has expired. Ask us in Discord for a new one.',
   'used': 'That code was already used. Sign in with your username, or ask us in Discord for a new code.',
-  'locked': 'Too many wrong codes for this username. Ask us in Discord for a new code.',
+  'locked': 'Too many wrong codes for this username. Wait 15 minutes and try again, or ask us in Discord for a new code.',
   'paused': PAUSED_TITLE + ' ' + PAUSED_TEXT,
   'too-many': 'Too many tries. Wait 15 minutes and try again.',
   'bad-password': 'Choose a password of at least ' + PASSWORD_MIN + ' characters.',
@@ -7863,6 +7885,8 @@ const DELETE_ERROR_TEXT                         = {
   'wrong-password': 'That password is not right. Try again.',
   'signed-out': 'Sign in again, then delete your account.',
   'not-deletable': 'This login cannot be deleted in the app. Message us in Discord.',
+  // Only from a sourcer-accounts build before the soft delete (an account with Triumph records is now closed in the
+  // app, with the same success as any other): kept so a page published before that function still reads right.
   'in-use': 'This account has Triumph records, so it cannot be deleted in the app. Message us in Discord and we will delete it.',
   'too-many': 'Too many tries. Wait 15 minutes and try again.',
 };
@@ -11518,12 +11542,17 @@ window.PileRates = {
     // A row applies its theme at once (IOPTheme.set saves it on this device and paints it); Done, the backdrop or
     // Escape close the sheet. A <dialog> opened with showModal() sits above the dock and the site header and keeps
     // the page behind it untappable; a browser without showModal() just gets the sheet shown, Done still closes it.
+    // The app with its camera up folds the wordmark row away, gear included: there the Account entry at the foot of
+    // the sheet opens the same sheet, and window.IOPAccount.open() does it for an Account row of the app's own.
     var settingsUi = {
       open: document.getElementById('sc-settings-open'),
+      account: document.getElementById('sc-account-open'),
       sheet: document.getElementById('sc-settings'),
       done: document.getElementById('sc-settings-done'),
       list: document.getElementById('sc-theme-list')
     };
+    /** What opened the sheet (the gear or the Account entry), so closing it hands focus back there. */
+    var settingsOpener = null;
     function themeApi() { return window.IOPTheme && typeof window.IOPTheme.list === 'function' ? window.IOPTheme : null; }
     /** The little two-colour circle on a row: the theme's page colour and its accent ('Match phone': light and dark). */
     function swatchFor(id) {
@@ -11567,8 +11596,13 @@ window.PileRates = {
         rows[i].tabIndex = on ? 0 : -1;
       }
     }
-    function openSettings() {
-      if (!settingsUi.sheet || settingsOpen()) return;
+    /** Opens the sheet; true once it is open. `opener` gets the focus back on close. `toAccount` (the Account entry,
+     *  window.IOPAccount.open) scrolls the sheet to its end, where the Account section is (signed in), so Sign out and
+     *  Delete my account are on screen and not below the nine themes on a short phone. */
+    function openSettings(opener, toAccount) {
+      if (!settingsUi.sheet) return false;
+      if (settingsOpen()) return true;
+      settingsOpener = opener || null;
       try {
         if (typeof settingsUi.sheet.showModal === 'function') settingsUi.sheet.showModal();
         else settingsUi.sheet.setAttribute('open', '');
@@ -11577,6 +11611,8 @@ window.PileRates = {
       renderAccount();
       var checked = settingsUi.list && settingsUi.list.querySelector('.sc-theme-opt[aria-checked="true"]');
       if (checked) checked.focus();
+      if (toAccount && acct.section && !acct.section.hidden) settingsUi.sheet.scrollTop = settingsUi.sheet.scrollHeight;
+      return true;
     }
     function closeSettings() {
       if (!settingsUi.sheet || !settingsOpen()) return;
@@ -11585,7 +11621,9 @@ window.PileRates = {
         if (typeof settingsUi.sheet.close === 'function') settingsUi.sheet.close();
         else settingsUi.sheet.removeAttribute('open');
       } catch (e) { settingsUi.sheet.removeAttribute('open'); }
-      if (settingsUi.open && settingsUi.open.focus) settingsUi.open.focus();
+      var back = settingsOpener || settingsUi.open;
+      settingsOpener = null;
+      if (back && back.focus) back.focus();
     }
     /** The browser page (site header): the header must be exactly as tall with the gear as without it. If the gear made it taller (its
      *  width pushed the right side onto a row of its own), squeeze the right side (.sc-gear-squeeze: the status
@@ -11616,7 +11654,13 @@ window.PileRates = {
         var savedEl = document.getElementById('st-saved');
         if (savedEl && typeof MutationObserver === 'function') new MutationObserver(fitHeaderGear).observe(savedEl, { childList: true, characterData: true, subtree: true });
       }
-      settingsUi.open.addEventListener('click', openSettings);
+      settingsUi.open.addEventListener('click', function () { openSettings(settingsUi.open, false); });
+      if (settingsUi.account) settingsUi.account.addEventListener('click', function () { openSettings(settingsUi.account, true); });
+      // For the apps: an Account row of their own opens this same sheet (Sign out, Delete my account), the way the
+      // Account entry does: window.IOPAccount && window.IOPAccount.open(). Answers true once the sheet is open.
+      try {
+        window.IOPAccount = { open: function () { return openSettings(null, true); } };
+      } catch (e) { /* a frozen window: the page's own Account entry still works */ }
       if (settingsUi.done) settingsUi.done.addEventListener('click', closeSettings);
       // Escape: the dialog's own 'cancel'; and any key while it is open, for a browser with no showModal().
       settingsUi.sheet.addEventListener('cancel', function (ev) { ev.preventDefault(); closeSettings(); });
