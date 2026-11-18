@@ -914,7 +914,12 @@ code{font-family:var(--font-mono);font-size:.92em;}
     box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 6px 14px -8px rgba(0,0,0,.9);
     transition:filter 150ms ease-out, transform 150ms ease-out;
   }
-  #tab-scanner .sc-start::before{width:22px;height:22px;}
+  /* The icon is centred on the circle itself (Josh, 11/18: it sat high). The button's label text is still there for
+     screen readers at font-size 0, and as a grid item it took a second, empty row of the 48px grid, which pushed a
+     grid-placed icon 6.5px up. Taken out of the grid, the icon is dead centre whatever the label says. */
+  #tab-scanner .sc-start::before{position:absolute;inset:0;margin:auto;width:22px;height:22px;}
+  /* While an app before the camera panel (1.9 and older) has its camera open, the same button turns it off. */
+  #tab-scanner .sc-start.sc-start-off{--sc-i:var(--i-camera-off);}
   #tab-scanner .sc-start:hover{filter:brightness(1.08);}
   #tab-scanner .sc-start:active{transform:scale(.98);}
   #tab-scanner .sc-start:disabled{background:var(--sc-fill);color:var(--sc-muted);cursor:default;transform:none;filter:none;box-shadow:none;}
@@ -1373,7 +1378,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   /* ── Inside the Android app with its camera open: the page is the sheet under the camera ──────────────
      The app draws the sheet's rounded edge and its handle over the top 22px, so the page starts below it.
      Order on the sheet: the scoreboard (the same top at every stop), the card, the pile, the rate choice,
-     and last the camera frame folded down to a Reopen camera button; the dock pins Normal / Lower, Hide and
+     and last the camera frame folded down to a Turn camera off button; the dock pins Normal / Lower, Hide and
      the cert box under all of it. With no stop class (app 1.3, or 1.4 before it names one) this IS the
      'mid' arrangement. */
   html:has(#tab-scanner.tab.active) body:has(.sc-native-cam){
@@ -1395,9 +1400,10 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .scanner-layout.sc-native-cam.sc-seller-mode .sc-seller{order:-3;}
   #tab-scanner .scanner-layout.sc-native-cam .sc-result-name{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
   /* The app's camera is open ABOVE this page: the page's own frame has nothing left to show, so it folds
-     down to a slim Reopen camera button at the end of the sheet. The button stays because the app can drop
-     the open message, and with the whole frame gone there would be no way back; pressing it while the camera
-     is up does nothing (the app ignores a second open). In app 1.10 (.sc-cam-panel, the camera panel with its own
+     down to a slim camera button at the end of the sheet that turns the app's camera off (closeScanner; Josh, 11/18:
+     as "Reopen camera" it asked for a camera already open, the app ignored it, and the tap did nothing). If the app
+     dropped the open message, that tap just puts the page back with its Turn camera on button, so there is always a
+     way back. In app 1.10 (.sc-cam-panel, the camera panel with its own
      switch) this row is not shown at all: see the rule below. */
   #tab-scanner .scanner-layout.sc-native-cam .sc-vf-wrap{order:5;min-height:0;overflow:visible;border-radius:0;background:none;box-shadow:none;}
   #tab-scanner .scanner-layout.sc-native-cam .sc-vf-off{min-height:0;padding:0;background:none;}
@@ -9215,8 +9221,7 @@ window.PileRates = {
     // bridge.openScanner() only says the message was posted to the app, and the app gives no "opened"
     // answer. Nothing on the page can tell a dropped message from an open camera either: the page is a
     // sheet UNDER the camera in the same window, so it never loses focus or visibility. So the frame never
-    // folds away entirely: it keeps its Start button (as "Reopen camera", see .sc-native-cam in the CSS),
-    // and pressing it again is harmless because the app ignores a second open.
+    // folds away entirely: it keeps its camera button, which then turns the app's camera off (see renderCamButton).
     // The idle hint under the Start button. The markup's own words (VF_OFF_PROMPT) are true where a tap is what reads a
     // barcode: a phone's browser camera, and an app older than bridge version 2. From version 2 the app's own camera reads a
     // barcode by itself when one is in the middle of the frame (a tap is only the override), so "Nothing is read until you
@@ -9227,6 +9232,44 @@ window.PileRates = {
     function idlePrompt() { return bridge.isAvailable() && bridge.sheetsSupported() ? VF_OFF_APP_PROMPT : VF_OFF_PROMPT; }
     dom.vfOffText.textContent = idlePrompt();
     var START_LABEL = dom.start.textContent;
+    // The camera button (#sc-start) says what a tap does, and a tap does it (Josh, 11/18: in app 1.9 it said "Reopen
+    // camera" under a camera that was already open, the app ignored the second open, and the tap did nothing). Where a
+    // tap could do nothing at all it is hidden, never left on screen dead, and the row says why.
+    //  - a phone's browser: Turn camera on (the open camera has its own off button in its top row);
+    //  - an app before the camera panel (bridge version 1-3, Android 1.9 and older): Turn camera on (openScanner), and
+    //    while that camera is open, Turn camera off (closeScanner: the app closes it without a word back, so the page
+    //    folds back by itself, exactly as Done does);
+    //  - app 1.10 and up (bridge version 4) signed in: the panel's own switch is the control, so the row is hidden (CSS);
+    //    if the button is ever reached it asks the panel for its camera (setCamera, see turnCameraOn);
+    //  - app 1.10 and up signed out: no camera before signing in, so no button;
+    //  - no camera and no app: no button.
+    var CAM_OFF_LABEL = 'Turn camera off';
+    var CAM_SIGN_IN_FIRST = 'Sign in to turn the camera on.';
+    var CAM_NONE = 'No camera on this device or browser. Type or paste the cert below instead.';
+    /** What a tap on the camera button does now: 'on', 'off', or null when there is nothing it could do. */
+    function camButtonAction() {
+      if (bridge.cameraPanelSupported()) return session ? 'on' : null;
+      if (bridge.isAvailable()) return nativeScannerOpen ? 'off' : 'on';
+      return cameraSupported() ? 'on' : null;
+    }
+    function renderCamButton() {
+      var action = camButtonAction();
+      var label = action === 'off' ? CAM_OFF_LABEL : START_LABEL;
+      dom.start.hidden = !action;
+      dom.start.classList.toggle('sc-start-off', action === 'off');
+      dom.start.textContent = label;
+      dom.start.setAttribute('aria-label', label);
+      dom.start.title = label;
+      var shown = dom.vfOffText.textContent;
+      if (!action) dom.vfOffText.textContent = bridge.isAvailable() ? CAM_SIGN_IN_FIRST : CAM_NONE;
+      else if (shown === CAM_SIGN_IN_FIRST || shown === CAM_NONE) dom.vfOffText.textContent = idlePrompt();
+    }
+    /** The camera button while an app before the panel has its camera open: Done's job, from the page. */
+    function turnNativeCameraOff() {
+      cameraTurnedOff = true; // off stays off for this visit, as after Done
+      bridge.closeScanner();
+      setNativeCamera(false);
+    }
 
     // ── the app's sheet stops (app 1.4: penguinNative.version >= 2, see scanner/nativeBridge.js). While its
     // camera is open the app's sheet rests at 'down' (a peek: the scoreboard and one way up), 'mid' (the card
@@ -9272,16 +9315,13 @@ window.PileRates = {
     function setNativeCamera(open) {
       nativeScannerOpen = !!open;
       dom.layout.classList.toggle('sc-native-cam', nativeScannerOpen);
-      if (bridge.isAvailable()) {
-        dom.start.textContent = nativeScannerOpen ? 'Reopen camera' : START_LABEL;
-        dom.start.setAttribute('aria-label', dom.start.textContent);
-      }
       if (!nativeScannerOpen) {
         dom.vfOffText.textContent = idlePrompt();
         sheetStop = null; // the camera closed: so did its sheet
         setTypeOpen(false);
         setCardOpen(false);
       } else if (dom.certInput.value) setTypeOpen(true); // typed before the camera opened: the box stays in view
+      renderCamButton(); // open: Turn camera off; closed: Turn camera on
       applySheet();
     }
     // Done (or back) in the app is the person turning the camera off: it stays off until they turn it back on.
@@ -9775,6 +9815,7 @@ window.PileRates = {
     function renderAuthState() {
       dom.signin.hidden = !!session;
       if (!session && panelShown) setPanel(false); // signed out: the sign-in form is never under the camera panel
+      renderCamButton(); // app 1.10+: no camera button until signed in
     }
 
     // ── rate bands: the same public GET the rates editor reads, then the bot's own priceSlab ──────
@@ -11705,7 +11746,7 @@ window.PileRates = {
 
     function startCamera() {
       if (!cameraSupported()) {
-        dom.vfOffText.textContent = 'No camera on this device or browser. Type or paste the cert below instead.';
+        dom.vfOffText.textContent = CAM_NONE;
         return Promise.reject(new Error('unsupported'));
       }
       // Shown (not hidden) before the camera actually opens, so the box has real on-screen
@@ -11930,6 +11971,7 @@ window.PileRates = {
         // it will ever let an AudioContext leave "suspended" - prime it here so the very first beep
         // isn't silently swallowed (see feedback.js's header and FeedbackAudio above).
         feedback.unlock();
+        if (camButtonAction() === 'off') { turnNativeCameraOff(); return; } // an app before the panel, its camera open
         cameraTurnedOff = false;
         turnCameraOn();
       });
@@ -11942,7 +11984,7 @@ window.PileRates = {
       });
       // The camera now starts with no tap, so the first touch anywhere primes the beep instead (cheap, idempotent).
       document.addEventListener('pointerdown', function () { feedback.unlock(); }, { capture: true, passive: true });
-      if (!cameraSupported() && !bridge.isAvailable()) { dom.start.textContent = 'Camera not available here'; dom.start.disabled = true; }
+      renderCamButton(); // no camera and no app: no button, the row says so (never a dead "Camera not available here")
       function renderSoundButton() {
         var on = feedback.isSoundOn();
         // The speaker icon follows aria-pressed in the panel's CSS (on: sound waves, off: crossed out).
