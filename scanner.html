@@ -778,6 +778,10 @@ code{font-family:var(--font-mono);font-size:.92em;}
     --i-pencil:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z'/%3E%3Cpath d='m15 5 4 4'/%3E%3C/svg%3E");
     --i-check:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
     --i-ban:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m4.9 4.9 14.2 14.2'/%3E%3C/svg%3E");
+    --i-sliders:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='21' x2='14' y1='4' y2='4'/%3E%3Cline x1='10' x2='3' y1='4' y2='4'/%3E%3Cline x1='21' x2='12' y1='12' y2='12'/%3E%3Cline x1='8' x2='3' y1='12' y2='12'/%3E%3Cline x1='21' x2='16' y1='20' y2='20'/%3E%3Cline x1='12' x2='3' y1='20' y2='20'/%3E%3Cline x1='14' x2='14' y1='2' y2='6'/%3E%3Cline x1='8' x2='8' y1='10' y2='14'/%3E%3Cline x1='16' x2='16' y1='18' y2='22'/%3E%3C/svg%3E");
+    --i-minus:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E");
+    --i-plus:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14'/%3E%3Cpath d='M12 5v14'/%3E%3C/svg%3E");
+    --i-rotate:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8'/%3E%3Cpath d='M3 3v5h5'/%3E%3C/svg%3E");
 
     font-family:var(--sc-font);font-weight:500;color:var(--sc-ink);
     -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;caret-color:var(--sc-steel-ink);
@@ -818,7 +822,9 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-row-grade.sc-unk::before,#tab-scanner #sc-cert-go::after,#tab-scanner #sc-clear::before,
   #tab-scanner .sc-pile-unknown::before,#tab-scanner .sc-sheet-cue::before,#tab-scanner .sc-result-open::after,
   #tab-scanner .sc-chip-no::before,#tab-scanner .sc-chip-hand::before,#tab-scanner .sc-chip-err::before,
-  #tab-scanner .sc-chip-out::after,#tab-scanner .sc-recent-shill::before,#tab-scanner .sc-brand-gear::before{
+  #tab-scanner .sc-chip-out::after,#tab-scanner .sc-recent-shill::before,#tab-scanner .sc-brand-gear::before,
+  #tab-scanner .sc-tool-rates::before,#tab-scanner .sc-rates-reset::before,#tab-scanner #sc-edit-reset::before,
+  #tab-scanner .sc-flag-edit::before,#tab-scanner .sc-step::before{
     content:"";flex:none;width:20px;height:20px;background:currentColor;
     -webkit-mask:var(--sc-i) center / contain no-repeat;mask:var(--sc-i) center / contain no-repeat;
   }
@@ -969,7 +975,9 @@ code{font-family:var(--font-mono);font-size:.92em;}
     font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
   }
   #tab-scanner .sc-tile-visit .sc-total-val.sc-blank{color:var(--sc-muted);}
-  #tab-scanner .sc-tile-visit .sc-pile-sub{margin-top:3px;font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);}
+  /* One line at every stop, cut with an ellipsis: the tile is ~131px wide on a 360px phone, and a sub-line that wraps grows
+     the whole scoreboard (the top of the sheet at every stop), pushing the card under the dock at 'mid'. */
+  #tab-scanner .sc-tile-visit .sc-pile-sub{margin-top:3px;font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   #tab-scanner .sc-tile-visit .sc-pile-sub:empty{display:none;}
 
   /* The Android app's peek ('down') has one way up; nowhere else shows it. */
@@ -1240,8 +1248,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-earlier-row.sc-swiping .sc-earlier-del{transition:none;}
   #tab-scanner .sc-earlier-row + .sc-earlier-row::before{content:"";position:absolute;top:0;left:66px;right:0;height:1px;background:var(--sc-line);}
   #tab-scanner .sc-earlier-main{
-    flex:1 1 auto;min-width:0;display:grid;grid-template-columns:40px minmax(0,1fr) auto;column-gap:12px;align-items:start;
-    padding:9px 2px 9px 14px;border:0;border-radius:16px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;
+    flex:1 1 auto;min-width:0;display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:12px;align-items:start;
+    padding:9px 0 9px 14px;border:0;border-radius:16px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;
     -webkit-tap-highlight-color:transparent;
   }
   #tab-scanner .sc-earlier-main:active .title{color:var(--sc-steel-ink);}
@@ -1628,6 +1636,105 @@ code{font-family:var(--font-mono);font-size:.92em;}
   }
   #tab-scanner .sc-theme-opt[aria-checked="true"]::after{visibility:visible;}
 
+  /* ── The pile's own rates (owner, 11/17): the Rates and +2% buttons over the pile, the flags under its count, a figure
+     typed by hand on a row, and two sheets built on the Settings sheet above (Rates for this pile, Edit card), plus a
+     sourcer's My cut inside Settings. Colour keeps the key the page already reads: the accent gradient for what is
+     switched on (+2%, like a chosen segment), teal with the pencil for anything a person typed (the hand-priced chip's
+     teal), muted for the weekend numbers underneath. Tokens only, so every theme re-colours all of it. ── */
+  #tab-scanner .sc-pile-flags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  #tab-scanner .sc-pile-flags[hidden]{display:none;}
+  #tab-scanner .sc-flag{
+    display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:999px;
+    font-size:var(--sc-fs-label);font-weight:700;line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums;
+  }
+  #tab-scanner .sc-flag-on{background:var(--sc-wait-tint);color:var(--sc-steel-ink);}
+  #tab-scanner .sc-flag-edit{--sc-i:var(--i-pencil);padding-left:7px;background:var(--sc-teal-tint);color:var(--sc-teal-chip);}
+  #tab-scanner .sc-flag-edit::before{width:13px;height:13px;}
+  #tab-scanner .sc-flag-cut{background:var(--sc-grey-tint);color:var(--sc-muted);}
+  #tab-scanner .sc-total + .sc-total{margin-top:4px;}
+  #tab-scanner .sc-pile-tools{display:flex;gap:8px;padding:10px 14px;border-bottom:1px solid var(--sc-line);}
+  #tab-scanner .sc-pile-tools .sc-btn{flex:1 1 0;min-width:0;}
+  #tab-scanner .sc-tool-rates{--sc-i:var(--i-sliders);color:var(--sc-steel-ink);}
+  #tab-scanner .sc-tool-rates::before{width:17px;height:17px;}
+  #tab-scanner .sc-tool-plus{font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-btn.sc-tool-plus[aria-pressed="true"]{
+    background:linear-gradient(180deg, var(--sc-blue-top), var(--sc-blue-bot));color:var(--sc-on-accent);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 1px 2px rgba(0,0,0,.45), 0 6px 14px -6px var(--sc-accent-glow);
+  }
+  /* A row's numbers: tap them to type a Market or Pay for that card. 44px to tap, the same press look as the name. */
+  #tab-scanner .sc-earlier-val{
+    flex:none;display:flex;align-items:flex-start;justify-content:flex-end;min-width:44px;min-height:44px;margin:0;padding:9px 4px 9px 8px;
+    border:0;border-radius:14px;background:none;color:inherit;font:inherit;text-align:right;cursor:pointer;
+    -webkit-tap-highlight-color:transparent;transition:background-color 150ms ease-out;
+  }
+  #tab-scanner .sc-earlier-val:active{background:var(--sc-fill-card-bg);transition-duration:0s;}
+  #tab-scanner .sc-earlier-row.sc-swiping .sc-earlier-val:active{background:none;}
+  #tab-scanner .sc-earlier-row .val-we{font-size:var(--sc-fs-label);font-weight:700;line-height:1.3;color:var(--sc-ink);}
+  #tab-scanner .sc-earlier-row .sc-edited{display:inline-flex;align-items:center;gap:4px;color:var(--sc-teal-chip);}
+  #tab-scanner .sc-earlier-row .sc-edited::before{
+    content:"";flex:none;width:12px;height:12px;background:currentColor;
+    -webkit-mask:var(--i-pencil) center / contain no-repeat;mask:var(--i-pencil) center / contain no-repeat;
+  }
+  /* The two sheets: the Settings sheet's box and head, their own insides. */
+  #tab-scanner .sc-sheet-note{margin:2px 4px 12px;font-size:var(--sc-fs-row);line-height:1.45;color:var(--sc-muted);}
+  #tab-scanner .sc-rates-plus{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;padding:10px 10px 10px 14px;
+    border-radius:var(--sc-r-tile);background:var(--sc-card-bg);box-shadow:var(--sc-sh-card);
+  }
+  #tab-scanner .sc-rates-plus-title{font-size:var(--sc-fs-row);font-weight:700;line-height:1.3;color:var(--sc-ink);}
+  #tab-scanner .sc-rates-plus-sub{margin-top:2px;font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);}
+  #tab-scanner .sc-rates-plus .sc-btn{flex:none;min-width:76px;background:var(--sc-fill-card-bg);}
+  #tab-scanner .sc-band-list{display:flex;flex-direction:column;padding:4px 0;border-radius:var(--sc-r-tile);background:var(--sc-card-bg);box-shadow:var(--sc-sh-card);}
+  #tab-scanner .sc-band{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:12px;padding:10px 10px 10px 14px;}
+  #tab-scanner .sc-band + .sc-band{box-shadow:inset 0 1px 0 var(--sc-line);}
+  #tab-scanner .sc-band-words{min-width:0;}
+  #tab-scanner .sc-band-name{font-size:var(--sc-fs-row);font-weight:700;line-height:1.3;color:var(--sc-ink);overflow-wrap:anywhere;}
+  #tab-scanner .sc-band-meta{margin-top:3px;font-size:var(--sc-fs-label);line-height:1.4;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-band-cards{font-weight:700;color:var(--sc-steel-ink);}
+  #tab-scanner .sc-band-edited{font-weight:700;color:var(--sc-teal-chip);}
+  #tab-scanner .sc-band-pct{position:relative;display:block;width:88px;}
+  #tab-scanner .sc-band-pct .sc-input{height:44px;padding:0 30px 0 10px;text-align:right;font-weight:800;font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-band-pct::after{content:"%";position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:var(--sc-fs-row);font-weight:700;color:var(--sc-muted);pointer-events:none;}
+  #tab-scanner .sc-band.sc-band-on .sc-input{box-shadow:inset 0 0 0 1.5px var(--sc-teal-chip);}
+  #tab-scanner .sc-band .sc-input:focus{box-shadow:inset 0 0 0 1px var(--sc-steel-ink), 0 0 0 3px var(--sc-focus-soft);}
+  /* After :focus, and with it: a percent that does not read keeps its red ring while the finger is still in the field. */
+  #tab-scanner .sc-band .sc-input[aria-invalid="true"]{box-shadow:inset 0 0 0 1.5px var(--sc-err-ink);}
+  #tab-scanner .sc-band .sc-input[aria-invalid="true"]:focus{box-shadow:inset 0 0 0 1.5px var(--sc-err-ink), 0 0 0 3px var(--sc-focus-soft);}
+  /* ...and in words, under the whole band row (the red alone says nothing to a screen reader or at a glance). */
+  #tab-scanner .sc-band-err{grid-column:1 / -1;margin-top:6px;font-size:var(--sc-fs-label);font-weight:700;line-height:1.45;color:var(--sc-err-ink);}
+  #tab-scanner .sc-band-err[hidden]{display:none;}
+  #tab-scanner .sc-rates-empty{padding:12px 14px;font-size:var(--sc-fs-row);line-height:1.45;color:var(--sc-muted);}
+  #tab-scanner .sc-rates-reset{--sc-i:var(--i-rotate);margin-top:12px;color:var(--sc-steel-ink);}
+  #tab-scanner .sc-rates-reset::before,#tab-scanner #sc-edit-reset::before{width:17px;height:17px;}
+  #tab-scanner .sc-edit-card{margin:2px 4px 14px;}
+  #tab-scanner .sc-edit-name{font-size:var(--sc-fs-body);font-weight:800;line-height:1.3;color:var(--sc-ink);overflow-wrap:anywhere;}
+  #tab-scanner .sc-edit-cert{margin-top:3px;font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-edit-fields{display:flex;flex-direction:column;gap:6px;padding:14px;border-radius:var(--sc-r-tile);background:var(--sc-card-bg);box-shadow:var(--sc-sh-card);}
+  #tab-scanner .sc-money-input{font-weight:800;font-variant-numeric:tabular-nums;}
+  /* An empty field's figure is what it will follow (the comp, the rate): lighter than a typed one, so the two never look alike. */
+  #tab-scanner .sc-money-input::placeholder{font-weight:500;}
+  #tab-scanner .sc-edit-hint{margin:0 4px 8px;font-size:var(--sc-fs-label);line-height:1.4;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-edit-hint.sc-edited{font-weight:700;color:var(--sc-teal-chip);}
+  #tab-scanner .sc-edit-we{padding:10px 12px;border-radius:14px;background:var(--sc-fill-card-bg);font-size:var(--sc-fs-label);font-weight:700;line-height:1.4;color:var(--sc-ink);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-edit-err{font-size:var(--sc-fs-label);font-weight:700;line-height:1.45;color:var(--sc-err-ink);}
+  #tab-scanner .sc-edit-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;}
+  #tab-scanner .sc-edit-btns .sc-btn{min-height:48px;}
+  #tab-scanner #sc-edit-reset{--sc-i:var(--i-rotate);color:var(--sc-steel-ink);}
+  #tab-scanner .sc-cut{padding:14px;border-radius:var(--sc-r-tile);background:var(--sc-card-bg);box-shadow:var(--sc-sh-card);}
+  #tab-scanner .sc-cut-text{margin:0 0 12px;font-size:var(--sc-fs-row);line-height:1.45;color:var(--sc-muted);}
+  #tab-scanner .sc-stepper{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px;border-radius:999px;background:var(--sc-fill-card-bg);}
+  #tab-scanner .sc-step{
+    flex:none;display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;border-radius:50%;cursor:pointer;
+    background:var(--sc-fill);color:var(--sc-ink);box-shadow:var(--sc-hi), var(--sc-ring);-webkit-tap-highlight-color:transparent;
+  }
+  #tab-scanner .sc-step:disabled{opacity:.45;cursor:default;}
+  #tab-scanner .sc-step::before{width:18px;height:18px;}
+  #tab-scanner .sc-step-down{--sc-i:var(--i-minus);}
+  #tab-scanner .sc-step-up{--sc-i:var(--i-plus);}
+  #tab-scanner .sc-step-val{font-size:var(--sc-fs-num);font-weight:800;line-height:1.2;color:var(--sc-ink);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-cut-status{margin-top:8px;font-size:var(--sc-fs-label);line-height:1.4;color:var(--sc-muted);}
+  #tab-scanner .sc-cut-status:empty{display:none;}
+
   /* ── The themes (scanner/theme.js has the list; the choice sits on <html data-iop-theme>, set in the page head
      before the first paint). Each block only re-colours: it sets the same tokens the rules above already use,
      on <html> (the page around the scanner) and on #tab-scanner (an id and an attribute: it beats the defaults
@@ -1996,7 +2103,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
        of the sheet at every stop. -->
   <section class="sc-score sc-staff-only" id="sc-score">
     <div class="sc-tile sc-tile-pay">
-      <div class="sc-tile-top"><div class="sc-key sc-key-pay">We pay</div><span class="sc-conf" id="sc-conf" role="img" hidden></span></div>
+      <div class="sc-tile-top"><div id="sc-pay-key" class="sc-key sc-key-pay">We pay</div><span class="sc-conf" id="sc-conf" role="img" hidden></span></div>
       <div class="sc-pay-val" id="sc-pay">-</div>
       <div class="sc-math" id="sc-rule-math"></div>
     </div>
@@ -2129,6 +2236,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
       <div>
         <h2 class="sc-h">This visit</h2>
         <div class="sc-pile-count" id="sc-pile-count">0 cards</div>
+        <div class="sc-pile-flags" id="sc-pile-flags" hidden></div>
       </div>
       <button type="button" class="sc-btn sc-btn-quiet" id="sc-clear">New seller</button>
     </div>
@@ -2140,6 +2248,21 @@ code{font-family:var(--font-mono);font-size:.92em;}
           <div class="sc-total-val" id="sc-pile-market">-</div>
           <div class="sc-pile-unknown" id="sc-pile-unknown" hidden></div>
         </div>
+        <!-- A sourcer's pile: what they offer the seller, and what we pay them (the weekend rates, never their edits). -->
+        <div class="sc-total" id="sc-pile-offer-row" hidden>
+          <div class="sc-key">Your offer</div>
+          <div class="sc-total-val" id="sc-pile-offer">-</div>
+        </div>
+        <div class="sc-total" id="sc-pile-we-row" hidden>
+          <div class="sc-key">We pay</div>
+          <div class="sc-total-val" id="sc-pile-we">-</div>
+        </div>
+      </div>
+
+      <!-- The pile's own rates: the Rates sheet, and two points more on every band. For this pile only. -->
+      <div class="sc-pile-tools" id="sc-pile-tools">
+        <button type="button" class="sc-btn sc-btn-quiet sc-tool-rates" id="sc-rates-open" aria-haspopup="dialog" aria-controls="sc-rates">Rates</button>
+        <button type="button" class="sc-btn sc-btn-quiet sc-tool-plus" id="sc-plus2" aria-pressed="false" title="Pay 2 points more on every band">+2%</button>
       </div>
 
       <div class="sc-clear-confirm" id="sc-clear-confirm" role="alert" hidden>
@@ -2165,6 +2288,19 @@ code{font-family:var(--font-mono);font-size:.92em;}
     <h2 class="sc-settings-title" id="sc-settings-title">Settings</h2>
     <button type="button" class="sc-btn sc-btn-quiet" id="sc-settings-done">Done</button>
   </div>
+  <!-- A sourcer's cut (never shown to an owner): points under our rate they offer sellers, saved to their login. -->
+  <section class="sc-settings-section" id="sc-cut-section" aria-labelledby="sc-cut-title" hidden>
+    <h3 class="sc-settings-section-title" id="sc-cut-title">My cut</h3>
+    <div class="sc-cut">
+      <p class="sc-cut-text">Points under our rate that you offer sellers. What we pay you stays on the weekend rates.</p>
+      <div class="sc-stepper" role="group" aria-labelledby="sc-cut-title">
+        <button type="button" class="sc-step sc-step-down" id="sc-cut-down" aria-label="One point less"></button>
+        <output class="sc-step-val" id="sc-cut-val" aria-live="polite">0 points</output>
+        <button type="button" class="sc-step sc-step-up" id="sc-cut-up" aria-label="One point more"></button>
+      </div>
+      <div class="sc-cut-status" id="sc-cut-status" role="status"></div>
+    </div>
+  </section>
   <section class="sc-settings-section" aria-labelledby="sc-theme-title">
     <h3 class="sc-settings-section-title" id="sc-theme-title">Theme</h3>
     <div class="sc-theme-list" id="sc-theme-list" role="radiogroup" aria-labelledby="sc-theme-title"></div>
@@ -2186,6 +2322,50 @@ code{font-family:var(--font-mono);font-size:.92em;}
       </div>
     </div>
   </section>
+</dialog>
+
+<!-- Rates for this pile (the Rates button over the pile): every band of the sheet the pile is priced on, each one's percent
+     editable for THIS pile only, +2%, and Set default (back to the weekend rates). The script fills the list. -->
+<dialog class="sc-settings sc-rates" id="sc-rates" aria-labelledby="sc-rates-title">
+  <div class="sc-settings-head">
+    <h2 class="sc-settings-title" id="sc-rates-title">Rates for this pile</h2>
+    <button type="button" class="sc-btn sc-btn-quiet" id="sc-rates-done">Done</button>
+  </div>
+  <p class="sc-sheet-note" id="sc-rates-note">For this pile only. The weekend rates stay as they are.</p>
+  <div class="sc-rates-plus">
+    <div>
+      <div class="sc-rates-plus-title">Two points more on every band</div>
+      <div class="sc-rates-plus-sub">90% of market becomes 92%</div>
+    </div>
+    <button type="button" class="sc-btn sc-btn-quiet sc-tool-plus" id="sc-rates-plus2" aria-pressed="false">+2%</button>
+  </div>
+  <div class="sc-band-list" id="sc-rates-list"></div>
+  <button type="button" class="sc-btn sc-btn-quiet sc-btn-block sc-rates-reset" id="sc-rates-reset">Set default</button>
+</dialog>
+
+<!-- Edit card (tap a pile row's numbers): a Market and a Pay for that one card, typed by hand. A blank field follows the
+     comp; Reset card drops both. -->
+<dialog class="sc-settings sc-edit" id="sc-edit" aria-labelledby="sc-edit-title">
+  <div class="sc-settings-head">
+    <h2 class="sc-settings-title" id="sc-edit-title">Edit card</h2>
+    <button type="button" class="sc-btn sc-btn-quiet" id="sc-edit-cancel">Cancel</button>
+  </div>
+  <div class="sc-edit-card">
+    <div class="sc-edit-name" id="sc-edit-name"></div>
+    <div class="sc-edit-cert" id="sc-edit-cert"></div>
+  </div>
+  <div class="sc-edit-fields">
+    <label class="sc-field"><span class="sc-label">Market</span><input class="sc-input sc-money-input" id="sc-edit-market" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="next"></label>
+    <div class="sc-edit-hint" id="sc-edit-market-hint"></div>
+    <label class="sc-field"><span class="sc-label" id="sc-edit-pay-label">Pay</span><input class="sc-input sc-money-input" id="sc-edit-pay" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done"></label>
+    <div class="sc-edit-hint" id="sc-edit-pay-hint"></div>
+    <div class="sc-edit-we" id="sc-edit-we" hidden></div>
+    <div class="sc-edit-err" id="sc-edit-err" role="alert" hidden></div>
+  </div>
+  <div class="sc-edit-btns">
+    <button type="button" class="sc-btn sc-btn-quiet" id="sc-edit-reset">Reset card</button>
+    <button type="button" class="sc-btn sc-btn-primary" id="sc-edit-save">Save</button>
+  </div>
 </dialog>
 </div>
 
@@ -7751,6 +7931,596 @@ window.ScanAccount = {
   jwtSubject: jwtSubject,
 };
 })();
+
+(function () {
+'use strict';
+// The pile's OWN rates (owner, 11/17): what one seller's pile at the table is priced on, on top of the
+// weekend rates the server sends (the Scanner sheet, slab-rates GET /scanner, or the consignor sheet while
+// none is saved; see offerRules.js normalSheet). Nothing here ever writes a rate sheet: every change below
+// lives with THIS pile only (the page keeps it next to the pile in localStorage) and "Set default" puts
+// the pile back on the weekend rates.
+//
+//   - a band's percent, edited for this pile             adjust.bands[bandKey] = 93   (the weekend sheet still decides
+//       which band takes a card: an edit changes that band's percent, never which cards are on it)
+//   - "+2%": every band two POINTS higher (90% -> 92%)   adjust.plus2 = true      (stacks with band edits)
+//   - a card's Market and/or Pay typed by hand          adjust.overrides[pileKey] = { marketCents, payCents }
+//       Market re-derives Pay at the card's own pile rate (market x pct); Pay pins the figure as typed and
+//       makes even a "Not buying" card count.
+//   - a sourcer's cut: "My cut", 0 to 20 points under the pile's rate, saved to that user's Supabase Auth
+//       user_metadata (CUT_KEY), with this phone's copy { uid, cut, synced, savedAt } (cutRecord). A copy not saved to
+//       the login yet (synced false) is the cut until it is (cutFor), and the page keeps trying to save it. Owners never
+//       have one.
+//   - whose: the adjust belongs to the user who was signed in when it was made (the pile keeps their id, adjustOwner);
+//       another login on the same phone starts from the weekend rates, and a phone signed out keeps the last user's role
+//       (viewerFor), never the owner's by default.
+//
+// WHO IS AN OWNER is the server's answer: slab-rates GET /scanner says viewer.role 'owner' for Josh's login (the Auth
+// user rates-portal/access.ts OWNER_USER_ID names) and for any login linked to Josh's or Penguin's Discord (a sourcers
+// row whose discord_id is an owner's: Penguin's own login, or a username login of Josh's from /sourcer add or
+// /admin/link), and 'sourcer' for every other active sourcer. The page keeps that answer per login (roleRecord), so a
+// reload or a signed-out phone keeps it. Until a login's answer is in (its first read of the sheet, or a slab-rates
+// that does not say yet), Josh's login (OWNER_USER_IDS) is the owner and any other login reads as a sourcer.
+//
+// WHO SEES WHAT. An owner sees today's layout: the pile's rates and overrides ARE his pay figure. A sourcer:
+// the big number is their OFFER to the seller (the pile's rates minus their cut, with their overrides), and
+// "We pay" is ALWAYS what we pay them: the comped market at the weekend rates (rule Normal, market Normal),
+// priced from the untouched sheet, so no edit, +2%, cut or override of theirs can ever reach it
+// (priceCard below: `we` is priced from the untouched `ctx`; the pile's rates only ever re-percent a COPY of the
+// weekend price, repct, and a typed figure lives in the overrides, never in a price).
+//
+// Money is integer cents throughout. Every pay figure is money.pctOf (round half up once, per card), the
+// same one rounding rules.js priceSlab does; totals only add those integers. Percent arithmetic is kept to
+// two decimals (round2) so 90.1 + 2 is 92.1, not 92.09999999999999.
+//
+// Pure, like every scanner/ sibling (embedded whole into the page by rates-portal/build-portal.js as
+// window.PileRates): no DOM, no network, no require. money.js and offerRules.js are handed in.
+'use strict';
+
+/** Josh's own login (the Auth user rates-portal/access.ts OWNER_USER_ID, avg-portal and the scanner migrations name): an
+ *  owner before the server has said anything about it. Only the FALLBACK: the server's answer for a login (roleRecord)
+ *  decides, and it also knows the owners' other logins (one linked to Josh's or Penguin's Discord), which no id list on
+ *  the phone can. Every other login reads as a sourcer until its answer is in. */
+var OWNER_USER_IDS = ['d3214c2a-4222-4171-9153-fe7ec466fc24'];
+/** This phone's copy of the server's answer about the last login that read the Scanner sheet: { uid, owner } (roleRecord). */
+var ROLE_CACHE_KEY = 'iopViewerRole';
+var PLUS_POINTS = 2;
+var CUT_MAX = 20;
+/** The user_metadata key "My cut" is saved under (auth.updateUser({ data: { scanner_cut_points: 5 } })). */
+var CUT_KEY = 'scanner_cut_points';
+/** The local copy of the cut, so the setting is there at once on this phone (the token's copy lags until it refreshes):
+ *  { uid, cut, synced, savedAt } (cutRecord). */
+var CUT_CACHE_KEY = 'iopMyCut';
+var ADJUST_SCHEMA = 'pile-adjust-v1';
+/** What the Weekend "We pay" is always priced under: the comp, at our rates, on the band's own market. */
+var WEEKEND_CHOICE = { rule: 'normal', mode: 'normal', flatPct: null, flatBasis: 'value' };
+/** The most a typed Market or Pay may be ($1,000,000): a slip of the thumb, not a card. */
+var MAX_TYPED_CENTS = 100000000;
+/** The fields that say WHICH band a row is (everything but its percent), in a fixed order. */
+var BAND_FIELDS = ['sort', 'sport', 'grader', 'gradeMin', 'gradeMax', 'from', 'to', 'basis', 'label', 'languages',
+  'minConfidence', 'certRule', 'vintage', 'special'];
+
+function isObj(v) { return !!v && typeof v === 'object' && !Array.isArray(v); }
+/** A typed Market or Pay: whole cents, more than $0 and at most MAX_TYPED_CENTS. A 0 is never a figure (a market of 0 is
+ *  no value, as session.js and offerRules.js valueCents read it, and a Pay of 0 would count a card bought for nothing). */
+function isCents(v) { return typeof v === 'number' && Number.isSafeInteger(v) && v > 0 && v <= MAX_TYPED_CENTS; }
+/** A market value only counts when it is a real positive number of cents: 0, negative or not a number is "no value". */
+function validCents(v) { return typeof v === 'number' && isFinite(v) && v > 0 ? v : null; }
+
+/** A percent to two decimals, half away from zero. */
+function round2(n) {
+  return Math.round(n * 100 + (n >= 0 ? 1e-9 : -1e-9)) / 100;
+}
+/** A pile percent: two decimals, never under 0 or over 100. */
+function clampPct(n) {
+  var r = round2(Number(n));
+  if (!isFinite(r) || r < 0) return 0;
+  return r > 100 ? 100 : r;
+}
+
+/** A typed band percent ("92", "92.5", "92,5", "92.5 %") -> a number in (0, 100] with at most two decimals, else null.
+ *  A comma is a decimal point (a phone keypad set to a comma locale types one). */
+function parseBandPct(v) {
+  if (v == null) return null;
+  var s = String(v).replace(/%/g, '').replace(/,/g, '.').trim();
+  if (!/^\d{1,3}(?:\.\d{1,2})?$/.test(s)) return null;
+  var n = Number(s);
+  return n > 0 && n <= 100 ? n : null;
+}
+
+/** "My cut": a whole number of points 0 to CUT_MAX (a numeric string counts), else null. */
+function normalizeCut(v) {
+  var n = typeof v === 'string' && v.trim() !== '' ? Number(v) : v;
+  return typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= CUT_MAX ? n : null;
+}
+
+/**
+ * A typed money amount -> { ok, cents }. Blank is { ok: true, cents: null } (no override). "$1,234.5" is 123450.
+ * Digits with commas in the right places and at most two decimals; nothing negative, nothing over $1,000,000, and never
+ * $0 ({ ok: false, zero: true }: a market of 0 is no value, and a Pay of 0 would count a card bought for nothing).
+ * Worked in whole numbers (dollars and cents apart), never a float times 100.
+ */
+function parseMoneyInput(text) {
+  var s = String(text == null ? '' : text).trim();
+  if (!s) return { ok: true, cents: null };
+  s = s.replace(/^\$\s*/, '');
+  var m = /^(\d{1,3}(?:,\d{3})+|\d+)?(?:\.(\d{0,2}))?$/.exec(s);
+  if (!m || (!m[1] && !m[2])) return { ok: false, cents: null };
+  var dollars = m[1] ? Number(m[1].replace(/,/g, '')) : 0;
+  var frac = m[2] || '';
+  var cents = dollars * 100 + (frac ? Number((frac + '0').slice(0, 2)) : 0);
+  if (!Number.isSafeInteger(cents) || cents > MAX_TYPED_CENTS) return { ok: false, cents: null };
+  if (cents === 0) return { ok: false, cents: null, zero: true };
+  return { ok: true, cents: cents };
+}
+
+// ── who is looking ────────────────────────────────────────────────────────────────────────────────
+
+/** The claims of a Supabase access token (a JWT). `decode` is atob (base64 -> text). null for anything else. */
+function claimsOf(token, decode) {
+  if (typeof token !== 'string' || typeof decode !== 'function') return null;
+  var parts = token.split('.');
+  if (parts.length !== 3 || !parts[1]) return null;
+  try {
+    var b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    var c = JSON.parse(decode(b64));
+    return isObj(c) ? c : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function isOwnerId(id) { return typeof id === 'string' && OWNER_USER_IDS.indexOf(id) >= 0; }
+
+/**
+ * The server's answer about the login that read the Scanner sheet (slab-rates GET /scanner's body, on its 404 too:
+ * viewer.role 'owner' or 'sourcer') -> { uid, owner } for `uid` (the token's own user, the one that asked), else null:
+ * no user, or a body that says nothing usable (a slab-rates that does not answer it yet).
+ */
+function roleRecord(uid, body) {
+  if (typeof uid !== 'string' || !uid || !isObj(body) || !isObj(body.viewer)) return null;
+  var r = body.viewer.role;
+  return r === 'owner' || r === 'sourcer' ? { uid: uid, owner: r === 'owner' } : null;
+}
+
+/** Whether the login `id` is an owner: the server's answer for THAT login when the phone has one (`known`, roleRecord's),
+ *  else Josh's login only (OWNER_USER_IDS). An answer about another login says nothing about this one. */
+function ownerOf(id, known) {
+  if (typeof id !== 'string' || !id) return false;
+  if (isObj(known) && known.uid === id && typeof known.owner === 'boolean') return known.owner;
+  return isOwnerId(id);
+}
+
+/**
+ * -> { id, owner, tokenCut, issuedAt } for the signed-in token; `known` = the server's answer the phone holds (roleRecord).
+ * A token that names no user (signed out, or not a JWT) reads as the owner's layout here; the page asks viewerFor, which
+ * keeps the last known user's role instead.
+ */
+function viewerOf(token, decode, known) {
+  var c = claimsOf(token, decode);
+  var id = c && typeof c.sub === 'string' && c.sub ? c.sub : null;
+  var meta = c && isObj(c.user_metadata) ? c.user_metadata : null;
+  return {
+    id: id,
+    owner: id == null ? true : ownerOf(id, known),
+    tokenCut: meta ? normalizeCut(meta[CUT_KEY]) : null,
+    issuedAt: c && typeof c.iat === 'number' && isFinite(c.iat) ? c.iat * 1000 : null,
+  };
+}
+
+/**
+ * Who is looking, for the page: the signed-in token's user (viewerOf); with no token naming a user (signed out, a refresh
+ * refused, a token that is not a JWT) the LAST user this phone knew (`lastId`, kept with the pile) in that user's role, so
+ * a sourcer whose refresh was refused never flips to the owner's layout and figures. Only a phone that never knew anyone
+ * reads as the owner's layout (nothing can be priced signed out). `known` = the server's answer the phone holds about a
+ * login (roleRecord): whose role it is decides it (ownerOf). -> viewerOf's shape, plus `signedIn`.
+ */
+function viewerFor(token, decode, lastId, known) {
+  var v = viewerOf(token, decode, known);
+  if (v.id) return Object.assign(v, { signedIn: true });
+  if (typeof lastId === 'string' && lastId) return { id: lastId, owner: ownerOf(lastId, known), tokenCut: null, issuedAt: null, signedIn: false };
+  return Object.assign(v, { signedIn: false });
+}
+
+/**
+ * This phone's copy of a sourcer's cut: { uid, cut, synced, savedAt }. `synced` is true only once their login took it
+ * (a 2xx from PUT /auth/v1/user), and `savedAt` is the server's own updated_at for that save (ms, or null when the answer
+ * had none), so it is only ever compared with the server's token iat, never with this phone's clock.
+ */
+function cutRecord(uid, cut, synced, savedAt) {
+  return {
+    uid: uid, cut: normalizeCut(cut) || 0, synced: synced === true,
+    savedAt: synced === true && typeof savedAt === 'number' && isFinite(savedAt) ? savedAt : null,
+  };
+}
+
+/** The server's updated_at in a PUT /auth/v1/user answer (the user), as ms, else null. */
+function savedAtOf(user) {
+  var t = isObj(user) && typeof user.updated_at === 'string' ? Date.parse(user.updated_at) : NaN;
+  return isFinite(t) ? t : null;
+}
+
+/**
+ * The cut in points for this viewer: 0 for an owner. A sourcer's is this phone's copy while it is not on their login yet
+ * (`synced` not true: a save that failed, had no signal, or has not run): it stands, whatever an older or newer token says,
+ * until the page saves it. Once saved, the token's claim wins only when the token was issued AFTER that save (iat later than
+ * the server's `savedAt`: the cut was changed since, on another phone); else the saved copy. No copy: the token's, else 0.
+ */
+function cutFor(viewer, cache) {
+  if (!viewer || viewer.owner) return 0;
+  var mine = isObj(cache) && viewer.id && cache.uid === viewer.id ? cache : null;
+  var cached = mine ? normalizeCut(mine.cut) : null;
+  if (cached != null && mine.synced !== true) return cached;
+  if (cached != null) {
+    var savedAt = typeof mine.savedAt === 'number' && isFinite(mine.savedAt) ? mine.savedAt : null;
+    if (viewer.tokenCut != null && viewer.issuedAt != null && savedAt != null && viewer.issuedAt > savedAt) return viewer.tokenCut;
+    return cached;
+  }
+  return viewer.tokenCut != null ? viewer.tokenCut : 0;
+}
+
+/**
+ * The token's cut taken into this phone's copy, so the phone always holds the newest cut it has seen from the login: a
+ * sourcer whose next refresh is refused (signed out, `viewerFor` keeps their role with no token) still offers on their own
+ * cut, never on 0. -> the record to keep ({ uid, cut, synced: true, savedAt: the token's iat }), or null to keep the copy
+ * as it is: an owner, no token claim, a copy not saved to the login yet (it stands until it is), or a token not newer than
+ * the copy's save (both on the server's clock, never this phone's).
+ */
+function adoptTokenCut(viewer, cache) {
+  if (!viewer || viewer.owner || !viewer.id || viewer.tokenCut == null || viewer.issuedAt == null) return null;
+  var mine = isObj(cache) && cache.uid === viewer.id && normalizeCut(cache.cut) != null ? cache : null;
+  if (mine && mine.synced !== true) return null;
+  if (mine) {
+    var savedAt = typeof mine.savedAt === 'number' && isFinite(mine.savedAt) ? mine.savedAt : null;
+    if (savedAt == null || viewer.issuedAt <= savedAt) return null;
+  }
+  return cutRecord(viewer.id, viewer.tokenCut, true, viewer.issuedAt);
+}
+
+/** True when this phone holds a cut for this (sourcer) viewer that their login has not taken yet: the page saves it. */
+function cutNeedsSave(viewer, cache) {
+  if (!viewer || viewer.owner || !viewer.id) return false;
+  return isObj(cache) && cache.uid === viewer.id && normalizeCut(cache.cut) != null && cache.synced !== true;
+}
+
+/**
+ * Whose pile adjust it is. `pileUid` = the user the pile's rates and typed figures were made under (kept with the pile),
+ * `viewer` = who is looking now (viewerFor). -> { keep, uid }: `keep` false when a DIFFERENT user is signed in now (their
+ * pile starts from the weekend rates, nothing typed), `uid` the id to keep with the pile from now on. Nobody known keeps it.
+ */
+function adjustOwner(pileUid, viewer) {
+  var id = viewer && typeof viewer.id === 'string' && viewer.id ? viewer.id : null;
+  var had = typeof pileUid === 'string' && pileUid ? pileUid : null;
+  if (!id) return { keep: true, uid: had };
+  if (!had) return { keep: true, uid: id };
+  return { keep: had === id, uid: id };
+}
+
+// ── the pile's adjustments ───────────────────────────────────────────────────────────────────────
+
+function emptyAdjust() { return { schema: ADJUST_SCHEMA, bands: {}, plus2: false, overrides: {} }; }
+
+function normalizeOverride(raw) {
+  if (!isObj(raw)) return null;
+  var m = isCents(raw.marketCents) ? raw.marketCents : null;
+  var p = isCents(raw.payCents) ? raw.payCents : null;
+  return m == null && p == null ? null : { marketCents: m, payCents: p };
+}
+
+/** Whatever a phone's storage hands back -> a valid adjust. Anything unreadable is dropped, never guessed. */
+function normalizeAdjust(raw) {
+  var out = emptyAdjust();
+  if (!isObj(raw)) return out;
+  out.plus2 = raw.plus2 === true;
+  if (isObj(raw.bands)) {
+    Object.keys(raw.bands).forEach(function (k) {
+      var p = typeof raw.bands[k] === 'number' ? parseBandPct(String(raw.bands[k])) : null;
+      if (p != null) out.bands[k] = p;
+    });
+  }
+  if (isObj(raw.overrides)) {
+    Object.keys(raw.overrides).forEach(function (k) {
+      var o = normalizeOverride(raw.overrides[k]);
+      if (o) out.overrides[k] = o;
+    });
+  }
+  return out;
+}
+
+function copyAdjust(a) {
+  var n = normalizeAdjust(a);
+  return { schema: ADJUST_SCHEMA, bands: Object.assign({}, n.bands), plus2: n.plus2, overrides: Object.assign({}, n.overrides) };
+}
+
+/** Which band a rate row is, on which sheet ('normal' = the weekend Scanner rates, 'consignor'): never its percent. */
+function bandKey(rule, row) {
+  if (!isObj(row)) return null;
+  return (rule === 'consignor' ? 'consignor' : 'normal') + '|' + JSON.stringify(BAND_FIELDS.map(function (f) {
+    return row[f] === undefined ? null : row[f];
+  }));
+}
+
+/** The pile's percent for a band, before any cut: the edit (else the weekend percent), plus 2 points while +2% is on. */
+function bandPct(adjust, rule, row) {
+  var a = normalizeAdjust(adjust);
+  var edit = a.bands[bandKey(rule, row)];
+  var base = typeof edit === 'number' ? edit : Number(row.pct);
+  return clampPct(base + (a.plus2 ? PLUS_POINTS : 0));
+}
+
+/** The percent a sourcer offers a seller on a band: the pile's percent less their cut. */
+function offerPct(adjust, rule, row, cut) {
+  return clampPct(bandPct(adjust, rule, row) - (normalizeCut(cut) || 0));
+}
+
+/** How many bands are edited on `rule`'s sheet ('normal' or 'consignor'; Flat % has none). With no rule: on either sheet. */
+function bandEdits(adjust, rule) {
+  var a = normalizeAdjust(adjust);
+  var keys = Object.keys(a.bands);
+  if (rule == null) return keys.length;
+  if (rule !== 'normal' && rule !== 'consignor') return 0;
+  return keys.filter(function (k) { return k.indexOf(rule + '|') === 0; }).length;
+}
+
+/** True when the pile's rates are not the weekend rates on `rule`'s sheet (+2% on, or one of that sheet's bands edited; a
+ *  band edited on the other sheet prices nothing under this rule). With no rule: an edit on either sheet. Overrides are per card. */
+function ratesChanged(adjust, rule) {
+  return normalizeAdjust(adjust).plus2 || bandEdits(adjust, rule) > 0;
+}
+
+/**
+ * A price on the pile's rates. The WEEKEND sheet decides everything about the card (which band takes it, on which
+ * market, the CLV cap, the lower of two values, a pass or a hand price); the pile only changes the percent that band
+ * pays: its pile percent (edit or weekend, +2% in) less `cut`, times the same market the weekend price was a percent
+ * of (money.pctOf, the one rounding). So editing a band never moves a card to another band (the engine's overlap rule
+ * would otherwise send a $50 card to another band the moment its own was edited under the 5-point gap), and a card no
+ * band takes stays a pass (a typed Pay is the way to buy one). A Flat % price moves by +2% and the cut only. The same
+ * object back when nothing changes; anything that is not a price (a pass, a wait) untouched.
+ */
+function repct(price, adjust, cut, money) {
+  if (!isObj(price) || typeof price.payoutCents !== 'number' || typeof price.basisCents !== 'number' || typeof price.pct !== 'number') return price;
+  var a = normalizeAdjust(adjust);
+  var k = normalizeCut(cut) || 0;
+  var pct = price.rule !== 'flat' && isObj(price.row)
+    ? clampPct(bandPct(a, price.rule, price.row) - k)
+    : clampPct(price.pct + (a.plus2 ? PLUS_POINTS : 0) - k);
+  if (pct === price.pct) return price;
+  return Object.assign({}, price, { pct: pct, payoutCents: money.pctOf(price.basisCents, pct), weekendPct: price.pct });
+}
+
+/** A copy of `adjust` with one band's percent set for this pile (the weekend percent itself clears the edit). */
+function setBand(adjust, rule, row, pct) {
+  var a = copyAdjust(adjust);
+  var key = bandKey(rule, row);
+  var p = parseBandPct(pct);
+  if (!key || p == null) return a;
+  if (p === Number(row.pct)) delete a.bands[key];
+  else a.bands[key] = p;
+  return a;
+}
+
+function setPlus2(adjust, on) {
+  var a = copyAdjust(adjust);
+  a.plus2 = !!on;
+  return a;
+}
+
+/** "Set default": every band back on its weekend percent and +2% off. A card's own Market/Pay stays (each has a Reset). */
+function resetRates(adjust) {
+  var a = copyAdjust(adjust);
+  a.bands = {};
+  a.plus2 = false;
+  return a;
+}
+
+/**
+ * The override a card's editor saves. A blank Pay follows the rate. A typed Market is kept, so Pay is re-derived from it
+ * (cardFigures), except one that changes nothing: it equals the comped market (the row's Mkt, `compedCents`; else the
+ * entry's own valid market) AND the card's price is already a percent of exactly that market (`price.basisCents`). The
+ * page's row Mkt is that basis on a priced card (OfferRules.rowMarketCents with the price: an avg-of-3 band or Lower mode
+ * shows the average it paid on), so typing the shown Mkt back changes nothing there. A comped figure that is not the
+ * price's basis (the card's own value, when no comped figure is handed in; a card no band prices) makes the typed one a
+ * real edit (pay = market x the card's percent). null when nothing is left to override.
+ */
+function makeOverride(entry, marketCents, payCents, compedCents) {
+  var comped = compedCents !== undefined ? validCents(compedCents) : validCents(entry && entry.marketValueCents);
+  var price = entry && isObj(entry.price) ? entry.price : null;
+  var basis = price && typeof price.basisCents === 'number' ? price.basisCents : null;
+  var same = comped != null && marketCents === comped && basis === comped;
+  var m = isCents(marketCents) && !same ? marketCents : null;
+  var p = isCents(payCents) ? payCents : null;
+  return m == null && p == null ? null : { marketCents: m, payCents: p };
+}
+
+function setOverride(adjust, key, override) {
+  var a = copyAdjust(adjust);
+  var o = normalizeOverride(override);
+  if (o) a.overrides[key] = o;
+  else delete a.overrides[key];
+  return a;
+}
+
+/** Overrides only for cards still in the pile (`keys`): a card swiped away takes its own away with it. */
+function keepOverrides(adjust, keys) {
+  var a = copyAdjust(adjust);
+  var keep = {};
+  (keys || []).forEach(function (k) { keep[k] = true; });
+  Object.keys(a.overrides).forEach(function (k) { if (!keep[k]) delete a.overrides[k]; });
+  return a;
+}
+
+// ── pricing one card, and the figures a row and the totals show ─────────────────────────────────
+
+/**
+ * One card priced for the pile. `base`: offerRules.offerFor under the choice made on this phone, on the weekend sheets
+ * in `ctx` (offerRules' own { priceCore, money, settings, consignorSettings }). `price`: `base` on the pile's rates
+ * (repct: band edits, +2%, less the cut). `we`: the weekend comp, rule Normal on market Normal, from the same untouched
+ * `ctx`: no edit, +2%, cut or override of anyone's ever reaches it.
+ */
+function priceCard(card, choice, ctx, adjust, cut, offerRules) {
+  var base = offerRules.offerFor(card, choice, ctx);
+  return {
+    base: base,
+    price: repct(base, adjust, cut, ctx.money),
+    we: offerRules.offerFor(card, WEEKEND_CHOICE, ctx),
+  };
+}
+
+/**
+ * What one card shows and counts as. entry = a pile entry ({ marketValueCents, price }), override = its
+ * { marketCents, payCents } or null, compedCents = the market the row shows when none is typed (the page hands in
+ * OfferRules.rowMarketCents of the card's facts, price and mode: the market its pay was worked out on, the band's basis);
+ * left out, the entry's own market value.
+ * Either way a 0 or less is no market, never $0.
+ *   marketCents  the typed Market, else the comped one (null = not known yet, never $0)
+ *   payCents     the typed Pay; else, with a typed Market on a card a band priced, Market x that band's pile percent
+ *                (money.pctOf, the one rounding); else the price's own payout; null when nothing pays for it
+ */
+function cardFigures(entry, override, money, compedCents) {
+  var e = entry || {};
+  var p = isObj(e.price) ? e.price : null;
+  var o = normalizeOverride(override);
+  var comped = compedCents !== undefined ? validCents(compedCents) : validCents(e.marketValueCents);
+  var mEdit = o ? o.marketCents : null;
+  var payEdit = o ? o.payCents : null;
+  var priced = p && typeof p.payoutCents === 'number' ? p.payoutCents : null;
+  var pay = priced;
+  var fromMarket = false;
+  if (payEdit != null) pay = payEdit;
+  else if (mEdit != null && priced != null && typeof p.pct === 'number') { pay = money.pctOf(mEdit, p.pct); fromMarket = true; }
+  return {
+    marketCents: mEdit != null ? mEdit : comped,
+    payCents: pay,
+    compedCents: comped,
+    pricedCents: priced,
+    marketEdited: mEdit != null,
+    payEdited: payEdit != null,
+    payFromMarket: fromMarket,
+  };
+}
+
+/** The price a card is DRAWN with: its own, or with the figure an override gives it (a pinned Pay counts even on a
+ *  card no band takes, so the "Not buying" pill goes with it). Only for showing; the price itself is never changed. */
+function shownPrice(price, figures) {
+  if (!figures || (!figures.payEdited && !figures.payFromMarket)) return price;
+  var out = Object.assign({}, isObj(price) ? price : {}, { payoutCents: figures.payCents, edited: true });
+  ['rejected', 'staffPrice', 'awaitingAverage', 'noSheet', 'noPct', 'clvCapHold', 'avgMissing'].forEach(function (k) { delete out[k]; });
+  return out;
+}
+
+/**
+ * The pile's totals with every override in: what the pile header and the scoreboard show.
+ *   count / marketValueCents / marketValueUnknownCount   every card, market as shown (typed or comped)
+ *   buyCount / buyPayoutCents                             the cards with a pay figure, and what it adds to
+ *   editedCount                                           cards with a typed Market or Pay
+ *   weCount / wePayCents                                  the weekend "We pay" (from `weOf(entry)`, the untouched comp)
+ * `keyOf(entry)` is the pile key the overrides are filed under. The market counted for a card is its typed Market, else
+ * the pile entry's own market value (session.js's; a 0 or less is "not valued yet"), never the row's display fallback.
+ */
+function pileTotals(entries, adjust, keyOf, weOf, money) {
+  var a = normalizeAdjust(adjust);
+  var t = { count: 0, marketValueCents: 0, marketValueUnknownCount: 0, buyCount: 0, buyPayoutCents: 0, editedCount: 0, weCount: 0, wePayCents: 0 };
+  (entries || []).forEach(function (e) {
+    var f = cardFigures(e, a.overrides[keyOf(e)], money);
+    t.count++;
+    if (f.marketCents != null) t.marketValueCents += f.marketCents; else t.marketValueUnknownCount++;
+    if (f.payCents != null) { t.buyCount++; t.buyPayoutCents += f.payCents; }
+    if (f.marketEdited || f.payEdited) t.editedCount++;
+    var we = weOf ? weOf(e) : null;
+    if (we && typeof we.payoutCents === 'number') { t.weCount++; t.wePayCents += we.payoutCents; }
+  });
+  return t;
+}
+
+// ── the Rates sheet ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Every band of `sheet` in the order the engine walks them (ascending sort, stable), as the Rates sheet lists it:
+ * { key, row, label, basis, weekendPct, pilePct (the band's own pile percent, before +2%), pct (what the pile pays on
+ * it, +2% in), offerPct (pct less the cut), edited, cards (pile cards this band priced) }. `prices` = the pile's prices.
+ */
+function bandsFor(sheet, adjust, rule, cut, prices) {
+  if (!isObj(sheet) || !Array.isArray(sheet.rates)) return [];
+  var a = normalizeAdjust(adjust);
+  var counts = {};
+  (prices || []).forEach(function (p) {
+    if (isObj(p) && isObj(p.row) && typeof p.payoutCents === 'number' && (p.rule || 'normal') === rule) {
+      var k = bandKey(rule, p.row);
+      counts[k] = (counts[k] || 0) + 1;
+    }
+  });
+  return sheet.rates
+    .map(function (row, i) { return { row: row, i: i }; })
+    .filter(function (x) { return isObj(x.row) && typeof x.row.pct === 'number'; })
+    .sort(function (x, y) {
+      var s = (x.row.sort || 0) - (y.row.sort || 0);
+      return s || x.i - y.i;
+    })
+    .map(function (x) {
+      var row = x.row;
+      var key = bandKey(rule, row);
+      var edit = a.bands[key];
+      return {
+        key: key, row: row, label: row.label ? String(row.label) : '', basis: row.basis || null,
+        weekendPct: row.pct,
+        pilePct: typeof edit === 'number' ? edit : row.pct,
+        pct: bandPct(a, rule, row),
+        offerPct: offerPct(a, rule, row, cut),
+        edited: typeof edit === 'number',
+        cards: counts[key] || 0,
+      };
+    });
+}
+
+window.PileRates = {
+  OWNER_USER_IDS: OWNER_USER_IDS,
+  ROLE_CACHE_KEY: ROLE_CACHE_KEY,
+  PLUS_POINTS: PLUS_POINTS,
+  CUT_MAX: CUT_MAX,
+  CUT_KEY: CUT_KEY,
+  CUT_CACHE_KEY: CUT_CACHE_KEY,
+  ADJUST_SCHEMA: ADJUST_SCHEMA,
+  WEEKEND_CHOICE: WEEKEND_CHOICE,
+  MAX_TYPED_CENTS: MAX_TYPED_CENTS,
+  round2: round2,
+  clampPct: clampPct,
+  validCents: validCents,
+  parseBandPct: parseBandPct,
+  normalizeCut: normalizeCut,
+  parseMoneyInput: parseMoneyInput,
+  claimsOf: claimsOf,
+  isOwnerId: isOwnerId,
+  roleRecord: roleRecord,
+  ownerOf: ownerOf,
+  viewerOf: viewerOf,
+  viewerFor: viewerFor,
+  cutRecord: cutRecord,
+  savedAtOf: savedAtOf,
+  cutFor: cutFor,
+  adoptTokenCut: adoptTokenCut,
+  cutNeedsSave: cutNeedsSave,
+  adjustOwner: adjustOwner,
+  emptyAdjust: emptyAdjust,
+  normalizeAdjust: normalizeAdjust,
+  bandKey: bandKey,
+  bandPct: bandPct,
+  offerPct: offerPct,
+  bandEdits: bandEdits,
+  ratesChanged: ratesChanged,
+  repct: repct,
+  setBand: setBand,
+  setPlus2: setPlus2,
+  resetRates: resetRates,
+  makeOverride: makeOverride,
+  setOverride: setOverride,
+  keepOverrides: keepOverrides,
+  priceCard: priceCard,
+  cardFigures: cardFigures,
+  shownPrice: shownPrice,
+  pileTotals: pileTotals,
+  bandsFor: bandsFor,
+};
+})();
 /* SCANNER-CORE:END */
 </script>
 
@@ -8027,7 +8797,47 @@ window.ScanAccount = {
       sheetCue: document.getElementById('sc-sheet-cue'),
       resultOpen: document.getElementById('sc-result-open'),
       conf: document.getElementById('sc-conf'),
-      typeBtn: document.getElementById('sc-type-btn')
+      typeBtn: document.getElementById('sc-type-btn'),
+      payKey: document.getElementById('sc-pay-key'),
+      pilePayLabel: document.getElementById('sc-pile-pay-label'),
+      pileFlags: document.getElementById('sc-pile-flags'),
+      pileOfferRow: document.getElementById('sc-pile-offer-row'),
+      pileOffer: document.getElementById('sc-pile-offer'),
+      pileWeRow: document.getElementById('sc-pile-we-row'),
+      pileWe: document.getElementById('sc-pile-we'),
+      ratesOpen: document.getElementById('sc-rates-open'),
+      plus2: document.getElementById('sc-plus2')
+    };
+    // The pile's two sheets and a sourcer's My cut (see "the pile's own rates" further down).
+    var ratesUi = {
+      sheet: document.getElementById('sc-rates'),
+      done: document.getElementById('sc-rates-done'),
+      note: document.getElementById('sc-rates-note'),
+      plus2: document.getElementById('sc-rates-plus2'),
+      list: document.getElementById('sc-rates-list'),
+      reset: document.getElementById('sc-rates-reset')
+    };
+    var editUi = {
+      sheet: document.getElementById('sc-edit'),
+      cancel: document.getElementById('sc-edit-cancel'),
+      name: document.getElementById('sc-edit-name'),
+      cert: document.getElementById('sc-edit-cert'),
+      market: document.getElementById('sc-edit-market'),
+      marketHint: document.getElementById('sc-edit-market-hint'),
+      payLabel: document.getElementById('sc-edit-pay-label'),
+      pay: document.getElementById('sc-edit-pay'),
+      payHint: document.getElementById('sc-edit-pay-hint'),
+      we: document.getElementById('sc-edit-we'),
+      err: document.getElementById('sc-edit-err'),
+      reset: document.getElementById('sc-edit-reset'),
+      save: document.getElementById('sc-edit-save')
+    };
+    var cutUi = {
+      section: document.getElementById('sc-cut-section'),
+      down: document.getElementById('sc-cut-down'),
+      up: document.getElementById('sc-cut-up'),
+      val: document.getElementById('sc-cut-val'),
+      status: document.getElementById('sc-cut-status')
     };
 
     function metaContent(name) {
@@ -8064,9 +8874,86 @@ window.ScanAccount = {
     var pileBlob = loadPileBlob();
     var pile = ScanSession.fromJSON(pileBlob && pileBlob.session);
     var pileMeta = (pileBlob && pileBlob.meta && typeof pileBlob.meta === 'object' && !Array.isArray(pileBlob.meta)) ? pileBlob.meta : {};
+    // The pile's own rates (scanner/pileRates.js, window.PileRates): band percents edited for this pile, +2%, and each card's
+    // typed Market or Pay, kept WITH the pile (a reload keeps them, New seller drops them). Nothing here writes a rate
+    // sheet. An override only lives as long as its card does, and an empty pile has none of it (the controls that undo it
+    // live in the pile, which is hidden while it is empty).
+    var pileAdjust = pile.list().length ? PileRates.keepOverrides(PileRates.normalizeAdjust(pileBlob && pileBlob.adjust),
+      pile.list().map(function (e) { return pileMetaKey(e.grader, e.certKey); })) : PileRates.emptyAdjust();
+    // Whose pile adjust it is (and the last user this phone knew): another login on this phone starts from the weekend
+    // rates with nothing typed (PileRates.adjustOwner), and a phone signed out keeps that user's role (viewerFor).
+    var pileUid = pileBlob && typeof pileBlob.uid === 'string' && pileBlob.uid ? pileBlob.uid : null;
     function savePile() {
-      try { localStorage.setItem(PILE_KEY, JSON.stringify({ session: pile.toJSON(), meta: pileMeta })); } catch (e) { /* private mode / quota: pile lives for this visit only */ }
+      try { localStorage.setItem(PILE_KEY, JSON.stringify({ session: pile.toJSON(), meta: pileMeta, adjust: pileAdjust, uid: pileUid })); } catch (e) { /* private mode / quota: pile lives for this visit only */ }
     }
+
+    // ── who is looking: an owner sees the pile's rates as his pay (today's layout); a sourcer's big number is their OFFER to
+    // the seller and their "We pay" is what we pay them (the weekend comp, which none of their edits reach). WHO is an owner
+    // is the server's answer (slab-rates GET /scanner viewer.role: Josh's login, or a login linked to Josh's or Penguin's
+    // Discord), kept on this phone per login (roleKnown) so a reload or a signed-out phone keeps it; until a login's answer
+    // is in, Josh's login is the owner and any other reads as a sourcer (PileRates.viewerFor: signed out, the last user's
+    // role, never the owner's by default). A sourcer's cut is theirs (Settings, My cut). ──
+    var viewerMemo = { token: undefined, last: undefined, known: undefined, v: null };
+    function decodeBase64(text) { return typeof atob === 'function' ? atob(text) : ''; }
+    var roleKnown = (function () {
+      try {
+        var r = JSON.parse(localStorage.getItem(PileRates.ROLE_CACHE_KEY) || 'null');
+        return r && typeof r.uid === 'string' && typeof r.owner === 'boolean' ? { uid: r.uid, owner: r.owner } : null;
+      } catch (e) { return null; }
+    })();
+    /** The server's answer about the login that read the Scanner sheet (`body`: GET /scanner's, its 404's too), for the
+        token it was read with. A body that says nothing (an older slab-rates) leaves what the phone knew. */
+    function noteRole(tok, body) {
+      var rec = PileRates.roleRecord(PileRates.viewerOf(tok, decodeBase64).id, body);
+      if (!rec || (roleKnown && roleKnown.uid === rec.uid && roleKnown.owner === rec.owner)) return;
+      roleKnown = rec;
+      try { localStorage.setItem(PileRates.ROLE_CACHE_KEY, JSON.stringify(rec)); } catch (e) { /* this visit only */ }
+    }
+    function viewer() {
+      var tok = session && session.access_token ? session.access_token : null;
+      if (viewerMemo.token !== tok || viewerMemo.last !== pileUid || viewerMemo.known !== roleKnown) {
+        viewerMemo = { token: tok, last: pileUid, known: roleKnown, v: PileRates.viewerFor(tok, decodeBase64, pileUid, roleKnown) };
+      }
+      return viewerMemo.v;
+    }
+    /** The user looking may have changed (a sign-in, a refresh, a reload): the pile's rates and typed figures stay only with
+        the user who made them. Returns true when they were dropped (the caller prices the pile again). */
+    function checkViewer() {
+      var o = PileRates.adjustOwner(pileUid, viewer());
+      if (o.keep && o.uid === pileUid) return false;
+      pileUid = o.uid;
+      if (!o.keep) {
+        pileAdjust = PileRates.emptyAdjust();
+        closeRates();
+        closeEditor();
+      }
+      savePile();
+      return !o.keep;
+    }
+    function isSourcer() { return !viewer().owner; }
+    // This phone's copy of a sourcer's cut ({ uid, cut, synced, savedAt }, PileRates.cutRecord). Kept in memory too, so a
+    // phone whose storage refuses the write (private mode, full) still uses the cut just set for this visit.
+    var cutCacheMem;
+    function loadCutCache() {
+      if (cutCacheMem === undefined) {
+        try { cutCacheMem = JSON.parse(localStorage.getItem(PileRates.CUT_CACHE_KEY) || 'null'); } catch (e) { cutCacheMem = null; }
+      }
+      return cutCacheMem;
+    }
+    function writeCutCache(rec) {
+      cutCacheMem = rec;
+      try { localStorage.setItem(PileRates.CUT_CACHE_KEY, JSON.stringify(rec)); } catch (e) { /* this visit only: cutCacheMem holds it */ }
+    }
+    function myCut() { return PileRates.cutFor(viewer(), loadCutCache()); }
+    /** The signed-in token's cut, taken into this phone's copy when it is newer than the copy's last save (PileRates.adoptTokenCut):
+        a refresh refused later (signed out, the role kept) still prices on the sourcer's own cut, never on 0. */
+    function adoptCut() {
+      var rec = PileRates.adoptTokenCut(viewer(), loadCutCache());
+      if (rec) writeCutCache(rec);
+    }
+    /** Who the pile was last priced for (repriceAll): another user, role or cut since means every card is priced again. */
+    var pricedFor = null;
+    function viewerSig() { var v = viewer(); return (v.id || '') + '|' + (v.owner ? 'owner' : 'sourcer') + '|' + myCut(); }
 
     // ── scan feedback: a beep + buzz so Josh knows a cert was read without looking at the screen
     // (ScanFeedback.js owns WHICH tone/pattern per outcome and the persisted sound on/off switch -
@@ -8391,6 +9278,9 @@ window.ScanAccount = {
       // keeps its price, instead of "Normal" falling back on the consignor rates meanwhile.
       refreshFlight = null; // a refresh of the login before this one is not this one's to share
       scannerSettings = null; scannerKnown = false;
+      // Another login on this phone: its pile starts from the weekend rates with nothing typed (the last login's +2%,
+      // band edits and typed figures never become this one's), and a cut it set here unsaved is saved now.
+      onViewerChanged(true);
       loadScannerSheet().then(repaintForSheets);
     }
 
@@ -8693,6 +9583,9 @@ window.ScanAccount = {
           // freeze already ended the session, its own sourcers row says active:false). Anyone else is just signed out.
           if (!r.ok && !r.noSignal) { if (r.paused) showPaused(); else checkPaused(sent.access); }
           if (r.ok && sent.gaveUp) { try { sessionCameLate(); } catch (e) { /* the tokens are stored: the next scan asks for the sheet itself */ } }
+          // A fresh session (after this answer is handled): its token may carry a cut changed on another phone (the pile is
+          // priced again on it), and a sourcer's cut still unsaved on this phone is saved with it.
+          if (r.ok) setTimeout(onViewerChanged, 0);
           return r;
         });
       }
@@ -8740,7 +9633,8 @@ window.ScanAccount = {
     var scannerKnown = false;
     function loadScannerSheet(retried) {
       if (!session || !session.access_token) { scannerSettings = null; scannerKnown = true; sheetsMoved(); return Promise.resolve(); }
-      return fetch(api('scanner'), { headers: { authorization: 'Bearer ' + session.access_token } }).then(function (res) {
+      var tok = session.access_token; // the login this answer is about (noteRole)
+      return fetch(api('scanner'), { headers: { authorization: 'Bearer ' + tok } }).then(function (res) {
         if (res.status === 401 && !retried) {
           return refreshSession().then(function (r) {
             if (r.ok) return loadScannerSheet(true);
@@ -8751,11 +9645,13 @@ window.ScanAccount = {
           });
         }
         if (res.ok) {
-          return res.json().then(function (j) { scannerSettings = (j && j.settings) || null; scannerKnown = true; sheetsMoved(); });
+          return res.json().then(function (j) { noteRole(tok, j); scannerSettings = (j && j.settings) || null; scannerKnown = true; sheetsMoved(); });
         }
         if (res.status >= 500 || res.status === 408 || res.status === 429) return; // the server could not say
-        scannerSettings = null; scannerKnown = true; // no sheet saved, or not this login's to read
-        sheetsMoved();
+        // no sheet saved (its 404 still says who this login is: noteRole), or not this login's to read
+        var settle = function () { scannerSettings = null; scannerKnown = true; sheetsMoved(); };
+        if (res.status === 404) return res.json().then(function (j) { noteRole(tok, j); settle(); }, settle);
+        settle();
       }).catch(function () { /* no signal, or an answer that is not JSON: not known, and whatever was loaded stays */ });
     }
     /** A refresh that was given up on has landed after all, and its new tokens are stored. When the private
@@ -9140,7 +10036,11 @@ window.ScanAccount = {
       return { priceCore: PriceCore, money: PriceCore.money, settings: pricingRates(), consignorSettings: consignorSettings };
     }
     function repriceAll() {
+      adoptCut();    // the token's cut, when it is newer than this phone's saved copy
+      checkViewer(); // another login's pile rates and typed figures never price this one's pile
       var ctx = offerCtx();
+      var cut = myCut();
+      pricedFor = viewerSig();
       pile.list().forEach(function (e) {
         var meta = pileMeta[pileMetaKey(e.grader, e.certKey)];
         if (!meta || !meta.facts) return; // saved before the toggle existed: keep what it was priced at
@@ -9151,11 +10051,16 @@ window.ScanAccount = {
         // The market value the pile holds: the card's own, except a card priced while Triumph was down,
         // whose value arrives later with its average (scanner/triumphDown.js).
         var mv = TriumphDown.marketValue(meta.facts, e.marketValueCents);
-        if (!sheet && e.price && e.price.rule === choice.rule && typeof e.price.payoutCents === 'number') {
-          if (mv !== e.marketValueCents) pile.addCard(e.cert, e.grader, mv, e.price);
-          return;
-        }
-        pile.addCard(e.cert, e.grader, mv, OfferRules.offerFor(meta.facts, choice, ctx));
+        // PileRates.priceCard: the weekend price (base), that on the pile's rates (price: band edits, +2%, a sourcer's
+        // cut) and the weekend We pay (we: rule Normal, market Normal, never any edit). What a kept price keeps is the
+        // weekend one (meta.base; a card priced before the pile had rates of its own kept it as e.price), so the pile's
+        // rates still apply to it.
+        var r = PileRates.priceCard(meta.facts, choice, ctx, pileAdjust, cut, OfferRules);
+        var kept = meta.base || e.price;
+        var keep = !sheet && kept && kept.rule === choice.rule && typeof kept.payoutCents === 'number';
+        meta.base = keep ? kept : r.base;
+        if (ctx.settings || !(meta.we && typeof meta.we.payoutCents === 'number')) meta.we = r.we; // We pay is kept the same way
+        pile.addCard(e.cert, e.grader, mv, keep ? PileRates.repct(kept, pileAdjust, cut, PriceCore.money) : r.price);
       });
       savePile();
     }
@@ -9299,6 +10204,9 @@ window.ScanAccount = {
       var f = meta.facts;
       var entry = pileEntry(currentKey);
       var price = entry ? entry.price : null;
+      // A typed Market or Pay (Edit card): the figure on screen is the one the pile counts (PileRates.cardFigures).
+      var fig = entry ? figuresOf(entry) : null;
+      var shown = PileRates.shownPrice(price, fig);
       dom.result.hidden = false;
       showName(f.title);
       dom.cert.textContent = f.cert;
@@ -9313,12 +10221,14 @@ window.ScanAccount = {
       // A price that is only missing because its rate sheet is still on its way (a rule picked while that sheet was out) shows
       // the wait a scan shows, not "No rate sheet" yet: that is said once the attempt is over and the sheet is still not in.
       var ratesComing = !!price && !!price.noSheet && ratesLoading();
-      setSquare(dom.pay, ratesComing ? LOOKING_UP : OfferRules.payText(price, f.avgStatus, money), !!price && typeof price.payoutCents === 'number', ratesComing ? 'wait' : OfferRules.payLook(price, f.avgStatus));
-      // The rule line: the band's math, and while no Scanner sheet is saved, that Normal is borrowing the
-      // consignor rates (staff only: hide mode never shows this card).
-      var math = OfferRules.ruleMath(price) || '';
+      setSquare(dom.pay, ratesComing ? LOOKING_UP : OfferRules.payText(shown, f.avgStatus, money), !!shown && typeof shown.payoutCents === 'number', ratesComing ? 'wait' : OfferRules.payLook(shown, f.avgStatus));
+      // The rule line: the band's math (the pile's percent, with the weekend one beside it when they differ, or what was
+      // typed), while no Scanner sheet is saved that Normal is borrowing the consignor rates, and for a sourcer what we
+      // pay them (staff only: hide mode never shows this card).
+      var math = pileMath(price, fig) || '';
       var borrowed = choice.rule === 'normal' && scannerKnown ? OfferRules.normalNote(scannerSettings) : '';
-      dom.ruleMath.textContent = math && borrowed ? math + String.fromCharCode(10) + borrowed : (math || borrowed);
+      var weLine = isSourcer() ? weText(currentKey) : ''; // short: the tile is narrow (the Edit card says where it comes from)
+      dom.ruleMath.textContent = [math, borrowed, weLine].filter(Boolean).join(String.fromCharCode(10));
       renderNote(f, price);
       renderAvgNote(f, price);
       renderSales(f);
@@ -9327,7 +10237,8 @@ window.ScanAccount = {
       sellerView = {
         name: f.title,
         grade: f.grader.toUpperCase() + (f.gradeText ? ' ' + f.gradeText : ''),
-        market: OfferRules.marketFor(f, price, choice.mode)
+        // A Market typed for this card is the market agreed with the seller: the one hide mode shows.
+        market: fig && fig.marketEdited ? { cents: fig.marketCents, pending: false } : OfferRules.marketFor(f, price, choice.mode)
       };
       renderSeller();
     }
@@ -9477,9 +10388,16 @@ window.ScanAccount = {
       if (pileTouching) { pilePending = true; return; }
       pilePending = false;
       pileSwipeReset(); // the rows are about to be redrawn: a row mid-swipe is dropped, never left half-swiped
+      if (checkViewer()) repriceAll(); // another login signed in: its pile starts from the weekend rates
+      renderRoleLabels();
       var entries = pile.list();
-      var t = pile.totals();
+      // session.js's own totals, with every typed Market and Pay in (PileRates.pileTotals: the pay figures the rows show). Pile
+      // value is session.js's own market (the card's value, a 0 never counted) unless a Market was typed for the card: a card
+      // priced on Card Ladder or its average shows that number on its row but is counted "not valued yet", as before.
+      var t = PileRates.pileTotals(entries, pileAdjust, pileKeyOf, weOf, PriceCore.money);
+      var sourcer = isSourcer();
       dom.earlier.hidden = entries.length === 0;
+      renderPileTools(t);
       if (!entries.length) {
         dom.earlierList.innerHTML = '';
         // The You'd pay total sits in the scoreboard, outside the (now hidden) pile: it must not keep
@@ -9500,8 +10418,14 @@ window.ScanAccount = {
       var how = []; // Normal is the default and the dock already shows it: only the exceptions are worth a word
       if (choice.rule !== 'normal') how.push(OfferRules.ruleTitle(choice));
       if (choice.mode === 'lower') how.push('Lower');
+      // One short line in a narrow tile at every stop (CSS cuts it with an ellipsis): +2%, edited rates and a sourcer's
+      // We pay total live in the pile header (its flags and totals), never here, so the scoreboard never grows.
       dom.pileBuyCount.textContent = 'for ' + t.buyCount + ' of ' + t.count + (t.count === 1 ? ' card' : ' cards') +
         (how.length ? ' · ' + how.join(', ') : '');
+      if (dom.pileOfferRow) dom.pileOfferRow.hidden = !sourcer;
+      if (dom.pileWeRow) dom.pileWeRow.hidden = !sourcer;
+      if (dom.pileOffer) dom.pileOffer.textContent = money(t.buyPayoutCents);
+      if (dom.pileWe) dom.pileWe.textContent = money(t.wePayCents);
       dom.clearCount.textContent = String(entries.length);
 
       dom.earlierList.innerHTML = entries.slice().reverse().filter(function (c) {
@@ -9509,18 +10433,25 @@ window.ScanAccount = {
       }).map(function (c) {
         var meta = pileMeta[pileMetaKey(c.grader, c.certKey)] || {};
         var title = CardView.splitTitle(meta.card || (c.grader.toUpperCase() + ' ' + c.cert));
-        // What we pay, or "-" when there is no payout: the pill says why (Not buying, Needs average...), and the market value
-        // has its own line under it, so it is never shown twice.
-        var valueText = c.price && typeof c.price.payoutCents === 'number' && isFinite(c.price.payoutCents) ? money(c.price.payoutCents) : '-';
-        // The card's market value too, under what we pay (owner, 11/17): the market the pay was worked out on (OfferRules.rowMarketCents:
-        // the band's basis, so an avg-of-3 band or Lower mode shows the average it paid on; with no payout, hide mode's market or the
-        // card's value). A card saved before its facts were kept shows the value the pile holds. "-" only when there is no value, never
-        // a $0: a 0 or less is no market value (Triumph's failed lookup answers 0).
-        var mktCents = meta.facts ? OfferRules.rowMarketCents(meta.facts, c.price, choice.mode) : c.marketValueCents;
-        var marketText = typeof mktCents === 'number' && isFinite(mktCents) && mktCents > 0 ? money(mktCents) : '-';
+        // The figures the pile counts (PileRates.cardFigures): a typed Pay, else a typed Market at the card's pile rate, else its
+        // price. The big number is that pay (a sourcer's offer), or "-" when nothing pays for the card: the pill says why (Not buying,
+        // Needs average...), and the market value has its own line under it, so it is never shown twice.
+        var fig = figuresOf(c);
+        var payShown = fig.payCents != null;
+        var valueText = payShown ? money(fig.payCents) : '-';
+        // The card's market value too, under what we pay (owner, 11/17): a typed Market, else the market the pay was worked out on
+        // (compedOf: OfferRules.rowMarketCents, the band's basis, so an avg-of-3 band or Lower mode shows the average it paid on; a
+        // card saved before its facts were kept shows the value the pile holds). "-" only when there is no value, never a $0.
+        var marketText = fig.marketCents != null ? money(fig.marketCents) : '-';
+        var payEdited = fig.payEdited || fig.payFromMarket;
+        var edited = fig.payEdited || fig.marketEdited;
+        // A sourcer's row: their offer big, what we pay them under it (the weekend comp, never their edits), then the market.
+        var we = sourcer ? weOf(c) : null;
+        var weLine = sourcer ? '<span class="val-we">We pay ' + (we && typeof we.payoutCents === 'number' ? money(we.payoutCents) : '-') + '</span>' : '';
         var key = pileMetaKey(c.grader, c.certKey);
         var g = gradeNum(meta.grade);
         // A row: the grade in a circle, the card's name over its cert (and its pill), what we pay on the right with the card's market under it.
+        // Tapping the name prices the card again; tapping the numbers opens Edit card (a typed figure wears the teal pencil).
         // The red Delete sits behind the row and .sc-earlier-slide moves over it when the row is swiped left.
         return '<div class="sc-earlier-row">' +
           '<span class="sc-earlier-del" aria-hidden="true"><span>Delete</span></span>' +
@@ -9529,13 +10460,470 @@ window.ScanAccount = {
             '<span class="sc-row-grade' + (g == null ? ' sc-unk' : '') + '" aria-hidden="true">' + (g == null ? '' : esc(String(g))) + '</span>' +
             '<span class="name"><span class="title">' + esc(title.name) + '</span>' +
               ' <span class="meta">' + (title.set ? '<span class="set"><span class="set-name">' + esc(title.setName) + '</span> ' + esc(title.number) + '</span>' : '') +
-              '<span class="cert">' + esc(c.grader.toUpperCase()) + ' ' + esc(c.cert) + '</span></span>' + pillFor(c.price) + '</span>' +
-            '<span class="val"><span class="val-pay">' + valueText + '</span><span class="val-mkt">Mkt ' + marketText + '</span></span>' +
+              '<span class="cert">' + esc(c.grader.toUpperCase()) + ' ' + esc(c.cert) + '</span></span>' + pillFor(PileRates.shownPrice(c.price, fig)) + '</span>' +
+          '</button>' +
+          '<button type="button" class="sc-earlier-val" data-key="' + esc(key) + '" aria-label="' +
+            esc((sourcer ? 'Your offer ' : 'Pay ') + valueText + ', market ' + marketText + (edited ? ', edited' : '') + '. Edit ' + c.grader.toUpperCase() + ' ' + c.cert) + '">' +
+            '<span class="val"><span class="val-pay' + (payEdited ? ' sc-edited' : '') + '">' + valueText + '</span>' + weLine +
+            '<span class="val-mkt' + (fig.marketEdited ? ' sc-edited' : '') + '">Mkt ' + marketText + '</span></span>' +
           '</button>' +
           '<button type="button" class="sc-earlier-remove" data-cert="' + esc(c.cert) + '" data-grader="' + esc(c.grader) + '" data-key="' + esc(key) + '" aria-label="Remove ' + esc(c.cert) + '">✕</button>' +
           '</div>' +
         '</div>';
       }).join('');
+      renderRatesSheet(true); // the Rates sheet's card counts follow the pile (never under a finger typing a percent)
+    }
+
+    // ── the pile's own rates: the Rates and +2% buttons over the pile, the "Rates for this pile" sheet, Edit card (a row's
+    // numbers), and a sourcer's My cut in Settings. Every number is PileRates' (scanner/pileRates.js); this only draws it
+    // and keeps pileAdjust with the pile. Nothing here writes a rate sheet, and nothing reaches a sourcer's We pay. ──
+    function pileKeyOf(e) { return pileMetaKey(e.grader, e.certKey); }
+    function weOf(e) { var m = pileMeta[pileKeyOf(e)]; return m && m.we ? m.we : null; }
+    /** The market a row shows when none is typed: the market the pay was worked out on (OfferRules.rowMarketCents with the
+        card's price and the phone's mode: the band's basis, so an avg-of-3 band or Lower mode shows the average it paid on;
+        with no payout, that mode's market, else the card's value). A card saved before its facts were kept shows the value
+        the pile holds. Never a 0 or less (no value). The Mkt line, Edit card's Comped hint, its placeholder and the
+        "same market" test of a typed Market (PileRates.makeOverride) all read this one. */
+    function compedOf(e) {
+      var m = pileMeta[pileKeyOf(e)];
+      return PileRates.validCents(m && m.facts ? OfferRules.rowMarketCents(m.facts, e.price, choice.mode) : e.marketValueCents);
+    }
+    function figuresOf(e) { return PileRates.cardFigures(e, pileAdjust.overrides[pileKeyOf(e)], PriceCore.money, compedOf(e)); }
+    /** A sourcer's "We pay $x" for a card (the weekend comp); `long` adds where it comes from. */
+    function weText(key, long) {
+      var m = pileMeta[key];
+      var we = m && m.we;
+      return 'We pay ' + (we && typeof we.payoutCents === 'number' ? money(we.payoutCents) : '-') + (long ? ' at our weekend rate' : '');
+    }
+    function pileMath(price, fig) {
+      if (fig && fig.payEdited) return 'Pay typed by hand';
+      if (fig && fig.payFromMarket && price) return 'Typed market × ' + price.pct + '%';
+      var m = OfferRules.ruleMath(price);
+      if (m && typeof price.weekendPct === 'number' && price.weekendPct !== price.pct) m += ' (weekend ' + price.weekendPct + '%)';
+      return m;
+    }
+    /** The words that change for a sourcer: the tile says Your offer, not We pay. */
+    function renderRoleLabels() {
+      var sourcer = isSourcer();
+      if (dom.payKey) dom.payKey.textContent = sourcer ? 'Your offer' : 'We pay';
+      if (dom.pilePayLabel) dom.pilePayLabel.textContent = sourcer ? 'Your offer' : "You'd pay";
+    }
+    /** +2% on or off (both buttons), and the flags under the pile's count: +2% on, pile rates edited, cards typed by hand,
+        a sourcer's cut. */
+    function renderPileTools(t) {
+      var on = pileAdjust.plus2 ? 'true' : 'false';
+      if (dom.plus2) dom.plus2.setAttribute('aria-pressed', on);
+      if (ratesUi.plus2) ratesUi.plus2.setAttribute('aria-pressed', on);
+      if (!dom.pileFlags) return;
+      var flags = [];
+      if (pileAdjust.plus2) flags.push('<span class="sc-flag sc-flag-on">+2% on</span>');
+      // Only the sheet the pile is priced on now: a band edited on the other rule's sheet prices nothing here.
+      if (PileRates.bandEdits(pileAdjust, choice.rule)) flags.push('<span class="sc-flag sc-flag-edit">Rates edited</span>');
+      var n = t ? t.editedCount : 0;
+      if (n) flags.push('<span class="sc-flag sc-flag-edit">' + n + (n === 1 ? ' card' : ' cards') + ' edited</span>');
+      var cut = isSourcer() ? myCut() : 0;
+      // A cut this phone holds that their login has not taken yet says so, until it is saved (cutUnsaved).
+      var unsaved = cutUnsaved();
+      if (cut || unsaved) flags.push('<span class="sc-flag sc-flag-cut">My cut ' + cut + (cut === 1 ? ' point' : ' points') + (unsaved ? ' (not saved)' : '') + '</span>');
+      dom.pileFlags.innerHTML = flags.join('');
+      dom.pileFlags.hidden = !flags.length;
+    }
+    /** Something about the pile's rates changed: price every card again, keep it with the pile, draw it. */
+    function pileChanged() {
+      repriceAll();
+      renderPile();
+      if (currentKey) renderCurrent();
+    }
+    function togglePlus2() {
+      pileAdjust = PileRates.setPlus2(pileAdjust, !pileAdjust.plus2);
+      pileChanged();
+      renderRatesSheet(false);
+    }
+
+    // A sheet (a <dialog>) shown as a modal where the browser can (above the dock, the page behind it untappable), else
+    // just shown. Whether it is open is kept here: the page never has to read it back off the element.
+    function showSheet(d) {
+      if (!d) return;
+      try {
+        if (typeof d.showModal === 'function') d.showModal();
+        else d.setAttribute('open', '');
+      } catch (e) { try { d.setAttribute('open', ''); } catch (e2) { /* nothing to show */ } }
+    }
+    function hideSheet(d) {
+      if (!d) return;
+      try {
+        if (typeof d.close === 'function') d.close();
+        else if (d.removeAttribute) d.removeAttribute('open');
+      } catch (e) { if (d.removeAttribute) d.removeAttribute('open'); }
+    }
+    /** Escape, the dialog's own cancel, and a tap on the dimmed backdrop close it, as they close Settings. */
+    function sheetDismissals(d, close) {
+      if (!d) return;
+      d.addEventListener('cancel', function (ev) { ev.preventDefault(); close(); });
+      d.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { ev.preventDefault(); close(); } });
+      d.addEventListener('click', function (ev) {
+        if (ev.target !== d || typeof d.getBoundingClientRect !== 'function') return;
+        var r = d.getBoundingClientRect();
+        if (ev.clientX < r.left || ev.clientX > r.right || ev.clientY < r.top || ev.clientY > r.bottom) close();
+      });
+    }
+
+    // ── Rates for this pile ──
+    var ratesShown = false;
+    var ratesTyping = false; // a finger is in one of its percent fields: the list is never redrawn under it
+    var ratesView = null;    // { rule, sheet, bands } as drawn
+    /** The sheet the pile is priced on right now, as the Rates sheet lists it. */
+    function ratesSource() {
+      if (choice.rule === 'flat') return { rule: 'flat', sheet: null };
+      if (choice.rule === 'consignor') return { rule: 'consignor', sheet: consignorSettings };
+      return { rule: 'normal', sheet: pricingRates() };
+    }
+    /** What a band's percent is taken of. In Lower mode every band pays on the lower of the CL value and the avg of 3
+        (OfferRules prices with basis 'lowest'), whatever the band names. */
+    function bandBasisWords(b) {
+      if (choice.mode === 'lower' && choice.rule !== 'flat') return OfferRules.BASIS_WORDS.lowest;
+      return b.basis && OfferRules.BASIS_WORDS[b.basis] ? OfferRules.BASIS_WORDS[b.basis] : '';
+    }
+    var BAND_PCT_HINT = 'Type a percent from 0.01 to 100, like 92 or 92.5.';
+    function bandMetaHtml(b, sourcer) {
+      var words = bandBasisWords(b);
+      var of = words ? ' of ' + words : '';
+      var parts = ['Weekend ' + b.weekendPct + '%' + of];
+      if (pileAdjust.plus2) parts.push('pays ' + b.pct + '% with +2%');
+      if (sourcer) parts.push('you offer ' + b.offerPct + '%');
+      var html = parts.map(function (p) { return esc(p); }).join(' · ');
+      if (b.cards) html += ' · <span class="sc-band-cards">' + b.cards + (b.cards === 1 ? ' card' : ' cards') + '</span>';
+      return (b.edited ? '<span class="sc-band-edited">Edited</span> · ' : '') + html;
+    }
+    function renderRatesSheet(soft) {
+      if (!ratesShown || !ratesUi.list) return;
+      if (soft && ratesTyping) return;
+      var src = ratesSource();
+      var sourcer = isSourcer();
+      var cut = myCut();
+      if (ratesUi.note) {
+        ratesUi.note.textContent = 'For this pile only. The weekend rates stay as they are.' +
+          (sourcer ? ' You offer each rate less your cut of ' + cut + (cut === 1 ? ' point' : ' points') + '; what we pay you stays on the weekend rates.' : '');
+      }
+      // Set default is live while THIS rule's sheet has an edit, or +2% is on (PileRates.ratesChanged with the rule).
+      if (ratesUi.reset) ratesUi.reset.disabled = !PileRates.ratesChanged(pileAdjust, src.rule);
+      if (ratesUi.plus2) ratesUi.plus2.setAttribute('aria-pressed', pileAdjust.plus2 ? 'true' : 'false');
+      if (src.rule === 'flat') {
+        ratesView = { rule: 'flat', sheet: null, bands: [] };
+        ratesUi.list.innerHTML = '<div class="sc-rates-empty">Flat % pays the percent typed under Price with on every card' +
+          (pileAdjust.plus2 ? ', plus 2 points while +2% is on' : '') + '. It has no bands to change.</div>';
+        return;
+      }
+      if (!src.sheet) {
+        ratesView = { rule: src.rule, sheet: null, bands: [] };
+        ratesUi.list.innerHTML = '<div class="sc-rates-empty">' + (ratesLoading() ? 'Loading the weekend rates…' : 'The weekend rates are not loaded yet. Scan a card and they load with it.') + '</div>';
+        return;
+      }
+      var bands = PileRates.bandsFor(src.sheet, pileAdjust, src.rule, cut, pile.list().map(function (e) { return e.price; }));
+      ratesView = { rule: src.rule, sheet: src.sheet, bands: bands };
+      ratesUi.list.innerHTML = bands.map(function (b, i) {
+        var name = b.label || ('Band ' + (i + 1));
+        // The field's own error line (bandError): a percent that does not read is said in words, not only in red.
+        return '<div class="sc-band' + (b.edited ? ' sc-band-on' : '') + '">' +
+          '<div class="sc-band-words"><div class="sc-band-name">' + esc(name) + '</div>' +
+          '<div class="sc-band-meta">' + bandMetaHtml(b, sourcer) + '</div></div>' +
+          '<label class="sc-band-pct"><input class="sc-input sc-band-input" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done"' +
+            ' data-band="' + i + '" value="' + esc(String(b.pilePct)) + '" aria-label="' + esc('Percent for ' + name) + '"' +
+            ' aria-describedby="sc-band-err-' + i + '"></label>' +
+          '<div class="sc-band-err" id="sc-band-err-' + i + '" aria-live="polite" hidden></div>' +
+        '</div>';
+      }).join('') || '<div class="sc-rates-empty">This rate sheet has no bands.</div>';
+    }
+    /** A band row's error line: `text` shows it (and marks the field invalid), '' hides it. */
+    function bandError(inp, text) {
+      inp.setAttribute('aria-invalid', text ? 'true' : 'false');
+      var row = inp.closest ? inp.closest('.sc-band') : null;
+      var err = row && row.querySelector ? row.querySelector('.sc-band-err') : null;
+      if (!err) return;
+      err.textContent = text || '';
+      err.hidden = !text;
+    }
+    /** One band's percent typed: the pile re-prices at once, and that band's own row follows in place. */
+    function onBandInput(inp) {
+      var i = inp && inp.getAttribute ? inp.getAttribute('data-band') : null;
+      var b = i != null && ratesView ? ratesView.bands[Number(i)] : null;
+      if (!b) return;
+      var pct = PileRates.parseBandPct(inp.value);
+      // Not a percent (yet): said under the field, and the pile stays on the band's last good percent.
+      bandError(inp, pct == null && String(inp.value).trim() !== '' ? BAND_PCT_HINT : '');
+      if (pct == null) return; // an emptied field is a number on its way: no error yet, and leaving it empty puts the percent back
+      pileAdjust = PileRates.setBand(pileAdjust, ratesView.rule, b.row, pct);
+      pileChanged();
+      var fresh = PileRates.bandsFor(ratesView.sheet, pileAdjust, ratesView.rule, myCut(), pile.list().map(function (e) { return e.price; }));
+      ratesView.bands = fresh;
+      var nb = fresh[Number(i)];
+      var row = inp.closest ? inp.closest('.sc-band') : null;
+      if (row && nb) {
+        row.classList.toggle('sc-band-on', nb.edited);
+        var meta = row.querySelector ? row.querySelector('.sc-band-meta') : null;
+        if (meta) meta.innerHTML = bandMetaHtml(nb, isSourcer());
+      }
+      if (ratesUi.reset) ratesUi.reset.disabled = !PileRates.ratesChanged(pileAdjust, ratesView.rule);
+    }
+    /** Leaving a field: a percent that is not one goes back to the band's own, and the line under it says so (it never
+        snaps back silently, so nobody walks away thinking a rate changed when it did not). */
+    function onBandCommit(inp) {
+      var i = inp && inp.getAttribute ? inp.getAttribute('data-band') : null;
+      var b = i != null && ratesView ? ratesView.bands[Number(i)] : null;
+      if (!b) return;
+      if (PileRates.parseBandPct(inp.value) == null) {
+        inp.value = String(b.pilePct);
+        bandError(inp, 'Not changed: still ' + b.pilePct + '%. ' + BAND_PCT_HINT);
+        inp.setAttribute('aria-invalid', 'false'); // the field holds a good percent again; the words stay until the next edit
+      } else {
+        bandError(inp, '');
+      }
+    }
+    function openRates() {
+      if (!ratesUi.sheet) return;
+      ratesShown = true;
+      ratesTyping = false;
+      showSheet(ratesUi.sheet);
+      renderRatesSheet(false);
+    }
+    function closeRates() {
+      if (!ratesShown) return;
+      ratesShown = false;
+      ratesTyping = false;
+      hideSheet(ratesUi.sheet);
+      if (dom.ratesOpen && dom.ratesOpen.focus) dom.ratesOpen.focus();
+    }
+    function setDefaultRates() {
+      pileAdjust = PileRates.resetRates(pileAdjust);
+      pileChanged();
+      renderRatesSheet(false);
+    }
+
+    // ── Edit card ──
+    var editKey = null; // the card Edit card is open on
+    function editHints() {
+      var e = editKey ? pileEntry(editKey) : null;
+      if (!e) return;
+      var sourcer = isSourcer();
+      var m = PileRates.parseMoneyInput(editUi.market.value);
+      var p = PileRates.parseMoneyInput(editUi.pay.value);
+      var comped = compedOf(e); // the row's own Mkt (the market the pay was worked out on), never a 0
+      var typedMarket = m.ok && m.cents != null;
+      editUi.marketHint.textContent = (comped != null ? 'Comped ' + money(comped) + '. ' : 'No comped market yet. ') +
+        (typedMarket ? 'Yours counts for this pile.' : 'Leave blank to keep it.');
+      editUi.marketHint.classList.toggle('sc-edited', typedMarket);
+      var typedPay = p.ok && p.cents != null;
+      var trial = PileRates.cardFigures(e, PileRates.makeOverride(e, typedMarket ? m.cents : null, null, comped), PriceCore.money, comped);
+      var priced = e.price && typeof e.price.payoutCents === 'number';
+      editUi.payHint.textContent = typedPay ? 'Kept as typed. Leave blank to follow the rate.'
+        : priced ? 'Leave blank to follow the rate: ' + money(trial.payCents) + ' at ' + e.price.pct + '%' + (trial.payFromMarket ? ' of your market.' : '.')
+        : 'No rate prices this card. Type ' + (sourcer ? 'an offer' : 'a pay') + ' to count it.';
+      editUi.payHint.classList.toggle('sc-edited', typedPay);
+      // The empty Pay field shows what it will be: the rate's figure, on the typed market when there is one.
+      editUi.pay.placeholder = priced ? money(trial.payCents) : '';
+      if (editUi.we) {
+        editUi.we.hidden = !sourcer;
+        if (sourcer) editUi.we.textContent = weText(editKey, true) + '. Your edits never change it.';
+      }
+    }
+    function openEditor(key) {
+      var e = pileEntry(key);
+      if (!e || !editUi.sheet) return;
+      editKey = key;
+      var meta = pileMeta[key] || {};
+      var title = CardView.splitTitle(meta.card || (e.grader.toUpperCase() + ' ' + e.cert));
+      editUi.name.textContent = title.name;
+      editUi.cert.textContent = (title.set ? title.set + ' · ' : '') + e.grader.toUpperCase() + ' ' + e.cert;
+      var ov = pileAdjust.overrides[key] || null;
+      editUi.market.value = ov && ov.marketCents != null ? money(ov.marketCents) : '';
+      var comped = compedOf(e);
+      editUi.market.placeholder = comped != null ? money(comped) : 'Not known yet';
+      editUi.pay.value = ov && ov.payCents != null ? money(ov.payCents) : '';
+      editUi.payLabel.textContent = isSourcer() ? 'Your offer' : 'Pay';
+      editUi.reset.disabled = !ov;
+      editUi.err.hidden = true;
+      editHints();
+      showSheet(editUi.sheet);
+    }
+    function closeEditor() {
+      if (editKey == null) return;
+      editKey = null;
+      hideSheet(editUi.sheet);
+    }
+    function saveEditor() {
+      var e = editKey ? pileEntry(editKey) : null;
+      if (!e) { closeEditor(); return; }
+      var m = PileRates.parseMoneyInput(editUi.market.value);
+      var p = PileRates.parseMoneyInput(editUi.pay.value);
+      if (!m.ok || !p.ok) {
+        // A $0 is refused like any amount that does not read: a market of 0 is no value, and a Pay of 0 would count a card
+        // bought for nothing (to not buy a card, leave Pay blank on a card no rate takes, or swipe it away).
+        editUi.err.textContent = 'Type an amount above $0, like 45 or 45.50 (up to $1,000,000), or leave it blank.';
+        editUi.err.hidden = false;
+        (m.ok ? editUi.pay : editUi.market).focus();
+        return;
+      }
+      pileAdjust = PileRates.setOverride(pileAdjust, editKey, PileRates.makeOverride(e, m.cents, p.cents, compedOf(e)));
+      closeEditor();
+      pileChanged();
+    }
+    function resetEditor() {
+      if (editKey == null) return;
+      pileAdjust = PileRates.setOverride(pileAdjust, editKey, null);
+      closeEditor();
+      pileChanged();
+    }
+
+    // ── My cut (a sourcer's, in Settings): kept on this phone at once (not saved yet), saved to their login (user_metadata)
+    // a moment later. A save that fails, has no signal, or never ran (the app closed inside the wait) leaves this phone's copy
+    // unsaved: it stays the cut (PileRates.cutFor: no token, older or newer, overrides it) and is saved again on the next
+    // load of the Scanner, a sign-in, a session refresh, the signal coming back and the app coming back to the front;
+    // leaving the app sends a save that is still waiting at once. Until it is saved the pile's flag says "(not saved)". ──
+    var cutTimer = null;   // the wait before a save (taps in a row are one save)
+    var cutSaving = false; // a save is out
+    var cutAgain = false;  // the cut changed while it was out: save once more when it answers
+    var cutSavingCut = null; // the figure that save carries
+    var cutRetryAt = 0;    // after a save that failed, the automatic tries wait until then (syncCut)
+    var CUT_RETRY_MS = 30000;
+    var CUT_NO_SIGNAL = 'Saved on this phone. No signal to save it to your login: it tries again when the signal is back.';
+    function cutStatus(text) { if (cutUi.status) cutUi.status.textContent = text || ''; }
+    /** This phone holds a cut their login has not taken, and no save is waiting or out. */
+    function cutUnsaved() {
+      return !cutTimer && !cutSaving && PileRates.cutNeedsSave(viewer(), loadCutCache());
+    }
+    function renderCutSection() {
+      if (!cutUi.section) return;
+      var v = viewer();
+      var show = !v.owner && !!v.id;
+      cutUi.section.hidden = !show;
+      if (!show) return;
+      var c = myCut();
+      cutUi.val.textContent = c + (c === 1 ? ' point' : ' points');
+      cutUi.down.disabled = c <= 0;
+      cutUi.up.disabled = c >= PileRates.CUT_MAX;
+    }
+    /** One PUT of the cut to the signed-in login (a 401 refreshes the session once and tries again). Resolves to
+        { ok: true, savedAt } (the server's updated_at, PileRates.savedAtOf) or { ok: false, text } (what to say). */
+    function putCut(n, retried, keepalive) {
+      var data = {};
+      data[PileRates.CUT_KEY] = n;
+      var opts = {
+        method: 'PUT',
+        headers: { apikey: SB_ANON, authorization: 'Bearer ' + session.access_token, 'content-type': 'application/json' },
+        body: JSON.stringify({ data: data })
+      };
+      if (keepalive) opts.keepalive = true; // leaving the app: the browser finishes it after the page is gone
+      return fetch(SB_URL + '/auth/v1/user', opts).then(function (res) {
+        if (res.status === 401 && !retried) {
+          return refreshSession().then(function (r) {
+            if (r.ok && session && session.access_token) return putCut(n, true, keepalive);
+            // No answer to the refresh is a lost signal, not a refused login: never "sign in again" for that.
+            return { ok: false, text: r.noSignal ? CUT_NO_SIGNAL : 'Saved on this phone. Sign in again to keep it on your login.' };
+          });
+        }
+        if (!res.ok) return { ok: false, text: 'Saved on this phone. Your login did not take it yet: it tries again on its own.' };
+        return res.json().then(function (user) { return { ok: true, savedAt: PileRates.savedAtOf(user) }; },
+          function () { return { ok: true, savedAt: null }; });
+      }, function () {
+        return { ok: false, text: CUT_NO_SIGNAL };
+      });
+    }
+    /** Saves this phone's cut to the login when it is not there yet. `keepalive`: the page is going away. `force`: a person
+        asked (the stepper's own save, a sign-in, the signal back); the automatic tries (a fresh session, the app back in
+        front, a load) wait CUT_RETRY_MS after a save that failed, so a login that keeps refusing it is never asked in a loop
+        (a 401, a refresh, the refresh's own try, another 401...). */
+    function syncCut(keepalive, force) {
+      if (cutTimer) { clearTimeout(cutTimer); cutTimer = null; }
+      var v = viewer();
+      var rec = loadCutCache();
+      if (!PileRates.cutNeedsSave(v, rec)) return;
+      // A save is out: once more when it answers only if the cut has changed since (never for the same figure again).
+      if (cutSaving) { if (rec.cut !== cutSavingCut) cutAgain = true; return; }
+      if (!force && !keepalive && Date.now() < cutRetryAt) return;
+      if (!session || !session.access_token) {
+        cutStatus('Saved on this phone. Sign in to keep it on your login.');
+        renderPile();
+        return;
+      }
+      cutSaving = true;
+      var n = cutSavingCut = rec.cut;
+      putCut(n, false, keepalive).then(function (r) {
+        cutSaving = false;
+        cutRetryAt = r.ok ? 0 : Date.now() + CUT_RETRY_MS;
+        var now = loadCutCache();
+        // Saved: this phone's copy is the login's now, unless it was changed again meanwhile (that one is saved next).
+        if (r.ok && now && now.uid === v.id && now.cut === n && now.synced !== true) writeCutCache(PileRates.cutRecord(v.id, n, true, r.savedAt));
+        cutStatus(r.ok ? 'Saved to your login.' : r.text);
+        var again = cutAgain;
+        cutAgain = false;
+        renderCutSection();
+        renderPile(); // the flag drops "(not saved)", or keeps it
+        if (again || (r.ok && PileRates.cutNeedsSave(viewer(), loadCutCache()))) syncCut(false, true);
+      });
+    }
+    function stepCut(delta) {
+      var v = viewer();
+      if (v.owner || !v.id) return;
+      var next = Math.max(0, Math.min(PileRates.CUT_MAX, myCut() + delta));
+      // Kept at once (in memory too, so a phone whose storage refuses it still moves), not saved to the login yet.
+      writeCutCache(PileRates.cutRecord(v.id, next, false, null));
+      renderCutSection();
+      cutStatus('Saving…');
+      if (cutTimer) clearTimeout(cutTimer);
+      cutTimer = setTimeout(function () { cutTimer = null; syncCut(false, true); }, 700);
+      pileChanged();
+    }
+    /** A sign-in or a fresh session: the pile's rates and typed figures stay with the user who made them, every card is
+        priced again when the user, their role or their cut is not what the pile was priced for (a token carrying a cut
+        changed on another phone), and a cut this phone holds for this login is saved if it is not yet. */
+    function onViewerChanged(signedIn) {
+      adoptCut();
+      if (checkViewer() || viewerSig() !== pricedFor) pileChanged();
+      syncCut(false, signedIn === true);
+    }
+
+    function wirePileRates() {
+      if (dom.ratesOpen) dom.ratesOpen.addEventListener('click', openRates);
+      if (dom.plus2) dom.plus2.addEventListener('click', togglePlus2);
+      if (ratesUi.plus2) ratesUi.plus2.addEventListener('click', togglePlus2);
+      if (ratesUi.done) ratesUi.done.addEventListener('click', closeRates);
+      if (ratesUi.reset) ratesUi.reset.addEventListener('click', setDefaultRates);
+      if (ratesUi.list) {
+        ratesUi.list.addEventListener('focusin', function () { ratesTyping = true; });
+        ratesUi.list.addEventListener('focusout', function () { ratesTyping = false; });
+        ratesUi.list.addEventListener('input', function (ev) { onBandInput(ev.target); });
+        ratesUi.list.addEventListener('change', function (ev) { onBandCommit(ev.target); });
+        ratesUi.list.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter' && ev.target && ev.target.blur) { ev.preventDefault(); ev.target.blur(); }
+        });
+      }
+      sheetDismissals(ratesUi.sheet, closeRates);
+      if (ratesUi.sheet) ratesUi.sheet.addEventListener('close', function () { ratesShown = false; ratesTyping = false; });
+      if (editUi.sheet) {
+        editUi.cancel.addEventListener('click', closeEditor);
+        editUi.save.addEventListener('click', saveEditor);
+        editUi.reset.addEventListener('click', resetEditor);
+        editUi.market.addEventListener('input', editHints);
+        editUi.pay.addEventListener('input', editHints);
+        editUi.market.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); editUi.pay.focus(); } });
+        editUi.pay.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); saveEditor(); } });
+        sheetDismissals(editUi.sheet, closeEditor);
+        editUi.sheet.addEventListener('close', function () { editKey = null; });
+      }
+      if (cutUi.down) cutUi.down.addEventListener('click', function () { stepCut(-1); });
+      if (cutUi.up) cutUi.up.addEventListener('click', function () { stepCut(1); });
+      if (settingsUi.open) settingsUi.open.addEventListener('click', function () {
+        cutStatus(cutUnsaved() ? 'Saved on this phone, not on your login yet: it tries again on its own.' : '');
+        renderCutSection();
+      });
+      // An unsaved cut is saved again when the signal comes back and when the app comes back to the front; leaving the app
+      // (backgrounded, or the page going away) sends a save that is still waiting at once, so it is never lost in the wait.
+      window.addEventListener('online', function () { syncCut(false, true); });
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) { if (cutTimer) syncCut(true); }
+        else syncCut(false);
+      });
+      window.addEventListener('pagehide', function () { if (cutTimer) syncCut(true); });
     }
 
     /** Takes one card out of the pile: what its ✕ button does, and what swiping its row left does (both hand in
@@ -9546,6 +10934,11 @@ window.ScanAccount = {
       pile.removeCard(rm.getAttribute('data-cert'), rm.getAttribute('data-grader'));
       stopAveragePoll(rmKey);
       delete pileMeta[rmKey];
+      pileAdjust = PileRates.setOverride(pileAdjust, rmKey, null);
+      if (editKey === rmKey) closeEditor();
+      // The last card gone: the pile's own rates go with it (+2%, band edits), exactly as New seller does, since the Rates and
+      // +2% buttons that undo them are hidden with the empty pile.
+      if (!pile.list().length) { pileAdjust = PileRates.emptyAdjust(); closeRates(); }
       if (rmKey === currentKey) { // the card on screen is gone: clear it from both views
         currentKey = null;
         sellerView = null;
@@ -10252,6 +11645,7 @@ window.ScanAccount = {
       if (wired) return;
       wired = true;
       wireSettings();
+      wirePileRates();
       dom.start.addEventListener('click', function () {
         // The camera button tap is a user gesture, which is the ONE thing iOS requires before
         // it will ever let an AudioContext leave "suspended" - prime it here so the very first beep
@@ -10306,6 +11700,8 @@ window.ScanAccount = {
         if (Date.now() < pileSwipeEatUntil) { pileSwipeEatUntil = 0; return; } // the click a swipe's own release makes
         var rm = ev.target.closest('.sc-earlier-remove');
         if (rm) { removePileRow(rm); return; }
+        var val = ev.target.closest('.sc-earlier-val');
+        if (val) { openEditor(val.getAttribute('data-key')); return; }
         var main = ev.target.closest('.sc-earlier-main');
         if (main) priceCert(main.getAttribute('data-cert'), main.getAttribute('data-grader'));
       });
@@ -10327,6 +11723,10 @@ window.ScanAccount = {
         stopAllAveragePolls();
         pile.clear();
         pileMeta = {};
+        // A new seller is a new pile: the weekend rates, +2% off, nothing typed.
+        pileAdjust = PileRates.emptyAdjust();
+        closeRates();
+        closeEditor();
         savePile();
         dom.clearConfirm.hidden = true;
         // A new seller must not see the last seller's card, on either view (nor its We pay in the scoreboard).
@@ -10462,6 +11862,7 @@ window.ScanAccount = {
       if (bridge.cameraPanelSupported() && !session && !panelShown) bridge.hideScanner();
       if (bridge.cameraPanelSupported()) showPanelIfReady(); else autoCamera();
       applyPageHiding();
+      syncCut(false); // a cut this phone set and never got onto the login (no signal, the app closed) is saved now
       ensureSettings(true).then(function () { // the tab loads both sheets, whatever rule is picked
         repaintForSheets(); // our sheets are in: every card is priced against the one picked
         if (!resumed && session) { resumed = true; resumeAveragePolls(); }
