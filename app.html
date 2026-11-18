@@ -1205,10 +1205,13 @@ code{font-family:var(--font-mono);font-size:.92em;}
 
   /* ── this visit: the pile ── */
   #tab-scanner .sc-pile{display:flex;flex-direction:column;gap:8px;}
-  #tab-scanner .sc-pile-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 4px 0;}
-  #tab-scanner .sc-pile-head > div{min-width:0;}
+  #tab-scanner .sc-pile-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;padding:2px 4px 0;}
+  /* The column's children sit in the head's own rows (display:contents): the count and New seller on the first, the pile's
+     flags on a full-width row under both (.sc-pile-flags), so a pile with three or four flags wraps them across the card
+     instead of stacking one per line beside New seller. */
+  #tab-scanner .sc-pile-head > div{min-width:0;display:contents;}
   #tab-scanner .sc-pile-head .sc-h{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
-  #tab-scanner .sc-pile-count{font-size:var(--sc-fs-body);font-weight:800;line-height:1.3;color:var(--sc-ink);}
+  #tab-scanner .sc-pile-count{flex:1 1 0;min-width:0;font-size:var(--sc-fs-body);font-weight:800;line-height:1.3;color:var(--sc-ink);}
   #tab-scanner #sc-clear{--sc-i:var(--i-user-plus);flex:none;gap:7px;padding:0 15px 0 12px;color:var(--sc-steel-ink);font-size:var(--sc-fs-label);}
   #tab-scanner #sc-clear::before{width:17px;height:17px;}
   #tab-scanner .sc-pile-totals{padding:8px 14px;border-bottom:1px solid var(--sc-line);}
@@ -1633,7 +1636,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-account-who{margin:0;font-size:var(--sc-fs-row);font-weight:700;line-height:1.35;color:var(--sc-ink);overflow-wrap:anywhere;}
   #tab-scanner .sc-account-confirm{display:flex;flex-direction:column;gap:12px;}
   #tab-scanner .sc-account-text{margin:0;font-size:var(--sc-fs-row);font-weight:500;line-height:1.45;color:var(--sc-ink);}
-  #tab-scanner .sc-account-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  #tab-scanner .sc-account-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  #tab-scanner .sc-account-card .sc-signin-link{color:var(--sc-err-ink);}
   #tab-scanner .sc-account-btns .sc-btn{min-height:46px;}
   #tab-scanner .sc-theme-opt::after{
     content:"";flex:none;width:22px;height:22px;background:currentColor;color:var(--sc-steel-ink);visibility:hidden;
@@ -1646,7 +1650,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
      Colour keeps the key the page already reads: steel on its tint for what is switched on (the Adjust flag), teal with
      the pencil for anything a person typed (the hand-priced chip's teal: a band edit, a typed figure, the box while it is
      not 0), muted for the weekend numbers underneath. Tokens only, so every theme re-colours all of it. ── */
-  #tab-scanner .sc-pile-flags{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px;}
+  #tab-scanner .sc-pile-flags{order:1;flex:1 1 100%;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
   #tab-scanner .sc-pile-flags[hidden]{display:none;}
   #tab-scanner .sc-flag{
     display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:999px;
@@ -1671,14 +1675,15 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-flag-adjust:focus-visible{outline:none;box-shadow:0 0 0 3px var(--sc-focus-soft);}
   #tab-scanner .sc-total + .sc-total{margin-top:4px;}
   #tab-scanner .sc-pile-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--sc-line);}
-  #tab-scanner .sc-tool-rates{--sc-i:var(--i-sliders);flex:none;color:var(--sc-steel-ink);}
+  #tab-scanner .sc-tool-rates{--sc-i:var(--i-sliders);flex:1 0 auto;gap:7px;padding:0 16px 0 13px;color:var(--sc-steel-ink);}
   #tab-scanner .sc-tool-rates::before{width:17px;height:17px;}
   /* The Adjust % box: one field-shaped pill, its name on the left and the figure together on the right: the +/- key
      (iOS decimal keypads have no minus), the points, the % sign. The key is a 44px target with a 32px face (its
      background stops at its content box). A teal ring while it is not 0, a red one while what is typed does not read.
-     On a phone too narrow for it beside Rates, it takes a row of its own (the row wraps). */
+     On a phone too narrow for it beside Rates, it takes a row of its own (the row wraps). The field keeps a fixed width
+     (never field-sizing:content): sized to what is typed, it flipped that wrap under the finger and fell under a 24px target. */
   #tab-scanner .sc-adjust{
-    flex:1 1 auto;display:flex;align-items:center;min-width:0;min-height:44px;padding:0 12px 0 14px;border-radius:999px;
+    flex:999 1 auto;display:flex;align-items:center;min-width:0;min-height:44px;padding:0 12px 0 14px;border-radius:999px;
     background:var(--sc-fill-card-bg);box-shadow:inset 0 0 0 1px var(--sc-edge-card);transition:box-shadow 150ms ease-out;
   }
   #tab-scanner .sc-adjust:focus-within{box-shadow:inset 0 0 0 1px var(--sc-steel-ink), 0 0 0 3px var(--sc-focus-soft);}
@@ -1698,15 +1703,16 @@ code{font-family:var(--font-mono);font-size:.92em;}
   }
   #tab-scanner .sc-adjust-sign::before{width:16px;height:16px;}
   #tab-scanner .sc-adjust-sign:active{background-color:var(--sc-fill-focus);transition-duration:0s;}
-  #tab-scanner .sc-adjust-sign:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--sc-focus);}
-  #tab-scanner .sc-adjust-sign:disabled{opacity:.45;cursor:default;}
+  #tab-scanner .sc-adjust-sign:focus-visible{outline:2px solid var(--sc-focus);outline-offset:-4px;}
+  #tab-scanner .sc-adjust-sign:disabled{cursor:default;}
   #tab-scanner .sc-adjust-input{
     flex:none;width:3.2em;min-width:0;height:44px;padding:0;border:0;border-radius:0;outline:none;background:none;
     text-align:right;color:var(--sc-ink);caret-color:var(--sc-steel-ink);font-family:inherit;font-size:var(--sc-fs-body);
     font-weight:800;font-variant-numeric:tabular-nums;
   }
   #tab-scanner .sc-adjust-input::placeholder{color:var(--sc-muted);opacity:1;font-weight:500;}
-  #tab-scanner .sc-adjust-input:disabled{opacity:.55;}
+  #tab-scanner .sc-adjust:has(.sc-adjust-input:disabled){opacity:.55;}
+  #tab-scanner .sc-adjust:has(.sc-adjust-input:disabled) .sc-adjust-label{cursor:default;}
   #tab-scanner .sc-adjust-unit{flex:none;padding-left:2px;font-size:var(--sc-fs-body);font-weight:700;color:var(--sc-muted);}
   /* Two lines under the row: what is typed that does not read (red, in words), and a save that has not reached the login. */
   #tab-scanner .sc-adjust-err,#tab-scanner .sc-adjust-status{flex:1 0 100%;margin:0 4px;font-size:var(--sc-fs-label);line-height:1.4;}
@@ -1720,8 +1726,14 @@ code{font-family:var(--font-mono);font-size:.92em;}
     -webkit-tap-highlight-color:transparent;transition:background-color 150ms ease-out;
   }
   #tab-scanner .sc-earlier-val:active{background:var(--sc-fill-card-bg);transition-duration:0s;}
+  #tab-scanner .sc-earlier-val:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--sc-focus);}
   #tab-scanner .sc-earlier-row.sc-swiping .sc-earlier-val:active{background:none;}
   #tab-scanner .sc-earlier-row .val-we{font-size:var(--sc-fs-label);font-weight:700;line-height:1.3;color:var(--sc-ink);}
+  /* A phone about 320px wide: a sourcer's "We pay $x" breaks after "We pay" instead of squeezing the card's name column to
+     about 60px (it broke "Charizard" mid-word). The amount itself never breaks; wider phones keep the line whole. */
+  @media (max-width:340px){
+    #tab-scanner .sc-earlier-row .val-we{max-width:5.6em;white-space:normal;}
+  }
   #tab-scanner .sc-earlier-row .sc-edited{display:inline-flex;align-items:center;gap:4px;color:var(--sc-teal-chip);}
   #tab-scanner .sc-earlier-row .sc-edited::before{
     content:"";flex:none;width:12px;height:12px;background:currentColor;
@@ -1735,8 +1747,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-band-words{min-width:0;}
   #tab-scanner .sc-band-name{font-size:var(--sc-fs-row);font-weight:700;line-height:1.3;color:var(--sc-ink);overflow-wrap:anywhere;}
   #tab-scanner .sc-band-meta{margin-top:3px;font-size:var(--sc-fs-label);line-height:1.4;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
-  #tab-scanner .sc-band-cards{font-weight:700;color:var(--sc-steel-ink);}
-  #tab-scanner .sc-band-edited{font-weight:700;color:var(--sc-teal-chip);}
+  #tab-scanner .sc-band-cards{font-weight:700;color:var(--sc-steel-ink);white-space:nowrap;}
+  #tab-scanner .sc-band-edited{font-weight:700;color:var(--sc-teal-chip);white-space:nowrap;}
   #tab-scanner .sc-band-pct{position:relative;display:block;width:88px;}
   #tab-scanner .sc-band-pct .sc-input{height:44px;padding:0 30px 0 10px;text-align:right;font-weight:800;font-variant-numeric:tabular-nums;}
   #tab-scanner .sc-band-pct::after{content:"%";position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:var(--sc-fs-row);font-weight:700;color:var(--sc-muted);pointer-events:none;}
@@ -1758,12 +1770,12 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-money-input{font-weight:800;font-variant-numeric:tabular-nums;}
   /* An empty field's figure is what it will follow (the comp, the rate): lighter than a typed one, so the two never look alike. */
   #tab-scanner .sc-money-input::placeholder{font-weight:500;}
-  #tab-scanner .sc-edit-hint{margin:0 4px 8px;font-size:var(--sc-fs-label);line-height:1.4;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-edit-hint{margin:0 0 8px;font-size:var(--sc-fs-label);line-height:1.4;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
   #tab-scanner .sc-edit-hint.sc-edited{font-weight:700;color:var(--sc-teal-chip);}
   #tab-scanner .sc-edit-we{padding:10px 12px;border-radius:14px;background:var(--sc-fill-card-bg);font-size:var(--sc-fs-label);font-weight:700;line-height:1.4;color:var(--sc-ink);font-variant-numeric:tabular-nums;}
   #tab-scanner .sc-edit-err{font-size:var(--sc-fs-label);font-weight:700;line-height:1.45;color:var(--sc-err-ink);}
   #tab-scanner .sc-edit-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;}
-  #tab-scanner .sc-edit-btns .sc-btn{min-height:48px;}
+  #tab-scanner .sc-edit-btns .sc-btn{min-height:46px;}
   #tab-scanner #sc-edit-reset{--sc-i:var(--i-rotate);color:var(--sc-steel-ink);}
 
   /* ── The themes (scanner/theme.js has the list; the choice sits on <html data-iop-theme>, set in the page head
