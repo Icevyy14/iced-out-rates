@@ -754,6 +754,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
     --i-keypad:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 8h.01M12 12h.01M14 8h.01M16 12h.01M18 8h.01M6 8h.01M7 16h10M8 12h.01'/%3E%3Crect width='20' height='16' x='2' y='4' rx='2'/%3E%3C/svg%3E");
     --i-arrow:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14'/%3E%3Cpath d='m12 5 7 7-7 7'/%3E%3C/svg%3E");
     --i-pencil:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z'/%3E%3Cpath d='m15 5 4 4'/%3E%3C/svg%3E");
+    --i-copy:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='14' height='14' x='8' y='8' rx='2' ry='2'/%3E%3Cpath d='M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2'/%3E%3C/svg%3E");
+    --i-download:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3Cpath d='M12 15V3'/%3E%3C/svg%3E");
     --i-check:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
     --i-ban:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m4.9 4.9 14.2 14.2'/%3E%3C/svg%3E");
     --i-sliders:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='21' x2='14' y1='4' y2='4'/%3E%3Cline x1='10' x2='3' y1='4' y2='4'/%3E%3Cline x1='21' x2='12' y1='12' y2='12'/%3E%3Cline x1='8' x2='3' y1='12' y2='12'/%3E%3Cline x1='21' x2='16' y1='20' y2='20'/%3E%3Cline x1='12' x2='3' y1='20' y2='20'/%3E%3Cline x1='14' x2='14' y1='2' y2='6'/%3E%3Cline x1='8' x2='8' y1='10' y2='14'/%3E%3Cline x1='16' x2='16' y1='18' y2='22'/%3E%3C/svg%3E");
@@ -2090,6 +2092,160 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-settings[open]::backdrop{animation:scFadeIn 200ms ease-out;}
   @keyframes scSheetUp{from{transform:translateY(100%)}to{transform:none}}
 
+  /* ── sourcer lock mode (scanner/lockMode.js + the SOURCER-LOCK block of the script) ──────────────────────────────
+     A sourcer's whole screen. The owner's pricing screen (the score, the card, the pile, the rate choice, hide) is not
+     shown to a sourcer; the camera, the cert box, Settings and Account stay. The lock card reuses the scoreboard's own
+     tiles (crimson for what you get, the surface for the market), so it reads like the rest of the app. Every colour
+     is a token of the chosen theme. */
+  #tab-scanner .scanner-layout:not(.sc-lock-mode) .sc-lock-only{display:none !important;}
+  #tab-scanner .scanner-layout.sc-lock-mode #sc-score,
+  #tab-scanner .scanner-layout.sc-lock-mode #sc-result,
+  #tab-scanner .scanner-layout.sc-lock-mode #sc-seller,
+  #tab-scanner .scanner-layout.sc-lock-mode #sc-rule-card,
+  #tab-scanner .scanner-layout.sc-lock-mode #sc-earlier,
+  #tab-scanner .scanner-layout.sc-lock-mode .sc-mode,
+  #tab-scanner .scanner-layout.sc-lock-mode .sc-hide-btn{display:none !important;}
+  /* No Normal / Lower, no Hide: in a phone's browser that leaves the dock bar empty, so it goes (and its room with it). */
+  #tab-scanner .scanner-layout.sc-lock-mode:not(.sc-native-cam){--sc-dock-h:0px;}
+  #tab-scanner .scanner-layout.sc-lock-mode:not(.sc-native-cam) .sc-controls{display:none;}
+  #tab-scanner .scanner-layout.sc-lock-mode.sc-native-cam .sc-controls{justify-content:flex-end;}
+  /* While nobody has said who this login is (a non-Josh login before the server's first answer), the lock screens show only a neutral
+     "Checking your account": no tabs, no banner, nothing priced, nothing locked. */
+  #tab-scanner .scanner-layout.sc-role-check .sc-lk-tabs,
+  #tab-scanner .scanner-layout.sc-role-check .sc-lk-banner{display:none !important;}
+  #tab-scanner .sc-lk-alert-card{margin-bottom:10px;}
+  /* The app's peek (sheet down) keeps the scan card, compact: what it is, what you get, whether it can lock. */
+  #tab-scanner .scanner-layout.sc-lock-mode.sc-native-cam.sc-sheet-down > #sc-lock{display:flex !important;}
+  #tab-scanner .sc-sheet-down .sc-lk-tabs,#tab-scanner .sc-sheet-down .sc-lk-banner,
+  #tab-scanner .sc-sheet-down .sc-lk-pane:not(#sc-lk-scan),#tab-scanner .sc-sheet-down .sc-lk-actions,
+  #tab-scanner .sc-sheet-down .sc-lk-confirm,#tab-scanner .sc-sheet-down .sc-lk-note,
+  #tab-scanner .sc-sheet-down .sc-lk-market,#tab-scanner .sc-sheet-down .sc-lk-set,#tab-scanner .sc-sheet-down .sc-lk-id{display:none !important;}
+  #tab-scanner .sc-sheet-down .sc-lk-card{padding:10px 14px;gap:8px;}
+  #tab-scanner .sc-sheet-down .sc-lk-figs{display:flex;}
+  #tab-scanner .sc-sheet-down .sc-lk-grade{width:36px;height:36px;border-radius:11px;font-size:var(--sc-fs-body);}
+  #tab-scanner .sc-sheet-down .sc-lk-name{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;}
+
+  #tab-scanner .sc-lk{display:flex;flex-direction:column;gap:10px;min-width:0;}
+  #tab-scanner .sc-lk-pane{display:flex;flex-direction:column;gap:10px;min-width:0;}
+  #tab-scanner .sc-lk-count{
+    display:inline-grid;place-items:center;min-width:20px;height:20px;margin-left:7px;padding:0 6px;border-radius:999px;
+    background:var(--sc-wait-tint);color:var(--sc-steel-ink);font-size:12px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;
+  }
+  #tab-scanner .sc-seg-btn[aria-pressed="true"] .sc-lk-count{background:rgba(255,255,255,.22);color:inherit;}
+
+  /* the strip above the card: locking paused, or when it opens */
+  #tab-scanner .sc-lk-banner{
+    --sc-i:var(--i-info);
+    display:flex;gap:9px;align-items:flex-start;padding:11px 14px;border-radius:16px;
+    background:var(--sc-wait-tint);color:var(--sc-ink);font-size:var(--sc-fs-label);font-weight:700;line-height:1.45;
+  }
+  #tab-scanner .sc-lk-banner::before{content:"";flex:none;width:17px;height:17px;margin-top:1px;background:var(--sc-steel-ink);-webkit-mask:var(--sc-i) center / contain no-repeat;mask:var(--sc-i) center / contain no-repeat;}
+  #tab-scanner .sc-lk-banner[data-tone="warn"]{--sc-i:var(--i-alert);background:var(--sc-err-tint);}
+  #tab-scanner .sc-lk-banner[data-tone="warn"]::before{background:var(--sc-err-ink);}
+
+  /* the card on screen */
+  #tab-scanner .sc-lk-card{container-type:inline-size;display:flex;flex-direction:column;gap:14px;padding:16px;}
+  #tab-scanner .sc-lk-card[data-fresh]{animation:scLkIn 260ms var(--sc-ease);}
+  @keyframes scLkIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  #tab-scanner .sc-lk-head{display:flex;gap:14px;align-items:flex-start;min-width:0;}
+  #tab-scanner .sc-lk-grade{
+    flex:none;display:grid;place-items:center;width:52px;height:52px;border-radius:15px;
+    background:var(--sc-grade-bg);color:#fff;font-size:calc(var(--sc-fs-num) * 1.2);font-weight:800;line-height:1;
+    font-variant-numeric:tabular-nums;letter-spacing:-.02em;
+    box-shadow:inset 0 0 0 1.5px var(--sc-grade-ring), inset 0 1px 0 rgba(255,255,255,.16), 0 0 0 2px rgba(6,10,18,.4), 0 5px 12px -5px rgba(0,0,0,.75);
+  }
+  #tab-scanner .sc-lk-grade.sc-unk{background:var(--sc-grey-tint);color:var(--sc-muted);box-shadow:none;}
+  #tab-scanner .sc-lk-words{flex:1 1 auto;min-width:0;padding-top:2px;}
+  #tab-scanner .sc-lk-name{font-size:var(--sc-fs-body);font-weight:800;line-height:1.3;letter-spacing:-.005em;color:var(--sc-ink);overflow-wrap:anywhere;text-wrap:balance;}
+  #tab-scanner .sc-lk-set{margin-top:2px;font-size:var(--sc-fs-label);font-weight:700;line-height:1.35;color:var(--sc-steel-ink);overflow-wrap:anywhere;}
+  #tab-scanner .sc-lk-id{margin-top:3px;font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-lk-figs{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:8px;}
+  #tab-scanner .sc-lk-figs.sc-lk-solo{grid-template-columns:minmax(0,1fr);}
+  #tab-scanner .sc-lk-figs .sc-tile{min-height:92px;}
+  #tab-scanner .sc-lk-sub{margin-top:2px;font-size:var(--sc-fs-row);font-weight:700;line-height:1.3;color:rgba(255,255,255,.92);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-lk-market{background:var(--sc-fill-card-bg);box-shadow:var(--sc-hi), var(--sc-ring);}
+  #tab-scanner .sc-lk-market .sc-pay-val{color:var(--sc-ink);font-size:clamp(16px, 6.4cqi, var(--sc-fs-num));white-space:nowrap;overflow-wrap:normal;}
+  #tab-scanner .sc-lk-solo .sc-lk-market .sc-pay-val{font-size:var(--sc-fs-num);}
+  /* a card that cannot lock: the number stays, the crimson goes quiet */
+  #tab-scanner .sc-lk-you.sc-lk-dim{background:var(--sc-fill-card-bg);color:var(--sc-ink);box-shadow:var(--sc-hi), var(--sc-ring);}
+  #tab-scanner .sc-lk-you.sc-lk-dim::after{display:none;}
+  #tab-scanner .sc-lk-you.sc-lk-dim .sc-key{color:var(--sc-muted);}
+  #tab-scanner .sc-lk-you.sc-lk-dim .sc-pay-val,#tab-scanner .sc-lk-you.sc-lk-dim .sc-lk-sub{color:var(--sc-muted);}
+  #tab-scanner .sc-lk-you .sc-pay-val.sc-words{font-size:var(--sc-fs-row);line-height:1.25;}
+  #tab-scanner .sc-lk-status{display:flex;align-items:center;gap:9px;font-size:var(--sc-fs-row);font-weight:800;line-height:1.3;color:var(--sc-ink);overflow-wrap:anywhere;}
+  #tab-scanner .sc-lk-status::before{content:"";flex:none;width:10px;height:10px;border-radius:50%;background:var(--sc-faint);}
+  #tab-scanner .sc-lk-status[data-tone="ok"]::before{background:var(--sc-clv);}
+  #tab-scanner .sc-lk-status[data-tone="bad"]::before,#tab-scanner .sc-lk-status[data-tone="warn"]::before{background:var(--sc-err-ink);}
+  #tab-scanner .sc-lk-status[data-tone="info"]::before{background:var(--sc-steel-ink);}
+  #tab-scanner .sc-lk-status[data-kind="locked"]::before{width:18px;height:18px;border-radius:0;background:var(--sc-clv);-webkit-mask:var(--i-check) center / contain no-repeat;mask:var(--i-check) center / contain no-repeat;}
+  #tab-scanner .sc-lk-note{margin:-6px 0 0;font-size:var(--sc-fs-label);line-height:1.45;color:var(--sc-muted);overflow-wrap:anywhere;}
+  #tab-scanner .sc-lk-note[data-tone="bad"]{color:var(--sc-err-ink);font-weight:700;}
+  #tab-scanner .sc-lk-actions{display:flex;flex-direction:column;gap:8px;}
+  #tab-scanner .sc-lk-go{min-height:56px;font-size:18px;letter-spacing:-.01em;}
+  #tab-scanner .sc-lk-confirm{margin:0;background:var(--sc-wait-tint);}
+  #tab-scanner .sc-lk-idle{align-items:flex-start;gap:6px;padding:18px 16px;}
+  #tab-scanner .sc-lk-idle-title{font-size:var(--sc-fs-num);font-weight:800;line-height:1.2;letter-spacing:-.015em;color:var(--sc-ink);}
+  #tab-scanner .sc-lk-idle .sc-sub{margin-top:0;max-width:34ch;}
+
+  /* Allocation: one card per category, a row per price range */
+  #tab-scanner .sc-lk-window{display:flex;flex-direction:column;gap:6px;padding:14px 16px;}
+  #tab-scanner .sc-lk-fine{margin:0;font-size:var(--sc-fs-label);line-height:1.5;color:var(--sc-muted);max-width:60ch;}
+  #tab-scanner .sc-lk-cat{padding:14px 16px 6px;}
+  #tab-scanner .sc-lk-cat .sc-h{margin-bottom:2px;}
+  #tab-scanner .sc-lk-bands,#tab-scanner .sc-lk-list{list-style:none;margin:0;padding:0;}
+  #tab-scanner .sc-lk-band{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;align-items:center;padding:11px 0;border-top:1px solid var(--sc-line);}
+  #tab-scanner .sc-lk-band:first-child{border-top:0;}
+  #tab-scanner .sc-lk-range{font-size:var(--sc-fs-body);font-weight:700;line-height:1.3;color:var(--sc-ink);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-lk-needs{font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);}
+  #tab-scanner .sc-lk-band-you{grid-row:1 / span 2;grid-column:2;display:flex;flex-direction:column;align-items:flex-end;}
+  #tab-scanner .sc-lk-band-pct{font-size:var(--sc-fs-num);font-weight:800;line-height:1.1;letter-spacing:-.015em;color:var(--sc-ink);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-lk-band-lbl{font-size:var(--sc-fs-label);color:var(--sc-muted);}
+  #tab-scanner .sc-lk-hint{
+    grid-column:1 / -1;justify-self:start;display:inline-flex;align-items:center;gap:7px;margin-top:4px;
+    font-size:var(--sc-fs-label);font-weight:700;line-height:1.2;color:var(--sc-ink);
+  }
+  #tab-scanner .sc-lk-hint::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;background:var(--sc-faint);}
+  #tab-scanner .sc-lk-hint[data-tone="ok"]::before{background:var(--sc-clv);}
+  #tab-scanner .sc-lk-hint[data-tone="bad"]::before{background:var(--sc-err-ink);}
+
+  /* My locks */
+  #tab-scanner .sc-lk-sum{display:flex;flex-direction:column;gap:12px;padding:14px 16px;}
+  #tab-scanner .sc-lk-sum-text{font-size:var(--sc-fs-body);font-weight:800;line-height:1.35;letter-spacing:-.005em;color:var(--sc-ink);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+  #tab-scanner .sc-lk-tools{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;}
+  #tab-scanner .sc-lk-tools .sc-btn{min-height:48px;gap:8px;padding:0 12px;}
+  #tab-scanner .sc-lk-copy{--sc-i:var(--i-copy);}
+  #tab-scanner .sc-lk-csv{--sc-i:var(--i-download);}
+  #tab-scanner .sc-lk-copy::before,#tab-scanner .sc-lk-csv::before{content:"";flex:none;width:18px;height:18px;background:currentColor;-webkit-mask:var(--sc-i) center / contain no-repeat;mask:var(--sc-i) center / contain no-repeat;}
+  #tab-scanner .sc-lk-notice{min-height:1.4em;margin:0;font-size:var(--sc-fs-label);font-weight:700;line-height:1.4;color:var(--sc-muted);}
+  #tab-scanner .sc-lk-notice:empty{display:none;}
+  #tab-scanner .sc-lk-sec{padding:12px 16px 4px;}
+  #tab-scanner .sc-lk-sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:2px;}
+  #tab-scanner .sc-lk-sec-n{font-size:var(--sc-fs-label);font-weight:700;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-lk-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:2px 12px;align-items:center;padding:11px 0;border-top:1px solid var(--sc-line);}
+  #tab-scanner .sc-lk-row:first-child{border-top:0;}
+  #tab-scanner .sc-lk-row .sc-lk-grade{grid-row:1 / span 3;align-self:start;width:40px;height:40px;border-radius:12px;font-size:var(--sc-fs-body);box-shadow:inset 0 0 0 1.5px var(--sc-grade-ring-row);}
+  #tab-scanner .sc-lk-row-name{grid-column:2;font-size:var(--sc-fs-row);font-weight:700;line-height:1.3;color:var(--sc-ink);overflow-wrap:anywhere;}
+  #tab-scanner .sc-lk-row-meta{grid-column:2;font-size:var(--sc-fs-label);line-height:1.35;color:var(--sc-muted);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+  #tab-scanner .sc-lk-row-when{grid-column:2;font-size:var(--sc-fs-label);line-height:1.35;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-lk-row-you{grid-column:3;grid-row:1;justify-self:end;font-size:var(--sc-fs-body);font-weight:800;line-height:1.2;color:var(--sc-ink);font-variant-numeric:tabular-nums;white-space:nowrap;}
+  #tab-scanner .sc-lk-row-rate{grid-column:3;grid-row:2;justify-self:end;font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-lk-row-why{grid-column:2 / -1;font-size:var(--sc-fs-label);font-weight:700;line-height:1.4;color:var(--sc-err-ink);}
+  /* a queued card's way off the list: a plain words button, 44px to tap, under the card's own lines */
+  #tab-scanner .sc-lk-rm{
+    grid-column:2 / -1;justify-self:start;min-height:44px;margin:0 0 -8px;padding:0 14px 0 0;border:0;border-radius:12px;cursor:pointer;background:none;
+    color:var(--sc-steel-ink);font-size:var(--sc-fs-label);font-weight:800;line-height:1.2;-webkit-tap-highlight-color:transparent;
+  }
+  #tab-scanner .sc-lk-rm:hover{color:var(--sc-ink);}
+  #tab-scanner .sc-lk-empty{padding:18px 16px;}
+  #tab-scanner .sc-lk-empty .sc-sub{margin-top:0;}
+  @media (max-width:359px){
+    #tab-scanner .sc-lk-figs{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);}
+    #tab-scanner .sc-lk-tools .sc-btn{font-size:var(--sc-fs-label);padding:0 8px;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    #tab-scanner .sc-lk-card[data-fresh]{animation:none;}
+  }
+
   @media (prefers-reduced-motion:reduce){
     #tab-scanner .sc-btn:active,#tab-scanner .sc-start:active,#tab-scanner .sc-seg-btn:active,
     #tab-scanner .sc-brand-gear:active,#tab-scanner .sc-theme-opt:active,#tab-scanner .scanner-layout.sc-native-cam .sc-account-entry:active,
@@ -2254,6 +2410,23 @@ code{font-family:var(--font-mono);font-size:.92em;}
     <div class="sc-seller-set" id="sc-seller-set" hidden></div>
     <div class="sc-seller-grade" id="sc-seller-grade" hidden></div>
     <div class="sc-seller-market" id="sc-seller-market" hidden></div>
+  </section>
+
+  <!-- Sourcer lock mode (a login the server says is a sourcer; owners never see it): scan or type a cert, see the market,
+       whether Triumph has allocation for it, and what YOU get; Lock it, or Queue for 3 AM while the window is shut. The
+       Allocation tab is the rates per price range; My locks is what you locked, queued and missed, ready for a ticket.
+       Drawn by the SOURCER-LOCK block of the script from scanner/lockMode.js; the layout carries .sc-lock-mode only for a
+       sourcer, and that class is what hides the owner's pricing screen. -->
+  <section class="sc-lk sc-lock-only" id="sc-lock" aria-label="Locks" hidden>
+    <div class="sc-seg sc-lk-tabs" id="sc-lk-tabs" role="group" aria-label="Locks">
+      <button type="button" class="sc-seg-btn" data-lk-tab="scan" aria-pressed="true">Scan</button>
+      <button type="button" class="sc-seg-btn" data-lk-tab="alloc" aria-pressed="false">Allocation</button>
+      <button type="button" class="sc-seg-btn" data-lk-tab="locks" aria-pressed="false">My locks<span class="sc-lk-count" id="sc-lk-count" hidden>0</span></button>
+    </div>
+    <div class="sc-lk-banner" id="sc-lk-banner" role="status" hidden></div>
+    <div class="sc-lk-pane" id="sc-lk-scan" data-lk-pane="scan"></div>
+    <div class="sc-lk-pane" id="sc-lk-alloc" data-lk-pane="alloc" hidden></div>
+    <div class="sc-lk-pane" id="sc-lk-locks" data-lk-pane="locks" hidden></div>
   </section>
 
   <!-- The dock. Always on screen, hidden or not: Normal / Lower market and the one hide button, at the
@@ -8906,6 +9079,19 @@ function ownerOf(id, known) {
 }
 
 /**
+ * Three states, not two: 'owner' | 'sourcer' | 'unknown'. The server's answer for THAT login when the phone has one (`known`,
+ * roleRecord's) decides; without one, Josh's login (OWNER_USER_IDS) is the owner and EVERY OTHER login is 'unknown', not a sourcer:
+ * Penguin's login (an owner the server knows, and the phone does not yet) must not be handed the sourcer's lock screens because a
+ * read of /scanner was slow or failed, and an unknown sourcer must not be handed the owner's pricing (Card Ladder) either. The
+ * page shows a neutral "Checking your account" until the answer is in. A phone with no user at all is 'unknown'.
+ */
+function roleOf(id, known) {
+  if (typeof id !== 'string' || !id) return 'unknown';
+  if (isObj(known) && known.uid === id && typeof known.owner === 'boolean') return known.owner ? 'owner' : 'sourcer';
+  return isOwnerId(id) ? 'owner' : 'unknown';
+}
+
+/**
  * -> { id, owner, tokenAdjust, tokenLegacy, issuedAt } for the signed-in token; `known` = the server's answer the phone
  * holds (roleRecord). `tokenAdjust` is the login's saved box (ADJUST_KEY); a login that has none yet but carries a
  * sourcer's old cut N (LEGACY_CUT_KEY) reads as -N with `tokenLegacy` true (the page moves it to the new key). An owner's
@@ -9347,6 +9533,7 @@ window.PileRates = {
   isOwnerId: isOwnerId,
   roleRecord: roleRecord,
   ownerOf: ownerOf,
+  roleOf: roleOf,
   viewerOf: viewerOf,
   viewerFor: viewerFor,
   adjustRecord: adjustRecord,
@@ -9375,6 +9562,433 @@ window.PileRates = {
   shownPrice: shownPrice,
   pileTotals: pileTotals,
   bandsFor: bandsFor,
+};
+})();
+
+(function () {
+'use strict';
+// The sourcer's scan-and-lock screens, as pure decisions and words. A sourcer scans a slab, sees whether Triumph has
+// allocation for it and what THEY get (Triumph's rate less their own cut, worked out by the triumph-sourcer function:
+// this file only ever sees the finished "You get" figures), and locks it through our account, or queues it for the
+// moment the window opens. Nothing here knows a Triumph rate, a payout or a team: it cannot show what it was never sent.
+//
+// The page (rates-portal/page.html, scanner module) draws; this file decides what the card on screen offers (Lock it,
+// Queue for 3 AM, Check again, nothing), what the banner says, how a price list and My locks read, and builds the
+// ticket text and the CSV. Pure and unit-tested on its own (scanner/lockMode.test.js); build-portal.js embeds it as
+// window.LockMode, and scanner/lockModePage.test.js checks the page's copy is this one.
+//
+// Every word a sourcer can read here is plain: no em dash, no en dash.
+'use strict';
+
+var TZ = 'America/New_York';
+
+// The reason codes the function sends (sourcer-lock/logic.ts REASON_TEXT). Soft ones can change when the window opens or
+// someone's lock falls through; hard ones cannot, so a card with one is never worth a place in the 3 AM list.
+var SOFT_CODES = { allocation_full: true, not_allocated: true, not_published: true, other: true };
+
+function isNum(n) { return typeof n === 'number' && isFinite(n); }
+
+// ── money, percent, time ──────────────────────────────────────────────────────────────────────────────────────────
+
+function group(intText) { return intText.replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+/** 1234.5 -> "$1,234.50"; nothing -> "-". */
+function moneyText(n) {
+  if (n === null || n === undefined || n === '' || !isNum(Number(n))) return '-';
+  var v = Number(n);
+  var cents = Math.round(Math.abs(v) * 100);
+  var whole = Math.floor(cents / 100);
+  var c = cents % 100;
+  return (v < 0 ? '-' : '') + '$' + group(String(whole)) + '.' + (c < 10 ? '0' : '') + c;
+}
+
+/** Whole dollars plain ("$100", "$3,000"), otherwise with cents ("$25.01"). */
+function dollarsPlain(n) { return Number(n) === Math.round(Number(n)) ? '$' + group(String(Math.round(Number(n)))) : moneyText(n); }
+
+/** 92 -> "92%", 92.5 -> "92.5%"; nothing -> "". */
+function pctText(p) {
+  if (p === null || p === undefined || p === '' || !isNum(Number(p))) return '';
+  return String(Math.round(Number(p) * 100) / 100) + '%';
+}
+
+var etParts = (function () {
+  var fmt = null;
+  return function (ms) {
+    try {
+      if (!fmt) {
+        fmt = new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: 'numeric', minute: '2-digit', hourCycle: 'h23' });
+      }
+      var o = {};
+      fmt.formatToParts(new Date(ms)).forEach(function (p) { o[p.type] = p.value; });
+      return o;
+    } catch (e) { return null; }
+  };
+})();
+
+function msOf(iso) {
+  if (iso === null || iso === undefined || iso === '') return NaN;
+  return typeof iso === 'number' ? iso : Date.parse(iso);
+}
+
+/** "3:07 AM" in Eastern time, with plain ASCII spaces (newer engines put a narrow no-break space in a time). */
+function etClock(iso) {
+  var ms = msOf(iso);
+  var p = isNum(ms) ? etParts(ms) : null;
+  if (!p) return '';
+  var h = Number(p.hour);
+  return ((h % 12) || 12) + ':' + p.minute + ' ' + (h < 12 ? 'AM' : 'PM');
+}
+/** "Sat 3:02 AM". */
+function etStamp(iso) {
+  var ms = msOf(iso);
+  var p = isNum(ms) ? etParts(ms) : null;
+  return p ? p.weekday + ' ' + etClock(ms) : '';
+}
+/** "Sat 3:00 AM ET": a time the window opens or closes at. */
+function etText(iso) {
+  var s = etStamp(iso);
+  return s ? s + ' ET' : '';
+}
+function etDay(ms) {
+  var p = etParts(ms);
+  return p ? p.year + '-' + p.month + '-' + p.day : '';
+}
+
+/** "just now", "5 min ago", "3 h ago", then the day and time. */
+function agoText(iso, nowMs) {
+  var ms = msOf(iso);
+  if (!isNum(ms)) return '';
+  var s = Math.max(0, Math.round((nowMs - ms) / 1000));
+  if (s < 45) return 'just now';
+  var m = Math.max(1, Math.floor(s / 60));
+  if (m < 60) return m + ' min ago';
+  var h = Math.floor(m / 60);
+  if (h < 24) return h + ' h ago';
+  return etStamp(ms);
+}
+
+/**
+ * The start of "this week" for a sourcer's list: the Friday 8 PM New York before `nowMs` (the edge the weekly books use,
+ * so a ticket's list and the week it is booked in agree). Walks back by the hour: New York's offset is always whole hours,
+ * so its 8 PM is on a UTC hour whatever daylight saving is doing.
+ */
+function weekStartMs(nowMs) {
+  var h = Math.floor(nowMs / 3600000) * 3600000;
+  for (var i = 0; i < 24 * 8; i++, h -= 3600000) {
+    var p = etParts(h);
+    if (p && p.weekday === 'Fri' && Number(p.hour) === 20 && p.minute === '00') return h;
+  }
+  return nowMs - 7 * 24 * 3600000; // no Intl: seven days
+}
+
+// ── what the card on screen offers ────────────────────────────────────────────────────────────────────────────────
+
+/** "92% ($46.00)", or "No rate for this card" when nothing can be worked out. */
+function youGetText(item) {
+  if (!item || item.youGetPct === null || item.youGetPct === undefined || !isNum(Number(item.youGetPct))) return 'No rate for this card';
+  var d = item.youGetDollars;
+  return pctText(item.youGetPct) + (d !== null && d !== undefined && isNum(Number(d)) ? ' (' + moneyText(d) + ')' : '');
+}
+
+/** "Lock this card for 92% ($46.00)? It locks on our account and cannot be undone." */
+function lockConfirmText(youText) {
+  return 'Lock this card' + (youText && youText !== 'No rate for this card' ? ' for ' + youText : '') + '? It locks on our account and cannot be undone.';
+}
+
+/**
+ * What the card on screen is and offers. `item` is one lookup result as the function answers it; `ctx` is
+ * { open: true | false | null, paused, opensAt }. Returns { kind, tone, status, note, youLabel, youText, act,
+ * actLabel, confirmText[, alt] }; `act` is 'lock' | 'queue' | 'unqueue' | 'recheck' | null, and `alt`, only when there is one, is a
+ * second, quieter action { act, label } (a queued card that can be locked now can also be taken off the list).
+ *   kind: lockable | queueable | queued | locked | full | blocked | paused | error
+ */
+function cardPhase(item, ctx) {
+  ctx = ctx || {};
+  var open = ctx.open === false ? false : ctx.open === true ? true : null; // null: nobody has said, try it
+  var phase = { kind: 'error', tone: 'bad', status: '', note: '', youLabel: 'You get', youText: '', act: null, actLabel: '', confirmText: '' };
+  if (!item || item.error) {
+    phase.status = 'Could not check this card. Try again.';
+    phase.act = 'recheck';
+    phase.actLabel = 'Check again';
+    return phase;
+  }
+  var take = !!item.takeable;
+  var code = item.reasonCode || null;
+  var soft = !!(code && SOFT_CODES[code]);
+  phase.youLabel = take ? 'You get' : 'You would get';
+  phase.youText = youGetText(item);
+  var opensWords = ctx.opensAt && etText(ctx.opensAt) ? 'Opens ' + etText(ctx.opensAt) : 'Locking is not open yet';
+
+  // an old lock row of theirs is not this week's: when Triumph takes the card again, it is lockable again
+  if (item.mine === 'locked' && !take) {
+    phase.kind = 'locked'; phase.tone = 'ok'; phase.status = 'You locked this card';
+    phase.youLabel = 'You get';
+    return phase;
+  }
+  if (item.mine === 'queued') {
+    phase.status = 'In your 3 AM list';
+    if (open === true && take && !ctx.paused) {
+      // The window is open and Triumph takes the card right now, but the 3 AM run (one task on one PC) has not locked it: a sourcer
+      // never waits on that run. The lock settles their queue row, so locking it here is safe.
+      phase.kind = 'lockable'; phase.tone = 'ok';
+      phase.note = 'Locking is open. Lock it now, or leave it for the 3 AM run.';
+      phase.act = 'lock'; phase.actLabel = 'Lock it';
+      phase.confirmText = lockConfirmText(phase.youText);
+      phase.alt = { act: 'unqueue', label: 'Take it off my list' };
+      return phase;
+    }
+    phase.kind = 'queued'; phase.tone = 'info';
+    if (open === true) phase.note = 'Locking is open. This card cannot lock right now, so it stays on your list.';
+    else phase.note = ctx.opensAt && etText(ctx.opensAt) ? 'It locks the moment the window opens, ' + etText(ctx.opensAt) + ', if there is still room.' : 'It locks the moment the window opens, if there is still room.';
+    phase.act = 'unqueue'; phase.actLabel = 'Take it off my list';
+    return phase;
+  }
+  if (ctx.paused && (take || soft)) {
+    phase.kind = 'paused'; phase.tone = 'warn'; phase.status = 'Locking is paused';
+    phase.note = 'Message us in Discord.';
+    return phase;
+  }
+  if (take) {
+    if (open === false) {
+      phase.kind = 'queueable'; phase.tone = 'info'; phase.status = opensWords;
+      phase.act = 'queue'; phase.actLabel = 'Queue for 3 AM';
+      return phase;
+    }
+    phase.kind = 'lockable'; phase.tone = 'ok'; phase.status = 'Allocation open';
+    phase.act = 'lock'; phase.actLabel = 'Lock it';
+    phase.confirmText = lockConfirmText(phase.youText);
+    return phase;
+  }
+  if (soft) {
+    if (open === false) {
+      phase.kind = 'queueable'; phase.tone = 'info'; phase.status = opensWords;
+      phase.note = 'It shows full today. It can still lock when the window opens.';
+      phase.act = 'queue'; phase.actLabel = 'Queue for 3 AM';
+      return phase;
+    }
+    phase.kind = 'full'; phase.tone = 'bad';
+    phase.status = code === 'allocation_full' ? 'Allocation full' : (item.reason || 'Not available');
+    phase.note = item.reason || '';
+    phase.act = 'recheck'; phase.actLabel = 'Check again';
+    return phase;
+  }
+  phase.kind = 'blocked'; phase.tone = 'bad';
+  phase.status = item.reason || 'Not available';
+  return phase;
+}
+
+/** The strip above the card: paused first, then the window. null when there is nothing to say. */
+function bannerOf(state, nowMs) {
+  if (!state) return null;
+  if (state.paused) return { tone: 'warn', text: 'Locking is paused right now. Message us in Discord.' };
+  var w = state.window;
+  if (!w || w.open !== false) return null;
+  if (w.published === false) return { tone: 'info', text: "This week's allocation is not open yet." };
+  var ends = msOf(w.endsAt);
+  if (isNum(ends) && nowMs >= ends) return { tone: 'info', text: "This week's locking has ended. Allocation opens again next week." };
+  var t = etText(w.opensAt);
+  return { tone: 'info', text: t ? 'Locking opens ' + t + '. Queue cards now and they lock the moment it opens.' : 'Locking is not open yet. Queue cards now and they lock the moment it opens.' };
+}
+
+/** The one line on the Allocation tab about the window: { tone, text } or null. */
+function windowLine(state, nowMs) {
+  if (!state) return null;
+  if (state.paused) return { tone: 'warn', text: 'Locking is paused right now' };
+  var w = state.window;
+  if (!w) return null;
+  if (w.open === true) {
+    var until = etText(w.endsAt);
+    return { tone: 'ok', text: until ? 'Locking is open until ' + until : 'Locking is open' };
+  }
+  if (w.open !== false) return null;
+  if (w.published === false) return { tone: 'info', text: "This week's allocation is not open yet" };
+  var ends = msOf(w.endsAt);
+  if (isNum(ends) && nowMs >= ends) return { tone: 'info', text: "This week's locking has ended" };
+  var t = etText(w.opensAt);
+  return { tone: 'info', text: t ? 'Locking opens ' + t : 'Locking is not open yet' };
+}
+
+// ── the Allocation tab ────────────────────────────────────────────────────────────────────────────────────────────
+
+/** "Up to $25", "$25.01 to $100", "$3,000.01 and up". */
+function rangeText(min, max) {
+  if (max === null || max === undefined) return dollarsPlain(min) + ' and up';
+  if (!isNum(Number(min)) || Number(min) <= 0) return 'Up to ' + dollarsPlain(max);
+  return dollarsPlain(min) + ' to ' + dollarsPlain(max);
+}
+
+/** An Open / Full hint as words and a tone, or null. */
+function hintOf(hint, nowMs) {
+  if (!hint) return null;
+  if (hint.status === 'open') return { text: 'Open, seen ' + agoText(hint.at, nowMs), tone: 'ok' };
+  if (hint.status === 'full') {
+    var since = msOf(hint.since || hint.at);
+    var same = isNum(since) && etDay(since) === etDay(nowMs);
+    return { text: 'Full since ' + (same ? etClock(since) : etStamp(since)), tone: 'bad' };
+  }
+  if (hint.status === 'none') return { text: 'No allocation', tone: 'bad' };
+  return null;
+}
+
+/** The function's bands grouped by category, in its order, each row as the words it shows. */
+function bandGroups(bands, nowMs) {
+  var out = [];
+  var by = {};
+  (Array.isArray(bands) ? bands : []).forEach(function (b) {
+    var key = b.category;
+    var g = by[key];
+    if (!g) { g = by[key] = { category: key, label: b.label || key, rows: [] }; out.push(g); }
+    var needs = [];
+    if (b.minGrade !== null && b.minGrade !== undefined) needs.push('Grade ' + b.minGrade + '+');
+    if (b.minConfidence !== null && b.minConfidence !== undefined) needs.push('Conf ' + b.minConfidence + '+');
+    g.rows.push({ range: rangeText(b.min, b.max), youGet: pctText(b.youGetPct), needs: needs.join(', '), hint: hintOf(b.hint, nowMs) });
+  });
+  return out;
+}
+
+// ── My locks ──────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/** The locks a view covers: 'week' (since the Friday 8 PM edge) or 'all' (whatever the function sent). Newest first as given. */
+function locksInScope(locks, nowMs, scope) {
+  var list = Array.isArray(locks) ? locks : [];
+  if (scope !== 'week') return list.slice();
+  var from = weekStartMs(nowMs);
+  return list.filter(function (l) { var t = msOf(l.lockedAt); return isNum(t) && t >= from; });
+}
+
+function oldestFirst(locks) {
+  return (Array.isArray(locks) ? locks : []).slice().sort(function (a, b) { return (msOf(a.lockedAt) || 0) - (msOf(b.lockedAt) || 0); });
+}
+
+function locksSummary(locks) {
+  var list = Array.isArray(locks) ? locks : [];
+  var market = 0; var you = 0;
+  list.forEach(function (l) {
+    if (isNum(Number(l.marketValue)) && l.marketValue !== null && l.marketValue !== '') market += Number(l.marketValue);
+    if (isNum(Number(l.yourDollars)) && l.yourDollars !== null && l.yourDollars !== '') you += Number(l.yourDollars);
+  });
+  market = Math.round(market * 100) / 100;
+  you = Math.round(you * 100) / 100;
+  return {
+    count: list.length, market: market, youGet: you,
+    text: list.length ? list.length + ' locked: market ' + moneyText(market) + ', you get ' + moneyText(you) : 'Nothing locked yet this week',
+  };
+}
+
+/** The cert numbers, one per line, oldest first, each once, as text (a leading zero stays): what goes in the ticket. */
+function copyText(locks) {
+  var seen = {};
+  var out = [];
+  oldestFirst(locks).forEach(function (l) {
+    var c = String(l.cert === null || l.cert === undefined ? '' : l.cert).trim();
+    if (c && !seen[c]) { seen[c] = true; out.push(c); }
+  });
+  return out.join('\n');
+}
+
+var CSV_HEAD = 'Cert,Grader,Card,Grade,Market,You get %,You get $,Locked at (ET)';
+
+/** One CSV cell: text never starts a spreadsheet formula, and is quoted when it needs to be. */
+function csvCell(v) {
+  var s = v === null || v === undefined ? '' : String(v);
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function csvOf(locks) {
+  var rows = oldestFirst(locks).map(function (l) {
+    var market = l.marketValue === null || l.marketValue === undefined || !isNum(Number(l.marketValue)) ? '' : Number(l.marketValue).toFixed(2);
+    var you = l.yourDollars === null || l.yourDollars === undefined || !isNum(Number(l.yourDollars)) ? '' : Number(l.yourDollars).toFixed(2);
+    var pct = l.yourPct === null || l.yourPct === undefined || !isNum(Number(l.yourPct)) ? '' : String(Math.round(Number(l.yourPct) * 100) / 100);
+    return [csvCell(l.cert), csvCell(l.grader), csvCell(l.card), csvCell(l.grade), market, pct, you, csvCell(etStamp(l.lockedAt))].join(',');
+  });
+  return [CSV_HEAD].concat(rows).join('\r\n');
+}
+
+/** "my-locks-2026-11-21.csv": the Eastern day. */
+function csvName(nowMs) {
+  var p = etParts(nowMs);
+  return 'my-locks-' + (p ? p.year + '-' + p.month + '-' + p.day : 'list') + '.csv';
+}
+
+/** One lock (or queued card) as the words a row shows. */
+function lockRow(l, nowMs) {
+  var parts = [];
+  var gradeText = [l.grader, l.grade].filter(function (x) { return x !== null && x !== undefined && x !== ''; }).join(' ');
+  if (gradeText) parts.push(gradeText);
+  if (l.card && l.cert) parts.push(l.cert); // with no card name the cert IS the name: it is not said twice
+  var stamp = l.lockedAt || l.queuedAt || l.attemptedAt || l.at;
+  var pct = l.yourPct !== null && l.yourPct !== undefined ? pctText(l.yourPct) : '';
+  var hasMarket = l.marketValue !== null && l.marketValue !== undefined && isNum(Number(l.marketValue));
+  return {
+    name: l.card || ('Cert ' + l.cert),
+    meta: parts.join(' · '),
+    when: etStamp(stamp),
+    youGet: l.yourDollars !== null && l.yourDollars !== undefined && isNum(Number(l.yourDollars)) ? moneyText(l.yourDollars) : '',
+    rate: pct,
+    market: hasMarket ? moneyText(l.marketValue) : '',
+  };
+}
+
+/** A card's name in a sentence: the card, else its cert. */
+function nameOf(item) {
+  var n = item && item.card ? String(item.card) : '';
+  return n || ('cert ' + (item && item.cert ? item.cert : ''));
+}
+
+/**
+ * What came of a lock or a queue call, in one plain sentence, for a card that is no longer on screen (a sourcer swung the camera to
+ * the next slab while it was out): { tone: 'ok' | 'bad' | 'info', text }. `what` is 'lock' or 'queue'; `res` is { ok, body } as the page
+ * got it, with `words` the page's own words for a failed request. Failures are as loud as successes: a sourcer ships what they believe is locked.
+ */
+function outcomeOf(what, item, res, words) {
+  var name = nameOf(item);
+  var b = res && res.body && typeof res.body === 'object' ? res.body : {};
+  var verb = what === 'queue' ? 'queued' : 'locked';
+  if (!res || !res.ok) return { tone: 'bad', text: name + ' was NOT ' + verb + '. ' + (words || 'Something went wrong. Try again.') };
+  if (b.paused) return { tone: 'bad', text: name + ' was NOT ' + verb + '. Locking is paused.' };
+  if (b.windowClosed) return { tone: 'bad', text: name + ' was NOT ' + verb + '. Locking is not open yet.' };
+  if (b.windowOpen) return { tone: 'bad', text: name + ' was NOT ' + verb + '. Locking just opened: lock it now.' };
+  if (b.priceChanged) return { tone: 'bad', text: name + ' was NOT locked: the price changed. Scan it again to see the new number.' };
+  if (b.ok === false) return { tone: 'bad', text: name + ' was NOT ' + verb + '. ' + (b.error || 'It did not go through.') };
+  if (b.dryRun) return { tone: 'info', text: 'Test mode: ' + name + ' was not sent to Triumph.' };
+  if (what === 'queue') {
+    if ((b.queued && b.queued.length) || (b.alreadyQueued && b.alreadyQueued.length)) return { tone: 'ok', text: name + ' is in your 3 AM list.' };
+    var nq = (b.notQueued && b.notQueued[0]) || {};
+    return { tone: 'bad', text: name + ' was NOT queued. ' + (nq.reason || 'Not accepted right now.') };
+  }
+  if (b.locked && b.locked.length) {
+    var l = b.locked[0];
+    return { tone: 'ok', text: 'Locked ' + name + ' for ' + youGetText({ youGetPct: l.yourPct, youGetDollars: l.yourDollars }) + '.' };
+  }
+  var nl = (b.notLocked && b.notLocked[0]) || {};
+  return { tone: 'bad', text: name + ' was NOT locked. ' + (nl.reason || 'Not accepted right now.') };
+}
+
+window.LockMode = {
+  SOFT_CODES: SOFT_CODES,
+  windowLine: windowLine,
+  moneyText: moneyText,
+  pctText: pctText,
+  etClock: etClock,
+  etStamp: etStamp,
+  etText: etText,
+  agoText: agoText,
+  weekStartMs: weekStartMs,
+  youGetText: youGetText,
+  cardPhase: cardPhase,
+  bannerOf: bannerOf,
+  rangeText: rangeText,
+  hintOf: hintOf,
+  bandGroups: bandGroups,
+  locksInScope: locksInScope,
+  locksSummary: locksSummary,
+  copyText: copyText,
+  csvOf: csvOf,
+  csvName: csvName,
+  lockRow: lockRow,
+  lockConfirmText: lockConfirmText,
+  outcomeOf: outcomeOf,
 };
 })();
 /* SCANNER-CORE:END */
@@ -9624,6 +10238,7 @@ window.PileRates = {
       if (!rec || (roleKnown && roleKnown.uid === rec.uid && roleKnown.owner === rec.owner)) return;
       roleKnown = rec;
       try { localStorage.setItem(PileRates.ROLE_CACHE_KEY, JSON.stringify(rec)); } catch (e) { /* this visit only */ }
+      applyLockMode();
     }
     function viewer() {
       var tok = session && session.access_token ? session.access_token : null;
@@ -9647,6 +10262,15 @@ window.PileRates = {
       return !o.keep;
     }
     function isSourcer() { return !viewer().owner; }
+    /** 'owner' | 'sourcer' | 'unknown' (PileRates.roleOf): Josh's login is the owner at once, every other login is 'unknown' until the
+        server's answer for it is in (roleKnown). isSourcer() above still reads an unknown login as a sourcer for its figures; what
+        decides the SCREEN is this (lkMode). */
+    function roleState() {
+      var v = viewer();
+      // a token that names no user (not a JWT: only a test or a broken phone) has no login to ask the server about, and the function would
+      // refuse it anyway: it keeps the pricing screen it always had
+      return v.id ? PileRates.roleOf(v.id, roleKnown) : 'owner';
+    }
     // This phone's copies of the Adjust % box, one per login ({ [uid]: { uid, points, synced, savedAt } }, PileRates.adjustRecord):
     // a login signing in on this phone never writes over another login's box, even one not saved to that login yet, so it is
     // still there, and still saved, when that login comes back. Kept in memory too, so a phone whose storage refuses the
@@ -10378,6 +11002,7 @@ window.PileRates = {
       dom.signin.hidden = !!session;
       if (!session && panelShown) setPanel(false); // signed out: the sign-in form is never under the camera panel
       renderCamButton(); // app 1.10+: no camera button until signed in
+      applyLockMode(); // signed in as a sourcer: the lock screens; signed out (or another login): gone
     }
 
     // ── rate bands: the same public GET the rates editor reads, then the bot's own priceSlab ──────
@@ -10448,7 +11073,10 @@ window.PileRates = {
         the pile keeps its price, a scan waits or fails), never the consignor rates by default. */
     function pricingRates() { return scannerKnown ? normalRates() : null; }
     // PSA and CGC always; BGS only while a loaded rate sheet has a row naming it (PriceCore.buyGradersFor).
-    function scanBuyGraders() { return PriceCore.buyGradersFor(PriceCore.buyGradersFor(null, normalRates()), consignorSettings); }
+    function scanBuyGraders() {
+      if (lkOn()) return ['psa', 'cgc']; // a sourcer's cert goes to Triumph, which takes these two
+      return PriceCore.buyGradersFor(PriceCore.buyGradersFor(null, normalRates()), consignorSettings);
+    }
 
     /** Our sheets are in (or the wait for them is over): every card is priced against the one picked. */
     function repaintForSheets() {
@@ -10936,6 +11564,7 @@ window.PileRates = {
      * activate/reload.
      */
     function startAveragePoll(key) {
+      if (lkOn()) return; // a sourcer never asks Card Ladder for anything
       stopAveragePoll(key);
       var meta = pileMeta[key];
       if (!meta || !meta.facts) return;
@@ -11935,6 +12564,7 @@ window.PileRates = {
     /** -> true when the lookup started now; false when it was queued behind the one running (or that
         same card was already waiting). Either way it WILL be priced. */
     function priceCert(cert, grader, attempt) {
+      if (lkOn()) { lkCheck(cert, grader); return true; } // a sourcer's scan is a lock check: no rate sheets, no average, no pile
       attempt = attempt || 0;
       if (busy) {
         // The same slab read two ways ("01234567" off an old ITF label, "1234567" typed) is one card: compare
@@ -12120,6 +12750,679 @@ window.PileRates = {
       }).then(drainScanQueue, function () { busy = false; drainScanQueue(); });
       return true;
     }
+
+    // ── SOURCER LOCK MODE ─────────────────────────────────────────────────────────────────────────────────────────
+    // A login the server says is a sourcer (not an owner) gets a different screen from the pricing one: scan or type a cert,
+    // see the market, whether Triumph has allocation for it and what THEY get, then lock it (or queue it for 3 AM while the
+    // window is shut); an Allocation tab with the rates per price range; and My locks, ready to paste into a ticket. The
+    // words and the decisions are scanner/lockMode.js (LockMode); the work is the triumph-sourcer function (lookup, lock,
+    // queue, unqueue, locks, allocation, status), which works out "You get" itself, so this page never holds Triumph's own
+    // rate. No Card Ladder in this mode: no average, no sales, no slab-avg request, no pile. An owner (Josh, Penguin) never
+    // gets here and keeps the pricing screen exactly as it is.
+    /* SOURCER-LOCK:START */
+    var lkUi = {
+      root: document.getElementById('sc-lock'),
+      count: document.getElementById('sc-lk-count'),
+      banner: document.getElementById('sc-lk-banner'),
+      scan: document.getElementById('sc-lk-scan'),
+      alloc: document.getElementById('sc-lk-alloc'),
+      locks: document.getElementById('sc-lk-locks')
+    };
+    var LK_CERT_GO = dom.certGo.textContent;
+    var LK_TIMEOUT_MS = 20000;
+    var LK_STATUS_EVERY_MS = 30000;
+    var LK_STALE_MS = 45000;
+    var lkTimer = null;
+    var lkRoleTimer = null;
+    var lkGen = 0; // one number per fresh lock state: an answer that lands after another login took the phone is dropped
+    function lkFresh(mode) {
+      lkGen++;
+      return {
+        mode: mode || 'off', gen: lkGen, roleTries: 0, on: false, tab: 'scan', phase: 'idle', item: null, last: null, checking: null, note: '', done: null,
+        alert: null, alertTimer: null, queuedScan: null,
+        ctx: { open: null, paused: false, opensAt: null }, win: null,
+        alloc: null, allocAt: 0, allocBusy: false, allocErr: '',
+        data: null, dataAt: 0, dataBusy: false, dataReload: false, dataErr: '',
+        scope: 'week', notice: '', noticeTimer: null, fresh: false
+      };
+    }
+    var lk = lkFresh('off');
+    /** What the lock screens are doing for this login: 'lock' (the server says it is a sourcer), 'check' (nobody has said who this login
+        is yet: a neutral "Checking your account", nothing priced, nothing locked: failing OPEN would hand an unknown sourcer Card Ladder,
+        failing the other way would hand an owner the lock screens), or 'off' (an owner, or signed out). */
+    function lkMode() {
+      if (!session) return 'off';
+      var r = roleState();
+      return r === 'sourcer' ? 'lock' : r === 'unknown' ? 'check' : 'off';
+    }
+    /** Are the lock screens in charge of the scanner (lock or check)? Then no Card Ladder, no pile, no owner pricing. */
+    function lkOn() { return lkMode() !== 'off'; }
+
+    function applyLockMode() {
+      var mode = lkMode();
+      if (mode === lk.mode) return;
+      // whatever it was, it ends here: another login on this phone never sees this one's locks
+      if (lkTimer !== null) { clearInterval(lkTimer); lkTimer = null; }
+      if (lkRoleTimer !== null) { clearTimeout(lkRoleTimer); lkRoleTimer = null; }
+      if (lk.noticeTimer !== null) clearTimeout(lk.noticeTimer);
+      if (lk.alertTimer !== null) clearTimeout(lk.alertTimer);
+      lk = lkFresh(mode);
+      if (mode === 'off') {
+        dom.layout.classList.remove('sc-lock-mode');
+        dom.layout.classList.remove('sc-role-check');
+        lkUi.root.hidden = true;
+        lkUi.root.removeAttribute('data-checking');
+        dom.certGo.textContent = LK_CERT_GO;
+        return;
+      }
+      dom.layout.classList.add('sc-lock-mode');
+      lkUi.root.hidden = false;
+      stopAllAveragePolls();
+      if (mode === 'check') {
+        // The owner's hide mode is left exactly as it is: this may be an owner whose answer has not come in yet.
+        dom.layout.classList.add('sc-role-check');
+        lkUi.root.setAttribute('data-checking', '');
+        renderLock();
+        lkRoleAsk();
+        return;
+      }
+      dom.layout.classList.remove('sc-role-check');
+      lkUi.root.removeAttribute('data-checking');
+      lk.on = true;
+      dom.certGo.textContent = 'Check';
+      if (sellerMode) setSellerMode(false); // hide mode is the owner's pricing screen
+      lkUi.alloc.hidden = true; lkUi.locks.hidden = true; lkUi.scan.hidden = false;
+      renderLock();
+      lkStartTimer();
+      lkStatus();
+      lkLoadLocks(true);
+    }
+    /** Ask the server who this login is (GET /scanner says viewer.role), now and then again with a growing wait, until it answers.
+        noteRole -> applyLockMode moves the screen on. Nothing else is asked, locked or priced meanwhile. */
+    function lkRoleAsk() {
+      if (lkRoleTimer !== null) { clearTimeout(lkRoleTimer); lkRoleTimer = null; }
+      if (lk.mode !== 'check') return Promise.resolve();
+      var gen = lk.gen;
+      lk.roleTries++;
+      return loadScannerSheet(false).then(function () {
+        if (lk.gen !== gen || lk.mode !== 'check') return; // answered (the screen moved on), or another login
+        // still nobody has said who this login is. A frozen sourcer's own sourcers row says so (the paused screen, as it always did);
+        // an owner has no such row, and nothing changes.
+        var tok = session && session.access_token;
+        return (tok ? checkPaused(tok) : Promise.resolve(false)).then(function () {
+          if (lk.gen !== gen || lk.mode !== 'check') return;
+          renderLock();
+          lkRoleTimer = setTimeout(lkRoleAsk, Math.min(30000, 3000 * lk.roleTries));
+        });
+      });
+    }
+    function lkStartTimer() {
+      if (lkTimer !== null) return;
+      lkTimer = setInterval(function () { if (lk.on && scannerActive) lkStatus(); }, LK_STATUS_EVERY_MS);
+    }
+    function lkStopTimer() { if (lkTimer !== null) { clearInterval(lkTimer); lkTimer = null; } }
+
+    // ── the function: one request, the session refreshed once on a 401, every way it can go wrong named ──
+    function lkCall(action, extra) {
+      // the function is only ever asked for a login the server has called a sourcer
+      if (lk.mode !== 'lock') return Promise.resolve({ ok: false, status: 0, body: {}, notReady: true });
+      var payload = { action: action };
+      Object.keys(extra || {}).forEach(function (k) { payload[k] = extra[k]; });
+      function once() {
+        var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        var timer = ctl ? setTimeout(function () { try { ctl.abort(); } catch (e) { /* nothing left to cut loose */ } }, LK_TIMEOUT_MS) : null;
+        return authFetch(TRIUMPH_URL, {
+          method: 'POST', headers: { authorization: 'Bearer ' + session.access_token },
+          body: JSON.stringify(payload), signal: ctl ? ctl.signal : undefined
+        }).then(function (res) {
+          return res.json().then(function (j) { return { res: res, body: j }; }, function () { return { res: res, body: null }; });
+        }).then(function (r) { if (timer) clearTimeout(timer); return r; }, function (e) { if (timer) clearTimeout(timer); throw e; });
+      }
+      function settle(r) {
+        var b = r.body && typeof r.body === 'object' ? r.body : {};
+        // a frozen sourcer: the paused screen, not an error under a card
+        if (r.res.status === 403 && b.code === 'FROZEN') { showPaused(); return { ok: false, status: 403, body: b, frozen: true }; }
+        if (r.res.status === 403 && session) checkPaused(session.access_token); // a 403 that does not say why: the login's own sourcers row does
+        return { ok: r.res.ok, status: r.res.status, body: b };
+      }
+      if (!session) return Promise.resolve({ ok: false, status: 0, body: {}, signedOut: true });
+      return once().then(function (r) {
+        if (r.res.status !== 401) return settle(r);
+        return refreshSession().then(function (rs) {
+          if (rs.ok && session) return once().then(settle);
+          if (rs.noSignal) return { ok: false, status: 0, body: {}, noSignal: true };
+          session = null; saveSession(null);
+          if (panelShown) setPanel(false);
+          renderAuthState();
+          return { ok: false, status: 401, body: {}, signedOut: true };
+        });
+      }, function () { return { ok: false, status: 0, body: {}, noSignal: true }; });
+    }
+    /** What to tell a sourcer when a request did not work. A frozen account has the paused screen instead. */
+    function lkFailWords(r) {
+      if (r.frozen) return '';
+      if (r.signedOut) return 'Signed out. Sign in again.';
+      if (r.noSignal) return 'No signal. Check your connection and try again.';
+      var e = r.body && typeof r.body.error === 'string' ? r.body.error : '';
+      return e || 'Something went wrong. Try again.';
+    }
+
+    // ── what is on screen ──
+    function lkSetTab(tab) {
+      lk.tab = tab;
+      lkUi.scan.hidden = tab !== 'scan';
+      lkUi.alloc.hidden = tab !== 'alloc';
+      lkUi.locks.hidden = tab !== 'locks';
+      lk.notice = '';
+      renderLock();
+      if (tab === 'alloc') lkLoadAlloc(false);
+      if (tab === 'locks') lkLoadLocks(false);
+      if (tab === 'scan') lkStatus();
+    }
+    function lkNotice(text) {
+      lk.notice = text;
+      if (lk.noticeTimer !== null) clearTimeout(lk.noticeTimer);
+      lk.noticeTimer = setTimeout(function () { lk.noticeTimer = null; lk.notice = ''; if (lk.on && lk.tab === 'locks') renderLockLocks(); }, 3500);
+      if (lk.tab === 'locks') renderLockLocks();
+    }
+    /** "Checking your account": the whole screen while the server has not said who this login is. */
+    function renderLockCheck() {
+      var slow = lk.roleTries >= 2;
+      lkUi.scan.hidden = false; lkUi.alloc.hidden = true; lkUi.locks.hidden = true;
+      lkUi.banner.hidden = true;
+      lkUi.scan.innerHTML = '<div class="sc-card sc-lk-card" aria-busy="true"><div class="sc-lk-head"><span class="sc-lk-grade sc-unk" aria-hidden="true"></span>' +
+        '<div class="sc-lk-words"><div class="sc-lk-name sc-wait">Checking your account</div><div class="sc-lk-id">' +
+        (slow ? 'Taking longer than usual. Check your signal.' : 'One moment') + '</div></div></div>' +
+        (slow ? '<div class="sc-lk-actions">' + lkButton('role-retry', 'Try again', 'sc-btn-quiet sc-btn-block') + '</div>' : '') + '</div>';
+    }
+    function renderLock(fresh) {
+      if (lk.mode === 'check') { renderLockCheck(); return; }
+      if (fresh) lk.fresh = true;
+      renderLockTabs();
+      renderLockBanner();
+      if (lk.tab === 'scan') renderLockScan();
+      else if (lk.tab === 'alloc') renderLockAlloc();
+      else renderLockLocks();
+      lk.fresh = false;
+    }
+    function renderLockTabs() {
+      Array.prototype.forEach.call(lkUi.root.querySelectorAll('[data-lk-tab]'), function (b) {
+        b.setAttribute('aria-pressed', b.getAttribute('data-lk-tab') === lk.tab ? 'true' : 'false');
+      });
+      var n = lk.data ? LockMode.locksInScope(lk.data.locks, Date.now(), 'week').length : 0;
+      lkUi.count.textContent = String(n);
+      lkUi.count.hidden = !n;
+    }
+    function renderLockBanner() {
+      var b = LockMode.bannerOf({ paused: lk.ctx.paused, window: lk.win }, Date.now());
+      lkUi.banner.hidden = !b;
+      if (b) { lkUi.banner.textContent = b.text; lkUi.banner.setAttribute('data-tone', b.tone); }
+    }
+    function lkButton(act, label, cls, extra) {
+      return '<button type="button" class="sc-btn ' + cls + '" data-lk-act="' + act + '"' + (extra || '') + '>' + esc(label) + '</button>';
+    }
+
+    function renderLockScan() {
+      var h;
+      if (lk.phase === 'idle') {
+        h = '<div class="sc-card sc-lk-card sc-lk-idle"><div class="sc-lk-idle-title">Scan a slab</div>' +
+          '<p class="sc-sub">Point the camera at the barcode, or type the cert number below. You will see what you get and whether it can lock.</p></div>';
+      } else if (lk.phase === 'checking') {
+        h = '<div class="sc-card sc-lk-card" aria-busy="true"><div class="sc-lk-head"><span class="sc-lk-grade sc-unk" aria-hidden="true"></span>' +
+          '<div class="sc-lk-words"><div class="sc-lk-name sc-wait">Checking ' + esc(lk.checking || '') + '</div><div class="sc-lk-id">One moment</div></div></div></div>';
+      } else if (lk.phase === 'failed') {
+        h = '<div class="sc-card sc-lk-card"><div class="sc-lk-status" data-tone="bad" role="alert">' + esc(lk.note) + '</div>' +
+          (lk.last ? '<div class="sc-lk-actions">' + lkButton('recheck', 'Try again', 'sc-btn-quiet sc-btn-block') + '</div>' : '') + '</div>';
+      } else {
+        h = lkCardHtml();
+      }
+      // what became of a lock or a queue while the camera was already on the next card: said first, in words, until it times out
+      if (lk.alert) h = '<div class="sc-card sc-lk-card sc-lk-alert-card"><div class="sc-lk-status sc-lk-alert" data-tone="' + esc(lk.alert.tone) + '" role="alert">' + esc(lk.alert.text) + '</div></div>' + h;
+      lkUi.scan.innerHTML = h;
+      if (lk.fresh && lk.item) {
+        var card = lkUi.scan.querySelector ? lkUi.scan.querySelector('.sc-lk-card') : null;
+        if (card) card.setAttribute('data-fresh', '');
+      }
+    }
+
+    function lkCardHtml() {
+      var item = lk.item;
+      var p = LockMode.cardPhase(item, lk.ctx);
+      var parts = CardView.splitTitle(item.card || '');
+      var gradeN = gradeNum(item.grade);
+      var dim = p.kind === 'blocked' || p.kind === 'full' || p.kind === 'paused' || p.kind === 'error';
+      var noRate = item.youGetPct === null || item.youGetPct === undefined;
+      var big = noRate ? 'No rate' : LockMode.pctText(item.youGetPct);
+      var sub = item.youGetDollars !== null && item.youGetDollars !== undefined ? LockMode.moneyText(item.youGetDollars) : '';
+      var done = lk.phase === 'done' ? lk.done : null;
+      var status = p.status;
+      var tone = p.tone;
+      var kind = p.kind;
+      var note = p.note;
+      var actions = '';
+      if (done && done.kind === 'locked') {
+        kind = 'locked'; tone = 'ok'; status = 'Locked';
+        note = 'You locked this card for ' + LockMode.youGetText({ youGetPct: done.pct, youGetDollars: done.dollars }) + '.' + (done.ledger === false ? ' It is not on My locks yet: check My locks in a minute, and if it is still missing, message us in Discord with the cert number.' : '');
+        actions = '<div class="sc-lk-actions">' + lkButton('next', 'Scan next card', 'sc-btn-quiet sc-btn-block') + '</div>';
+        dim = false;
+      } else if (done && done.kind === 'test') {
+        kind = 'test'; tone = 'info'; status = 'Test mode';
+        note = 'Nothing was sent to Triumph. This card would have locked.';
+        actions = '<div class="sc-lk-actions">' + lkButton('next', 'Scan next card', 'sc-btn-quiet sc-btn-block') + '</div>';
+        dim = false;
+      } else if (lk.phase === 'confirm') {
+        actions = '<div class="sc-clear-confirm sc-lk-confirm" role="alert"><div class="sc-clear-confirm-text">' + esc(p.confirmText) + '</div>' +
+          '<div class="sc-clear-confirm-btns">' + lkButton('confirm-yes', 'Yes, lock it', 'sc-btn-primary') + lkButton('confirm-no', 'Cancel', 'sc-btn-quiet') + '</div></div>';
+      } else if (lk.phase === 'working') {
+        actions = '<div class="sc-lk-actions">' + lkButton('', p.act === 'queue' ? 'Queueing…' : 'Locking…', 'sc-btn-primary sc-btn-block sc-lk-go', ' disabled aria-busy="true"') + '</div>';
+      } else if (p.act === 'lock' || p.act === 'queue') {
+        actions = '<div class="sc-lk-actions">' + lkButton(p.act, p.actLabel, 'sc-btn-primary sc-btn-block sc-lk-go') +
+          (p.alt ? lkButton(p.alt.act, p.alt.label, 'sc-btn-quiet sc-btn-block') : '') + '</div>';
+      } else if (p.act) {
+        actions = '<div class="sc-lk-actions">' + lkButton(p.act, p.actLabel, 'sc-btn-quiet sc-btn-block') + '</div>';
+      } else if (p.kind === 'paused') {
+        actions = '<div class="sc-lk-actions">' + lkButton('', 'Locking is paused', 'sc-btn-quiet sc-btn-block sc-lk-go', ' disabled') + '</div>';
+      }
+      var grader = String(item.grader || '').toUpperCase();
+      return '<div class="sc-card sc-lk-card" data-kind="' + esc(kind) + '">' +
+        '<div class="sc-lk-head"><span class="sc-lk-grade' + (gradeN === null ? ' sc-unk' : '') + '" aria-hidden="true">' + (gradeN !== null ? esc(String(gradeN)) : '') + '</span>' +
+        '<div class="sc-lk-words"><div class="sc-lk-name">' + esc(parts.name || ('Cert ' + item.cert)) + '</div>' +
+        (parts.set ? '<div class="sc-lk-set">' + esc(parts.setName) + ' ' + esc(parts.number) + '</div>' : '') +
+        '<div class="sc-lk-id">' + esc((grader ? grader + ' ' : '') + item.cert) + (item.grade ? ', grade ' + esc(item.grade) : '') + '</div></div></div>' +
+        '<div class="sc-lk-figs' + (noRate ? ' sc-lk-solo' : '') + '">' + (noRate ? '' : '<div class="sc-tile sc-tile-pay sc-lk-you' + (dim ? ' sc-lk-dim' : '') + '"><div class="sc-tile-top"><div class="sc-key">' + esc(p.youLabel) + '</div></div>' +
+        '<div class="sc-pay-val">' + esc(big) + '</div>' + (sub ? '<div class="sc-lk-sub">' + esc(sub) + '</div>' : '') + '</div>') +
+        '<div class="sc-tile sc-lk-market"><div class="sc-tile-top"><div class="sc-key">Market</div></div><div class="sc-pay-val">' + esc(LockMode.moneyText(item.marketValue)) + '</div></div></div>' +
+        '<div class="sc-lk-status" data-tone="' + esc(tone) + '" data-kind="' + esc(kind) + '" role="status">' + esc(status) + '</div>' +
+        (note ? '<p class="sc-lk-note">' + esc(note) + '</p>' : '') +
+        (lk.note ? '<p class="sc-lk-note" data-tone="bad" role="alert">' + esc(lk.note) + '</p>' : '') +
+        actions + '</div>';
+    }
+
+    // ── a scan: check the cert (this is what a sourcer's priceCert is) ──
+    function lkCheck(cert, grader) {
+      if (lk.mode !== 'lock') { renderLock(); return Promise.resolve(); } // nobody has said who this login is yet: nothing is checked
+      var bare = grader === 'psa' ? Certs.certKey(cert) : cert;
+      // the camera reads the same barcode again while it is held up: a card being asked about, confirmed or locked is left alone
+      if (lk.checking === bare || (lk.item && lk.item.cert === bare && (lk.phase === 'confirm' || lk.phase === 'working'))) return Promise.resolve();
+      // A lock or a queue is out for the card on screen: another slab's scan WAITS for its answer (it is checked the moment it lands), so
+      // that answer is never thrown away with the card it was about.
+      if (lk.phase === 'working') { lk.queuedScan = { cert: cert, grader: grader }; return Promise.resolve(); }
+      lk.last = { cert: cert, grader: grader };
+      lk.checking = bare; lk.item = null; lk.phase = 'checking'; lk.note = ''; lk.done = null;
+      lkSetTabQuiet('scan');
+      renderLock();
+      return lkCall('lookup', { certs: [bare] }).then(function (r) {
+        if (lk.checking !== bare) return; // a newer scan took over
+        lk.checking = null;
+        if (!r.ok || !r.body || !Array.isArray(r.body.results)) {
+          lk.phase = 'failed'; lk.note = lkFailWords(r) || 'Something went wrong. Try again.';
+          if (!r.frozen) feedback.play('bad');
+          renderLock();
+          return;
+        }
+        lk.item = r.body.results[0] || { cert: bare, error: 'no answer' };
+        lk.phase = 'ready';
+        lkTakeWindow(r.body.lock);
+        renderLock(true);
+      });
+    }
+    function lkSetTabQuiet(tab) {
+      if (lk.tab === tab) return;
+      lk.tab = tab;
+      lkUi.scan.hidden = tab !== 'scan'; lkUi.alloc.hidden = tab !== 'alloc'; lkUi.locks.hidden = tab !== 'locks';
+    }
+    /** What a lookup or a status says about the window and the pause: kept for the card and the banner. */
+    function lkTakeWindow(info) {
+      if (!info) return;
+      if (typeof info.paused === 'boolean') lk.ctx.paused = info.paused;
+      if (info.open === true || info.open === false) { lk.ctx.open = info.open; lk.win = Object.assign({}, lk.win || {}, { open: info.open }); }
+      if (info.opensAt) { lk.ctx.opensAt = info.opensAt; lk.win = Object.assign({}, lk.win || {}, { opensAt: info.opensAt }); }
+    }
+    function lkWinSig() { return JSON.stringify([lk.ctx.paused, lk.ctx.open, lk.ctx.opensAt, lk.win ? [lk.win.open, lk.win.published, lk.win.endsAt] : null]); }
+    function lkStatus() {
+      if (!lk.on) return Promise.resolve();
+      return lkCall('status').then(function (r) {
+        if (!lk.on || !r.ok || !r.body || r.body.ok !== true) return;
+        var before = lkWinSig();
+        lk.ctx.paused = !!r.body.paused;
+        if (r.body.window) {
+          lk.win = r.body.window;
+          lk.ctx.open = r.body.window.open;
+          lk.ctx.opensAt = r.body.window.opensAt;
+        }
+        if (lk.phase !== 'working' && lkWinSig() !== before) renderLock(); // only when something it shows changed: a re-draw drops a finger's tap and the focus
+      });
+    }
+
+    // ── lock / queue / take off the list ──
+    function lkSettle(item, r, onOk) {
+      var b = r.body || {};
+      if (!r.ok) { lk.phase = 'ready'; lk.note = lkFailWords(r); feedback.play('bad'); return; }
+      if (b.paused) { lk.ctx.paused = true; lk.phase = 'ready'; lk.note = ''; return; }
+      if (b.windowClosed) { lk.ctx.open = false; if (b.opensAt) lk.ctx.opensAt = b.opensAt; lk.phase = 'ready'; lk.note = ''; return; }
+      if (b.windowOpen) { lk.ctx.open = true; lk.phase = 'ready'; lk.note = 'Locking just opened. Lock it now.'; return; }
+      if (b.priceChanged) {
+        // Triumph pays less than the number they confirmed: nothing was sent. The card shows the NEW number, to be looked at and confirmed again.
+        var ch = (b.changed && b.changed[0]) || null;
+        if (ch && ch.yourPct !== undefined) { item.youGetPct = ch.yourPct; item.youGetDollars = ch.yourDollars; }
+        lk.phase = 'ready'; lk.note = 'The price changed to ' + LockMode.youGetText(item) + '. Check it, then lock it again.'; feedback.play('bad'); return;
+      }
+      if (b.ok === false) { lk.phase = 'ready'; lk.note = b.error || 'That did not go through. Try again.'; feedback.play('bad'); return; }
+      onOk(b);
+    }
+    /** Say what became of a lock or a queue for a card that is not (or is no longer) the one on screen: in words, with the beep. */
+    function lkAnnounce(o) {
+      if (lk.alertTimer !== null) clearTimeout(lk.alertTimer);
+      lk.alert = o;
+      lk.alertTimer = setTimeout(function () { lk.alertTimer = null; lk.alert = null; if (lk.mode === 'lock' && lk.tab === 'scan') renderLockScan(); }, 12000);
+      if (o.tone === 'ok') { feedback.play('ok'); bridge.haptic('success'); } else feedback.play('bad');
+      if (lk.mode === 'lock' && lk.tab === 'scan') renderLockScan();
+    }
+    /** The scan that came in while a lock or a queue was out: checked now that the answer is in. */
+    function lkRunQueuedScan() {
+      var s = lk.queuedScan;
+      lk.queuedScan = null;
+      return s ? lkCheck(s.cert, s.grader) : Promise.resolve();
+    }
+    function lkDo() {
+      var item = lk.item;
+      if (!item || lk.phase === 'working') return Promise.resolve();
+      var gen = lk.gen;
+      // the price they are confirming: the function never records less than this (and records ITS OWN number, never this one)
+      var extra = { certs: [item.cert] };
+      if (item.youGetPct !== null && item.youGetPct !== undefined && isFinite(Number(item.youGetPct))) extra.confirmedPct = Number(item.youGetPct);
+      if (item.youGetDollars !== null && item.youGetDollars !== undefined && isFinite(Number(item.youGetDollars))) extra.confirmedDollars = Number(item.youGetDollars);
+      lk.phase = 'working'; lk.note = ''; lk.alert = null; renderLock();
+      return lkCall('lock', extra).then(function (r) {
+        if (lk.gen !== gen) return; // another login is on this phone now
+        lk.dataAt = 0;
+        lkLoadLocks(true);
+        // another card is on screen now (it should not happen: a scan waits for this answer): say what became of THIS one, in words
+        if (lk.item !== item) { lkAnnounce(LockMode.outcomeOf('lock', item, r, lkFailWords(r))); return; }
+        var spoken = lk.queuedScan ? LockMode.outcomeOf('lock', item, r, lkFailWords(r)) : null; // the next slab is waiting: this card is about to leave the screen
+        lkSettle(item, r, function (b) {
+          if (b.dryRun) { lk.phase = 'done'; lk.done = { kind: 'test' }; return; }
+          if (b.locked && b.locked.length) {
+            var l = b.locked[0];
+            item.mine = 'locked';
+            lk.phase = 'done'; lk.done = { kind: 'locked', pct: l.yourPct, dollars: l.yourDollars, ledger: b.ledger !== false };
+            feedback.play('ok');
+            bridge.haptic('success');
+            return;
+          }
+          var nl = (b.notLocked && b.notLocked[0]) || {};
+          item.takeable = false; item.reasonCode = nl.reasonCode || 'other'; item.reason = nl.reason || 'Not accepted right now.';
+          lk.phase = 'ready'; feedback.play('bad');
+          // "already locked" right after our own try may be that very try (a slow answer we gave up on): it is on My locks, which was just refreshed
+          lk.note = item.reasonCode === 'already_locked' ? 'Already locked. If you just tried, it may have gone through: check My locks.' : 'It was not locked: ' + item.reason;
+        });
+        if (spoken) lkAnnounce(spoken);
+        renderLock();
+        lkRunQueuedScan();
+      });
+    }
+    function lkQueue() {
+      var item = lk.item;
+      if (!item || lk.phase === 'working') return Promise.resolve();
+      var gen = lk.gen;
+      lk.phase = 'working'; lk.note = ''; lk.alert = null; renderLock();
+      return lkCall('queue', { certs: [item.cert] }).then(function (r) {
+        if (lk.gen !== gen) return;
+        lk.dataAt = 0;
+        lkLoadLocks(true);
+        if (lk.item !== item) { lkAnnounce(LockMode.outcomeOf('queue', item, r, lkFailWords(r))); return; }
+        var spoken = lk.queuedScan ? LockMode.outcomeOf('queue', item, r, lkFailWords(r)) : null;
+        lkSettle(item, r, function (b) {
+          if ((b.queued && b.queued.length) || (b.alreadyQueued && b.alreadyQueued.length)) { item.mine = 'queued'; lk.phase = 'ready'; feedback.play('ok'); return; }
+          var nq = (b.notQueued && b.notQueued[0]) || {};
+          item.takeable = false; item.reasonCode = nq.reasonCode || 'other'; item.reason = nq.reason || 'Not accepted right now.';
+          lk.phase = 'ready'; feedback.play('bad');
+        });
+        if (spoken) lkAnnounce(spoken);
+        renderLock();
+        lkRunQueuedScan();
+      });
+    }
+    function lkUnqueue(cert) {
+      var item = lk.item;
+      var c = cert || (item && item.cert);
+      if (!c) return Promise.resolve();
+      return lkCall('unqueue', { certs: [c] }).then(function (r) {
+        lk.dataAt = 0;
+        if (!r.ok) { lk.note = lkFailWords(r); renderLock(); return; }
+        if (item && item.cert === c) item.mine = null;
+        lkLoadLocks(true);
+        renderLock();
+      });
+    }
+
+    function lkAct(act, cert) {
+      if (act === 'role-retry') { lkRoleAsk(); return; }
+      // each tap only means something in the state that drew its button (a late or doubled tap does nothing)
+      if (act === 'lock') { if (lk.item && lk.phase === 'ready') { lk.phase = 'confirm'; lk.note = ''; renderLock(); } return; }
+      if (act === 'confirm-no') { if (lk.phase === 'confirm') { lk.phase = 'ready'; renderLock(); } return; }
+      if (act === 'confirm-yes') { if (lk.phase === 'confirm') lkDo(); return; }
+      if (act === 'queue') { if (lk.phase === 'ready') lkQueue(); return; }
+      if (act === 'unqueue') { lkUnqueue(cert); return; }
+      if (act === 'recheck') { if (lk.last) lkCheck(lk.last.cert, lk.last.grader); return; }
+      if (act === 'next') {
+        lk.item = null; lk.phase = 'idle'; lk.done = null; lk.note = ''; lk.alert = null;
+        renderLock();
+        if (!appSheet() && dom.certInput.focus) dom.certInput.focus();
+        return;
+      }
+      if (act === 'copy') { lkCopy(); return; }
+      if (act === 'csv') { lkCsv(); return; }
+      if (act === 'scope-week' || act === 'scope-all') { lk.scope = act === 'scope-all' ? 'all' : 'week'; renderLockLocks(); return; }
+      if (act === 'locks-refresh') { lkLoadLocks(true); return; }
+      if (act === 'alloc-refresh') { lkLoadAlloc(true); return; }
+    }
+
+    // ── Allocation ──
+    function lkLoadAlloc(force) {
+      if (lk.allocBusy) return Promise.resolve();
+      if (!force && lk.alloc && Date.now() - lk.allocAt < LK_STALE_MS) { renderLockAlloc(); return Promise.resolve(); }
+      lk.allocBusy = true; lk.allocErr = '';
+      renderLockAlloc();
+      return lkCall('allocation').then(function (r) {
+        lk.allocBusy = false;
+        if (r.ok && r.body && r.body.ok === true) {
+          lk.alloc = r.body; lk.allocAt = Date.now();
+          lk.ctx.paused = !!r.body.locksPaused;
+          if (r.body.window) { lk.win = r.body.window; lk.ctx.open = r.body.window.open; lk.ctx.opensAt = r.body.window.opensAt; }
+        } else { lk.allocErr = lkFailWords(r); }
+        if (lk.on) renderLock();
+      });
+    }
+    function renderLockAlloc() {
+      var a = lk.alloc;
+      var h;
+      if (!a) {
+        h = lk.allocBusy
+          ? '<div class="sc-card sc-lk-card" aria-busy="true"><div class="sc-lk-name sc-wait">Loading the rates</div></div>'
+          : '<div class="sc-card sc-lk-card"><div class="sc-lk-status" data-tone="bad" role="alert">' + esc(lk.allocErr || 'Could not load the rates.') + '</div>' +
+            '<div class="sc-lk-actions">' + lkButton('alloc-refresh', 'Try again', 'sc-btn-quiet sc-btn-block') + '</div></div>';
+      } else {
+        var now = Date.now();
+        var wl = LockMode.windowLine({ paused: lk.ctx.paused, window: a.window }, now);
+        h = '<div class="sc-card sc-lk-window">' +
+          (wl ? '<div class="sc-lk-status" data-tone="' + esc(wl.tone) + '" role="status">' + esc(wl.text) + '</div>' : '') +
+          '<p class="sc-lk-fine">' + esc(a.note || '') + '</p>' +
+          lkButton('alloc-refresh', 'Refresh', 'sc-btn-quiet', ' style="align-self:flex-start"') + '</div>';
+        var groups = LockMode.bandGroups(a.bands, now);
+        if (!groups.length) h += '<div class="sc-card sc-lk-empty"><p class="sc-sub">No rates to show right now.</p></div>';
+        groups.forEach(function (g) {
+          h += '<section class="sc-card sc-lk-cat"><h3 class="sc-h">' + esc(g.label) + '</h3><ul class="sc-lk-bands">';
+          g.rows.forEach(function (row) {
+            h += '<li class="sc-lk-band"><span class="sc-lk-range">' + esc(row.range) + '</span>' +
+              '<span class="sc-lk-band-you"><span class="sc-lk-band-pct">' + esc(row.youGet) + '</span><span class="sc-lk-band-lbl">you get</span></span>' +
+              (row.needs ? '<span class="sc-lk-needs">' + esc(row.needs) + '</span>' : '<span class="sc-lk-needs"></span>') +
+              (row.hint ? '<span class="sc-lk-hint" data-tone="' + esc(row.hint.tone) + '">' + esc(row.hint.text) + '</span>' : '') + '</li>';
+          });
+          h += '</ul></section>';
+        });
+      }
+      lkUi.alloc.innerHTML = h;
+    }
+
+    // ── My locks ──
+    function lkLoadLocks(force) {
+      if (lk.dataBusy) { if (force) lk.dataReload = true; return Promise.resolve(); } // asked again while one is out: once more when it lands
+      if (!force && lk.data && Date.now() - lk.dataAt < LK_STALE_MS) { renderLock(); return Promise.resolve(); }
+      lk.dataBusy = true; lk.dataErr = '';
+      if (lk.tab === 'locks') renderLockLocks();
+      return lkCall('locks').then(function (r) {
+        lk.dataBusy = false;
+        if (r.ok && r.body && r.body.ok === true) {
+          lk.data = { locks: r.body.locks || [], queued: r.body.queued || [], notLocked: r.body.notLocked || [], pending: r.body.pending || [] };
+          lk.dataAt = Date.now();
+        } else { lk.dataErr = lkFailWords(r); }
+        if (lk.on) renderLock();
+        if (lk.dataReload) { lk.dataReload = false; lkLoadLocks(true); }
+      });
+    }
+    function lkRowHtml(l, now, kind) {
+      var r = LockMode.lockRow(l, now);
+      var gradeN = gradeNum(l.grade);
+      var cls = 'sc-lk-row' + (kind === 'queued' ? ' sc-lk-queued' : kind === 'pending' ? ' sc-lk-pending' : '');
+      var h = '<li class="' + cls + '"><span class="sc-lk-grade' + (gradeN === null ? ' sc-unk' : '') + '" aria-hidden="true">' + (gradeN !== null ? esc(String(gradeN)) : '') + '</span>' +
+        '<span class="sc-lk-row-name">' + esc(r.name) + '</span>' +
+        '<span class="sc-lk-row-meta">' + esc(r.meta) + '</span>' +
+        '<span class="sc-lk-row-when">' + esc(r.when) + (r.market && kind !== 'missed' ? ' · market ' + esc(r.market) : '') + '</span>';
+      if (kind === 'missed') {
+        h += '<span class="sc-lk-row-why">' + esc(l.reason || '') + '</span>';
+      } else {
+        h += '<span class="sc-lk-row-you">' + esc(r.youGet) + '</span><span class="sc-lk-row-rate">' + esc(r.rate) + '</span>';
+        if (kind === 'queued') h += '<button type="button" class="sc-lk-rm" data-lk-act="unqueue" data-cert="' + esc(l.cert) + '" aria-label="Take ' + esc(l.cert) + ' off my list">Take it off my list</button>';
+      }
+      return h + '</li>';
+    }
+    function renderLockLocks() {
+      var d = lk.data;
+      var h;
+      if (!d) {
+        h = lk.dataBusy
+          ? '<div class="sc-card sc-lk-card" aria-busy="true"><div class="sc-lk-name sc-wait">Loading your locks</div></div>'
+          : '<div class="sc-card sc-lk-card"><div class="sc-lk-status" data-tone="bad" role="alert">' + esc(lk.dataErr || 'Could not load your locks.') + '</div>' +
+            '<div class="sc-lk-actions">' + lkButton('locks-refresh', 'Try again', 'sc-btn-quiet sc-btn-block') + '</div></div>';
+        lkUi.locks.innerHTML = h;
+        return;
+      }
+      var now = Date.now();
+      var scoped = LockMode.locksInScope(d.locks, now, lk.scope);
+      var sum = LockMode.locksSummary(scoped);
+      var n = scoped.length;
+      h = '<div class="sc-card sc-lk-sum">' +
+        '<div class="sc-seg" role="group" aria-label="Show">' +
+        '<button type="button" class="sc-seg-btn" data-lk-act="scope-week" aria-pressed="' + (lk.scope === 'week' ? 'true' : 'false') + '">This week</button>' +
+        '<button type="button" class="sc-seg-btn" data-lk-act="scope-all" aria-pressed="' + (lk.scope === 'all' ? 'true' : 'false') + '">All 14 days</button></div>' +
+        '<div class="sc-lk-sum-text">' + esc(lk.scope === 'week' ? sum.text : (n ? sum.text : 'Nothing locked in the last 14 days')) + '</div>' +
+        '<div class="sc-lk-tools">' +
+        lkButton('copy', n ? 'Copy ' + n + ' for ticket' : 'Copy for ticket', 'sc-btn-primary sc-lk-copy', n ? '' : ' disabled') +
+        lkButton('csv', 'Download CSV', 'sc-btn-quiet sc-lk-csv', n ? '' : ' disabled') + '</div>' +
+        '<p class="sc-lk-notice" role="status" aria-live="polite">' + esc(lk.notice || '') + '</p></div>';
+      if (d.queued.length) {
+        h += '<section class="sc-card sc-lk-sec"><div class="sc-lk-sec-h"><h3 class="sc-h">Queued for 3 AM</h3><span class="sc-lk-sec-n">' + d.queued.length + '</span></div><ul class="sc-lk-list">';
+        d.queued.forEach(function (q) { h += lkRowHtml(q, now, 'queued'); });
+        h += '</ul></section>';
+      }
+      if (d.pending && d.pending.length) {
+        // a lock Triumph never answered: asked about again every time this list opens, then it is a lock here or it is gone
+        h += '<section class="sc-card sc-lk-sec"><div class="sc-lk-sec-h"><h3 class="sc-h">Not confirmed yet</h3><span class="sc-lk-sec-n">' + d.pending.length + '</span></div>' +
+          '<p class="sc-lk-fine">We sent these to Triumph and never heard back. They are checked again each time you open this list.</p><ul class="sc-lk-list">';
+        d.pending.forEach(function (p) { h += lkRowHtml(p, now, 'pending'); });
+        h += '</ul></section>';
+      }
+      if (n) {
+        h += '<section class="sc-card sc-lk-sec"><div class="sc-lk-sec-h"><h3 class="sc-h">Locked</h3><span class="sc-lk-sec-n">' + n + '</span></div><ul class="sc-lk-list">';
+        scoped.forEach(function (l) { h += lkRowHtml(l, now, 'locked'); });
+        h += '</ul></section>';
+      } else if (!d.queued.length && !(d.pending && d.pending.length)) {
+        h += '<div class="sc-card sc-lk-empty"><p class="sc-sub">Nothing here yet. Scan a slab on the Scan tab and lock it, and it shows up here.</p></div>';
+      }
+      if (d.notLocked.length) {
+        h += '<section class="sc-card sc-lk-sec"><div class="sc-lk-sec-h"><h3 class="sc-h">Not locked</h3><span class="sc-lk-sec-n">' + d.notLocked.length + '</span></div><ul class="sc-lk-list">';
+        d.notLocked.forEach(function (m) { h += lkRowHtml(m, now, 'missed'); });
+        h += '</ul></section>';
+      }
+      lkUi.locks.innerHTML = h;
+    }
+
+    /** Copy the cert numbers of the locks on screen, one per line: what goes in the ticket. */
+    function lkClipboard(text) {
+      function legacy() {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+          document.body.appendChild(ta); ta.select();
+          var ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          return ok;
+        } catch (e) { return false; }
+      }
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text).then(function () { return true; }, function () { return legacy(); });
+        }
+      } catch (e) { /* the old way below */ }
+      return Promise.resolve(legacy());
+    }
+    function lkScoped() {
+      return lk.data ? LockMode.locksInScope(lk.data.locks, Date.now(), lk.scope) : [];
+    }
+    function lkCopy() {
+      var list = lkScoped();
+      var text = LockMode.copyText(list);
+      if (!text) return Promise.resolve();
+      var n = text.split('\n').length;
+      return lkClipboard(text).then(function (ok) {
+        lkNotice(ok ? 'Copied ' + n + ' cert number' + (n === 1 ? '' : 's') + '. Paste them into your ticket.' : 'Could not copy. Use Download CSV instead.');
+      });
+    }
+    function lkIsIos() {
+      try { return /iP(hone|ad|od)/.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); } catch (e) { return false; }
+    }
+    function lkCsv() {
+      var list = lkScoped();
+      if (!list.length) return;
+      var name = LockMode.csvName(Date.now());
+      var text = String.fromCharCode(0xfeff) + LockMode.csvOf(list); // a byte order mark, so a spreadsheet reads the file as UTF-8
+      var saved = 'Saved ' + list.length + ' lock' + (list.length === 1 ? '' : 's') + ' as a CSV.';
+      function download() {
+        try {
+          var blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url; a.download = name; a.style.display = 'none';
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          setTimeout(function () { try { URL.revokeObjectURL(url); } catch (e) { /* gone with the page */ } }, 4000);
+          lkNotice(saved);
+        } catch (e) { lkNotice('Could not make the file. Use Copy for ticket instead.'); }
+      }
+      // an iPhone's web view does not download a blob: its share sheet takes the file (Save to Files, Mail, Numbers...)
+      try {
+        if (lkIsIos() && typeof File === 'function' && navigator.share && navigator.canShare) {
+          var file = new File([text], name, { type: 'text/csv' });
+          if (navigator.canShare({ files: [file] })) {
+            navigator.share({ files: [file], title: name }).then(function () { lkNotice(saved); }, function (e) { if (!(e && e.name === 'AbortError')) download(); });
+            return;
+          }
+        }
+      } catch (e) { /* the download below */ }
+      download();
+    }
+
+    function wireLock() {
+      lkUi.root.addEventListener('click', function (ev) {
+        var t = ev.target;
+        if (!t || !t.closest) return;
+        var tab = t.closest('[data-lk-tab]');
+        if (tab) { lkSetTab(tab.getAttribute('data-lk-tab')); return; }
+        var act = t.closest('[data-lk-act]');
+        if (act) lkAct(act.getAttribute('data-lk-act'), act.getAttribute('data-cert'));
+      });
+    }
+    /* SOURCER-LOCK:END */
 
     // ── one cert in: the bot's own one-cert reader (certs.js parseOneCert via window.Certs), so the page
     // and the tests read a label exactly the same way. Every PSA label generation reads: an old cert
@@ -12989,6 +14292,7 @@ window.PileRates = {
         if (g) pickGrader(g.getAttribute('data-grader'));
       });
 
+      wireLock();
       renderRuleControls();
       renderAuthState();
     }
@@ -13022,6 +14326,7 @@ window.PileRates = {
         timed out, or cut off by an error - asks again (its poll did not survive). A cached answer comes
         straight back from the GET; nothing is re-queued that is still fresh. */
     function resumeAveragePolls() {
+      if (lkOn()) return; // (a pile left on a sourcer's phone from before lock mode is never polled)
       pile.list().forEach(function (e) {
         var key = pileMetaKey(e.grader, e.certKey);
         var meta = pileMeta[key];
@@ -13039,6 +14344,8 @@ window.PileRates = {
       if (bridge.cameraPanelSupported() && !session && !panelShown) bridge.hideScanner();
       if (bridge.cameraPanelSupported()) showPanelIfReady(); else autoCamera();
       applyPageHiding();
+      applyLockMode();
+      if (lk.on) { lkStartTimer(); lkStatus(); } // back on this tab: the status ticks again
       syncAdjust(false); // a box this phone set and never got onto the login (no signal, the app closed) is saved now
       ensureSettings(true).then(function () { // the tab loads both sheets, whatever rule is picked
         repaintForSheets(); // our sheets are in: every card is priced against the one picked
@@ -13050,6 +14357,7 @@ window.PileRates = {
       scannerActive = false;
       closeCamera();
       stopAllAveragePolls();
+      lkStopTimer();
       document.body.classList.remove('sc-hiding'); // another tab of the dev view keeps its header
       resumed = false;
       if (nativeScannerOpen) { bridge.closeScanner(); setNativeCamera(false); }
