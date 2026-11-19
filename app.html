@@ -874,6 +874,26 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-vf-shutter span{display:block;width:100%;height:100%;border-radius:50%;background:#fff;transition:transform 150ms ease-out;}
   #tab-scanner .sc-vf-shutter:active span{transform:scale(.9);}
 
+  /* Scan automatically (a phone's browser): the aim zone is the middle half of the picture, four faint corner brackets like the
+     app's, and a green check flashes over it when a code was read. Neither takes a tap (pointer-events:none): the picture still
+     reads a tap. Theme-proof on purpose: white brackets and a green check read on any camera picture. */
+  #tab-scanner .sc-vf-aim{position:absolute;left:25%;top:25%;width:50%;height:50%;pointer-events:none;}
+  #tab-scanner .sc-vf-aim[hidden]{display:none;}
+  #tab-scanner .sc-vf-aim i{position:absolute;width:22px;height:22px;border:0 solid rgba(255,255,255,.85);filter:drop-shadow(0 0 2px rgba(6,13,24,.7));}
+  #tab-scanner .sc-vf-aim i:nth-child(1){left:0;top:0;border-width:3px 0 0 3px;border-top-left-radius:8px;}
+  #tab-scanner .sc-vf-aim i:nth-child(2){right:0;top:0;border-width:3px 3px 0 0;border-top-right-radius:8px;}
+  #tab-scanner .sc-vf-aim i:nth-child(3){left:0;bottom:0;border-width:0 0 3px 3px;border-bottom-left-radius:8px;}
+  #tab-scanner .sc-vf-aim i:nth-child(4){right:0;bottom:0;border-width:0 3px 3px 0;border-bottom-right-radius:8px;}
+  /* In Scan automatically the shutter is not needed (the app's camera has none either): the aim box has the room, and a tap on the picture still reads. */
+  #tab-scanner .sc-vf.sc-auto .sc-vf-shutter{display:none;}
+  #tab-scanner .sc-vf-flash{position:absolute;left:50%;top:50%;width:72px;height:72px;margin:-36px 0 0 -36px;border-radius:50%;pointer-events:none;
+    background:var(--sc-clv);color:var(--sc-cam);box-shadow:0 8px 24px -6px rgba(0,0,0,.6);animation:sc-flash-pop 700ms ease-out both;}
+  #tab-scanner .sc-vf-flash[hidden]{display:none;}
+  #tab-scanner .sc-vf-flash::before{content:"";position:absolute;inset:18px;background:currentColor;
+    -webkit-mask:var(--i-check) center / contain no-repeat;mask:var(--i-check) center / contain no-repeat;}
+  @keyframes sc-flash-pop{0%{opacity:0;transform:scale(.6);}25%{opacity:1;transform:scale(1);}75%{opacity:1;transform:scale(1);}100%{opacity:0;transform:scale(1.05);}}
+  @media (prefers-reduced-motion:reduce){#tab-scanner .sc-vf-flash{animation:sc-flash-fade 700ms linear both;}@keyframes sc-flash-fade{0%,80%{opacity:1;}100%{opacity:0;}}}
+
   /* Camera off (owner, 11/17: "no fake cover"): no full-size panel standing in for the camera, just one slim row -
      a small round camera button and a short line. The camera turns itself on when the Scanner opens, so this row
      is only seen once it has been turned off (or where it can't start by itself). The frame shrinks to the row. */
@@ -901,6 +921,11 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-start:active{transform:scale(.98);}
   #tab-scanner .sc-start:disabled{background:var(--sc-fill);color:var(--sc-muted);cursor:default;transform:none;filter:none;box-shadow:none;}
   #tab-scanner .sc-vf-off-text{position:relative;margin:0;min-width:0;font-size:var(--sc-fs-row);line-height:1.35;color:var(--sc-muted);}
+  /* The one-tap Allow camera / Try again button: on a row of its own under the words, full width, a 48px target. */
+  #tab-scanner .sc-vf-off:has(> .sc-allow:not([hidden])){flex-wrap:wrap;align-items:flex-start;}
+  #tab-scanner .sc-vf-off:has(> .sc-allow:not([hidden])) .sc-vf-off-text{flex:1 1 180px;padding-top:4px;}
+  #tab-scanner .sc-allow{flex:1 1 100%;min-height:48px;margin:0 6px 6px;}
+  #tab-scanner .sc-allow[hidden]{display:none;}
 
   /* ── the scoreboard: We pay for the card on screen, and what this visit comes to, side by side ── */
   #tab-scanner .sc-score{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:8px;container-type:inline-size;}
@@ -1639,6 +1664,10 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-account-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   #tab-scanner .sc-account-card .sc-signin-link{color:var(--sc-err-ink);}
   #tab-scanner .sc-account-btns .sc-btn{min-height:46px;}
+  /* A Scanning row: the name, and under it what the mode does (the same words as the app's gear). */
+  #tab-scanner .sc-scanmode-list .sc-theme-opt{min-height:60px;padding-top:8px;padding-bottom:8px;}
+  #tab-scanner .sc-scanmode-words{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px;}
+  #tab-scanner .sc-scanmode-detail{font-size:var(--sc-fs-label);font-weight:500;line-height:1.35;color:var(--sc-muted);}
   #tab-scanner .sc-theme-opt::after{
     content:"";flex:none;width:22px;height:22px;background:currentColor;color:var(--sc-steel-ink);visibility:hidden;
     -webkit-mask:var(--i-check) center / contain no-repeat;mask:var(--i-check) center / contain no-repeat;
@@ -2122,6 +2151,10 @@ code{font-family:var(--font-mono);font-size:.92em;}
     <div class="sc-vf" id="sc-vf" hidden>
       <video class="sc-vf-video" id="sc-video" autoplay playsinline muted></video>
       <svg class="sc-vf-marks" id="sc-marks"></svg>
+      <!-- Scan automatically (a phone's browser only): the middle of the picture is the only place a code is taken by itself,
+           marked by four corner brackets like the app's; a green check flashes when one was read. -->
+      <div class="sc-vf-aim" id="sc-vf-aim" hidden aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div class="sc-vf-flash" id="sc-vf-flash" hidden aria-hidden="true"></div>
       <div class="sc-vf-top">
         <button type="button" class="sc-vf-round" id="sc-torch" title="Flashlight" aria-label="Flashlight" aria-pressed="false" hidden></button>
         <button type="button" class="sc-vf-round" id="sc-cam-off" title="Turn camera off" aria-label="Turn camera off"></button>
@@ -2139,6 +2172,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
     <div class="sc-vf-off" id="sc-vf-off">
       <div class="sc-start-row"><button type="button" class="sc-start" id="sc-start" aria-label="Turn camera on" title="Turn camera on">Turn camera on</button></div>
       <p class="sc-vf-off-text" id="sc-vf-off-text">Camera off. Tap the camera to scan.</p>
+      <!-- Shown only while the browser's own camera prompt is unanswered (Allow camera) or the camera did not start (Try again). -->
+      <button type="button" class="sc-btn sc-btn-primary sc-allow" id="sc-allow" hidden>Allow camera</button>
     </div>
   </section>
 
@@ -2345,6 +2380,11 @@ code{font-family:var(--font-mono);font-size:.92em;}
     <h2 class="sc-settings-title" id="sc-settings-title">Settings</h2>
     <button type="button" class="sc-btn sc-btn-quiet" id="sc-settings-done">Done</button>
   </div>
+  <!-- Scanning (a phone's browser only; the apps' own gear has the same two choices): kept on this device. The script fills the rows from window.AutoScan.MODE_TEXT. -->
+  <section class="sc-settings-section" id="sc-scanmode" aria-labelledby="sc-scanmode-title" hidden>
+    <h3 class="sc-settings-section-title" id="sc-scanmode-title">Scanning</h3>
+    <div class="sc-theme-list sc-scanmode-list" id="sc-scanmode-list" role="radiogroup" aria-labelledby="sc-scanmode-title"></div>
+  </section>
   <section class="sc-settings-section" aria-labelledby="sc-theme-title">
     <h3 class="sc-settings-section-title" id="sc-theme-title">Theme</h3>
     <div class="sc-theme-list" id="sc-theme-list" role="radiogroup" aria-labelledby="sc-theme-title"></div>
@@ -4052,13 +4092,26 @@ var HW_ZOOM_MAX_FACTOR = 10;
     given up on; decoding moves to the page thread instead of trying to restart it forever. */
 var WORKER_FAILURE_LIMIT = 3;
 
+/** Nothing after the camera is GRANTED is allowed to hold it up forever (an iPhone left "Starting camera" on screen with no
+    way to tell where it stood): the first picture is waited for this long (then the camera is opened again with a plainer
+    ask, once per rung of the ladder), play() this long (a browser that never answers it plays anyway), a focus request this long. */
+var FIRST_FRAME_MS = 4000;
+var PLAY_WAIT_MS = 3000;
+var FOCUS_WAIT_MS = 1500;
+/** How often the first picture is looked for while waiting. */
+var FRAME_POLL_MS = 100;
+
 // ── Plain words for why the camera didn't start, and what to do - verbatim from CAMERA_HELP. ───────
+// (The page shows the platform's own wording from scanner/autoScan.js cameraHelp() for the same keys; these are the
+// engine's plain default, still the message a rejection carries.)
 var CAMERA_HELP = {
   denied: "The camera is blocked for this site. Allow it in your browser's settings (iPhone: Settings, then Safari, then Camera), then tap the camera button.",
   none: 'No camera found on this device. Type the cert or use the scanner gun below.',
   busy: 'Another app is using the camera. Close it, then tap the camera button.',
   unsupported: "This browser can't use the camera here. Type the cert below instead.",
-  failed: "The camera didn't start. Tap the camera button to try again."
+  failed: "The camera didn't start. Tap the camera button to try again.",
+  gesture: 'The browser needs a tap to start the camera preview. Tap the camera button.',
+  noframe: 'The camera opened but sent no picture. Tap the camera button to try again.'
 };
 
 function now() {
@@ -4112,14 +4165,15 @@ function stopsLadder(problem) {
  * or DOM at all - see scanCamera.test.js. Throws an Error carrying `.problem` (one of CAMERA_HELP's
  * keys) and a plain-English `.message` on total failure.
  */
-function openStream(getUserMedia) {
+function openStream(getUserMedia, startAt, stillWanted) {
   if (typeof getUserMedia !== 'function') {
     var eUnsupported = new Error(CAMERA_HELP.unsupported);
     eUnsupported.problem = 'unsupported';
     return Promise.reject(eUnsupported);
   }
   var asks = cameraAsks();
-  var i = 0;
+  // `startAt`: begin partway down the ladder (a camera that was granted at the top rung but never showed a picture is opened again from the next).
+  var i = typeof startAt === 'number' && startAt > 0 ? Math.min(startAt, asks.length - 1) : 0;
   var lastErr = null;
   function fail(err) {
     var info = classifyCameraError(err);
@@ -4130,6 +4184,12 @@ function openStream(getUserMedia) {
   }
   function tryNext() {
     if (i >= asks.length) return fail(lastErr);
+    // `stillWanted` (optional): a start the page has replaced or stopped asks for no further rung, so no camera light comes back for it.
+    if (typeof stillWanted === 'function' && !stillWanted()) {
+      var gone = new Error('superseded');
+      gone.problem = 'superseded';
+      return Promise.reject(gone);
+    }
     var ask = asks[i++];
     return Promise.resolve(getUserMedia(ask)).catch(function (err) {
       lastErr = err;
@@ -4292,9 +4352,38 @@ function trackSettings(track) {
   if (!track || typeof track.getSettings !== 'function') return {};
   try { return track.getSettings() || {}; } catch (e) { return {}; }
 }
-function applyToTrack(track, advanced) {
+/** What waitFor resolves to when the wait ran out before the promise settled. */
+var TIMED_OUT = { timedOut: true };
+
+/** `promise`'s own answer (or its rejection), unless `ms` pass first: then TIMED_OUT. A browser that never answers a call
+    must not hold the camera up: the caller decides what a timeout means. */
+function waitFor(promise, ms) {
+  return new Promise(function (resolve, reject) {
+    var t = setTimeout(function () { resolve(TIMED_OUT); }, ms);
+    Promise.resolve(promise).then(function (v) { clearTimeout(t); resolve(v); }, function (e) { clearTimeout(t); reject(e); });
+  });
+}
+
+function applyToTrack(track, advanced, waitMs) {
   if (!track || typeof track.applyConstraints !== 'function') return Promise.resolve(false);
-  return track.applyConstraints({ advanced: [advanced] }).then(function () { return true; }).catch(function () { return false; });
+  // A track that never answers applyConstraints is a track that did not take the setting: false, after FOCUS_WAIT_MS.
+  var asked;
+  try { asked = track.applyConstraints({ advanced: [advanced] }); } catch (e) { return Promise.resolve(false); }
+  return waitFor(asked, typeof waitMs === 'number' ? waitMs : FOCUS_WAIT_MS).then(function (v) { return v !== TIMED_OUT; }).catch(function () { return false; });
+}
+
+/** Resolves true once the <video> has a picture (videoWidth > 0), false after `ms`. A video with no videoWidth at all (a test double) counts as having one. */
+function firstFrame(video, ms) {
+  return new Promise(function (resolve) {
+    if (typeof video.videoWidth !== 'number' || video.videoWidth > 0) { resolve(true); return; }
+    var waited = 0;
+    (function poll() {
+      if (video.videoWidth > 0) { resolve(true); return; }
+      if (waited >= ms) { resolve(false); return; }
+      waited += FRAME_POLL_MS;
+      setTimeout(poll, FRAME_POLL_MS);
+    })();
+  });
 }
 
 /**
@@ -4432,7 +4521,15 @@ function makeInlineRunner(scanDecode, readerUrl, wasmUrl) {
  * Builds the camera. `video` is an <video> element already in the page; `opts`:
  *   scanPick, scanDecode - REQUIRED, the two sibling modules' real exports (window.ScanPick/
  *     window.ScanDecode in the page, or `require('./scanPick')`/`require('./scanDecode')` in a test).
- *   events - { onSeen(seen), onTrouble(message|null), onEnded() }, all optional.
+ *   events - { onSeen(seen), onTrouble(message|null), onEnded(), onStage(name), onFrame(items, at) }, all optional.
+ *     onStage: 'asking' (waiting on getUserMedia, i.e. on the permission prompt), 'opening' (granted, starting the
+ *     picture), 'reader' (picking the barcode reader), 'ready' (the control is about to be handed back), so a page can
+ *     say where a slow start is. onFrame: once per READ watch frame (not a failed one, not a hard look), with every code
+ *     that frame read as { text, format, corners (video px), ready (may be taken now: false for an ITF/Code 39 read
+ *     once) }, an empty list included: that is how the scan-automatically rules know a code left (scanner/autoScan.js).
+ *   watchGapMs - the shortest time between two watch reads (default MIN_GAP_MS; setWatchGap changes it later).
+ *   isCurrent - () => boolean, optional: whether this start is still the wanted one. A camera granted for a start that is no
+ *     longer current is stopped and the start rejects with problem 'superseded', never touching the shared <video>.
  *   zxingReaderUrl, zxingWasmUrl - absolute URLs to the vendored reader module/wasm (see
  *     rates-portal/page.html's ZXING_READER_URL/ZXING_WASM_URL) - only needed if zxing ends up chosen.
  *   getUserMedia, doc, win - overridable for a test double; default to the real
@@ -4464,6 +4561,15 @@ function openCamera(video, opts) {
   var caps = {};
   var grabber = makeGrabber(doc);
   var loopTimer = null;
+  var watchGap = typeof opts.watchGapMs === 'number' && opts.watchGapMs >= 0 ? opts.watchGapMs : MIN_GAP_MS;
+  // The waits after the grant (see FIRST_FRAME_MS): overridable only so a test need not sit through them.
+  var playWaitMs = typeof opts.playWaitMs === 'number' ? opts.playWaitMs : PLAY_WAIT_MS;
+  var firstFrameMs = typeof opts.firstFrameMs === 'number' ? opts.firstFrameMs : FIRST_FRAME_MS;
+  var focusWaitMs = typeof opts.focusWaitMs === 'number' ? opts.focusWaitMs : FOCUS_WAIT_MS;
+  function stage(name) {
+    if (!events.onStage) return;
+    try { events.onStage(name); } catch (e) { /* a page's stage hook never stops the camera */ }
+  }
   var stream, decoder, track;
 
   function currentTrack() { return stream ? stream.getVideoTracks()[0] : undefined; }
@@ -4488,7 +4594,7 @@ function openCamera(video, opts) {
   // ── focus: continuous where the track allows it, tap-to-focus where it allows pointsOfInterest ──
   function focusUp() {
     if (!caps.focusMode || caps.focusMode.indexOf('continuous') < 0) return Promise.resolve(false);
-    return applyToTrack(track, { focusMode: 'continuous' });
+    return applyToTrack(track, { focusMode: 'continuous' }, focusWaitMs);
   }
   function focusAt(p) {
     if (!track || !p) return;
@@ -4497,12 +4603,12 @@ function openCamera(video, opts) {
     var vw = video.videoWidth, vh = video.videoHeight;
     if (!vw || !vh) return;
     var point = { x: Math.max(0, Math.min(1, p.x / vw)), y: Math.max(0, Math.min(1, p.y / vh)) };
-    applyToTrack(track, { pointsOfInterest: [point] });
+    applyToTrack(track, { pointsOfInterest: [point] }, focusWaitMs);
   }
 
   // ── torch ─────────────────────────────────────────────────────────────────────────────────────
   function torchAvailable() { return !!caps.torch; }
-  function setTorch(on) { return applyToTrack(track, { torch: !!on }); }
+  function setTorch(on) { return applyToTrack(track, { torch: !!on }, focusWaitMs); }
 
   // ── zoom: hardware where the track has it, else a CSS scale on the <video> itself ───────────────
   function zoomRange() { return zoomRangeFromCaps(caps.zoom); }
@@ -4523,7 +4629,7 @@ function openCamera(video, opts) {
       if (zoomWanted == null || stopped) { zoomGoing = false; return; }
       var want = zoomWanted;
       zoomWanted = null;
-      applyToTrack(track, { zoom: want }).then(pump);
+      applyToTrack(track, { zoom: want }, focusWaitMs).then(pump);
     })();
   }
 
@@ -4569,6 +4675,7 @@ function openCamera(video, opts) {
     readMemory = countReads(readMemory, found, at, READ_MEMORY_MS);
     tracks = mergeSeen(tracks, found, at, KEEP_MS);
     events.onSeen && events.onSeen(seen(at));
+    return found;
   }
 
   // ── decoders ──────────────────────────────────────────────────────────────────────────────────
@@ -4672,11 +4779,17 @@ function openCamera(video, opts) {
       var t0 = now();
       Promise.resolve(decoder.find(view(), trackSide, false, pass++)).then(function (found) {
         if (stopped) return;
-        merge(found);
+        var got = merge(found);
         fine();
+        if (events.onFrame) {
+          // Every read frame, empty or not (a done code is known to have left only by frames without it). The two-read rule
+          // is the engine's own, so a page taking codes by itself needs no copy of it: "ready" says whether takeable() agrees.
+          var items = got.map(function (f) { return { text: f.text, format: f.format, corners: f.corners, ready: takeable(f) }; });
+          try { events.onFrame(items, now()); } catch (e) { /* a page's frame hook never stops the loop */ }
+        }
         var spent = now() - t0;
         trackSide = nextTrackSide(trackSide, spent);
-        loopTimer = setTimeout(loop, minGapDelay(spent, MIN_GAP_MS));
+        loopTimer = setTimeout(loop, minGapDelay(spent, watchGap));
       }, function (e) {
         if (stopped) return;
         merge([]);
@@ -4761,29 +4874,75 @@ function openCamera(video, opts) {
     if (doc && typeof doc.removeEventListener === 'function') doc.removeEventListener('visibilitychange', onVisible);
     if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
     if (decoder) decoder.close();
-    try { video.srcObject = null; } catch (e) { /* some fake videos reject a null srcObject */ }
+    // Only if the <video> still shows OUR stream: a newer start may have taken it over (the page's Allow camera button asks again
+    // while an older ask is still in flight), and a late stop() of the older one must not black the newer one out.
+    try { if (!stream || video.srcObject === stream) video.srcObject = null; } catch (e) { /* some fake videos reject a null srcObject */ }
     if (video.style) video.style.transform = '';
     tracks = [];
     readMemory = {};
   }
 
-  return openStream(getUserMedia).then(function (s) {
-    stream = s;
-    try { video.setAttribute('playsinline', ''); } catch (e) { /* not a real <video> in a test */ }
-    video.muted = true;
-    video.srcObject = s;
-    // Caps/listeners/focus are only wired up once play() has actually succeeded - matching
-    // scanCamera.ts's own order (its SlabCamera is constructed, and focusUp() called, only after
-    // `await video.play()` resolves), so a play() failure never leaves an 'ended' listener or a
-    // visibilitychange handler attached for a camera this function is about to fail out of anyway.
-    return Promise.resolve(video.play()).catch(function (e) {
-      s.getTracks().forEach(function (t) { t.stop(); });
-      var info = classifyCameraError(e);
-      var err = new Error(info.message);
-      err.problem = info.problem;
-      throw err;
+  function problemError(problem, message) {
+    var err = new Error(message || CAMERA_HELP[problem] || CAMERA_HELP.failed);
+    err.problem = problem;
+    return err;
+  }
+  // A page that asks again (its Allow camera button) replaces the start in flight: opts.isCurrent says whether THIS start is still the
+  // wanted one. A camera that arrives for a replaced start is stopped without ever touching the <video>, which the new start shares.
+  var isCurrent = typeof opts.isCurrent === 'function' ? opts.isCurrent : function () { return true; };
+
+  /**
+   * Asks for the camera (from ladder rung `from`) and starts its picture. Nothing after the grant may wait forever:
+   *  - play() is waited for PLAY_WAIT_MS and then carried on from (some iPhones never answer it while the picture runs);
+   *    a play() that is REFUSED by autoplay policy (NotAllowedError, Low Power Mode on an iPhone) is a 'gesture' problem,
+   *    not a blocked camera: a tap starts it;
+   *  - the first picture is waited for FIRST_FRAME_MS; a camera granted at one rung that shows none is stopped and asked
+   *    for again from the next, plainer rung, and 'noframe' once the ladder is spent.
+   */
+  function startStream(from) {
+    var used = 0;
+    stage('asking');
+    return openStream(typeof getUserMedia === 'function' ? function (ask) { used++; return getUserMedia(ask); } : getUserMedia, from, isCurrent).then(function (s) {
+      if (!isCurrent()) {
+        s.getTracks().forEach(function (t) { t.stop(); });
+        var gone = new Error('superseded');
+        gone.problem = 'superseded';
+        throw gone;
+      }
+      stream = s;
+      var rung = (from || 0) + used - 1;
+      stage('opening');
+      try { video.setAttribute('playsinline', ''); video.setAttribute('webkit-playsinline', ''); video.setAttribute('muted', ''); } catch (e) { /* not a real <video> in a test */ }
+      video.muted = true;
+      try { video.autoplay = true; } catch (e) { /* a frozen test double */ }
+      video.srcObject = s;
+      // Caps/listeners/focus are only wired up once play() has actually succeeded - matching
+      // scanCamera.ts's own order (its SlabCamera is constructed, and focusUp() called, only after
+      // `await video.play()` resolves), so a play() failure never leaves an 'ended' listener or a
+      // visibilitychange handler attached for a camera this function is about to fail out of anyway.
+      return waitFor(video.play(), playWaitMs).catch(function (e) {
+        s.getTracks().forEach(function (t) { t.stop(); });
+        stream = null;
+        if (e && e.name === 'NotAllowedError') throw problemError('gesture');
+        var info = classifyCameraError(e);
+        throw problemError(info.problem, info.message);
+      }).then(function () {
+        return firstFrame(video, firstFrameMs);
+      }).then(function (hasPicture) {
+        if (hasPicture) return null;
+        s.getTracks().forEach(function (t) { t.stop(); });
+        stream = null;
+        // Only if the <video> still shows THIS camera: a newer start may have taken it over while this one waited for a picture.
+        try { if (video.srcObject === s) video.srcObject = null; } catch (e) { /* some fake videos reject a null srcObject */ }
+        // A start the page replaced or stopped meanwhile does not ask for the next rung (its camera light must not come back).
+        if (!isCurrent()) { var gone = new Error('superseded'); gone.problem = 'superseded'; throw gone; }
+        if (rung + 1 < cameraAsks().length) return startStream(rung + 1);
+        throw problemError('noframe');
+      });
     });
-  }).then(function () {
+  }
+
+  return startStream(0).then(function () {
     track = currentTrack();
     caps = trackCaps(track);
     if (track && typeof track.addEventListener === 'function') {
@@ -4794,10 +4953,12 @@ function openCamera(video, opts) {
     hwZoom = (typeof settings.zoom === 'number' ? settings.zoom : null) || (caps.zoom && caps.zoom.min) || 1;
     return focusUp();
   }).then(function () {
+    stage('reader');
     return pickDecoder();
   }).then(function (chosen) {
     decoder = chosen;
     loop();
+    stage('ready');
     return {
       decoderName: decoder.name,
       setBox: setBox,
@@ -4811,7 +4972,8 @@ function openCamera(video, opts) {
       setTorch: setTorch,
       zoomRange: zoomRange,
       getZoom: getZoom,
-      setZoom: setZoom
+      setZoom: setZoom,
+      setWatchGap: function (ms) { watchGap = typeof ms === 'number' && ms >= 0 ? ms : MIN_GAP_MS; }
     };
   }).catch(function (e) {
     if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
@@ -4839,7 +5001,11 @@ window.ScanCamera = {
   HARD_CLOSE_MAX_SIDE: HARD_CLOSE_MAX_SIDE,
   HARD_WIDE_MAX_SIDE: HARD_WIDE_MAX_SIDE,
   DIGITAL_ZOOM_MAX: DIGITAL_ZOOM_MAX,
+  FIRST_FRAME_MS: FIRST_FRAME_MS,
+  PLAY_WAIT_MS: PLAY_WAIT_MS,
+  FOCUS_WAIT_MS: FOCUS_WAIT_MS,
   CAMERA_HELP: CAMERA_HELP,
+  waitFor: waitFor,
   cameraAsks: cameraAsks,
   classifyCameraError: classifyCameraError,
   stopsLadder: stopsLadder,
@@ -4855,6 +5021,507 @@ window.ScanCamera = {
   zoomRangeFromCaps: zoomRangeFromCaps,
   clampZoom: clampZoom,
   openCamera: openCamera,
+};
+})();
+
+(function () {
+'use strict';
+// Scan automatically, in a phone's BROWSER: the decisions only (pure, dependency-free, no DOM, no timers of its
+// own, so node tests them and build-portal.js's embedWholeFile drops it into the page as window.AutoScan).
+//
+// Josh, 2026-11-19, on Safari at icedoutpenguin.app: "it should be like the app when it's automatic, and then you
+// could set it in settings". In the phone apps the NATIVE camera scans by itself (phone-app/android AutoCapture.kt,
+// with a gear: Scan automatically / Tap to scan). In a plain browser the page's own camera (scanner/scanCamera.js)
+// only read a barcode on a tap. This is the page-side port of the app's rules, so the browser behaves the same:
+//
+//  - a code is taken by itself only when it looks like a cert (CertShape.kt, ported as sendsItself and run against the
+//    SAME cases the Kotlin runs: phone-app/android/bridge-test/cert-shape-cases.json), was read this frame (and, for
+//    ITF / Code 39, twice: the camera engine's own two-read rule, passed in as `ready`), and lies whole inside the
+//    camera view; anything else in view is only outlined and a tap still sends it;
+//  - only the code in the aim zone (the middle half of the view, AimZone in ScanGeometry.kt), and only while exactly one
+//    distinct cert has its centre there: a neighbouring slab, or two slabs in the zone, are never taken;
+//  - a code sent (by itself or by a tap) is done: it is not taken again while it stays in view, nor until REARM_MS of
+//    frames have gone by without it (about 3 s, so the same slab is never added twice by a steady hand), and a tap
+//    takes a done code again at once. Only frames count: a gap in the frames longer than PAUSE_MS is a pause (the tab
+//    was in the background, a dialog was open), not time the code was out of view;
+//  - one code at a time: nothing within SPACING_MS of the last code sent, so each has its own beep and flash;
+//  - in Tap to scan nothing is ever taken by itself (a tap still sends, and what it sends is done here just the same).
+//
+// It never runs inside the phone apps: runsHere() is false whenever the page has the app's bridge, where the native
+// scanner is in charge. The mode is kept on this device only, in this page's own iop* storage key.
+//
+// The camera's start-up words live here too (what each step says, what a blocked or stuck camera says on an iPhone, an
+// Android phone or anything else), so every sentence a person might read in this flow is one file that a test can read.
+'use strict';
+
+/** The localStorage key the scan mode is kept under (this page's own iop* key: /iop/ shares an origin with the TCG product). */
+var MODE_KEY = 'iopScanMode';
+var MODES = ['auto', 'tap'];
+
+/** A done code can be taken by itself again once frames have gone this long without it (AutoCapture.REARM_MS). */
+var REARM_MS = 3000;
+/** The shortest time between two codes taken by themselves (AutoCapture.SPACING_MS). */
+var SPACING_MS = 500;
+/** Frames further apart than this are a pause, not time the code was out of view (AutoCapture.PAUSE_MS). */
+var PAUSE_MS = 2000;
+/** The aim zone is the middle of the view, this fraction of its width and of its height (AimZone.FRACTION). */
+var AIM_FRACTION = 0.5;
+/** While scanning by itself the watch loop starts a read at most this often: 130 ms is about 7.7 reads a second. */
+var WATCH_GAP_MS = 130;
+/** How long a note ("Scanning automatically") stays on the camera's status pill. */
+var NOTE_MS = 1800;
+
+/** A permission prompt still unanswered after this long gets the one-tap Allow camera state beside it. */
+var ASK_STALL_MS = 3500;
+/** A camera granted but still not showing a picture this long after the grant says where it is stuck (the engine's own waits are in scanCamera.js:
+    a picture is waited for 4 s per rung of its ladder, so this lands around the third rung, before "no picture" is said for good). */
+var STUCK_MS = 9000;
+
+// ── the mode, kept on this device ──────────────────────────────────────────────────────────────────
+
+/** Anything but a saved 'tap' is 'auto': nothing saved, or anything unknown, scans automatically. */
+function normalizeMode(value) {
+  return value === 'tap' ? 'tap' : 'auto';
+}
+
+/** The mode kept on this device. `storage` is { getItem(key) } or null; a throwing read (a private window) is 'auto'. */
+function loadMode(storage) {
+  if (!storage || typeof storage.getItem !== 'function') return 'auto';
+  try { return normalizeMode(storage.getItem(MODE_KEY)); } catch (e) { return 'auto'; }
+}
+
+/** Keeps the mode on this device. True once it was written; false when storage refused (the choice then lasts this visit only). */
+function saveMode(storage, mode) {
+  if (!storage || typeof storage.setItem !== 'function') return false;
+  try { storage.setItem(MODE_KEY, normalizeMode(mode)); return true; } catch (e) { return false; }
+}
+
+/**
+ * Whether the page's own camera may take codes by itself: never with the apps' bridge (the native scanner is in charge there), never in an
+ * app's own web view without it (`kind` 'webview', see cameraKind: the Android app falls back to the page's camera on a web view too old for
+ * the bridge, and that stays the tap-to-scan camera it was), and only in 'auto'.
+ */
+function runsHere(bridgeAvailable, mode, kind) {
+  return !bridgeAvailable && kind !== 'webview' && normalizeMode(mode) === 'auto';
+}
+
+// ── is it a cert? (CertShape.kt) ───────────────────────────────────────────────────────────────────
+
+var LINK = /\/(certlookup|cert)\/(\d{1,20})(?!\d)/i;
+var PRODUCT = { ean13: 1, ean8: 1, upca: 1, upce: 1 };
+
+function formatKey(format) {
+  return String(format == null ? '' : format).toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function allDigits(text) {
+  return text.length > 0 && /^[0-9]+$/.test(text);
+}
+
+/**
+ * Whether a code the camera read looks enough like a slab's cert to be taken with no tap. `format` is the barcode's
+ * type in any spelling (zxing's "ITF", BarcodeDetector's "itf", ML Kit's "CODE_128"). A narrower copy of what the page's
+ * own parser takes (certs.js parseOneCert with scan on), so nothing is taken by itself that the page would turn away.
+ */
+function sendsItself(payload, format) {
+  var fk = formatKey(format);
+  if (PRODUCT[fk]) return false;
+  var text = String(payload == null ? '' : payload).trim();
+  if (!text) return false;
+
+  var digits, named = null;
+  var link = LINK.exec(text);
+  if (link) {
+    digits = link[2];
+    var low = text.toLowerCase();
+    if (low.indexOf('cgccards.') >= 0 || link[1].toLowerCase() === 'certlookup') named = 'CGC';
+    else if (low.indexOf('psacard.') >= 0) named = 'PSA';
+    else return false; // somebody else's /cert/ link: the page would guess the grader
+  } else {
+    if (!allDigits(text)) return false;
+    digits = text;
+  }
+
+  if (/^0+$/.test(digits)) return false;
+  if (named == null && digits.length === 10 && digits.indexOf('00') === 0) return false; // a BGS serial: the page asks whose
+  // An 8 digit ITF read starting "01" may be a 9 digit cert cut short: staff check the label and tap.
+  if (named == null && fk === 'itf' && digits.length === 8 && digits.indexOf('01') === 0) return false;
+  var grader = named || (digits.length === 13 ? 'CGC' : null);
+  if (digits.length === 13 && grader !== 'PSA') return true;
+  var key = digits.replace(/^0+/, '');
+  if (key.length >= 7 && key.length <= 10) return true;
+  if (key.length > 10) return false;
+  return named === 'PSA' || (named == null && digits.length === 8);
+}
+
+/** What a code is known by: its cert number with the zeros off its front (a link and a barcode of one slab agree), else its trimmed text. */
+function certNumber(payload) {
+  var text = String(payload == null ? '' : payload).trim();
+  var link = LINK.exec(text);
+  var digits = link ? link[2] : (allDigits(text) ? text : null);
+  if (digits == null) return null;
+  var key = digits.replace(/^0+/, '');
+  return key || null;
+}
+
+function keyOf(payload) {
+  var n = certNumber(payload);
+  return n != null ? n : String(payload == null ? '' : payload).trim();
+}
+
+// ── geometry: where a code is, what is the aim zone ────────────────────────────────────────────────
+
+/** The middle of an `area` ({ w, h }, the camera view in CSS px), `fraction` of its width and of its height. */
+function aimRect(area, fraction) {
+  var f = typeof fraction === 'number' && fraction > 0 && fraction <= 1 ? fraction : AIM_FRACTION;
+  var left = area.w * (1 - f) / 2;
+  var top = area.h * (1 - f) / 2;
+  return { left: left, right: area.w - left, top: top, bottom: area.h - top, center: { x: area.w / 2, y: area.h / 2 } };
+}
+
+function aimHolds(zone, p) {
+  return p.x >= zone.left && p.x <= zone.right && p.y >= zone.top && p.y <= zone.bottom;
+}
+
+function boxOf(corners) {
+  var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  (corners || []).forEach(function (p) {
+    x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y);
+  });
+  return isFinite(x0) ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
+}
+
+function centreOf(box) {
+  return { x: box.x + box.w / 2, y: box.y + box.h / 2 };
+}
+
+function distance(a, b) {
+  var dx = a.x - b.x, dy = a.y - b.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function overlaps(a, b) {
+  return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+}
+
+/** Whether every corner of the code lies on screen: a barcode cut off by an edge is not taken by itself. */
+function wholeIn(area, corners) {
+  return !!corners && corners.length > 0 && corners.every(function (p) {
+    return p.x >= 0 && p.y >= 0 && p.x <= area.w && p.y <= area.h;
+  });
+}
+
+/**
+ * One frame's reads as the capture rules want them. `items` are `{ text, format, corners, ready }` with the corners in
+ * the camera view's CSS px (the camera's onScreen) and `ready` false for a code the engine will not take yet (an ITF or
+ * Code 39 read once). `reads` is every code read, to follow the done ones; `candidates` only those that may be taken by
+ * themselves: cert-shaped, ready, whole on screen.
+ */
+function frameOf(items, area) {
+  var reads = [];
+  var candidates = [];
+  (items || []).forEach(function (it) {
+    if (!it || it.text == null || !it.corners || !it.corners.length) return;
+    var box = boxOf(it.corners);
+    if (!box) return;
+    var read = { payload: String(it.text), format: it.format, box: box, center: centreOf(box) };
+    reads.push(read);
+    if (it.ready === false) return;
+    if (!sendsItself(it.text, it.format)) return;
+    if (!wholeIn(area, it.corners)) return;
+    candidates.push(read);
+  });
+  return { reads: reads, candidates: candidates };
+}
+
+// ── the capture rules (AutoCapture.kt) ─────────────────────────────────────────────────────────────
+
+/**
+ * Which code is taken by itself, and when. `opts.now` is a clock (ms); `rearmMs`, `spacingMs` and `pauseMs` default to
+ * this file's constants. Call frame() for EVERY read frame, even one with nothing in it (that is how a done code is
+ * known to have left), then next() for the code to take.
+ */
+function createAutoCapture(opts) {
+  opts = opts || {};
+  var now = typeof opts.now === 'function' ? opts.now : function () { return Date.now(); };
+  var rearmMs = typeof opts.rearmMs === 'number' ? opts.rearmMs : REARM_MS;
+  var spacingMs = typeof opts.spacingMs === 'number' ? opts.spacingMs : SPACING_MS;
+  var pauseMs = typeof opts.pauseMs === 'number' ? opts.pauseMs : PAUSE_MS;
+  var mode = normalizeMode(opts.mode);
+  var done = {}; // cert key -> { missingSince: ms | null, box }
+  var lastSentAt = null;
+  var lastFrameAt = null;
+
+  /** `payload` went to the page (by itself or by a tap); `box` is where it is in view, when known. */
+  function sent(payload, box) {
+    done[keyOf(payload)] = { missingSince: null, box: box || null };
+    lastSentAt = now();
+  }
+
+  function isDone(payload) {
+    return Object.prototype.hasOwnProperty.call(done, keyOf(payload));
+  }
+
+  /**
+   * One read frame: the codes it `read` (each { payload, box }) and the barcodes it found but could not read (`unread`,
+   * boxes). A barcode found but not read may be a done code out of focus, so it keeps a done cert alive only where it
+   * overlaps that cert's last known box: an unread sticker elsewhere must not hold a deliberate re-scan off.
+   */
+  function frame(read, unread) {
+    var t = now();
+    var paused = lastFrameAt == null || t - lastFrameAt > pauseMs;
+    lastFrameAt = t;
+    var seen = {};
+    (read || []).forEach(function (code) { seen[keyOf(code.payload)] = code; });
+    Object.keys(done).forEach(function (key) {
+      var d = done[key];
+      var here = seen[key];
+      if (here) { d.missingSince = null; d.box = here.box || d.box; return; }
+      if (d.box && (unread || []).some(function (u) { return overlaps(u, d.box); })) { d.missingSince = null; return; }
+      if (d.missingSince == null || paused) { d.missingSince = t; return; }
+      if (t - d.missingSince >= rearmMs) delete done[key];
+    });
+  }
+
+  /**
+   * The code to take by itself now, or null. `candidates` are the codes that look like a cert and are whole on screen
+   * (frameOf). Only the code in the middle of the picture is meant: one whose centre lies in `aim` (aimRect), and only when
+   * exactly one distinct cert has its centre there. Nothing within spacingMs of the last code sent. Of the codes of that
+   * one cert, the nearest the middle of the zone.
+   */
+  function next(candidates, aim) {
+    if (mode !== 'auto') return null;
+    if (lastSentAt != null && now() - lastSentAt < spacingMs) return null;
+    var inside = (candidates || []).filter(function (c) { return aimHolds(aim, c.center); });
+    var keys = {};
+    inside.forEach(function (c) { keys[keyOf(c.payload)] = 1; });
+    if (Object.keys(keys).length !== 1) return null;
+    var open = inside.filter(function (c) { return !isDone(c.payload); });
+    if (!open.length) return null;
+    open.sort(function (a, b) { return distance(a.center, aim.center) - distance(b.center, aim.center); });
+    return open[0];
+  }
+
+  function reset() { done = {}; lastSentAt = null; lastFrameAt = null; }
+
+  return {
+    sent: sent,
+    isDone: isDone,
+    frame: frame,
+    next: next,
+    reset: reset,
+    getMode: function () { return mode; },
+    setMode: function (m) { mode = normalizeMode(m); }
+  };
+}
+
+/**
+ * What the page drives: the capture rules plus the mode and a pause (a dialog is open over the camera). One call per read
+ * frame: onFrame(items, area) follows every code seen, and returns the code to take now (already marked sent) or null.
+ * While paused or in Tap to scan it still follows the frames, so a done code expires on time, but takes nothing.
+ */
+function createAutoScanner(opts) {
+  opts = opts || {};
+  var cap = createAutoCapture(opts);
+  var fraction = typeof opts.fraction === 'number' ? opts.fraction : AIM_FRACTION;
+  var paused = false;
+
+  function active() { return cap.getMode() === 'auto' && !paused; }
+
+  function onFrame(items, area) {
+    var f = frameOf(items, area);
+    cap.frame(f.reads, []);
+    if (!active()) return null;
+    var pick = cap.next(f.candidates, aimRect(area, fraction));
+    if (pick) cap.sent(pick.payload, pick.box);
+    return pick;
+  }
+
+  return {
+    onFrame: onFrame,
+    noteSent: function (payload, box) { cap.sent(payload, box); },
+    isDone: cap.isDone,
+    reset: cap.reset,
+    mode: cap.getMode,
+    setMode: cap.setMode,
+    isActive: active,
+    setPaused: function (p) { paused = !!p; },
+    isPaused: function () { return paused; },
+    aim: function (area) { return aimRect(area, fraction); }
+  };
+}
+
+// ── the camera's words ─────────────────────────────────────────────────────────────────────────────
+
+/** Which phone this is, for the one sentence that differs (where the camera permission lives): 'ios', 'android' or 'other'. */
+function platformOf(userAgent, maxTouchPoints) {
+  var ua = String(userAgent || '');
+  if (/iPhone|iPad|iPod/i.test(ua)) return 'ios';
+  if (/Macintosh/i.test(ua) && Number(maxTouchPoints) > 1) return 'ios'; // iPadOS asks for the desktop site
+  if (/Android/i.test(ua)) return 'android';
+  return 'other';
+}
+
+/**
+ * What kind of window this is, for the camera's first move: 'webview' (an app's own web view: the Android app's says "; wv)", an iPhone
+ * web view has no "Safari/" in it: scanning by itself never runs there), 'phone' (a phone or tablet's browser: the camera starts by itself,
+ * the browser asks for permission right there when it must) or 'desktop' (a computer's browser: it starts by itself only once the browser
+ * has already allowed the camera, as before, never a permission prompt out of nowhere).
+ */
+function cameraKind(userAgent, maxTouchPoints) {
+  var ua = String(userAgent || '');
+  if (/; wv\)/i.test(ua)) return 'webview';
+  if (/iPhone|iPad|iPod/i.test(ua) && !/Safari\//i.test(ua)) return 'webview';
+  return platformOf(ua, maxTouchPoints) === 'other' ? 'desktop' : 'phone';
+}
+
+var HELP = {
+  denied: {
+    ios: "Safari has the camera blocked for this site. Tap aA in the address bar, then Website Settings, then Camera, then Allow. Or open Settings, Safari, Camera and choose Ask or Allow. Then come back here.",
+    android: "Chrome has the camera blocked for this site. Tap the lock icon in the address bar, then Permissions, then Camera, then Allow. If a prompt never showed, close any floating bubble or screen filter app (Android hides the prompt under an overlay), then tap Try again.",
+    other: "The camera is blocked for this site. Allow it in your browser's site settings (the lock icon by the address), then tap Try again."
+  },
+  gesture: {
+    ios: "Your phone paused the camera preview (Low Power Mode does this). Tap Allow camera to start it.",
+    android: "The browser needs a tap to start the camera preview. Tap Allow camera.",
+    other: "The browser needs a tap to start the camera preview. Tap Allow camera."
+  },
+  ask: {
+    ios: 'Tap Allow camera, then choose Allow when Safari asks.',
+    android: 'Tap Allow camera, then choose Allow when your browser asks.',
+    other: 'Tap Allow camera, then choose Allow when your browser asks.'
+  },
+  none: { all: 'No camera found on this device. Type the cert or use the scanner gun below.' },
+  busy: { all: 'Another app or tab is using the camera. Close it, then tap Try again.' },
+  unsupported: { all: "This browser can't use the camera here. Type the cert below instead." },
+  insecure: { all: 'The camera only works on a secure (https) page. Open the https address, or type the cert below.' },
+  failed: { all: "The camera didn't start. Tap Try again." },
+  noframe: { all: 'The camera opened but sent no picture. Tap Try again. If it keeps happening, close other camera apps or restart the browser.' }
+};
+
+/** The words for a camera problem (a ScanCamera problem key, plus 'insecure', 'gesture' and 'noframe') on this platform. Unknown: 'failed'. */
+function cameraHelp(problem, platform) {
+  var set = HELP[problem] || HELP.failed;
+  return set[platform] || set.other || set.all;
+}
+
+/** Whether two reads are one slab (a bare cert number, a link to it, or the same text), by the zeros-off cert number the capture rules know a code by. */
+function sameCode(a, b) {
+  var x = certNumber(a);
+  var y = certNumber(b);
+  return x != null && y != null ? x === y : String(a == null ? '' : a).trim() === String(b == null ? '' : b).trim();
+}
+
+/** Whether a problem is one where a tap on Allow camera / Try again is the fix (the page then shows that button). */
+function needsTap(problem) {
+  return problem === 'denied' || problem === 'gesture' || problem === 'ask' || problem === 'busy' || problem === 'failed' || problem === 'noframe';
+}
+
+/**
+ * What a camera that the browser refused is called. A refusal of the page's FIRST, automatic ask (nobody has tapped anything on this page
+ * yet, and the browser's permission API does not say 'denied') may be a browser that wants a tap before it asks (a refusal is how some
+ * browsers say so), not a person who blocked the camera: it is 'ask', one tap on Allow camera, and a refusal after THAT tap is the real
+ * block ('denied'). `ctx` is { userGesture: a tap or touch has happened on this page, permission: 'granted' | 'prompt' | 'denied' | null }.
+ */
+function problemFor(problem, ctx) {
+  ctx = ctx || {};
+  if (problem === 'denied' && !ctx.userGesture && ctx.permission !== 'denied') return 'ask';
+  return problem;
+}
+
+/** The words on the one button for a problem: Allow camera where a tap asks the browser (again), Try again where the camera must be freed or fixed first, none where a tap cannot help. */
+function tapLabel(problem) {
+  if (problem === 'ask' || problem === 'gesture') return 'Allow camera';
+  return needsTap(problem) ? 'Try again' : '';
+}
+
+/** What the status pill says at each step of starting the camera. */
+var STAGE_TEXT = {
+  asking: 'Allow the camera when asked',
+  opening: 'Starting camera…',
+  reader: 'Loading the barcode reader…',
+  ready: 'Point at a barcode'
+};
+
+function stageText(stage) {
+  return STAGE_TEXT[stage] || STAGE_TEXT.opening;
+}
+
+/**
+ * What a start that is taking too long should do, given the step it is on and how long it has been there: null (keep
+ * waiting), 'allow' (the permission prompt is still unanswered: show the one-tap Allow camera state, leave the pending
+ * request alone) or 'stuck' (granted but no picture yet: say where it is stuck, with Try again).
+ */
+function watchdogPlan(stage, elapsedMs) {
+  var ms = typeof elapsedMs === 'number' ? elapsedMs : 0;
+  if (stage === 'asking') return ms >= ASK_STALL_MS ? 'allow' : null;
+  if (stage === 'opening' || stage === 'reader') return ms >= STUCK_MS ? 'stuck' : null;
+  return null;
+}
+
+/** The line shown when the watchdog fires. */
+function stallText(plan, stage, platform) {
+  if (plan === 'allow') {
+    return platform === 'ios'
+      ? 'Waiting for the camera. If Safari has not asked, tap Allow camera, then choose Allow.'
+      : 'Waiting for the camera permission. If no prompt shows, tap Allow camera, then choose Allow.';
+  }
+  if (plan === 'stuck') {
+    return stage === 'reader'
+      ? "The barcode reader is slow to load. Check the signal, or tap Try again."
+      : 'The camera is slow to start. Tap Try again.';
+  }
+  return '';
+}
+
+/** Whether the page can try the camera at all, from what the browser has: 'try', 'insecure' (an http page) or 'unsupported'. */
+function startPlan(env) {
+  env = env || {};
+  if (env.hasMediaDevices) return 'try';
+  return env.secure === false ? 'insecure' : 'unsupported';
+}
+
+/** The words for a scan mode change, and for each mode's row in Settings (the same as the app's gear). Tap to scan's hint under the
+    camera is the page's own markup, which the page keeps and puts back. */
+var MODE_TEXT = {
+  auto: { name: 'Scan automatically', detail: 'Point at a slab and it scans by itself.', note: 'Scanning automatically', hint: 'Hold the barcode in the box' },
+  tap: { name: 'Tap to scan', detail: 'Nothing scans until you tap a barcode.', note: 'Tap to scan is on' }
+};
+
+window.AutoScan = {
+  MODE_KEY: MODE_KEY,
+  MODES: MODES,
+  REARM_MS: REARM_MS,
+  SPACING_MS: SPACING_MS,
+  PAUSE_MS: PAUSE_MS,
+  AIM_FRACTION: AIM_FRACTION,
+  WATCH_GAP_MS: WATCH_GAP_MS,
+  NOTE_MS: NOTE_MS,
+  ASK_STALL_MS: ASK_STALL_MS,
+  STUCK_MS: STUCK_MS,
+  MODE_TEXT: MODE_TEXT,
+  STAGE_TEXT: STAGE_TEXT,
+  normalizeMode: normalizeMode,
+  loadMode: loadMode,
+  saveMode: saveMode,
+  runsHere: runsHere,
+  sendsItself: sendsItself,
+  certNumber: certNumber,
+  sameCode: sameCode,
+  aimRect: aimRect,
+  frameOf: frameOf,
+  createAutoCapture: createAutoCapture,
+  createAutoScanner: createAutoScanner,
+  platformOf: platformOf,
+  cameraKind: cameraKind,
+  cameraHelp: cameraHelp,
+  needsTap: needsTap,
+  problemFor: problemFor,
+  tapLabel: tapLabel,
+  stageText: stageText,
+  watchdogPlan: watchdogPlan,
+  stallText: stallText,
+  startPlan: startPlan,
 };
 })();
 
@@ -8720,6 +9387,10 @@ window.PileRates = {
       vfOff: document.getElementById('sc-vf-off'),
       vfOffText: document.getElementById('sc-vf-off-text'),
       start: document.getElementById('sc-start'),
+      allow: document.getElementById('sc-allow'),
+      aim: document.getElementById('sc-vf-aim'),
+      flash: document.getElementById('sc-vf-flash'),
+      vfHint: document.getElementById('sc-vf-hint'),
       certInput: document.getElementById('sc-cert-input'),
       certGo: document.getElementById('sc-cert-go'),
       boxErr: document.getElementById('sc-box-err'),
@@ -9003,6 +9674,8 @@ window.PileRates = {
       }
       return {
         unlock: function () { var a = get(); if (a && a.resume) { try { a.resume(); } catch (e) { /* audio blocked */ } } },
+        /** True while the browser still keeps sound shut (a page that has had no tap yet): the first scan by itself says so. */
+        suspended: function () { return !!(ctx && ctx.state === 'suspended'); },
         tone: function (spec) {
           var a = get();
           if (!a) return;
@@ -11484,6 +12157,147 @@ window.PileRates = {
     var camBoxObserver = null;
     var torchOn = false;
 
+    // ── Scan automatically, in a phone's BROWSER (scanner/autoScan.js; Josh, 11/19, on Safari: "it should be like the app when
+    // it's automatic, and then you could set it in settings"). The page's own camera now takes a cert by itself when a slab's
+    // barcode is held in the aim box, the way the app's native camera does, with a Settings choice (Scan automatically / Tap
+    // to scan, kept on this device, automatic by default). It NEVER runs inside the phone apps: with their bridge the native
+    // scanner is in charge (autoOn() is false there, and onCamFrame returns before looking at anything). Tap to scan is the
+    // page's reading as it was: nothing is taken until a tap or the shutter. ─────────────────────────────────────────────
+    var scanMode = AutoScan.loadMode(safeLocalStorage());
+    var auto = AutoScan.createAutoScanner({ mode: scanMode });
+    var platform = AutoScan.platformOf(navigator.userAgent, navigator.maxTouchPoints);
+    // 'phone' (a phone or tablet's browser: starts by itself), 'desktop' (a computer's: by itself only once the browser has allowed the camera) or
+    // 'webview' (an app's own web view, e.g. the Android app on a web view too old for its bridge: the page's camera stays what it was there).
+    var camKind = AutoScan.cameraKind(navigator.userAgent, navigator.maxTouchPoints);
+    var HINT_TAP = dom.vfHint ? dom.vfHint.textContent : ''; // the markup's own words, put back in Tap to scan
+    var camBox = { w: 0, h: 0 }; // the camera view's size in CSS px, as cam.setBox was last told (the aim zone is the middle of it)
+    var camGen = 0;              // every start (and every stop) is a new number: a camera that arrives for an old one is stopped, never shown
+    var camStage = '';           // where a start stands: asking (the permission prompt), opening, reader, ready
+    var camStageAt = 0;
+    var camGrantedAt = 0;        // when the browser first said yes to this start (the stuck clock runs from there, not from every ladder rung)
+    var camWatch = null;         // the interval that notices a start taking too long
+    var camNeedsTap = null;      // the one-tap state on screen: 'allow' (prompt unanswered), 'stuck' or 'retry' (it did not start); null: none
+    var camPermStatus = null;    // the browser's PermissionStatus for the camera, listened to so a fix in its settings starts the camera by itself
+    var userGesture = false;     // a tap or touch has happened on this page (a refusal of the first, automatic ask before that is not yet a block)
+    var noteTimer = null;
+    var idleTimer = null;
+    var flashTimer = null;
+
+    /** Whether the page's own camera takes codes by itself: a browser (never an app's bridge) in Scan automatically. */
+    function autoOn() { return AutoScan.runsHere(bridge.isAvailable(), scanMode, camKind); }
+    /** The aim brackets, the hint under the camera, the read rate and the Settings rows all follow the mode (and whether the camera is on). */
+    function applyScanMode() {
+      auto.setMode(scanMode);
+      var live = !!cam && autoOn();
+      if (dom.aim) dom.aim.hidden = !live;
+      dom.vf.classList.toggle('sc-auto', live); // the big shutter goes: nothing needs a tap, and a tap on the picture still reads
+      if (dom.vfHint) dom.vfHint.textContent = live ? AutoScan.MODE_TEXT.auto.hint : HINT_TAP;
+      if (cam) cam.setWatchGap(live ? AutoScan.WATCH_GAP_MS : -1);
+      renderScanModeRows();
+    }
+    function setScanMode(mode) {
+      mode = AutoScan.normalizeMode(mode);
+      if (mode !== scanMode) {
+        scanMode = mode;
+        AutoScan.saveMode(safeLocalStorage(), mode);
+        applyScanMode();
+        camNote(AutoScan.MODE_TEXT[mode].note);
+      }
+      renderScanModeRows();
+    }
+    /** A note on the camera's status pill for a moment ("Scanning automatically"), then the idle words again. */
+    function camNote(text) {
+      if (!cam) return;
+      dom.vfStatus.textContent = text;
+      clearTimeout(noteTimer);
+      noteTimer = setTimeout(function () { if (cam && dom.vfStatus.textContent === text) dom.vfStatus.textContent = AutoScan.stageText('ready'); }, AutoScan.NOTE_MS);
+    }
+    /** After a read the pill goes back to "Point at a barcode" (so it never reads as if the next slab were already taken). */
+    function scheduleIdle() {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(function () { if (cam && /^Read /.test(dom.vfStatus.textContent)) dom.vfStatus.textContent = AutoScan.stageText('ready'); }, 2600);
+    }
+    /** The green check over the camera when a code was read (by itself or by a tap): a glance at the slab is enough. */
+    function flashRead() {
+      if (!dom.flash) return;
+      dom.flash.hidden = true;
+      void dom.flash.offsetWidth; // restart the animation when two reads come close together
+      dom.flash.hidden = false;
+      clearTimeout(flashTimer);
+      flashTimer = setTimeout(function () { dom.flash.hidden = true; }, 750);
+    }
+    /** One frame the camera read (video px): the aim rules decide whether a cert is taken now. Not run in the apps, not in Tap to scan. */
+    function onCamFrame(items) {
+      if (!cam || bridge.isAvailable() || camKind === 'webview' || !session || !camBox.w || !camBox.h) return; // signed out (or the session ended): nothing is taken behind the sign-in form
+      auto.setPaused(!!(document.querySelector && document.querySelector('dialog[open]'))); // a sheet over the camera (Settings, Rates, Edit card) takes nothing
+      var m = cam.mapping();
+      var onScreen = items.map(function (it) { return { text: it.text, format: it.format, ready: it.ready, corners: cam.onScreen(it, m) }; });
+      var pick = auto.onFrame(onScreen, camBox);
+      if (pick) autoTake(pick);
+    }
+    var lastAutoTake = null; // { text, at } of the code taken by itself last, so a tap's hard look that finds the same slab does not take it again
+    function autoTake(pick) {
+      lastAutoTake = { text: pick.payload, at: Date.now() };
+      feedback.unlock();
+      flashRead();
+      handleScanned(pick.payload, false, pick.format); // the same beep, buzz and parse-and-price path a tap takes
+      if (cam && FeedbackAudio.suspended()) dom.vfStatus.textContent += ' (tap once for sound)'; // a browser keeps sound shut until the first tap
+      scheduleIdle();
+    }
+
+    // ── starting the camera, step by step: what the pill says, and what shows when a step is slow or refused ──
+    function clearCamWatch() { if (camWatch) { clearInterval(camWatch); camWatch = null; } }
+    /** The camera-off row with a message, and (when a tap is the fix) the one big button under it: Allow camera or Try again. */
+    function showOff(text, tapLabel) {
+      dom.vf.hidden = true;
+      dom.vfOff.hidden = false;
+      dom.vfOffText.textContent = text;
+      dom.allow.hidden = !tapLabel;
+      if (tapLabel) dom.allow.textContent = tapLabel;
+    }
+    function setCamStage(stage) {
+      camStage = stage;
+      camStageAt = Date.now();
+      if (stage === 'asking' && !camGrantedAt) camGrantedAt = 0;
+      else if (stage === 'opening' && !camGrantedAt) camGrantedAt = camStageAt;
+      try { window.__iopCamStage = stage; } catch (e) { /* a frozen window: only a debugging aid */ }
+      // Granted at last (the prompt was answered after the Allow camera state came up): the picture comes back by itself.
+      if (camNeedsTap === 'allow' && stage !== 'asking') {
+        camNeedsTap = null;
+        dom.allow.hidden = true;
+        dom.vf.hidden = false;
+        dom.vfOff.hidden = true;
+      }
+      if (!camNeedsTap) dom.vfStatus.textContent = AutoScan.stageText(stage);
+    }
+    /** Every half second: a prompt left unanswered gets the one-tap Allow camera state (the request stays pending, an answer still works);
+        a camera granted but with no picture yet says where it is stuck, with Try again. */
+    function startCamWatch(gen) {
+      clearCamWatch();
+      camWatch = setInterval(function () {
+        if (gen !== camGen || cam) { clearCamWatch(); return; }
+        var plan = AutoScan.watchdogPlan(camStage, Date.now() - (camStage !== 'asking' && camGrantedAt ? camGrantedAt : camStageAt));
+        if (!plan || camNeedsTap === plan) return;
+        camNeedsTap = plan;
+        showOff(AutoScan.stallText(plan, camStage, platform), plan === 'allow' ? 'Allow camera' : 'Try again');
+      }, 500);
+    }
+    /** The browser's camera permission, watched: allowed in its site settings after a block, the camera starts by itself. Safari has none to watch. */
+    function watchPermission() {
+      if (camPermStatus || !navigator.permissions || typeof navigator.permissions.query !== 'function') return;
+      try {
+        navigator.permissions.query({ name: 'camera' }).then(function (p) {
+          if (!p) return;
+          camPermStatus = p;
+          p.onchange = function () { if (p.state === 'granted') autoCamera(); };
+        }, function () { /* Safari: no camera permission to watch */ });
+      } catch (e) { /* the same */ }
+    }
+    // Back from the browser's own settings (an iPhone: Settings, Safari, Camera): try the camera once more by itself.
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden && camNeedsTap === 'retry' && scannerActive) autoCamera();
+    });
+
     function cameraSupported() {
       return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
     }
@@ -11529,6 +12343,17 @@ window.PileRates = {
     }
 
     function closeCamera() {
+      camGen++; // a start still waiting on the browser is dropped: its camera, if it ever arrives, is stopped
+      cameraStarting = false;
+      dom.start.disabled = false;
+      clearCamWatch();
+      clearTimeout(noteTimer); clearTimeout(idleTimer); clearTimeout(flashTimer);
+      camNeedsTap = null;
+      dom.allow.hidden = true;
+      dom.aim.hidden = true;
+      dom.flash.hidden = true;
+      dom.vf.classList.remove('sc-auto');
+      auto.reset();
       if (camBoxObserver) { camBoxObserver.disconnect(); camBoxObserver = null; }
       if (cam) { cam.stop(); cam = null; }
       torchOn = false;
@@ -11566,11 +12391,22 @@ window.PileRates = {
         if (nativeScannerOpen) return;
       }
       if (cam || cameraStarting) return;
-      cameraStarting = true;
-      dom.start.disabled = true;
-      startCamera().catch(function () { /* message already set inside startCamera() */ }).then(function () {
-        cameraStarting = false;
-        dom.start.disabled = false;
+      startCamera().catch(function () { /* message already set inside startCamera() */ });
+    }
+    function autoCamera() {
+      if (bridge.cameraPanelSupported()) return; // app 1.10: the camera starts OFF, its panel's switch turns it on
+      if (!scannerActive || cameraTurnedOff || !session || nativeScannerOpen || cam || cameraStarting) return;
+      if (bridge.isAvailable()) { turnCameraOn(); return; }
+      if (!cameraSupported()) return;
+      watchPermission();
+      // A phone's browser (Josh, 11/19: "it should be like the app when it's automatic"): the camera starts by itself as soon as the
+      // Scanner is open and signed in. The first time, the browser asks for permission right there; if nobody answers, the one-tap
+      // Allow camera state comes up (startCamWatch), and a block says how to undo it on this phone.
+      if (camKind === 'phone') { turnCameraOn(); return; }
+      // A computer's browser, or an app's web view without the bridge: only once the browser has ALREADY allowed the camera, as before
+      // (never a permission prompt out of nowhere); the camera button, or the browser's own settings, start it otherwise.
+      cameraAllowedAlready().then(function (ok) {
+        if (ok && scannerActive && !cameraTurnedOff && session && !cam && !cameraStarting) turnCameraOn();
       });
     }
     function cameraAllowedAlready() {
@@ -11579,59 +12415,85 @@ window.PileRates = {
         return navigator.permissions.query({ name: 'camera' }).then(function (p) { return !!p && p.state === 'granted'; }, function () { return false; });
       } catch (e) { return Promise.resolve(false); }
     }
-    function autoCamera() {
-      if (bridge.cameraPanelSupported()) return; // app 1.10: the camera starts OFF, its panel's switch turns it on
-      if (!scannerActive || cameraTurnedOff || !session || nativeScannerOpen || cam || cameraStarting) return;
-      if (bridge.isAvailable()) { turnCameraOn(); return; }
-      if (!cameraSupported()) return;
-      cameraAllowedAlready().then(function (ok) {
-        if (ok && scannerActive && !cameraTurnedOff && session && !cam && !cameraStarting) turnCameraOn();
-      });
-    }
 
     function startCamera() {
-      if (!cameraSupported()) {
-        dom.vfOffText.textContent = CAM_NONE;
-        return Promise.reject(new Error('unsupported'));
+      var plan = AutoScan.startPlan({ hasMediaDevices: cameraSupported(), secure: window.isSecureContext });
+      if (plan !== 'try') {
+        dom.vfOffText.textContent = plan === 'unsupported' ? CAM_NONE : AutoScan.cameraHelp(plan, platform);
+        return Promise.reject(new Error(plan));
       }
+      var gen = ++camGen;
+      cameraStarting = true;
+      dom.start.disabled = true;
+      camGrantedAt = 0;
+      camNeedsTap = null;
+      dom.allow.hidden = true;
       // Shown (not hidden) before the camera actually opens, so the box has real on-screen
       // dimensions by the time ScanCamera.openCamera's caller measures it below - a [hidden] element
       // reports a 0x0 bounding rect, which would otherwise make the very first setBox() a no-op.
       dom.vf.hidden = false;
       dom.vfOff.hidden = true;
-      dom.vfStatus.textContent = 'Starting camera…';
+      setCamStage('asking');
+      startCamWatch(gen);
+      /** This start is still the current one, and no longer waiting: false for one that was replaced or stopped meanwhile. */
+      function settle() {
+        if (gen !== camGen) return false;
+        cameraStarting = false;
+        dom.start.disabled = false;
+        clearCamWatch();
+        return true;
+      }
       return ScanCamera.openCamera(dom.video, {
         scanPick: ScanPick,
         scanDecode: ScanDecode,
         zxingReaderUrl: ZXING_READER_URL,
         zxingWasmUrl: ZXING_WASM_URL,
+        watchGapMs: autoOn() ? AutoScan.WATCH_GAP_MS : undefined,
+        isCurrent: function () { return gen === camGen; }, // a camera that arrives for a start Allow camera replaced is stopped, the shared <video> untouched
         events: {
-          onSeen: function (seenList) { drawMarks(seenList); },
+          onSeen: function (seenList) { if (gen === camGen) drawMarks(seenList); },
+          onFrame: function (items) { if (gen === camGen) onCamFrame(items); },
+          onStage: function (stage) { if (gen === camGen) setCamStage(stage); },
           onTrouble: function (msg) { dom.vfStatus.textContent = msg || 'Point at a barcode'; },
           onEnded: function () {
+            if (gen !== camGen) return; // a replaced start's camera ending says nothing about the current one
             closeCamera();
             dom.vfOffText.textContent = 'The camera stopped. Tap the camera to turn it back on.';
           }
         }
       }).then(function (c) {
+        // Replaced by a newer start (Allow camera was tapped), stopped, or the tab left while the browser was asking: this
+        // camera is switched off again and nothing on screen changes.
+        if (gen !== camGen || !scannerActive) { c.stop(); return; }
+        settle();
         cam = c;
-        dom.vfStatus.textContent = 'Point at a barcode';
+        camNeedsTap = null;
+        dom.allow.hidden = true;
+        dom.vf.hidden = false;
+        dom.vfOff.hidden = true;
+        dom.vfStatus.textContent = AutoScan.stageText('ready');
         dom.torch.hidden = !cam.torchAvailable();
         setTorchUi(false);
         setupZoomUi();
         var r = dom.vf.getBoundingClientRect();
+        camBox = { w: r.width, h: r.height };
         cam.setBox(r.width, r.height);
         if (typeof ResizeObserver !== 'undefined') {
           camBoxObserver = new ResizeObserver(function () {
             var rr = dom.vf.getBoundingClientRect();
+            camBox = { w: rr.width, h: rr.height };
             if (cam) cam.setBox(rr.width, rr.height);
           });
           camBoxObserver.observe(dom.vf);
         }
+        auto.reset();
+        applyScanMode();
       }, function (err) {
-        dom.vf.hidden = true;
-        dom.vfOff.hidden = false;
-        dom.vfOffText.textContent = (err && err.message) || "The camera didn't start. Tap the camera to try again, or type the cert below.";
+        if (gen !== camGen) return; // a replaced start's refusal says nothing about the new one
+        settle();
+        var problem = AutoScan.problemFor((err && err.problem) || 'failed', { userGesture: userGesture, permission: camPermStatus ? camPermStatus.state : null });
+        camNeedsTap = AutoScan.needsTap(problem) ? 'retry' : null;
+        showOff(AutoScan.cameraHelp(problem, platform), AutoScan.tapLabel(problem));
         throw err;
       });
     }
@@ -11643,9 +12505,15 @@ window.PileRates = {
       // call on every single capture attempt, not just the first.
       feedback.unlock();
       dom.vfStatus.textContent = 'Looking…'; // the tap answers at once, before the frame is read
+      var tapAt = Date.now();
       cam.capture(tapBox).then(function (found) {
         if (!found) { feedback.play('nothing'); dom.vfStatus.textContent = 'Nothing found - try again or type it below'; return; }
+        // The slab the tap's hard look found was already taken by itself while it looked: once, not twice.
+        if (lastAutoTake && lastAutoTake.at >= tapAt && AutoScan.sameCode(lastAutoTake.text, found.text)) return;
+        auto.noteSent(found.text); // what a tap sends is done for Scan automatically too: it never adds the same slab a second time
+        flashRead();
         handleScanned(found.text, false, found.format);
+        scheduleIdle();
       });
     }
 
@@ -11674,6 +12542,53 @@ window.PileRates = {
     };
     /** What opened the sheet (the gear or the Account entry), so closing it hands focus back there. */
     var settingsOpener = null;
+    // The Scanning section (Scan automatically / Tap to scan), the browser page only: the apps' own gear has the same two choices.
+    var scanUi = { section: document.getElementById('sc-scanmode'), list: document.getElementById('sc-scanmode-list') };
+    function renderScanModeRows() {
+      if (!scanUi.section || !scanUi.list) return;
+      scanUi.section.hidden = bridge.isAvailable() || camKind === 'webview' || !cameraSupported();
+      if (scanUi.section.hidden || !settingsOpen()) return; // drawn when the sheet opens
+      if (!scanUi.list.firstChild) {
+        AutoScan.MODES.forEach(function (mode) {
+          var T = AutoScan.MODE_TEXT[mode];
+          var row = document.createElement('button');
+          row.type = 'button';
+          row.className = 'sc-theme-opt sc-scanmode-opt';
+          row.setAttribute('role', 'radio');
+          row.dataset.scanmode = mode;
+          var words = document.createElement('span');
+          words.className = 'sc-scanmode-words';
+          var name = document.createElement('span');
+          name.className = 'sc-theme-name';
+          name.textContent = T.name;
+          var detail = document.createElement('span');
+          detail.className = 'sc-scanmode-detail';
+          detail.textContent = T.detail;
+          words.appendChild(name);
+          words.appendChild(detail);
+          row.appendChild(words);
+          row.addEventListener('click', function () { setScanMode(mode); });
+          scanUi.list.appendChild(row);
+        });
+        // Up and down move between the two like any radio group (and choose, as a tap does).
+        scanUi.list.addEventListener('keydown', function (ev) {
+          if (ev.key !== 'ArrowDown' && ev.key !== 'ArrowUp') return;
+          var rows = Array.prototype.slice.call(scanUi.list.querySelectorAll('.sc-scanmode-opt'));
+          var at = rows.indexOf(document.activeElement);
+          if (at < 0) return;
+          ev.preventDefault();
+          var next = rows[(at + (ev.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length];
+          next.click();
+          next.focus();
+        });
+      }
+      var rows = scanUi.list.querySelectorAll('.sc-scanmode-opt');
+      for (var i = 0; i < rows.length; i++) {
+        var on = rows[i].dataset.scanmode === scanMode;
+        rows[i].setAttribute('aria-checked', on ? 'true' : 'false');
+        rows[i].tabIndex = on ? 0 : -1;
+      }
+    }
     function themeApi() { return window.IOPTheme && typeof window.IOPTheme.list === 'function' ? window.IOPTheme : null; }
     /** The little two-colour circle on a row: the theme's page colour and its accent ('Match phone': light and dark). */
     function swatchFor(id) {
@@ -11729,8 +12644,10 @@ window.PileRates = {
         else settingsUi.sheet.setAttribute('open', '');
       } catch (e) { settingsUi.sheet.setAttribute('open', ''); }
       renderThemeRows();
+      renderScanModeRows();
       renderAccount();
-      var checked = settingsUi.list && settingsUi.list.querySelector('.sc-theme-opt[aria-checked="true"]');
+      var checked = (scanUi.section && !scanUi.section.hidden && scanUi.list.querySelector('.sc-scanmode-opt[aria-checked="true"]'))
+        || (settingsUi.list && settingsUi.list.querySelector('.sc-theme-opt[aria-checked="true"]'));
       if (checked) checked.focus();
       if (toAccount && acct.section && !acct.section.hidden) settingsUi.sheet.scrollTop = settingsUi.sheet.scrollHeight;
       return true;
@@ -11820,6 +12737,19 @@ window.PileRates = {
         cameraTurnedOff = false;
         turnCameraOn();
       });
+      // The one-tap Allow camera / Try again button (the camera-off row, while a prompt is unanswered or the camera did not start).
+      // A tap is a user gesture, so the browser asks again properly (an iPhone that never showed its prompt, a preview it paused).
+      if (dom.allow) dom.allow.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        feedback.unlock();
+        userGesture = true;
+        cameraTurnedOff = false;
+        camGen++; // whatever is still pending is dropped: a camera that arrives for it is stopped, and this start is the one that counts
+        cameraStarting = false;
+        dom.start.disabled = false;
+        turnCameraOn();
+      });
+      applyScanMode(); // the Scanning section shows (a browser with a camera) and the brackets follow the saved mode
       // Off: the browser camera's own button (the app's camera has its Done). It stays off until turned back on.
       if (dom.camOff) dom.camOff.addEventListener('click', function (ev) {
         ev.stopPropagation(); // sits inside the tap-to-scan viewfinder - must not also read a barcode
@@ -11828,7 +12758,10 @@ window.PileRates = {
         dom.vfOffText.textContent = idlePrompt();
       });
       // The camera now starts with no tap, so the first touch anywhere primes the beep instead (cheap, idempotent).
-      document.addEventListener('pointerdown', function () { feedback.unlock(); }, { capture: true, passive: true });
+      // (On an iPhone a touch's pointerdown does not count as the tap that lets sound start; pointerup, touchend and click do: all four prime it.)
+      ['pointerdown', 'pointerup', 'touchend', 'click'].forEach(function (type) {
+        document.addEventListener(type, function () { feedback.unlock(); userGesture = true; }, { capture: true, passive: true });
+      });
       renderCamButton(); // no camera and no app: no button, the row says so (never a dead "Camera not available here")
       function renderSoundButton() {
         var on = feedback.isSoundOn();
