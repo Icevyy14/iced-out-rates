@@ -25,6 +25,9 @@
    that, for every element (an element's touch-action is limited by its ancestors'). The camera's own touch-action:none
    areas stay as they are. */
 html{touch-action:manipulation}
+/* Opened from the home screen (the app page's head adds the class): no browser bar, so keep clear of the notch and the rounded corners. The black status bar sits above the page
+   (the page starts below it), so the top inset is 0 there; it is here in case a phone draws the page under it. Bottom: the dock pads itself. */
+html.iop-standalone body{padding-top:env(safe-area-inset-top);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);}
 /* ═══════════════════════════════════════════════════════════════════════════
    Iced Out Penguin rates — skinned to match the owner app's 💰 Pricing tab.
    Theme: Synthwave, re-coloured blue / black / red (owner's call, 2026-11-04)
