@@ -2231,6 +2231,98 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-lk-hint[data-tone="ok"]::before{background:var(--sc-clv);}
   #tab-scanner .sc-lk-hint[data-tone="bad"]::before{background:var(--sc-err-ink);}
 
+  /* Allocation, the way a sourcer hunts: a header (is it open, how fresh, Refresh), a chip per category, an "open only" switch, then a card per group that
+     leads with what is LEFT. The fine ranges of a group are one tap away (a plain list, not an unlabeled bar chart). Every colour is a token of the chosen
+     theme; the used bar is the theme's own steel, a full one its quiet grey, and only the Full tag is red (a list of full ranges must not read as an alarm). */
+  #tab-scanner .sc-lk-ahead{display:flex;flex-direction:column;gap:8px;padding:14px 16px;}
+  #tab-scanner .sc-lk-ahead-top{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  #tab-scanner .sc-lk-ahead-top .sc-lk-status{min-width:0;}
+  #tab-scanner .sc-lk-refresh{--sc-i:var(--i-rotate);flex:none;gap:7px;padding:0 16px 0 13px;}
+  #tab-scanner .sc-lk-refresh::before{content:"";flex:none;width:18px;height:18px;background:currentColor;-webkit-mask:var(--sc-i) center / contain no-repeat;mask:var(--sc-i) center / contain no-repeat;}
+  #tab-scanner .sc-lk-refresh[aria-busy="true"]::before{animation:scLkSpin 900ms linear infinite;}
+  @keyframes scLkSpin{to{transform:rotate(360deg)}}
+  #tab-scanner .sc-lk-age{margin:0;font-size:var(--sc-fs-label);line-height:1.4;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-lk-age[data-tone="bad"]{color:var(--sc-err-ink);font-weight:700;}
+  #tab-scanner .sc-lk-ahead .sc-lk-fine{max-width:56ch;}
+  #tab-scanner .sc-lk-pane[data-pull]::before{content:"Pull to refresh";display:block;padding:2px 0 6px;text-align:center;font-size:var(--sc-fs-label);font-weight:700;color:var(--sc-muted);}
+  #tab-scanner .sc-lk-pane[data-pull="go"]::before{content:"Release to refresh";color:var(--sc-ink);}
+
+  #tab-scanner .sc-lk-chips{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;}
+  #tab-scanner .sc-lk-chip{
+    display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 16px;border:0;border-radius:999px;cursor:pointer;
+    background:var(--sc-fill);color:var(--sc-ink);box-shadow:var(--sc-hi), var(--sc-ring);
+    font-size:var(--sc-fs-row);font-weight:700;line-height:1.1;white-space:nowrap;-webkit-tap-highlight-color:transparent;
+    transition:background-color 160ms ease-out, color 160ms ease-out, transform 160ms ease-out;
+  }
+  #tab-scanner .sc-lk-chip:active{transform:scale(.97);}
+  #tab-scanner .sc-lk-chip[aria-pressed="true"]{
+    background:linear-gradient(180deg, var(--sc-blue-top), var(--sc-blue-bot));color:var(--sc-on-accent);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 1px 2px rgba(0,0,0,.45), 0 6px 14px -6px var(--sc-accent-glow);
+  }
+  #tab-scanner .sc-lk-chip[data-open="0"]:not([aria-pressed="true"]){color:var(--sc-muted);}
+  #tab-scanner .sc-lk-chip-note{font-size:var(--sc-fs-label);font-weight:800;color:var(--sc-err-ink);}
+  #tab-scanner .sc-lk-chip[aria-pressed="true"] .sc-lk-chip-note{color:inherit;}
+
+  #tab-scanner .sc-lk-filter{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:52px;padding:4px 2px;border:0;border-radius:14px;background:none;
+    color:var(--sc-ink);font:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  }
+  #tab-scanner .sc-lk-filter-words{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  #tab-scanner .sc-lk-filter-t{font-size:var(--sc-fs-row);font-weight:800;line-height:1.25;}
+  #tab-scanner .sc-lk-filter-s{font-size:var(--sc-fs-label);line-height:1.35;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-lk-sw{flex:none;position:relative;width:48px;height:28px;border-radius:999px;background:var(--sc-grey-tint);box-shadow:var(--sc-ring);transition:background-color 180ms ease-out;}
+  #tab-scanner .sc-lk-sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.5);transition:transform 200ms var(--sc-ease);}
+  #tab-scanner .sc-lk-filter[aria-checked="true"] .sc-lk-sw{background:var(--sc-blue);}
+  #tab-scanner .sc-lk-filter[aria-checked="true"] .sc-lk-sw::after{transform:translateX(20px);}
+
+  #tab-scanner .sc-lk-chip:focus-visible,#tab-scanner .sc-lk-filter:focus-visible,#tab-scanner .sc-lk-toggle:focus-visible{outline:2px solid var(--sc-focus);outline-offset:2px;}
+
+  /* a group: what is left (big), what you get, its range and rules on one line, how full it is */
+  #tab-scanner .sc-lk-grp{display:flex;flex-direction:column;gap:10px;padding:16px 16px 0;}
+  #tab-scanner .sc-lk-pot-name{margin:0;font-size:var(--sc-fs-body);font-weight:800;line-height:1.25;letter-spacing:-.005em;color:var(--sc-ink);}
+  #tab-scanner .sc-lk-grp-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+  #tab-scanner .sc-lk-grp-left{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 7px;min-width:0;font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-lk-left-n{font-size:var(--sc-fs-num);font-weight:800;line-height:1.15;letter-spacing:-.015em;color:var(--sc-ink);overflow-wrap:anywhere;}
+  #tab-scanner .sc-lk-left-w{font-size:var(--sc-fs-row);font-weight:700;color:var(--sc-muted);}
+  #tab-scanner .sc-lk-grp[data-full] .sc-lk-left-n{color:var(--sc-muted);}
+  #tab-scanner .sc-lk-grp-you{flex:none;text-align:right;font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-lk-grp-you-k{display:block;font-size:var(--sc-fs-label);font-weight:700;line-height:1.3;color:var(--sc-muted);}
+  #tab-scanner .sc-lk-grp-you-v{display:block;font-size:var(--sc-fs-body);font-weight:800;line-height:1.25;color:var(--sc-ink);white-space:nowrap;}
+  #tab-scanner .sc-lk-grp-you-v[data-quiet]{font-size:var(--sc-fs-label);font-weight:700;color:var(--sc-muted);white-space:normal;}
+  #tab-scanner .sc-lk-grp-line{display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline;margin:0;font-size:var(--sc-fs-label);line-height:1.4;color:var(--sc-muted);}
+  #tab-scanner .sc-lk-grp-range{font-size:var(--sc-fs-row);font-weight:700;color:var(--sc-ink);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-lk-bar{display:block;height:6px;border-radius:999px;overflow:hidden;background:var(--sc-fill-card-bg);box-shadow:var(--sc-ring);}
+  #tab-scanner .sc-lk-bar > i{display:block;height:100%;border-radius:inherit;background:var(--sc-steel-ink);}
+  #tab-scanner .sc-lk-bar[data-full] > i{background:var(--sc-faint);}
+  #tab-scanner .sc-lk-used{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 10px;margin:-2px 0 0;font-size:var(--sc-fs-label);line-height:1.4;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-lk-names{margin:0;font-size:var(--sc-fs-label);line-height:1.5;color:var(--sc-muted);overflow-wrap:anywhere;}
+  #tab-scanner .sc-lk-tag{display:inline-flex;align-items:center;align-self:center;min-height:22px;padding:0 9px;border-radius:999px;background:var(--sc-err-tint);color:var(--sc-err-ink);font-size:var(--sc-fs-label);font-weight:800;line-height:1;white-space:nowrap;}
+  #tab-scanner .sc-lk-tag[data-tone="quiet"]{background:var(--sc-grey-tint);color:var(--sc-muted);}
+  #tab-scanner .sc-lk-toggle{
+    --sc-i:var(--i-chevron-down);display:flex;align-items:center;justify-content:space-between;gap:10px;width:calc(100% + 32px);min-height:48px;margin:0 -16px;padding:0 16px;border:0;border-top:1px solid var(--sc-line);
+    background:none;color:var(--sc-steel-ink);font:inherit;font-size:var(--sc-fs-row);font-weight:800;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  }
+  #tab-scanner .sc-lk-toggle::after{content:"";flex:none;width:20px;height:20px;background:currentColor;-webkit-mask:var(--sc-i) center / contain no-repeat;mask:var(--sc-i) center / contain no-repeat;transition:transform 200ms var(--sc-ease);}
+  #tab-scanner .sc-lk-toggle[aria-expanded="true"]::after{transform:rotate(180deg);}
+  #tab-scanner .sc-lk-toggle:hover{color:var(--sc-ink);}
+  #tab-scanner .sc-lk-toggle-names{border-top:0;min-height:44px;margin-top:-6px;margin-bottom:-6px;}
+  #tab-scanner .sc-lk-rngs{list-style:none;margin:0 -16px;padding:0 16px 4px;}
+  #tab-scanner .sc-lk-rng{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:baseline;padding:11px 0;border-top:1px solid var(--sc-line);}
+  #tab-scanner .sc-lk-rng-range{font-size:var(--sc-fs-row);font-weight:700;line-height:1.3;color:var(--sc-ink);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-lk-rng-left{font-size:var(--sc-fs-row);font-weight:800;line-height:1.3;color:var(--sc-ink);font-variant-numeric:tabular-nums;white-space:nowrap;}
+  #tab-scanner .sc-lk-rng[data-full] .sc-lk-rng-range,#tab-scanner .sc-lk-rng[data-full] .sc-lk-rng-left{color:var(--sc-muted);}
+  #tab-scanner .sc-lk-rng .sc-lk-bar{grid-column:1 / -1;height:4px;}
+  #tab-scanner .sc-lk-rng-meta{grid-column:1;font-size:var(--sc-fs-label);line-height:1.4;color:var(--sc-muted);font-variant-numeric:tabular-nums;text-wrap:balance;}
+  #tab-scanner .sc-lk-rng .sc-lk-tag{grid-column:2;justify-self:end;}
+  #tab-scanner .sc-lk-sec-title{margin:6px 2px 0;}
+  #tab-scanner .sc-lk-range-line{margin:-4px 0 0;font-size:var(--sc-fs-label);font-weight:700;line-height:1.4;color:var(--sc-muted);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+  #tab-scanner .sc-lk-range-line[data-tone="bad"]{color:var(--sc-err-ink);}
+  #tab-scanner .sc-sheet-down .sc-lk-range-line{display:block;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  @media (prefers-reduced-motion:reduce){
+    #tab-scanner .sc-lk-refresh[aria-busy="true"]::before{animation:none;}
+    #tab-scanner .sc-lk-chip,#tab-scanner .sc-lk-sw,#tab-scanner .sc-lk-sw::after,#tab-scanner .sc-lk-toggle::after{transition:none;}
+  }
+
   /* My locks */
   #tab-scanner .sc-lk-sum{display:flex;flex-direction:column;gap:12px;padding:14px 16px;}
   #tab-scanner .sc-lk-sum-text{font-size:var(--sc-fs-body);font-weight:800;line-height:1.35;letter-spacing:-.005em;color:var(--sc-ink);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
@@ -9607,7 +9699,7 @@ var TZ = 'America/New_York';
 
 // The reason codes the function sends (sourcer-lock/logic.ts REASON_TEXT). Soft ones can change when the window opens or
 // someone's lock falls through; hard ones cannot, so a card with one is never worth a place in the 3 AM list.
-var SOFT_CODES = { allocation_full: true, not_allocated: true, not_published: true, other: true };
+var SOFT_CODES = { allocation_full: true, range_full: true, not_allocated: true, not_published: true, other: true };
 
 function isNum(n) { return typeof n === 'number' && isFinite(n); }
 
@@ -9790,7 +9882,7 @@ function cardPhase(item, ctx) {
       return phase;
     }
     phase.kind = 'full'; phase.tone = 'bad';
-    phase.status = code === 'allocation_full' ? 'Allocation full' : (item.reason || 'Not available');
+    phase.status = code === 'allocation_full' || code === 'range_full' ? 'Allocation full' : (item.reason || 'Not available');
     phase.note = item.reason || '';
     phase.act = 'recheck'; phase.actLabel = 'Check again';
     return phase;
@@ -9867,6 +9959,211 @@ function bandGroups(bands, nowMs) {
     g.rows.push({ range: rangeText(b.min, b.max), youGet: pctText(b.youGetPct), needs: needs.join(', '), hint: hintOf(b.hint, nowMs) });
   });
   return out;
+}
+
+// ── the Allocation tab: what is left, group by group ───────────────────────────────────────────────────────────────
+
+/** The two small notes shown once at the top of the tab (Triumph's own screen says both). No "team", no "sheet": nothing of Triumph's own wording. */
+var ALLOC_NOTES = {
+  shared: 'Shared with everyone locking through us. First come, first served.',
+  psa: 'Only PSA slabs are accepted (no CGC or BGS).',
+  // shown only when they apply
+  ours: 'Group totals in this category are our own sums of the ranges, and Triumph may group them differently. Every range below is exact.',
+  ratesDown: 'Your rates could not be read just now, so they are hidden and group totals are our own sums. Tap Refresh.',
+  counted: 'These numbers count every lookup made through our account, so they may read a little low right now. Triumph decides when you lock.',
+};
+
+function weekdayLong(ms) {
+  try { return new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'long' }).format(new Date(ms)); } catch (e) { return ''; }
+}
+
+/** "Opens Saturday 3:00 AM ET" / "Open now" / "Not open yet": the one line at the top of the tab. { tone, text } or null. */
+function allocWindowLine(state, nowMs) {
+  if (!state) return null;
+  if (state.paused) return { tone: 'warn', text: 'Locking is paused right now' };
+  var w = state.window;
+  if (!w) return null;
+  if (w.open === true) return { tone: 'ok', text: 'Open now' };
+  if (w.open !== false) return null;
+  if (w.published === false) return { tone: 'info', text: 'Not open yet' };
+  var ends = msOf(w.endsAt);
+  if (isNum(ends) && nowMs >= ends) return { tone: 'info', text: "This week's locking has ended" };
+  var opens = msOf(w.opensAt);
+  if (!isNum(opens)) return { tone: 'info', text: 'Not open yet' };
+  return { tone: 'info', text: 'Opens ' + weekdayLong(opens) + ' ' + etClock(opens) + ' ET' };
+}
+
+/** "Updated just now", "Updated 12 s ago", "Updated 3 min ago". "" when nobody knows. */
+function updatedText(seconds) {
+  if (seconds === null || seconds === undefined || !isNum(Number(seconds))) return '';
+  var s = Math.max(0, Math.round(Number(seconds)));
+  if (s < 5) return 'Updated just now';
+  if (s < 60) return 'Updated ' + s + ' s ago';
+  var m = Math.floor(s / 60);
+  if (m < 60) return 'Updated ' + m + ' min ago';
+  return 'Updated over an hour ago';
+}
+
+/** "$0 to $100", "$25.01 to $100", "$3,000.01 and up": the whole range, from its own low edge. */
+function spanText(min, max) {
+  if (min === null || min === undefined || !isNum(Number(min))) return '';
+  if (max === null || max === undefined) return dollarsPlain(min) + ' and up';
+  return dollarsPlain(min) + ' to ' + dollarsPlain(max);
+}
+
+/** "Grade 7+ · Conf 4+ · 7+ certs": what a card needs to be in this group. "" when nothing. */
+function rulesText(x) {
+  var parts = [];
+  if (x && x.minGrade !== null && x.minGrade !== undefined) parts.push('Grade ' + x.minGrade + '+');
+  if (x && x.minConf !== null && x.minConf !== undefined) parts.push('Conf ' + x.minConf + '+');
+  if (x && x.certRule === 'seven') parts.push('7+ certs');
+  return parts.join(' · ');
+}
+
+/** "92%", or "91% to 103%" when a group runs over two rates; "" when there is no rate for it. */
+function youGetSpan(pct, high) {
+  var lo = pctText(pct);
+  if (!lo) return '';
+  var hi = pctText(high);
+  return hi ? lo + ' to ' + hi : lo;
+}
+
+/** "Monkey D. Luffy" for the feed's "monkey d. luffy". */
+function nameCase(s) {
+  return String(s === null || s === undefined ? '' : s).replace(/(^|[\s-])([a-z])/g, function (m, p, c) { return p + c.toUpperCase(); });
+}
+
+function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+function hasNum(n) { return n !== null && n !== undefined && n !== '' && isNum(Number(n)); }
+
+/** What a scanned card reads about its price range: "Range left: $2,580.90 · Group left: $3,044". { text, tone } or null when the function sent nothing. */
+function cardRangeLine(item) {
+  var a = item && item.allocation;
+  if (!a || !hasNum(a.left)) return null;
+  var parts = ['Range left: ' + dollarsPlain(a.left)];
+  if (a.specialty && hasNum(a.specialty.left)) parts.push(String(a.specialty.label || 'Pot') + ' left: ' + dollarsPlain(a.specialty.left));
+  if (hasNum(a.groupLeft)) parts.push('Group left: ' + dollarsPlain(a.groupLeft));
+  if (a.ownCounted === true) parts.push('May read low');
+  return { text: parts.join(' · '), tone: a.full ? 'bad' : 'plain' };
+}
+
+/** One fine range as a row: the range, what is left of it, how it is filling, and the tag that says why you cannot hunt it. */
+function allocRow(r, straddles) {
+  var meta = [];
+  if (isNum(Number(r.cards)) && Number(r.cards) > 0) meta.push(plural(Number(r.cards), 'card', 'cards'));
+  meta.push(dollarsPlain(r.used) + ' of ' + dollarsPlain(r.cap));
+  var you = straddles ? youGetSpan(r.youGetPct, r.youGetPctHigh) : '';
+  if (you) meta.push('You get ' + you);
+  return {
+    range: spanText(r.min, r.max), leftText: dollarsPlain(r.left) + ' left', usedPct: r.usedPct, meta: meta.join(' · '),
+    full: !!r.full, tag: r.full ? 'Full' : (r.open ? '' : 'No rate'), open: !!r.open,
+  };
+}
+
+/**
+ * The Allocation tab as words and numbers, ready to draw. `a` is the function's answer ({ categories, specialty }), `st` is { cat, openOnly, expanded }.
+ * Returns { cats: [{ key, label, active, open }], cat, label, counts: { open, total, line }, groups, pots, empty }. A group is a card: what is left (big),
+ * what you get, its range and rules, how full it is, and its fine ranges (drawn only when expanded). With `openOnly` a group, a range or a pot that cannot
+ * take a card is left out. Nothing here is computed from anything the function did not send.
+ */
+function allocView(a, st) {
+  st = st || {};
+  var cats = a && Array.isArray(a.categories) ? a.categories : [];
+  var openOnly = !!st.openOnly;
+  var expanded = st.expanded || {};
+  var ratesKnown = !(a && a.ratesKnown === false);
+  var key = st.cat;
+  if (!cats.some(function (c) { return c.key === key; })) {
+    var firstOpen = cats.filter(function (c) { return c.open; })[0];
+    key = (firstOpen || cats[0] || {}).key || null;
+  }
+  var cur = cats.filter(function (c) { return c.key === key; })[0] || null;
+  var chips = cats.map(function (c) { return { key: c.key, label: c.label, active: c.key === key, open: !!c.open }; });
+  var total = 0; var open = 0;
+  var groups = [];
+  var pots = [];
+  var notes = [];
+  if (a && a.ownLookupsCounted === true) notes.push(ALLOC_NOTES.counted);
+  if (!ratesKnown) notes.push(ALLOC_NOTES.ratesDown);
+  else if (cur && (cur.groups || []).some(function (g) { return g.exact === false; })) notes.push(ALLOC_NOTES.ours);
+  if (cur) {
+    (cur.groups || []).forEach(function (g) {
+      var ranges = Array.isArray(g.ranges) ? g.ranges : [];
+      total += ranges.length;
+      open += ranges.filter(function (r) { return r.open; }).length;
+      if (openOnly && !g.open) return;
+      var straddles = !!(g.youGetPctHigh !== null && g.youGetPctHigh !== undefined);
+      var shown = ranges.filter(function (r) { return !openOnly || r.open; });
+      groups.push({
+        id: g.id, leftText: dollarsPlain(g.left), left: g.left, full: !!g.full, tag: g.full ? 'Full' : '', exact: g.exact !== false,
+        youGet: youGetSpan(g.youGetPct, g.youGetPctHigh), youGetNone: ratesKnown ? 'No rate' : 'Rates unavailable', line: spanText(g.min, g.max), rules: rulesText(g),
+        usedPct: g.usedPct, usedText: g.usedPct + '% used', ofText: dollarsPlain(g.used) + ' of ' + dollarsPlain(g.cap),
+        expanded: !!expanded[g.id], count: ranges.length, shownCount: shown.length,
+        toggle: openOnly && shown.length !== ranges.length ? shown.length + ' open of ' + plural(ranges.length, 'range', 'ranges') : plural(ranges.length, 'range', 'ranges'),
+        rows: shown.map(function (r) { return allocRow(r, straddles); }),
+      });
+    });
+    // The specialty pots of this category: a card per pot name AND per rule bucket. A pot has a range per price step (MVPs: $0 to $140, then three more), each
+    // with its own cap, and Triumph's screen cuts a pot into cards where the grade or confidence a step needs changes ("MVPs $0 to $140" and "MVPs $140.01 to
+    // $800, Conf 3+"). A card's left is the sum of ITS steps, its rate the span of its steps' rates, and every step row shows its own rate when they differ.
+    var by = {};
+    var order = [];
+    (a.specialty || []).forEach(function (s) {
+      if (s.category !== cur.category) return;
+      var p = by[s.label];
+      if (!p) { p = by[s.label] = { label: s.label, names: s.names || [], buckets: [] }; order.push(s.label); }
+      var sig = [s.minGrade, s.minConf, s.certRule].join('|');
+      var last = p.buckets[p.buckets.length - 1];
+      if (!last || last.sig !== sig) { last = { sig: sig, list: [] }; p.buckets.push(last); }
+      last.list.push(s);
+    });
+    order.forEach(function (label) {
+      var p = by[label];
+      p.buckets.forEach(function (bk, bi) {
+        var list = bk.list;
+        total += list.length;
+        open += list.filter(function (r) { return r.open; }).length;
+        var anyOpen = list.some(function (r) { return r.open; });
+        if (openOnly && !anyOpen) return;
+        var shown = list.filter(function (r) { return !openOnly || r.open; });
+        var cap = 0; var used = 0;
+        list.forEach(function (r) { cap += Number(r.cap) || 0; used += Number(r.used) || 0; });
+        cap = Math.round(cap * 100) / 100; used = Math.round(used * 100) / 100;
+        var left = Math.max(0, Math.round((cap - used) * 100) / 100);
+        var pct = cap <= 0 || used >= cap ? 100 : Math.max(0, Math.min(99, Math.round(used / cap * 100)));
+        var first = list[0];
+        var lo = list.reduce(function (m, r) { return Math.min(m, Number(r.min)); }, Infinity);
+        var hi = list.some(function (r) { return r.max === null || r.max === undefined; }) ? null : list.reduce(function (m, r) { return Math.max(m, Number(r.max)); }, 0);
+        var id = 'pot:' + cur.category + ':' + label + (bi === 0 ? '' : ':' + first.min);
+        var rateOnScan = list.some(function (r) { return r.rateOnScan; });
+        var allFull = list.every(function (r) { return r.full; });
+        var rlo = Infinity; var rhi = -Infinity;
+        list.forEach(function (r) {
+          if (r.youGetPct === null || r.youGetPct === undefined || !isNum(Number(r.youGetPct))) return;
+          var l = Number(r.youGetPct);
+          var h = r.youGetPctHigh === null || r.youGetPctHigh === undefined || !isNum(Number(r.youGetPctHigh)) ? l : Number(r.youGetPctHigh);
+          if (l < rlo) rlo = l;
+          if (h > rhi) rhi = h;
+        });
+        var haveRate = rlo !== Infinity;
+        var straddles = haveRate && rhi > rlo;
+        pots.push({
+          id: id, label: label, leftText: dollarsPlain(left), full: allFull, tag: allFull ? 'Full' : '',
+          youGet: rateOnScan || !haveRate ? '' : youGetSpan(rlo, straddles ? rhi : null), youGetNone: rateOnScan ? 'Scan a card to see' : (ratesKnown ? 'No rate' : 'Rates unavailable'),
+          rateOnScan: rateOnScan, line: spanText(lo, hi), rules: rulesText(first),
+          usedPct: pct, usedText: pct + '% used', ofText: dollarsPlain(used) + ' of ' + dollarsPlain(cap),
+          names: p.names.map(nameCase), expanded: !!expanded[id], count: list.length, shownCount: shown.length,
+          toggle: openOnly && shown.length !== list.length ? shown.length + ' open of ' + plural(list.length, 'range', 'ranges') : plural(list.length, 'range', 'ranges'),
+          rows: shown.map(function (r) { return allocRow(r, straddles && !rateOnScan); }),
+        });
+      });
+    });
+  }
+  var line = !cur ? '' : openOnly ? 'Showing ' + open + ' open of ' + plural(total, 'range', 'ranges') : open + ' of ' + plural(total, 'range', 'ranges') + ' open';
+  var empty = null;
+  if (!cats.length) empty = 'No allocation to show right now.';
+  else if (!groups.length && !pots.length) empty = openOnly ? 'Nothing is open in ' + cur.label + ' right now.' : 'No ranges in ' + cur.label + ' right now.';
+  return { cats: chips, cat: key, label: cur ? cur.label : '', counts: { open: open, total: total, line: line }, groups: groups, pots: pots, empty: empty, ratesKnown: ratesKnown, notes: notes };
 }
 
 // ── My locks ──────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -10004,6 +10301,15 @@ window.LockMode = {
   rangeText: rangeText,
   hintOf: hintOf,
   bandGroups: bandGroups,
+  ALLOC_NOTES: ALLOC_NOTES,
+  allocWindowLine: allocWindowLine,
+  updatedText: updatedText,
+  spanText: spanText,
+  rulesText: rulesText,
+  youGetSpan: youGetSpan,
+  nameCase: nameCase,
+  allocView: allocView,
+  cardRangeLine: cardRangeLine,
   locksInScope: locksInScope,
   locksSummary: locksSummary,
   copyText: copyText,
@@ -12948,7 +13254,7 @@ window.LockMode = {
         mode: mode || 'off', gen: lkGen, roleTries: 0, on: false, tab: 'scan', phase: 'idle', item: null, last: null, checking: null, note: '', done: null,
         alert: null, alertTimer: null, queuedScan: null,
         ctx: { open: null, paused: false, opensAt: null }, win: null,
-        alloc: null, allocAt: 0, allocBusy: false, allocErr: '',
+        alloc: null, allocAt: 0, allocBusy: false, allocErr: '', allocRecvAt: 0, allocCat: null, allocOpenOnly: false, allocOpen: {}, allocTimer: null, allocTick: null,
         data: null, dataAt: 0, dataBusy: false, dataReload: false, dataErr: '',
         scope: 'week', notice: '', noticeTimer: null, fresh: false
       };
@@ -12971,6 +13277,7 @@ window.LockMode = {
       // whatever it was, it ends here: another login on this phone never sees this one's locks
       if (lkTimer !== null) { clearInterval(lkTimer); lkTimer = null; }
       if (lkRoleTimer !== null) { clearTimeout(lkRoleTimer); lkRoleTimer = null; }
+      lkAllocStop();
       if (lk.noticeTimer !== null) clearTimeout(lk.noticeTimer);
       if (lk.alertTimer !== null) clearTimeout(lk.alertTimer);
       lk = lkFresh(mode);
@@ -13082,7 +13389,7 @@ window.LockMode = {
       lkUi.locks.hidden = tab !== 'locks';
       lk.notice = '';
       renderLock();
-      if (tab === 'alloc') lkLoadAlloc(false);
+      if (tab === 'alloc') { lkLoadAlloc(false); lkAllocStart(); } else lkAllocStop();
       if (tab === 'locks') lkLoadLocks(false);
       if (tab === 'scan') lkStatus();
     }
@@ -13191,6 +13498,7 @@ window.LockMode = {
         actions = '<div class="sc-lk-actions">' + lkButton('', 'Locking is paused', 'sc-btn-quiet sc-btn-block sc-lk-go', ' disabled') + '</div>';
       }
       var grader = String(item.grader || '').toUpperCase();
+      var rangeLine = LockMode.cardRangeLine(item);
       return '<div class="sc-card sc-lk-card" data-kind="' + esc(kind) + '">' +
         '<div class="sc-lk-head"><span class="sc-lk-grade' + (gradeN === null ? ' sc-unk' : '') + '" aria-hidden="true">' + (gradeN !== null ? esc(String(gradeN)) : '') + '</span>' +
         '<div class="sc-lk-words"><div class="sc-lk-name">' + esc(parts.name || ('Cert ' + item.cert)) + '</div>' +
@@ -13199,6 +13507,7 @@ window.LockMode = {
         '<div class="sc-lk-figs' + (noRate ? ' sc-lk-solo' : '') + '">' + (noRate ? '' : '<div class="sc-tile sc-tile-pay sc-lk-you' + (dim ? ' sc-lk-dim' : '') + '"><div class="sc-tile-top"><div class="sc-key">' + esc(p.youLabel) + '</div></div>' +
         '<div class="sc-pay-val">' + esc(big) + '</div>' + (sub ? '<div class="sc-lk-sub">' + esc(sub) + '</div>' : '') + '</div>') +
         '<div class="sc-tile sc-lk-market"><div class="sc-tile-top"><div class="sc-key">Market</div></div><div class="sc-pay-val">' + esc(LockMode.moneyText(item.marketValue)) + '</div></div></div>' +
+        (rangeLine ? '<p class="sc-lk-range-line" data-tone="' + esc(rangeLine.tone) + '">' + esc(rangeLine.text) + '</p>' : '') +
         '<div class="sc-lk-status" data-tone="' + esc(tone) + '" data-kind="' + esc(kind) + '" role="status">' + esc(status) + '</div>' +
         (note ? '<p class="sc-lk-note">' + esc(note) + '</p>' : '') +
         (lk.note ? '<p class="sc-lk-note" data-tone="bad" role="alert">' + esc(lk.note) + '</p>' : '') +
@@ -13364,6 +13673,7 @@ window.LockMode = {
     }
 
     function lkAct(act, cert) {
+      if (act.indexOf('alloc-') === 0 && lkAllocAct(act)) return;
       if (act === 'role-retry') { lkRoleAsk(); return; }
       // each tap only means something in the state that drew its button (a late or doubled tap does nothing)
       if (act === 'lock') { if (lk.item && lk.phase === 'ready') { lk.phase = 'confirm'; lk.note = ''; renderLock(); } return; }
@@ -13386,50 +13696,160 @@ window.LockMode = {
     }
 
     // ── Allocation ──
+    // What is LEFT, group by group (the function reads Triumph's own allocation at most every 45 s and shares it between everyone): a chip per category, an
+    // "open only" switch, a card per group that leads with what is left and what you get, its fine ranges one tap away. It refreshes itself every minute
+    // while this tab is on screen and the page is visible (never in the background), and on Refresh. The words and numbers are LockMode.allocView.
+    var LK_ALLOC_EVERY_MS = 60000;
+    var LK_ALLOC_TICK_MS = 10000;
+    function lkAllocWatching() { return lk.on && lk.tab === 'alloc' && scannerActive && !document.hidden; }
+    function lkAllocStop() {
+      if (lk.allocTimer !== null) { clearInterval(lk.allocTimer); lk.allocTimer = null; }
+      if (lk.allocTick !== null) { clearInterval(lk.allocTick); lk.allocTick = null; }
+    }
+    function lkAllocStart() {
+      lkAllocStop();
+      if (!lkAllocWatching()) return;
+      var gen = lk.gen;
+      lk.allocTimer = setInterval(function () { if (lk.gen === gen && lkAllocWatching()) lkLoadAlloc(true); else lkAllocStop(); }, LK_ALLOC_EVERY_MS);
+      lk.allocTick = setInterval(function () { if (lk.gen === gen && lkAllocWatching()) lkAllocAge(); else lkAllocStop(); }, LK_ALLOC_TICK_MS);
+    }
+    /** How old the numbers on screen are, in seconds: the function's own age when it answered, plus the time since (this phone's clock never meets the server's). */
+    function lkAllocAgeNow() {
+      var a = lk.alloc;
+      if (!a || a.ageSeconds === null || a.ageSeconds === undefined) return null;
+      return Number(a.ageSeconds) + Math.max(0, (Date.now() - lk.allocRecvAt) / 1000);
+    }
+    function lkAllocAge() {
+      var el = lkUi.alloc.querySelector ? lkUi.alloc.querySelector('[data-lk-age]') : null;
+      if (el && !lk.allocErr) el.textContent = LockMode.updatedText(lkAllocAgeNow());
+    }
     function lkLoadAlloc(force) {
       if (lk.allocBusy) return Promise.resolve();
       if (!force && lk.alloc && Date.now() - lk.allocAt < LK_STALE_MS) { renderLockAlloc(); return Promise.resolve(); }
       lk.allocBusy = true; lk.allocErr = '';
       renderLockAlloc();
+      var gen = lk.gen;
       return lkCall('allocation').then(function (r) {
+        if (lk.gen !== gen) return; // another login took the phone
         lk.allocBusy = false;
         if (r.ok && r.body && r.body.ok === true) {
-          lk.alloc = r.body; lk.allocAt = Date.now();
+          lk.alloc = r.body; lk.allocAt = Date.now(); lk.allocRecvAt = Date.now();
           lk.ctx.paused = !!r.body.locksPaused;
           if (r.body.window) { lk.win = r.body.window; lk.ctx.open = r.body.window.open; lk.ctx.opensAt = r.body.window.opensAt; }
         } else { lk.allocErr = lkFailWords(r); }
         if (lk.on) renderLock();
       });
     }
+    function lkAllocRowHtml(r) {
+      return '<li class="sc-lk-rng"' + (r.full ? ' data-full' : '') + '><span class="sc-lk-rng-range">' + esc(r.range) + '</span><span class="sc-lk-rng-left">' + esc(r.leftText) + '</span>' +
+        '<span class="sc-lk-bar" role="img" aria-label="' + esc(r.usedPct + '% used') + '"' + (r.full ? ' data-full' : '') + '><i style="width:' + Number(r.usedPct) + '%"></i></span>' +
+        '<span class="sc-lk-rng-meta">' + esc(r.meta) + '</span>' +
+        (r.tag ? '<span class="sc-lk-tag"' + (r.tag === 'Full' ? '' : ' data-tone="quiet"') + '>' + esc(r.tag) + '</span>' : '') + '</li>';
+    }
+    /** One card: a group of ranges, or a specialty pot (which has a name and the names that qualify). */
+    function lkAllocCardHtml(g, pot) {
+      var h = '<section class="sc-card sc-lk-grp" data-grp="' + esc(g.id) + '"' + (g.full ? ' data-full' : '') + '>';
+      if (pot) h += '<h4 class="sc-lk-pot-name">' + esc(g.label) + '</h4>';
+      var you = g.youGet ? '<span class="sc-lk-grp-you-v">' + esc(g.youGet) + '</span>'
+        : '<span class="sc-lk-grp-you-v" data-quiet>' + esc(g.youGetNone || (g.rateOnScan ? 'Scan a card to see' : 'No rate')) + '</span>';
+      h += '<div class="sc-lk-grp-head"><div class="sc-lk-grp-left"><span class="sc-lk-left-n">' + esc(g.leftText) + '</span><span class="sc-lk-left-w">left</span>' +
+        (g.tag ? '<span class="sc-lk-tag">' + esc(g.tag) + '</span>' : '') + '</div>' +
+        '<div class="sc-lk-grp-you"><span class="sc-lk-grp-you-k">You get</span>' + you + '</div></div>';
+      h += '<p class="sc-lk-grp-line"><span class="sc-lk-grp-range">' + esc(g.line) + '</span>' + (g.rules ? '<span>' + esc(g.rules) + '</span>' : '') + '</p>';
+      h += '<span class="sc-lk-bar" role="img" aria-label="' + esc(g.usedText) + '"' + (g.full ? ' data-full' : '') + '><i style="width:' + Number(g.usedPct) + '%"></i></span>';
+      h += '<p class="sc-lk-used"><span>' + esc(g.usedText) + '</span><span>' + esc(g.ofText) + '</span></p>';
+      if (pot && g.names && g.names.length) {
+        var open = !!lk.allocOpen[g.id + ':names'];
+        h += '<p class="sc-lk-names">' + esc(open ? g.names.join(', ') : g.names.slice(0, 4).join(', ') + (g.names.length > 4 ? ', and more' : '')) + '</p>';
+        if (g.names.length > 4) h += '<button type="button" class="sc-lk-toggle sc-lk-toggle-names" data-lk-act="alloc-grp:' + esc(g.id) + ':names" aria-expanded="' + (open ? 'true' : 'false') + '">' +
+          (open ? 'Hide names' : 'View all ' + g.names.length + ' names') + '</button>';
+      }
+      h += '<button type="button" class="sc-lk-toggle" data-lk-act="alloc-grp:' + esc(g.id) + '" aria-expanded="' + (g.expanded ? 'true' : 'false') + '">' + esc(g.toggle) + '</button>';
+      if (g.expanded) h += '<ul class="sc-lk-rngs">' + g.rows.map(lkAllocRowHtml).join('') + '</ul>';
+      return h + '</section>';
+    }
+    /** The v6 list (a rate per price range with its Open / Full hint): all there is when the function could not read what is left. */
+    function lkRatesHtml(a, now) {
+      var groups = LockMode.bandGroups(a.bands, now);
+      var h = '';
+      if (!groups.length) h += '<div class="sc-card sc-lk-empty"><p class="sc-sub">No rates to show right now.</p></div>';
+      groups.forEach(function (g) {
+        h += '<section class="sc-card sc-lk-cat"><h3 class="sc-h">' + esc(g.label) + '</h3><ul class="sc-lk-bands">';
+        g.rows.forEach(function (row) {
+          h += '<li class="sc-lk-band"><span class="sc-lk-range">' + esc(row.range) + '</span>' +
+            '<span class="sc-lk-band-you"><span class="sc-lk-band-pct">' + esc(row.youGet) + '</span><span class="sc-lk-band-lbl">you get</span></span>' +
+            (row.needs ? '<span class="sc-lk-needs">' + esc(row.needs) + '</span>' : '<span class="sc-lk-needs"></span>') +
+            (row.hint ? '<span class="sc-lk-hint" data-tone="' + esc(row.hint.tone) + '">' + esc(row.hint.text) + '</span>' : '') + '</li>';
+        });
+        h += '</ul></section>';
+      });
+      return h;
+    }
     function renderLockAlloc() {
       var a = lk.alloc;
       var h;
       if (!a) {
         h = lk.allocBusy
-          ? '<div class="sc-card sc-lk-card" aria-busy="true"><div class="sc-lk-name sc-wait">Loading the rates</div></div>'
-          : '<div class="sc-card sc-lk-card"><div class="sc-lk-status" data-tone="bad" role="alert">' + esc(lk.allocErr || 'Could not load the rates.') + '</div>' +
+          ? '<div class="sc-card sc-lk-card" aria-busy="true"><div class="sc-lk-name sc-wait">Loading what is left</div></div>'
+          : '<div class="sc-card sc-lk-card"><div class="sc-lk-status" data-tone="bad" role="alert">' + esc(lk.allocErr || 'Could not load what is left.') + '</div>' +
             '<div class="sc-lk-actions">' + lkButton('alloc-refresh', 'Try again', 'sc-btn-quiet sc-btn-block') + '</div></div>';
-      } else {
-        var now = Date.now();
-        var wl = LockMode.windowLine({ paused: lk.ctx.paused, window: a.window }, now);
-        h = '<div class="sc-card sc-lk-window">' +
-          (wl ? '<div class="sc-lk-status" data-tone="' + esc(wl.tone) + '" role="status">' + esc(wl.text) + '</div>' : '') +
-          '<p class="sc-lk-fine">' + esc(a.note || '') + '</p>' +
-          lkButton('alloc-refresh', 'Refresh', 'sc-btn-quiet', ' style="align-self:flex-start"') + '</div>';
-        var groups = LockMode.bandGroups(a.bands, now);
-        if (!groups.length) h += '<div class="sc-card sc-lk-empty"><p class="sc-sub">No rates to show right now.</p></div>';
-        groups.forEach(function (g) {
-          h += '<section class="sc-card sc-lk-cat"><h3 class="sc-h">' + esc(g.label) + '</h3><ul class="sc-lk-bands">';
-          g.rows.forEach(function (row) {
-            h += '<li class="sc-lk-band"><span class="sc-lk-range">' + esc(row.range) + '</span>' +
-              '<span class="sc-lk-band-you"><span class="sc-lk-band-pct">' + esc(row.youGet) + '</span><span class="sc-lk-band-lbl">you get</span></span>' +
-              (row.needs ? '<span class="sc-lk-needs">' + esc(row.needs) + '</span>' : '<span class="sc-lk-needs"></span>') +
-              (row.hint ? '<span class="sc-lk-hint" data-tone="' + esc(row.hint.tone) + '">' + esc(row.hint.text) + '</span>' : '') + '</li>';
-          });
-          h += '</ul></section>';
-        });
+        lkUi.alloc.innerHTML = h;
+        return;
+      }
+      var now = Date.now();
+      var wl = LockMode.allocWindowLine({ paused: lk.ctx.paused, window: a.window }, now);
+      var known = a.allocationKnown === true && Array.isArray(a.categories) && a.categories.length > 0;
+      var ageWords = known ? LockMode.updatedText(lkAllocAgeNow()) : '';
+      var age = lk.allocErr ? '<p class="sc-lk-age" data-tone="bad" data-lk-age role="alert">' + esc(lk.allocErr + ' Showing the last numbers.') + '</p>'
+        : (ageWords || lk.allocBusy ? '<p class="sc-lk-age" data-lk-age>' + esc(lk.allocBusy ? 'Updating' : ageWords) + '</p>' : '');
+      h = '<div class="sc-card sc-lk-ahead"><div class="sc-lk-ahead-top">' +
+        (wl ? '<div class="sc-lk-status" data-tone="' + esc(wl.tone) + '" role="status">' + esc(wl.text) + '</div>' : '<div></div>') +
+        lkButton('alloc-refresh', 'Refresh', 'sc-btn-quiet sc-lk-refresh', lk.allocBusy ? ' aria-busy="true"' : '') + '</div>' + age +
+        '<p class="sc-lk-fine">' + esc(LockMode.ALLOC_NOTES.shared + ' ' + LockMode.ALLOC_NOTES.psa) + '</p></div>';
+      if (!known) {
+        // what is left could not be read: say so, and show the rate list (with its Open / Full hints) so the tab is never empty
+        h += '<div class="sc-card sc-lk-window"><p class="sc-lk-fine">' + esc(a.note || '') + '</p></div>' + lkRatesHtml(a, now);
+        lkUi.alloc.innerHTML = h;
+        return;
+      }
+      var v = LockMode.allocView(a, { cat: lk.allocCat, openOnly: lk.allocOpenOnly, expanded: lk.allocOpen });
+      lk.allocCat = v.cat;
+      h += '<div class="sc-lk-chips" role="group" aria-label="Category">' + v.cats.map(function (c) {
+        return '<button type="button" class="sc-lk-chip" data-lk-act="alloc-cat:' + esc(c.key) + '" aria-pressed="' + (c.active ? 'true' : 'false') + '" data-open="' + (c.open ? '1' : '0') + '">' +
+          esc(c.label) + (c.open ? '' : '<span class="sc-lk-chip-note">Full</span>') + '</button>';
+      }).join('') + '</div>';
+      h += '<button type="button" class="sc-lk-filter" role="switch" aria-checked="' + (lk.allocOpenOnly ? 'true' : 'false') + '" data-lk-act="alloc-open">' +
+        '<span class="sc-lk-filter-words"><span class="sc-lk-filter-t">Show open only</span><span class="sc-lk-filter-s">' + esc(v.counts.line) + '</span></span><span class="sc-lk-sw" aria-hidden="true"></span></button>';
+      // what the numbers below are and are not (our own lookups counted, the rates or rules could not be read, group totals that are our own sums)
+      if (v.notes.length) h += '<div class="sc-card sc-lk-window">' + v.notes.map(function (n) { return '<p class="sc-lk-fine">' + esc(n) + '</p>'; }).join('') + '</div>';
+      if (v.empty) {
+        h += '<div class="sc-card sc-lk-empty"><p class="sc-sub">' + esc(v.empty) + '</p>' +
+          (lk.allocOpenOnly ? '<div class="sc-lk-actions" style="margin-top:12px">' + lkButton('alloc-open', 'Show everything', 'sc-btn-quiet sc-btn-block') + '</div>' : '') + '</div>';
+      }
+      v.groups.forEach(function (g) { h += lkAllocCardHtml(g, false); });
+      if (v.pots.length) {
+        h += '<h3 class="sc-h sc-lk-sec-title">Specialty</h3>';
+        v.pots.forEach(function (p) { h += lkAllocCardHtml(p, true); });
       }
       lkUi.alloc.innerHTML = h;
+    }
+    /** After a tap redraws the pane, the button that was tapped is back under the thumb and keyboard focus goes with it. */
+    function lkAllocRefocus(act) {
+      try {
+        var el = lkUi.alloc.querySelector ? lkUi.alloc.querySelector('[data-lk-act="' + String(act).replace(/"/g, '') + '"]') : null;
+        if (el && el.focus) el.focus();
+      } catch (e) { /* focus is a nicety */ }
+    }
+    function lkAllocAct(act) {
+      if (act.indexOf('alloc-cat:') === 0) { lk.allocCat = act.slice(10); renderLockAlloc(); lkAllocRefocus(act); return true; }
+      if (act === 'alloc-open') { lk.allocOpenOnly = !lk.allocOpenOnly; renderLockAlloc(); lkAllocRefocus(act); return true; }
+      if (act.indexOf('alloc-grp:') === 0) {
+        var id = act.slice(10);
+        if (lk.allocOpen[id]) delete lk.allocOpen[id]; else lk.allocOpen[id] = true;
+        renderLockAlloc(); lkAllocRefocus(act);
+        return true;
+      }
+      return false;
     }
 
     // ── My locks ──
@@ -13580,6 +14000,37 @@ window.LockMode = {
     }
 
     function wireLock() {
+      // Nothing is asked of Triumph while the page is hidden: the minute timer stops, and comes back (with a fresh read if the numbers went stale) when it is shown.
+      document.addEventListener('visibilitychange', function () {
+        if (!lkAllocWatching()) { lkAllocStop(); return; }
+        if (lk.alloc && Date.now() - lk.allocAt >= LK_ALLOC_EVERY_MS - 1000) lkLoadAlloc(true);
+        lkAllocStart();
+      });
+      // Pull down at the top of the Allocation tab in a browser to refresh. Passive listeners: scrolling is never held up.
+      var pull = null;
+      lkUi.alloc.addEventListener('touchstart', function (ev) {
+        pull = null;
+        if (lk.tab !== 'alloc' || lk.allocBusy || dom.layout.classList.contains('sc-native-cam')) return;
+        var se = document.scrollingElement || document.documentElement;
+        if (se && se.scrollTop > 0) return;
+        var t0 = ev.touches && ev.touches[0];
+        if (t0) pull = { y: t0.clientY, go: false };
+      }, { passive: true });
+      lkUi.alloc.addEventListener('touchmove', function (ev) {
+        if (!pull) return;
+        var t1 = ev.touches && ev.touches[0];
+        var dy = t1 ? t1.clientY - pull.y : 0;
+        pull.go = dy >= 80;
+        if (dy > 24) lkUi.alloc.setAttribute('data-pull', pull.go ? 'go' : 'pull'); else lkUi.alloc.removeAttribute('data-pull');
+      }, { passive: true });
+      var pullEnd = function () {
+        var go = !!(pull && pull.go);
+        pull = null;
+        lkUi.alloc.removeAttribute('data-pull');
+        if (go) lkLoadAlloc(true);
+      };
+      lkUi.alloc.addEventListener('touchend', pullEnd, { passive: true });
+      lkUi.alloc.addEventListener('touchcancel', pullEnd, { passive: true });
       lkUi.root.addEventListener('click', function (ev) {
         var t = ev.target;
         if (!t || !t.closest) return;
@@ -14512,7 +14963,10 @@ window.LockMode = {
       if (bridge.cameraPanelSupported()) showPanelIfReady(); else autoCamera();
       applyPageHiding();
       applyLockMode();
-      if (lk.on) { lkStartTimer(); lkStatus(); } // back on this tab: the status ticks again
+      if (lk.on) { // back on this tab: the status ticks again, and so does the Allocation tab if it is the one showing (with a fresh read if its numbers went stale)
+        lkStartTimer(); lkStatus();
+        if (lk.tab === 'alloc') { if (lk.alloc && Date.now() - lk.allocAt >= LK_ALLOC_EVERY_MS - 1000) lkLoadAlloc(true); lkAllocStart(); }
+      }
       syncAdjust(false); // a box this phone set and never got onto the login (no signal, the app closed) is saved now
       ensureSettings(true).then(function () { // the tab loads both sheets, whatever rule is picked
         repaintForSheets(); // our sheets are in: every card is priced against the one picked
@@ -14525,6 +14979,7 @@ window.LockMode = {
       closeCamera();
       stopAllAveragePolls();
       lkStopTimer();
+      lkAllocStop();
       document.body.classList.remove('sc-hiding'); // another tab of the dev view keeps its header
       resumed = false;
       if (nativeScannerOpen) { bridge.closeScanner(); setNativeCamera(false); }
