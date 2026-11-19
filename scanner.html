@@ -5064,9 +5064,12 @@ window.ScanCamera = {
 //  - only the code in the aim zone (the middle half of the view, AimZone in ScanGeometry.kt), and only while exactly one
 //    distinct cert has its centre there: a neighbouring slab, or two slabs in the zone, are never taken;
 //  - a code sent (by itself or by a tap) is done: it is not taken again while it stays in view, nor until REARM_MS of
-//    frames have gone by without it (about 3 s, so the same slab is never added twice by a steady hand), and a tap
-//    takes a done code again at once. Only frames count: a gap in the frames longer than PAUSE_MS is a pause (the tab
+//    frames have gone by without it (about 5 s, a little longer than the app's 3 s: the page's reader loses a held slab
+//    for a few seconds now and then, and it must not be beeped and looked up a second time when it comes back), and a
+//    tap takes a done code again at once. Only frames count: a gap in the frames longer than PAUSE_MS is a pause (the tab
 //    was in the background, a dialog was open), not time the code was out of view;
+//  - only while the camera is what the person is looking at: scrolled off screen (less than ON_SCREEN_RATIO of the camera
+//    view showing) nothing is taken and the camera is read only every OFFSCREEN_GAP_MS (the app's cameraWatched rule);
 //  - one code at a time: nothing within SPACING_MS of the last code sent, so each has its own beep and flash;
 //  - in Tap to scan nothing is ever taken by itself (a tap still sends, and what it sends is done here just the same).
 //
@@ -5081,8 +5084,9 @@ window.ScanCamera = {
 var MODE_KEY = 'iopScanMode';
 var MODES = ['auto', 'tap'];
 
-/** A done code can be taken by itself again once frames have gone this long without it (AutoCapture.REARM_MS). */
-var REARM_MS = 3000;
+/** A done code can be taken by itself again once frames have gone this long without it. The app's AutoCapture.REARM_MS is 3000; the page's
+    reader is slower and can fail on a held slab (glare, a shaky hand) for longer than that, so a slab is not taken twice: 5000. */
+var REARM_MS = 5000;
 /** The shortest time between two codes taken by themselves (AutoCapture.SPACING_MS). */
 var SPACING_MS = 500;
 /** Frames further apart than this are a pause, not time the code was out of view (AutoCapture.PAUSE_MS). */
@@ -5091,6 +5095,12 @@ var PAUSE_MS = 2000;
 var AIM_FRACTION = 0.5;
 /** While scanning by itself the watch loop starts a read at most this often: 130 ms is about 7.7 reads a second. */
 var WATCH_GAP_MS = 130;
+/** With the camera view scrolled off screen the watch loop starts a read only this often (a slow look, to spare the battery; nothing is taken). */
+var OFFSCREEN_GAP_MS = 1000;
+/** The camera view counts as on screen when at least this fraction of it shows (the app's cameraWatched: the camera is what is being looked at). */
+var ON_SCREEN_RATIO = 0.6;
+/** The IntersectionObserver thresholds the page watches the camera view with: a report whenever the shown fraction crosses one of them. */
+var WATCH_THRESHOLDS = [0, 0.2, 0.4, 0.6, 0.8, 1];
 /** How long a note ("Scanning automatically") stays on the camera's status pill. */
 var NOTE_MS = 1800;
 
@@ -5126,6 +5136,32 @@ function saveMode(storage, mode) {
  */
 function runsHere(bridgeAvailable, mode, kind) {
   return !bridgeAvailable && kind !== 'webview' && normalizeMode(mode) === 'auto';
+}
+
+/**
+ * Whether the camera view is on screen enough to be what the person is looking at, from an IntersectionObserver entry (or anything shaped
+ * like one). At least ON_SCREEN_RATIO of the view must show. A view taller than the screen can never show that much of itself, so it counts
+ * once it fills that much of the screen's height instead. No entry (no report yet) is on screen: the rule fails open, as a browser with no
+ * IntersectionObserver does.
+ */
+function onScreenEnough(entry) {
+  if (!entry) return true;
+  if (entry.isIntersecting === false) return false;
+  var ratio = Number(entry.intersectionRatio);
+  if (ratio >= ON_SCREEN_RATIO) return true;
+  var seen = entry.intersectionRect;
+  var root = entry.rootBounds;
+  return !!(seen && root && root.height > 0 && seen.height >= ON_SCREEN_RATIO * root.height);
+}
+
+/**
+ * How often the watch loop may start a read (the `ms` ScanCamera's setWatchGap takes; -1 is the engine's own default, its fastest): a camera
+ * view off screen is read slowly (OFFSCREEN_GAP_MS), and on screen it is read at the automatic scanning rate while `live` (the camera is
+ * scanning by itself: a browser, Scan automatically, signed in) and at the engine's default otherwise.
+ */
+function watchGapFor(live, onScreen) {
+  if (!onScreen) return OFFSCREEN_GAP_MS;
+  return live ? WATCH_GAP_MS : -1;
 }
 
 // ── is it a cert? (CertShape.kt) ───────────────────────────────────────────────────────────────────
@@ -5519,6 +5555,9 @@ window.AutoScan = {
   PAUSE_MS: PAUSE_MS,
   AIM_FRACTION: AIM_FRACTION,
   WATCH_GAP_MS: WATCH_GAP_MS,
+  OFFSCREEN_GAP_MS: OFFSCREEN_GAP_MS,
+  ON_SCREEN_RATIO: ON_SCREEN_RATIO,
+  WATCH_THRESHOLDS: WATCH_THRESHOLDS,
   NOTE_MS: NOTE_MS,
   ASK_STALL_MS: ASK_STALL_MS,
   STUCK_MS: STUCK_MS,
@@ -5528,6 +5567,8 @@ window.AutoScan = {
   loadMode: loadMode,
   saveMode: saveMode,
   runsHere: runsHere,
+  onScreenEnough: onScreenEnough,
+  watchGapFor: watchGapFor,
   sendsItself: sendsItself,
   certNumber: certNumber,
   sameCode: sameCode,
@@ -10145,6 +10186,7 @@ window.PileRates = {
       dom.password.value = '';
       showSigninStep('paused');
       renderAuthState();
+      applyScanMode(); // no session: the camera takes nothing by itself, and says so
     }
     /** Asks PostgREST for this login's own sourcers row (its RLS lets a sourcer read only its own) with the access
         token it still holds: Auth may have ended the session already, but the token reads until it expires. Only a
@@ -10175,6 +10217,7 @@ window.PileRates = {
       dom.password.value = '';
       showSigninStep('form');
       renderAuthState();
+      applyScanMode(); // a camera that was already on (signed out until now) scans by itself again: brackets, hint and read rate follow the sign-in
       // signed in on the Scanner: the camera comes up (app 1.10: its camera panel, with the camera off)
       if (bridge.cameraPanelSupported()) showPanelIfReady(); else autoCamera();
       // signed in: the private Scanner sheet can be read now, and "Normal" prices on it. Nothing is known
@@ -10359,6 +10402,7 @@ window.PileRates = {
       if (message) signinError(message);
       renderAuthState();
       renderAccount();
+      applyScanMode(); // signed out the camera takes nothing by itself: no aim brackets, no "hold the barcode in the box"
       // no login, no private Scanner sheet: "Normal" prices on the consignor rates again
       scannerSettings = null; scannerKnown = false;
       loadScannerSheet().then(repaintForSheets);
@@ -12173,6 +12217,7 @@ window.PileRates = {
               if (rs.ok) return lookupOnce(headersMs, true, scope);
               if (rs.noSignal) { var eSig = new Error(Signal.NO_SIGNAL_ERROR); eSig.noSignal = true; throw eSig; }
               session = null; saveSession(null);
+              applyScanMode(); // the session ended under a lookup: the camera takes nothing by itself now
               if (panelShown) setPanel(false);
               var eOut = new Error('signed out'); eOut.signedOut = true; throw eOut;
             });
@@ -12352,15 +12397,46 @@ window.PileRates = {
 
     /** Whether the page's own camera takes codes by itself: a browser (never an app's bridge) in Scan automatically. */
     function autoOn() { return AutoScan.runsHere(bridge.isAvailable(), scanMode, camKind); }
+    /** Whether the camera is scanning by itself right now: a browser's camera on, in Scan automatically, and signed in (signed out nothing is
+        taken behind the sign-in form, so the brackets and the hint must not promise it). */
+    function liveScan() { return !!cam && autoOn() && !!session; }
     /** The aim brackets, the hint under the camera, the read rate and the Settings rows all follow the mode (and whether the camera is on). */
     function applyScanMode() {
       auto.setMode(scanMode);
-      var live = !!cam && autoOn();
+      var live = liveScan();
       if (dom.aim) dom.aim.hidden = !live;
       dom.vf.classList.toggle('sc-auto', live); // the big shutter goes: nothing needs a tap, and a tap on the picture still reads
       if (dom.vfHint) dom.vfHint.textContent = live ? AutoScan.MODE_TEXT.auto.hint : HINT_TAP;
-      if (cam) cam.setWatchGap(live ? AutoScan.WATCH_GAP_MS : -1);
+      applyCamWatch();
       renderScanModeRows();
+    }
+    // ── only while the camera is what is being looked at (the Android app's cameraWatched rule): scrolled off screen, a slab that happens
+    // to be in view is not being scanned, so nothing is taken and the camera is read slowly; back on screen it carries on. ──
+    var camOnScreen = true;    // enough of the camera view shows (IntersectionObserver); true where the browser has none
+    var camVisObserver = null;
+    /** Nothing is taken while a sheet is open over the camera (Settings, Rates, Edit card) or the camera view is scrolled off screen. */
+    function camPaused() { return !camOnScreen || !!(document.querySelector && document.querySelector('dialog[open]')); }
+    /** Pause (or not) and read slowly (or at the mode's rate) to match where the camera view is. */
+    function applyCamWatch() {
+      auto.setPaused(camPaused());
+      if (cam) cam.setWatchGap(AutoScan.watchGapFor(liveScan(), camOnScreen));
+    }
+    /** Starts watching whether the camera view is on screen; stopWatchingOnScreen() ends it (the camera went off). */
+    function watchOnScreen() {
+      stopWatchingOnScreen();
+      if (typeof IntersectionObserver === 'undefined') return; // an old browser: the camera is always taken as watched, as it was
+      try {
+        camVisObserver = new IntersectionObserver(function (entries) {
+          if (!entries || !entries.length) return;
+          camOnScreen = AutoScan.onScreenEnough(entries[entries.length - 1]); // the newest report is where the view is now
+          applyCamWatch();
+        }, { threshold: AutoScan.WATCH_THRESHOLDS });
+        camVisObserver.observe(dom.vf);
+      } catch (e) { camVisObserver = null; camOnScreen = true; }
+    }
+    function stopWatchingOnScreen() {
+      if (camVisObserver) { camVisObserver.disconnect(); camVisObserver = null; }
+      camOnScreen = true;
     }
     function setScanMode(mode) {
       mode = AutoScan.normalizeMode(mode);
@@ -12396,7 +12472,7 @@ window.PileRates = {
     /** One frame the camera read (video px): the aim rules decide whether a cert is taken now. Not run in the apps, not in Tap to scan. */
     function onCamFrame(items) {
       if (!cam || bridge.isAvailable() || camKind === 'webview' || !session || !camBox.w || !camBox.h) return; // signed out (or the session ended): nothing is taken behind the sign-in form
-      auto.setPaused(!!(document.querySelector && document.querySelector('dialog[open]'))); // a sheet over the camera (Settings, Rates, Edit card) takes nothing
+      auto.setPaused(camPaused()); // a sheet over the camera (Settings, Rates, Edit card) takes nothing, nor does a camera scrolled off screen
       var m = cam.mapping();
       var onScreen = items.map(function (it) { return { text: it.text, format: it.format, ready: it.ready, corners: cam.onScreen(it, m) }; });
       var pick = auto.onFrame(onScreen, camBox);
@@ -12522,6 +12598,7 @@ window.PileRates = {
       dom.vf.classList.remove('sc-auto');
       auto.reset();
       if (camBoxObserver) { camBoxObserver.disconnect(); camBoxObserver = null; }
+      stopWatchingOnScreen();
       if (cam) { cam.stop(); cam = null; }
       torchOn = false;
       dom.torch.hidden = true;
@@ -12653,6 +12730,7 @@ window.PileRates = {
           });
           camBoxObserver.observe(dom.vf);
         }
+        watchOnScreen();
         auto.reset();
         applyScanMode();
       }, function (err) {
