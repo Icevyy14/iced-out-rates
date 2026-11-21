@@ -3303,12 +3303,16 @@ const NEW_CERT_FROM = 70_000_000; // PSA cert# >= this is a "new" cert
 // buy stuff that we can't buy... if there are overlapping things or anything that's unsure about, just have it
 // be in our favor." Five switches, ALL ON unless a block says `false`: a missing block, or a key that is not
 // exactly false, is ON, so a typo can never quietly turn a protection off. Every one can only LOWER a quote or
-// turn it into a hand-pricing flag (priceSlab returns `staffPrice`), never raise one:
+// turn it into a rejection, never raise one. There is NO hand-pricing outcome any more (owner, 2026-11-20: "for the
+// sheets get rid of Staff will price, either price it or reject it"): a slab is priced or it is "Not buying" with a
+// plain reason, and priceSlab never returns `staffPrice`.
 //   lowestOverlap   a slab that fits more than one band is quoted the LOWEST dollar payout, not the first band's
 //   lowerValue      (comp.js) two value sources: quote on the lower of Triumph's and Card Ladder's value
-//   thinSales       a band priced on the 3-sale average with fewer than 3 sales behind it is flagged, not priced
-//   unknownLanguage a slab whose language could not be read is flagged, never guessed as English
-//   resaleCheck     (comp.js) Trader would not pay at least our price, or only on a guess, so flag it
+//   thinSales       a band priced on the 3-sale average with fewer than 3 sales behind it is priced on the LOWEST known sale instead
+//                   (rejected when no sale is known)
+//   unknownLanguage a slab whose language could not be read is rejected, never guessed as English
+//   resaleCheck     (comp.js) Trader would not pay at least our price: our quote drops to Trader's payout minus our margin, or the
+//                   slab is rejected when Trader's number is only a guess
 const BUY_SIDE_KEYS = ['lowestOverlap', 'lowerValue', 'thinSales', 'unknownLanguage', 'resaleCheck'];
 function buySideOf(settings) {
   const block = settings && typeof settings === 'object' ? settings.buySide : null;
@@ -3425,6 +3429,15 @@ const MAX_GRADE = 10;
 const REJECT_TEXT = "We're not buying this right now";
 /** The machine half of the same outcome: priceSlab's `why` on a rejected slab. */
 const REJECT_WHY = 'outside our current ranges';
+/**
+ * The other reasons a slab is turned down now that nothing is left for a person to price (owner, 2026-11-20). Plain words, no
+ * em dash: staff read them on the sheet, and a seller can be told them. comp.js and the Scanner (offerRules.js) both reject with
+ * these exact strings, so the two can never word the same outcome differently.
+ */
+const REJECT_WHY_SALES = 'not enough sales to price';
+const REJECT_WHY_LANGUAGE = 'language could not be confirmed';
+const REJECT_WHY_NO_VALUE = 'no value found for this slab';
+const REJECT_WHY_CONFIDENCE = 'Triumph gave no confidence for this slab';
 
 /**
  * A saved basis key as one of today's keys, or null when it isn't one. The bot used to offer a
@@ -3640,6 +3653,23 @@ function recentSalesOf(slab) {
 }
 
 /**
+ * The LOWEST sale we know of for a slab, in cents, or null when we know of none. This is what a slab is priced on when the 3-sale
+ * average cannot be trusted (it rests on fewer than 3 sales, or there is no average at all): the owner's rule, "when in doubt take the
+ * lower number". It is the MINIMUM of every sale we know of: the lowest sale Card Ladder listed (slab.lowestSaleCents: the caller's lowest
+ * of them), the newest Card Ladder sale (slab.lastSaleCents) and Triumph's own last sale for the cert (slab.triumphLastSaleCents), so a
+ * quote is never higher than any one sale we know of, and the staff note ("lowest known sale") is true. A 0, a negative or a non-number
+ * is no sale.
+ */
+function lowestSaleOf(slab) {
+  const sale = v => (typeof v === 'number' && isFinite(v) && v > 0 ? v : null);
+  let low = null;
+  for (const v of [sale(slab.lowestSaleCents), sale(slab.lastSaleCents), sale(slab.triumphLastSaleCents)]) {
+    if (v != null && (low == null || v < low)) low = v;
+  }
+  return low;
+}
+
+/**
  * The cents a basis is worth for one slab, or null when it can't be worked out. `lowest` ignores the
  * input it doesn't have (money.lowestOf drops nulls), so it is null only when BOTH are missing — a
  * slab with no 3-avg is still paid on its CL value under "lowest of CL value & 3-avg".
@@ -3716,32 +3746,74 @@ function orderedRates(rates) {
  * its rate, name and percent and is paid on the recent sales: `basis` and `basisCents` become the number actually used (so
  * "Paid on" and "Market" tell the truth) and `clvCap` says what happened, with the one plain-English note staff read.
  * One exception: where the cap would land on Card Ladder's average and that average rests on fewer than 3 sales
- * (slab.avg3Thin), the thinSales switch flags the slab for a person, exactly as it does a row read on the average: the
- * quote would be a percent of a thin average, and a protection must never leave a quote higher than with it off.
+ * (slab.avg3Thin), the thinSales switch prices the row on the LOWEST known sale instead (lowestSaleOf), exactly as it does a
+ * row read on the average: a percent of a thin average is not a number we trust, and a protection must never leave a quote
+ * higher than with it off. With no sale known at all the slab is rejected (REJECT_WHY_SALES), never handed to a person.
  */
 function capClvHit(hit, slab, settings) {
   if (hit.basis !== 'clv') return hit;
   const pct = clvCapPctOf(settings);
   const cmp = pct > 0 ? recentSalesOf(slab) : null;
   if (!cmp || !clvOverCap(hit.basisCents, cmp.cents, pct)) return hit;
-  if (cmp.source === 'cl' && slab.avg3Thin && buySideOf(settings).thinSales) {
-    return { staffPrice: true, buySide: true, why: 'the 3-sale average rests on fewer than 3 sales' };
+  let cents = cmp.cents, kind = cmp.kind;
+  const thin = cmp.source === 'cl' && slab.avg3Thin && buySideOf(settings).thinSales;
+  if (thin) {
+    const lowest = lowestSaleOf(slab);
+    if (lowest == null) return { rejected: true, buySide: true, dataGap: true, why: REJECT_WHY_SALES };
+    cents = Math.min(cmp.cents, lowest);
+    kind = 'lowest';
   }
-  const payoutCents = money.pctOf(cmp.cents, hit.pct);
+  const payoutCents = money.pctOf(cents, hit.pct);
   if (payoutCents > hit.payoutCents) return hit; // never a raise: cannot happen (the sales are under the CLV), kept as the guard
-  const words = cmp.kind === 'avg3' ? 'avg of last 3' : 'the last sale';
-  const note = `CL value ${money.fmt(hit.basisCents)} is far above recent sales; priced on ${words} ${money.fmt(cmp.cents)}`
-    + (cmp.source === 'triumph' ? ' (Triumph)' : '');
+  const words = kind === 'avg3' ? 'avg of last 3' : kind === 'lowest' ? 'the lowest known sale' : 'the last sale';
+  const note = `CL value ${money.fmt(hit.basisCents)} is far above recent sales; priced on ${words} ${money.fmt(cents)}`
+    + (cmp.source === 'triumph' ? ' (Triumph)' : '')
+    + (thin ? ' because the 3-sale average rests on fewer than 3 sales' : '');
   return {
-    ...hit, basis: cmp.kind, basisCents: cmp.cents, payoutCents,
-    clvCap: { clvCents: hit.basisCents, cmpCents: cmp.cents, kind: cmp.kind, source: cmp.source, note },
+    ...hit, basis: kind, basisCents: cents, payoutCents,
+    clvCap: { clvCents: hit.basisCents, cmpCents: cents, kind, source: cmp.source, note },
   };
 }
 
 /**
+ * A band that prices on Card Ladder's 3-sale average (basis avg3, or the lower of that and the value), where that average
+ * rests on fewer than 3 sales (slab.avg3Thin): a percent of a thin average is not a number we trust, so the row keeps its band,
+ * name and percent and is paid on the LOWEST known sale instead (lowestSaleOf), basis 'lowest', never above what the average
+ * gave. `lotBasisCents` and `thinSales` say what happened (the average it was going to be paid on, and the one plain-English
+ * note staff read). No sale known at all: rejected, REJECT_WHY_SALES.
+ */
+function onLowestSale(hit, slab) {
+  const lowest = lowestSaleOf(slab);
+  if (lowest == null) return { rejected: true, buySide: true, dataGap: true, why: REJECT_WHY_SALES };
+  const basisCents = Math.min(hit.basisCents, lowest);
+  const payoutCents = money.pctOf(basisCents, hit.pct);
+  const note = `The 3-sale average ${money.fmt(hit.basisCents)} rests on fewer than 3 sales; priced on the lowest known sale ${money.fmt(lowest)}`;
+  return {
+    ...hit, basis: 'lowest', basisCents, payoutCents, lotBasisCents: hit.basisCents,
+    thinSales: { avgCents: hit.basisCents, lowestCents: lowest, note },
+  };
+}
+
+/**
+ * A slab Card Ladder gave NO sale average for, where a band that prices on that average could take it (comp.js, and the Scanner's
+ * offerRules.js, find that out): priced on the LOWEST known sale standing in for the missing average, on the 'lowest' basis (the
+ * lower of the CL value and that sale) for every band, so the quote can never sit on the CL value alone. No sale known at all:
+ * rejected, REJECT_WHY_SALES. Everything else priceSlab checks (range, grade, language...) still applies. `avgStandIn` on a price
+ * carries the one plain-English note staff read.
+ */
+function priceWithoutAverage(slab, settings) {
+  const lowest = lowestSaleOf(slab);
+  if (lowest == null) return { rejected: true, buySide: true, dataGap: true, why: REJECT_WHY_SALES };
+  const out = priceSlab({ ...slab, avg3Cents: lowest, avg3Thin: false, avg3TrendDown: false }, settings, { basis: 'lowest' });
+  if (typeof out.payoutCents !== 'number') return out;
+  return { ...out, avgStandIn: { lowestCents: lowest, note: `No sale average; priced on the lowest known sale ${money.fmt(lowest)}` } };
+}
+
+/**
  * slab = { clvCents, avg3Cents, grade, confidence, cert, title, year, sport, grader, language }, plus the optional
- * lastSaleCents / avg3TrendDown / avg3Thin from Card Ladder and triumphLastSaleCents from Triumph (all read only by the
- * bases above and the CLV cap).
+ * lastSaleCents / lowestSaleCents (the lowest sale Card Ladder listed) / avg3TrendDown / avg3Thin from Card Ladder and
+ * triumphLastSaleCents from Triumph (read only by the bases above, the CLV cap and the lowest-sale pricing of a thin or
+ * missing average, lowestSaleOf).
  * opts.basis = the ticket's Market override (staff's per-seller choice). When it is a known basis it
  * is used for EVERY row, ignoring row.basis (and the settings.defaultBasis escape hatch below); the
  * band range is still checked against that basis's value, exactly as it is for a row's own basis. A key saved under the
@@ -3750,21 +3822,23 @@ function capClvHit(hit, slab, settings) {
  * the slab wins (the owner's app's rule: a sheet reads top to bottom like a price list); with it ON (the
  * default) the row that pays the LOWEST dollar payout wins, an earlier row on a tie, UNLESS the highest fitting
  * rate is at least settings.overlapPoints (default 5) above the lowest fitting one: then the highest-rate row
- * wins (see pickOverlap). Three outcomes, and
- * only the first is a price:
+ * wins (see pickOverlap). Two outcomes, a price or a rejection, and nothing in between (owner, 2026-11-20: "either price it or
+ * reject it"; priceSlab never returns `staffPrice`):
  *   1. a row takes the slab -> { row, rateName, pct, basis, basisCents, payoutCents }, plus `clvCap` when the CLV cap
- *      re-priced a CL-value row on recent sales (basis/basisCents/payoutCents are then the recent-sales ones)
- *   2. the slab HAS a value (some row's basis resolved) but NO row takes it -> { rejected: true, why }.
- *      Out of range, outside the grade range, under a minimum confidence, the wrong cert rule, not
- *      vintage/special, the wrong language, the wrong sport or grader: all of it means we are not
- *      buying this slab, so it is never quoted and never totalled.
- *   3. no value could be worked out at all -> { staffPrice: true, why }. Staff price that one by
- *      hand because we do not know what it is worth, NOT because we don't want it.
+ *      re-priced a CL-value row on recent sales (basis/basisCents/payoutCents are then the recent-sales ones), or
+ *      `thinSales` when a band on a thin 3-sale average was paid on the lowest known sale instead (onLowestSale)
+ *   2. everything else -> { rejected: true, why }. No row takes it (out of range, outside the grade range, under a minimum
+ *      confidence, the wrong cert rule, not vintage/special, the wrong language, the wrong sport or grader: REJECT_WHY, or
+ *      REJECT_WHY_CONFIDENCE when only a missing Triumph confidence stands in the way), a band takes it but its language could
+ *      not be confirmed (REJECT_WHY_LANGUAGE), its 3-sale average is thin and no sale is known (REJECT_WHY_SALES), or no value
+ *      could be worked out at all (REJECT_WHY_NO_VALUE). It is never quoted and never totalled. `dataGap: true` marks a
+ *      rejection that is for want of data (no value, no sale, no confidence), not a judgement about the slab.
  */
 function priceSlab(slab, settings, opts = {}) {
   const override = normalizeBasis(opts && opts.basis);
   const buy = buySideOf(settings);
   let sawAnyValue = false;
+  let needsSale = false; // a row wanted the 3-sale average or the newest sale, and the slab has neither
   let chosen = null;
   const hits = [];
   for (const row of orderedRates(settings.rates)) {
@@ -3773,6 +3847,7 @@ function priceSlab(slab, settings, opts = {}) {
     const basis = override || row.basis || settings.defaultBasis;
     const basisCents = resolveBasisCents(basis, slab);
     if (basisCents != null) sawAnyValue = true;
+    if (basisCents == null && (basis === 'avg3' || basis === 'last')) needsSale = true;
     if (basisCents == null) continue; // this row can't be evaluated without its basis value
     if (!rowMatches(row, slab, basisCents, settings)) continue;
     const hit = {
@@ -3787,18 +3862,30 @@ function priceSlab(slab, settings, opts = {}) {
   }
   if (buy.lowestOverlap && hits.length) chosen = pickOverlap(hits, overlapPointsOf(settings));
   if (chosen) {
-    // Only ever a flag in place of a price, never a raise. A slab no band takes stays rejected, as before.
-    // 'Other' (German, French...) is a language we read but do not buy with confidence: flagged too, since a band
+    // Only ever a rejection or a LOWER price in place of the quote, never a raise. A slab no band takes stays rejected, as before.
+    // 'Other' (German, French...) is a language we read but do not buy with confidence: rejected too, since a band
     // that lists all four languages would otherwise price it without a second look.
     if (buy.unknownLanguage && (slabLanguage(slab.language) == null || slab.language === 'Other')) {
-      return { staffPrice: true, buySide: true, why: 'the card language could not be read or is not one we price with confidence, so it is not guessed as English' };
+      return { rejected: true, buySide: true, why: REJECT_WHY_LANGUAGE };
     }
     if (buy.thinSales && slab.avg3Thin && (chosen.basis === 'avg3' || chosen.basis === 'lowest')) {
-      return { staffPrice: true, buySide: true, why: 'the 3-sale average rests on fewer than 3 sales' };
+      return onLowestSale(chosen, slab);
     }
     return capClvHit(chosen, slab, settings);
   }
-  if (!sawAnyValue) return { staffPrice: true, why: 'no CLV, average, or sale value known for this slab' };
+  // No row could be evaluated. A slab with a CL value whose rows all wait on a sale it does not have is short of SALES; a slab with
+  // nothing to price on at all has no value. Either way it is turned down, never handed to a person.
+  if (!sawAnyValue) {
+    const hasValue = typeof slab.clvCents === 'number' && slab.clvCents > 0;
+    return { rejected: true, why: hasValue && needsSale ? REJECT_WHY_SALES : REJECT_WHY_NO_VALUE, dataGap: true };
+  }
+  // A slab with no Triumph confidence at all is read as below EVERY band's minimum (rowMatches), so only a band with no minimum can
+  // take it; when that leaves nothing, say so in words (Triumph being unreachable is not "outside our ranges"): a rejection that
+  // would be a price at the top confidence (5) is one for want of the confidence alone. The probe is one level deep.
+  if (slab.confidence == null && !(opts && opts._noConfidenceProbe)) {
+    const top = priceSlab({ ...slab, confidence: 5 }, settings, { ...opts, _noConfidenceProbe: true });
+    if (typeof top.payoutCents === 'number') return { rejected: true, why: REJECT_WHY_CONFIDENCE, confidenceGated: true, dataGap: true };
+  }
   return { rejected: true, why: REJECT_WHY };
 }
 
@@ -3976,6 +4063,12 @@ window.PriceCore = {
   NEW_CERT_FROM: NEW_CERT_FROM,
   REJECT_TEXT: REJECT_TEXT,
   REJECT_WHY: REJECT_WHY,
+  REJECT_WHY_SALES: REJECT_WHY_SALES,
+  REJECT_WHY_LANGUAGE: REJECT_WHY_LANGUAGE,
+  REJECT_WHY_NO_VALUE: REJECT_WHY_NO_VALUE,
+  REJECT_WHY_CONFIDENCE: REJECT_WHY_CONFIDENCE,
+  lowestSaleOf: lowestSaleOf,
+  priceWithoutAverage: priceWithoutAverage,
   needsCardLadder: needsCardLadder,
   avgRowCouldMatch: avgRowCouldMatch,
   CL_RANGE_MARGIN_PCT: CL_RANGE_MARGIN_PCT,
@@ -7780,8 +7873,13 @@ window.TriumphDown = {
 //
 // Every offer comes back in the shape scanner/session.js already totals: a real offer carries
 // `payoutCents` (+ basisCents/pct/basis/rateName); anything else carries one flag saying why not
-// (rejected / staffPrice / awaitingAverage / noPct / noSheet) and NO payoutCents, so it can never be
+// (rejected / awaitingAverage / noPct / noSheet) and NO payoutCents, so it can never be
 // counted as $0 in a pile total.
+//
+// Nothing here ever asks a person to price a card any more (owner, 2026-11-20: "either price it or reject it"): a card with no
+// value, a card whose language could not be confirmed, a thin or missing 3-sale average with no sale to price on, all come back
+// `rejected` with a plain `why` (rules.js REJECT_WHY_*), and a thin or missing average with a sale known is priced on the
+// LOWEST known sale. `staffPrice` is never returned; payText still reads one on a pile saved on a phone before this.
 'use strict';
 
 var RULES = ['normal', 'consignor', 'flat'];
@@ -7846,6 +7944,18 @@ function lastSaleOf(sales) {
   return best ? best.cents : null;
 }
 
+/** The lowest sale in a card's sales list ({ date, cents }): any readable sale counts, one the average left out (`out`) too. null when none. */
+function lowestOfSales(sales) {
+  var low = null;
+  if (!Array.isArray(sales)) return null;
+  for (var i = 0; i < sales.length; i++) {
+    var s = sales[i];
+    if (!s || typeof s.cents !== 'number' || !isFinite(s.cents) || s.cents <= 0) continue;
+    if (low == null || s.cents < low) low = s.cents;
+  }
+  return low;
+}
+
 /**
  * "Use last sale if trending down": true when the newest sale is lower than EACH of the two before it (needs 3
  * sales, { date, cents } newest first). Same rule as money.js trendingDown (scanner/offerRules.test.js pins
@@ -7867,11 +7977,11 @@ function trendingDownOf(sales) {
 
 /**
  * True when the Avg of 3 rests on fewer than 3 sales: the bot's avg3Thin (clHelper.toClResult), read off the card's own
- * sales list. Each sale is { date, cents, out? } and `out` marks one the average passed over (a high sale it left out), so the
+ * sales list. A band that pays on a thin average is paid on the lowest known sale instead (rules.js priceSlab). Each sale is { date, cents, out? } and `out` marks one the average passed over (a high sale it left out), so the
  * sales that are NOT out are the ones the average used: fewer than 3 of them = thin. Only when the list is known (an array,
  * even an empty one: Card Ladder gave an average and no sales to back it); a card whose sales are null or absent (a row from
  * before the column) is read as before. A list capped at the newest five can only over-flag (a sale the average topped up from
- * beyond the list), never miss one: a hand price too many, never a price too many.
+ * beyond the list), never miss one: a lowest-sale price too many, never a price too many.
  */
 function thinOf(sales, avg3) {
   if (avg3 == null || !Array.isArray(sales)) return false;
@@ -7890,6 +8000,8 @@ function factsOf(card) {
   var last = avgDone ? lastSaleOf(card.sales) : null;
   var trend = avgDone && avg3 != null && last != null && trendingDownOf(card.sales);
   var clClv = avgDone && typeof card.clClvCents === 'number' && card.clClvCents > 0 ? card.clClvCents : null;
+  // The lowest of the card's listed sales (the same Card Ladder answer): what a thin or missing average is priced on (rules.js lowestSaleOf).
+  var lowestSale = avgDone ? lowestOfSales(card.sales) : null;
   // Triumph's value: a stored 0, negative or non-number is no value (valueCents), so Card Ladder's stands in exactly as for none.
   var triumph = valueCents(card.clvCents);
   // Triumph's own last sale (the lookup, when it carries one): the CLV cap's number while Card Ladder has not answered.
@@ -7898,12 +8010,13 @@ function factsOf(card) {
     avgDone: avgDone,
     avgPending: card.avgStatus === 'pending',
     avg3: avg3,
-    // The average rests on fewer than 3 sales: the bot's avg3Thin, so a band that prices on the average is a hand price.
+    // The average rests on fewer than 3 sales: the bot's avg3Thin, so a band that prices on the average is paid on the lowest known sale.
     thin: avgDone && thinOf(card.sales, avg3),
     // The avg of 3 as it is PAID on: the newest sale instead while the sales are trending down.
     avg3e: trend ? Math.min(last, avg3) : avg3,
     trend: trend,
     last: last,
+    lowestSale: lowestSale,
     // Triumph's value; with none (Triumph unknown for this cert) Card Ladder's stands alone.
     clv: triumph != null ? triumph : clClv,
     // Card Ladder's own value, from the same answer (only 'done'); null when unknown or a different grade.
@@ -7914,7 +8027,7 @@ function factsOf(card) {
 
 function slabOf(card, f) {
   return {
-    clvCents: f.clv, avg3Cents: f.avg3, avg3Thin: f.thin, avg3TrendDown: f.trend, lastSaleCents: f.last, triumphLastSaleCents: f.triumphLast, grade: card.grade, confidence: card.confidence, cert: card.cert,
+    clvCents: f.clv, avg3Cents: f.avg3, avg3Thin: f.thin, avg3TrendDown: f.trend, lastSaleCents: f.last, lowestSaleCents: f.lowestSale, triumphLastSaleCents: f.triumphLast, grade: card.grade, confidence: card.confidence, cert: card.cert,
     title: card.title, year: card.year, sport: card.sport, grader: card.grader, language: card.language,
   };
 }
@@ -7952,28 +8065,25 @@ function priceOnSheet(card, sheet, rule, ctx, f, lower) {
   var opts = lower ? { basis: basis } : {};
   var priced = ctx.priceCore.priceSlab(slab, sheet, opts);
   // Card Ladder ANSWERED and gave no sale average, and a band that prices on that average could take this card: the value
-  // alone is not what the rule pays on, so a person prices it. Exactly the bot's rule (comp.js avgAnswerMissing, 5f9cfba): an
-  // avg3/lowest row that avgRowCouldMatch says could take it, or Lower mode (the bot's Market "Lowest" names that data
-  // for every card). A failed lookup is not an answer: it keeps pricing on the value, as before.
+  // alone is not what the rule pays on, so it is priced on the LOWEST known sale standing in for the average (rules.js
+  // priceWithoutAverage, the 'lowest' basis), never above the quote the value alone gave, or rejected when no sale is known.
+  // Exactly the bot's rule (comp.js avgAnswerMissing): an avg3/lowest row that avgRowCouldMatch says could take it, or Lower
+  // mode (the bot's Market "Lowest" names that data for every card). A failed lookup is not an answer: it keeps pricing on the
+  // value, as before.
   if ((typeof priced.payoutCents === 'number' || priced.rejected) && f.avgDone && f.avg3 == null && f.clv != null
     && avgAnswerMissing(sheet, hint, basis, ctx)) {
-    return {
-      staffPrice: true, buySide: true, avgMissing: true, rule: rule,
-      why: 'Card Ladder gave no sale average for this card, and a band prices it on that average, so it is not quoted from its value alone',
-    };
+    var byValue = priced;
+    var standIn = ctx.priceCore.priceWithoutAverage(slab, sheet);
+    priced = typeof standIn.payoutCents === 'number' && typeof byValue.payoutCents === 'number' && byValue.payoutCents < standIn.payoutCents ? byValue : standIn;
   }
   // Two value sources, exactly as the bot's consignment path (comp.js lowerValue): when Triumph and Card Ladder
   // both gave a value and they differ, price at BOTH through the full band logic and keep the LOWER payout (a
   // lower value can land in a higher-percent band, so the lower value alone is not enough). If today's value
-  // prices and the other does not, the sources disagree about whether we buy it: staff price. One source known
-  // = that source. Never a raise.
+  // prices and the other does not, the sources disagree about whether we buy it: the quote stays on the one that IS a price
+  // (today's value), the lower quotable value, never handed to a person. One source known = that source. Never a raise.
   if (f.clv > 0 && f.clClv > 0 && f.clClv !== f.clv && typeof priced.payoutCents === 'number' && ctx.priceCore.buySideOf(sheet).lowerValue) {
     var other = ctx.priceCore.priceSlab(Object.assign({}, slab, { clvCents: f.clClv }), sheet, opts);
-    if (typeof other.payoutCents !== 'number') {
-      priced = { staffPrice: true, buySide: true, why: 'the value sources disagree: ' + ctx.money.fmt(f.clClv) + ' on Card Ladder against ' + ctx.money.fmt(f.clv) + ' on Triumph, and one of them is not a price we quote' };
-    } else if (other.payoutCents < priced.payoutCents) {
-      priced = other;
-    }
+    if (typeof other.payoutCents === 'number' && other.payoutCents < priced.payoutCents) priced = other;
   }
   var out = Object.assign({}, priced, { rule: rule });
   // Rejected with no average to be had (failed/timed out), but an average band could still take it:
@@ -8016,7 +8126,18 @@ function offerFor(card, choice, ctx) {
     if (basis !== 'clv' && f.avgPending) return { awaitingAverage: true, basis: basis, pct: c.flatPct, rule: 'flat' };
     var basisCents = basis === 'lowest' ? lowerOf(f.clv, f.avg3e) : basis === 'avg3' ? f.avg3e : f.clv;
     if (basis === 'avg3' && !f.avgDone) return { awaitingAverage: true, basis: basis, pct: c.flatPct, rule: 'flat' };
-    if (basisCents == null) return { staffPrice: true, why: basis === 'avg3' ? 'no avg of 3' : 'no value', rule: 'flat' };
+    if (basisCents == null) {
+      // A typed percent of an average Card Ladder answered without: the lowest known sale stands in for it (the 'lowest' basis), or
+      // the card is rejected when none is known. Nothing at all to take a percent of: rejected, never handed to a person.
+      var lowestSale = basis === 'avg3' ? ctx.priceCore.lowestSaleOf({ lowestSaleCents: f.lowestSale, lastSaleCents: f.last, triumphLastSaleCents: f.triumphLast }) : null;
+      if (lowestSale != null) {
+        return {
+          payoutCents: ctx.money.pctOf(lowestSale, c.flatPct), basisCents: lowestSale, pct: c.flatPct, basis: 'lowest',
+          rateName: 'Flat %', rule: 'flat',
+        };
+      }
+      return { rejected: true, dataGap: true, why: basis === 'avg3' ? ctx.priceCore.REJECT_WHY_SALES : ctx.priceCore.REJECT_WHY_NO_VALUE, rule: 'flat' };
+    }
     return {
       payoutCents: ctx.money.pctOf(basisCents, c.flatPct), basisCents: basisCents, pct: c.flatPct, basis: basis,
       rateName: 'Flat %', rule: 'flat',
@@ -8085,7 +8206,9 @@ function payText(price, avgStatus, fmt) {
   if (price.rejected) return 'Not buying right now';
   if (price.noSheet) return price.rule === 'consignor' ? 'No consignor sheet' : 'No rate sheet';
   if (price.noPct) return 'Type a percent';
-  return 'Staff will price';
+  // Nothing new is ever left for a person to price; only a price saved on a phone before that carries this flag.
+  if (price.staffPrice) return 'Staff will price';
+  return 'Not buying right now';
 }
 
 /** The Pay square's LOOK, decided from the same fields payText reads (in the same order), never from
@@ -8121,13 +8244,18 @@ function highSaleLeftOut(sales) {
  *       average. The chip beside the sales says "Likely shill": a different line, so nothing is said twice.
  *   "CL value $X is far above recent sales; priced on ..."   when the CLV cap re-priced a CL-value row (rules.js
  *       capClvHit writes the sentence; staff only, like every line here).
- * Nothing without a priced row (a pass, a wait, a staff price), and nothing without an average that is in.
+ *   "The 3-sale average ... rests on fewer than 3 sales; priced on the lowest known sale ..."  /  "No sale average; priced on the
+ *       lowest known sale ..."   when a thin or missing average was paid on the lowest known sale (the page and the bot agree).
+ * Nothing without a priced row (a pass or a wait), and nothing without an average that is in.
  * `price` is offerFor's answer, `card` the facts it priced, `fmt` the money formatter.
  */
 function avgNotes(card, price, fmt) {
   var lines = [];
   if (!card || !price || typeof price.payoutCents !== 'number') return lines;
   if (price.clvCap && price.clvCap.note) lines.push(price.clvCap.note);
+  // A thin or missing average paid on the lowest known sale says so (rules.js onLowestSale / priceWithoutAverage).
+  if (price.thinSales && price.thinSales.note) lines.push(price.thinSales.note);
+  if (price.avgStandIn && price.avgStandIn.note) lines.push(price.avgStandIn.note);
   if (price.basis !== 'avg3' && price.basis !== 'lowest') return lines;
   var f = factsOf(card);
   if (!f.avgDone || f.avg3 == null) return lines;
@@ -12248,14 +12376,13 @@ window.LockMode = {
           showNote(info.message + ' Not confirmed as a pass.', true);
         }
       } else if (priced.rejected) {
-        showNote('No band on the sheet takes this card (' + (priced.why || PriceCore.REJECT_WHY) + ').', true);
+        // A card no band takes, or one a rule turns down with its own plain reason (language, no value, not enough sales...): say which.
+        showNote(!priced.why || priced.why === PriceCore.REJECT_WHY
+          ? 'No band on the sheet takes this card (' + PriceCore.REJECT_WHY + ').'
+          : 'Not buying: ' + priced.why + '.', true);
       } else if (priced.staffPrice) {
-        // A buy-side rule (thin sales, unknown language...) can flag a slab with its own reason: show it.
-        var noValue = /^no CLV/.test(String(priced.why || '')) || priced.why === 'no value';
-        var noAvg = /avg of 3/.test(String(priced.why || ''));
-        showNote(noValue ? 'No CL value or average known for this slab.'
-          : noAvg ? 'Fewer than 3 sales, so there is no avg of 3 to take a percent of.'
-          : 'Staff will price this one: ' + (priced.why || 'flagged') + '.', true);
+        // Only a price saved on this phone before nothing was left for staff to price still carries this flag.
+        showNote('Staff will price this one: ' + (priced.why || 'flagged') + '.', true);
       } else {
         showNote((priced.rateName || '') + (f.sport ? ' · ' + f.sport : ''));
       }
