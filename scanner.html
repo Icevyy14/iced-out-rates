@@ -3750,8 +3750,16 @@ function orderedRates(rates) {
  * row read on the average: a percent of a thin average is not a number we trust, and a protection must never leave a quote
  * higher than with it off. With no sale known at all the slab is rejected (REJECT_WHY_SALES), never handed to a person.
  */
+// Sports rows always pay on the CL value (Josh, 2026-11-20: "for some of the sports stuff it's still pulling last sales"): the CLV
+// cap below re-prices TCG cards (Pokemon, One Piece...) on recent sales, never a row that only takes sports leagues.
+function clvCapExempt(row) {
+  const s = row && row.sport;
+  const keys = Array.isArray(s) ? s : [s];
+  return keys.length > 0 && keys.every(k => SPORT_LEAGUES.includes(k));
+}
+
 function capClvHit(hit, slab, settings) {
-  if (hit.basis !== 'clv') return hit;
+  if (hit.basis !== 'clv' || clvCapExempt(hit.row)) return hit;
   const pct = clvCapPctOf(settings);
   const cmp = pct > 0 ? recentSalesOf(slab) : null;
   if (!cmp || !clvOverCap(hit.basisCents, cmp.cents, pct)) return hit;
@@ -4012,7 +4020,7 @@ function clvCapInPlay(hint, settings, override) {
   if (o && o !== 'clv') return false;
   const value = hint.triumphValueCents;
   if (clvCapPctOf(settings) <= 0 || !(value > 0)) return false;
-  const rows = ((settings && settings.rates) || []).filter(r => o === 'clv' || r.basis === 'clv');
+  const rows = ((settings && settings.rates) || []).filter(r => (o === 'clv' || r.basis === 'clv') && !clvCapExempt(r));
   const fromCents = row => money.toCents(row.from) ?? 0;
   const toCents = row => (row.to == null ? null : money.toCents(row.to));
   return rows.some(row => hintGatesCouldFit(row, hint, settings) && value > fromCents(row) && (toCents(row) == null || value <= toCents(row)));
