@@ -2975,7 +2975,7 @@ function parseCerts(input, opts = {}) {
         // ("12345678 PSA, 87654321 BGS"): which slab it names is a guess, so this cert gets no grader from it
         // and falls to the ambiguous-line refusal below. Never guess a grader on a mixed line.
         const prevKey = i > 1 ? certKey(tokens[i - 2]) : '';
-        const splitGrader = named.length >= 2 && prevKey.length >= 7 && prevKey.length <= 12;
+        const splitGrader = named.length >= 2 && prevKey.length >= 7 && prevKey.length <= 13;
         if (!splitGrader) { grader = GRADER_WORDS[tokens[i - 1].toLowerCase()]; explicit = true; }
       }
       if (!grader && named.length === 1) { grader = named[0]; explicit = true; }
@@ -2988,7 +2988,10 @@ function parseCerts(input, opts = {}) {
         if (explicit) out.unreadable.push({ text: tok, why: 'too short to be a cert' });
         continue; // otherwise it's a year / card number / stray digits -> ignore silently
       }
-      if (key.length > 12) { out.unreadable.push({ text: tok, why: 'too long to be a cert' }); continue; }
+      // CGC's newer certs are 13 digits (e.g. 1401014898077), the same rule the Scanner's parseOneCert uses: 13 digits is
+      // a CGC cert unless the line names another grader; anything longer, or 13 digits named PSA, is not a cert.
+      const cgc13 = digits.length === 13 && (!grader || grader === 'cgc');
+      if (key.length > 12 && !cgc13) { out.unreadable.push({ text: tok, why: 'too long to be a cert' }); continue; }
       if (/^0+$/.test(digits)) { out.unreadable.push({ text: tok, why: 'all zeros' }); continue; }
       if (ambiguousLine) { out.unreadable.push({ text: tok, why: 'line names more than one grader; one slab per line' }); continue; }
 
