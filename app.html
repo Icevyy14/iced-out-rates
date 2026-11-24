@@ -1865,6 +1865,8 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
      section disappears (display:none beats each section's own [hidden] toggling) and the seller card
      is the only thing with a card name, a grade and an offer on it. */
   #tab-scanner .scanner-layout.sc-seller-mode .sc-staff-only{display:none !important;}
+  /* Price with (Normal / Consignor / Flat %) is the owner's: no other login sees it (see syncRuleToRole). */
+  #tab-scanner .scanner-layout.sc-no-rules #sc-rule-card{display:none !important;}
   #tab-scanner .scanner-layout:not(.sc-seller-mode) .sc-seller-only{display:none !important;}
   /* ...and nothing OUTSIDE the scanner either: the header's links to the rate sheets and its status line. */
   body.sc-hiding .nav-tabs,body.sc-hiding .nav-right,body.sc-hiding .logo-sub{display:none !important;}
@@ -18745,7 +18747,24 @@ window.SheetFiles = {
     var prefs = ViewPrefs.loadPrefs(safeLocalStorage(), OfferRules.normalizeChoice);
     var choice = prefs.choice;
     var sellerMode = prefs.hidden;
-    function savePrefsNow() { ViewPrefs.savePrefs(safeLocalStorage(), { choice: choice, hidden: sellerMode }); }
+    // The owner's own Price-with choice (Normal / Consignor / Flat %). Only an owner may price on anything but Normal: Consignor rates are the
+    // buyer's rate minus a fixed cut, so showing them to a sourcer would let them work the buyer's rates out. A non-owner login is priced on
+    // Normal whatever this phone has stored, and the owner's stored choice is left alone for when an owner is back on it.
+    var ownerRule = { rule: choice.rule, flatPct: choice.flatPct, flatBasis: choice.flatBasis };
+    function isOwnerView() { return roleState() === 'owner'; }
+    /** Make `choice` agree with who is signed in: an owner has their stored rule, anyone else Normal. True when it changed. */
+    function syncRuleToRole() {
+      var want = isOwnerView() ? ownerRule : { rule: 'normal', flatPct: ownerRule.flatPct, flatBasis: ownerRule.flatBasis };
+      var next = OfferRules.normalizeChoice(Object.assign({}, choice, want));
+      var moved = next.rule !== choice.rule || next.flatPct !== choice.flatPct || next.flatBasis !== choice.flatBasis;
+      choice = next;
+      if (dom && dom.layout) dom.layout.classList.toggle('sc-no-rules', !isOwnerView());
+      return moved;
+    }
+    function savePrefsNow() {
+      var out = isOwnerView() ? choice : Object.assign({}, choice, ownerRule);
+      ViewPrefs.savePrefs(safeLocalStorage(), { choice: out, hidden: sellerMode });
+    }
 
     // ── the Android app (scanner/nativeBridge.js): when it wraps this page, its own scanner replaces
     // the browser camera and hands every barcode to window.penguinScan. ───────────────────────────
@@ -20206,6 +20225,8 @@ window.SheetFiles = {
 
     function setChoice(next) {
       choice = OfferRules.normalizeChoice(next);
+      if (isOwnerView()) ownerRule = { rule: choice.rule, flatPct: choice.flatPct, flatBasis: choice.flatBasis };
+      else syncRuleToRole();
       savePrefsNow();
       // A rule that prices on a sheet that is not in (its read failed or never answered: a lost signal at a show) asks for
       // it now, not at the next scan: the ONE shared attempt (ensureSettings), asked before the repaint so the open card is
@@ -21322,6 +21343,7 @@ window.SheetFiles = {
     function plOn() { return lkMode() === 'price_lock'; }
 
     function applyLockMode() {
+      if (syncRuleToRole()) { renderRuleControls(); repriceAll(); renderPile(); if (currentKey) renderCurrent(); }
       SinglesPane.refresh(); // who may see Singles (owners only, never in lock mode) may have changed with this
       SheetPane.refresh();   // ...and the Sheet (owners; sourcers only once SHEET_FOR_SOURCERS is on)
       renderTabs();
