@@ -749,6 +749,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
     --sc-spark:#6FB1E0; /* the shading under the trend line (its gradient is drawn by the script) */
     --sc-r-card:22px;
     --sc-r-tile:20px;
+    --sc-thumb-w:44px; --sc-thumb-h:72px; /* a card photo in a row: a slab is about 0.6 wide to 1 high */
     --sc-ease:cubic-bezier(.16, 1, .3, 1);
     --sc-font:'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     /* One type scale: every size on the scanner comes from these five. */
@@ -788,6 +789,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
     --i-sliders:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='21' x2='14' y1='4' y2='4'/%3E%3Cline x1='10' x2='3' y1='4' y2='4'/%3E%3Cline x1='21' x2='12' y1='12' y2='12'/%3E%3Cline x1='8' x2='3' y1='12' y2='12'/%3E%3Cline x1='21' x2='16' y1='20' y2='20'/%3E%3Cline x1='12' x2='3' y1='20' y2='20'/%3E%3Cline x1='14' x2='14' y1='2' y2='6'/%3E%3Cline x1='8' x2='8' y1='10' y2='14'/%3E%3Cline x1='16' x2='16' y1='18' y2='22'/%3E%3C/svg%3E");
     --i-plusminus:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3v14'/%3E%3Cpath d='M5 10h14'/%3E%3Cpath d='M5 21h14'/%3E%3C/svg%3E");
     --i-rotate:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8'/%3E%3Cpath d='M3 3v5h5'/%3E%3C/svg%3E");
+    --i-slab:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='2.5' width='14' height='19' rx='2.5'/%3E%3Cpath d='M8.5 6.5h7'/%3E%3Crect x='8.5' y='10' width='7' height='8' rx='1'/%3E%3C/svg%3E");
 
     font-family:var(--sc-font);font-weight:500;color:var(--sc-ink);
     -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;caret-color:var(--sc-steel-ink);
@@ -824,8 +826,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
   /* One icon recipe: a currentColor square cut out by the icon's mask (--sc-i). */
   #tab-scanner .sc-vf-round::before,#tab-scanner .sc-vf-pill::before,#tab-scanner .sc-start::before,
   #tab-scanner .sc-hide-btn::before,#tab-scanner .sc-earlier-remove::before,#tab-scanner .sc-badge::before,
-  #tab-scanner .sc-note::before,#tab-scanner .sc-conf.sc-conf-low::before,#tab-scanner .sc-type-btn::before,#tab-scanner .sc-grade-dot.sc-unk::before,
-  #tab-scanner .sc-row-grade.sc-unk::before,#tab-scanner #sc-cert-go::after,#tab-scanner #sc-clear::before,
+  #tab-scanner .sc-note::before,#tab-scanner .sc-conf.sc-conf-low::before,#tab-scanner .sc-type-btn::before,
+  #tab-scanner #sc-cert-go::after,#tab-scanner #sc-clear::before,
   #tab-scanner .sc-pile-unknown::before,#tab-scanner .sc-sheet-cue::before,#tab-scanner .sc-result-open::after,
   #tab-scanner .sc-chip-no::before,#tab-scanner .sc-chip-hand::before,#tab-scanner .sc-chip-err::before,
   #tab-scanner .sc-chip-out::after,#tab-scanner .sc-recent-shill::before,#tab-scanner .sc-brand-gear::before,
@@ -1086,28 +1088,41 @@ code{font-family:var(--font-mono);font-size:.92em;}
     transition:opacity 220ms var(--sc-ease), padding 200ms var(--sc-ease);
   }
   #tab-scanner .sc-result-head{display:flex;gap:14px;align-items:flex-start;}
-  /* the grade circle: steel, lit from the top left, with a thin ring */
-  #tab-scanner .sc-grade-dot{
-    flex:none;display:grid;place-items:center;width:52px;height:52px;border-radius:15px;
-    background:var(--sc-grade-bg);color:#fff;font-size:calc(var(--sc-fs-num) * 1.2);font-weight:800;line-height:1;
-    font-variant-numeric:tabular-nums;letter-spacing:-.02em;
-    box-shadow:inset 0 0 0 1.5px var(--sc-grade-ring), inset 0 1px 0 rgba(255,255,255,.16), 0 0 0 2px rgba(6,10,18,.4), 0 5px 12px -5px rgba(0,0,0,.75);
-    transition:width 200ms var(--sc-ease), height 200ms var(--sc-ease), font-size 200ms var(--sc-ease);
+  /* The card's photo, as Courtyard shows a scan (owner, 11/23): a box of one fixed size, so nothing moves when the photo lands, with a slab
+     outline behind it that is all there is when Triumph sent no photo or it would not load. Triumph's imageUrl goes through the server's
+     allow-list first (sourcer-lock/logic.ts), and the page asks again (CardView.photoSrc) before it draws one. */
+  #tab-scanner .sc-thumb{
+    --sc-i:var(--i-slab);
+    position:relative;flex:none;display:block;width:var(--sc-thumb-w);height:var(--sc-thumb-h);border-radius:8px;overflow:hidden;
+    background:var(--sc-fill-card-bg);box-shadow:var(--sc-ring), 0 3px 8px -4px rgba(0,0,0,.6);color:var(--sc-faint);
   }
-  #tab-scanner .sc-grade-dot.sc-unk{--sc-i:var(--i-barcode);background:var(--sc-grey-tint);color:var(--sc-muted);}
-  #tab-scanner .sc-result-words{flex:1 1 auto;min-width:0;padding-top:3px;}
+  #tab-scanner .sc-thumb::before{
+    content:"";position:absolute;inset:0;margin:auto;width:22px;height:22px;background:currentColor;opacity:.75;
+    -webkit-mask:var(--sc-i) center / contain no-repeat;mask:var(--sc-i) center / contain no-repeat;
+  }
+  #tab-scanner .sc-thumb img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover;}
+  #tab-scanner .sc-result .sc-thumb{--sc-thumb-w:54px;--sc-thumb-h:88px;}
+  /* The grade as a chip ("PSA 9"): the grade badges' steel and indigo, the one grade look on every screen. */
+  #tab-scanner .sc-gchip{
+    flex:none;display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:8px;
+    background:var(--sc-grade-bg);box-shadow:inset 0 0 0 1px var(--sc-grade-ring-row), inset 0 1px 0 rgba(255,255,255,.12);
+    color:var(--sc-grade-ink);font-size:var(--sc-fs-label);font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.01em;white-space:nowrap;
+  }
+  #tab-scanner .sc-gchip.sc-unk{background:var(--sc-grey-tint);box-shadow:none;color:var(--sc-muted);}
+  #tab-scanner .sc-gchip[hidden]{display:none;}
+  #tab-scanner .sc-result-id .sc-gchip{order:-1;}
+  #tab-scanner .sc-result-words{flex:1 1 auto;min-width:0;padding-top:1px;}
   #tab-scanner .sc-result-name{font-size:var(--sc-fs-body);font-weight:800;line-height:1.3;letter-spacing:-.005em;color:var(--sc-ink);overflow-wrap:anywhere;text-wrap:balance;}
-  /* The card's year, set and number lead the cert row (CardView.splitTitle leads the name with the card):
-     "2005 EX Deoxys #108   PSA 112458903", told apart by colour (no dot to strand at a line's end when it wraps).
-     It wraps rather than cutting the number off (the app's folded card keeps it to one line: the set's name is cut
-     short there, never its #number). */
-  #tab-scanner .sc-result-set{min-width:0;margin-right:4px;font-weight:700;color:var(--sc-steel-ink);}
-  #tab-scanner .sc-result-line{display:contents;} /* the set and the cert, kept together only on the app's folded card */
+  #tab-scanner .sc-num{white-space:nowrap;}
+  /* Under the name: the set on a line of its own (muted), then the grade chip and the cert. The cert is quiet on purpose: it is the card's
+     detail, not what the card is known by. The app's folded card puts the set after the chip on one line and drops the cert. */
   #tab-scanner .sc-result-id{
-    display:flex;flex-direction:column;align-items:flex-start;gap:3px;margin-top:3px;
+    display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:3px;
     font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);font-variant-numeric:tabular-nums;
   }
-  /* "Grade 9" is read out by a screen reader; the circle shows the number to everyone else. */
+  #tab-scanner .sc-result-set{order:-2;flex:1 1 100%;min-width:0;margin:0 0 3px;font-weight:600;color:var(--sc-muted);overflow-wrap:anywhere;}
+  #tab-scanner .sc-result-set[hidden]{display:none;}
+  /* "Grade 9" is read out by a screen reader; the chip shows it to everyone else. */
   #tab-scanner .sc-result-grade{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
   #tab-scanner .sc-result-grade.sc-blank{display:none;}
   #tab-scanner .sc-rescan{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;background:var(--sc-wait-tint);color:var(--sc-steel-ink);font-size:var(--sc-fs-label);font-weight:700;}
@@ -1212,12 +1227,21 @@ code{font-family:var(--font-mono);font-size:.92em;}
   /* ── type a cert: the field and its button ── */
   #tab-scanner .sc-entry{display:flex;flex-direction:column;gap:8px;min-width:0;}
   #tab-scanner .sc-box{display:flex;align-items:center;gap:8px;min-width:0;}
+  /* The cert box is a textarea, so a pasted list keeps its lines (an input strips them). One line tall like the pill it was; it grows
+     with what is pasted (sizeCertBox) up to a few lines and then scrolls, and the pill's ends square off as it grows. */
   #tab-scanner .sc-cert-input{
-    flex:1 1 auto;min-width:0;height:var(--sc-field-h);padding:0 16px;border:0;border-radius:999px;outline:none;
+    flex:1 1 auto;min-width:0;box-sizing:border-box;height:var(--sc-field-h);max-height:calc(var(--sc-field-h) * 2.6);
+    padding:calc((var(--sc-field-h) - 1.35em) / 2) 16px;border:0;border-radius:calc(var(--sc-field-h) / 2);outline:none;resize:none;overflow-y:auto;
     background:var(--sc-fill);box-shadow:inset 0 0 0 1px var(--sc-edge);
-    color:var(--sc-ink);font-size:var(--sc-fs-body);font-weight:500;
+    color:var(--sc-ink);font-family:inherit;font-size:var(--sc-fs-body);font-weight:500;line-height:1.35;
+    scrollbar-width:thin;scrollbar-color:var(--sc-faint) transparent;
     transition:box-shadow 150ms ease-out, background-color 150ms ease-out;
   }
+  #tab-scanner .sc-cert-input[data-multi]{border-radius:22px;}
+  #tab-scanner .sc-box:has(.sc-cert-input[data-multi]){align-items:flex-end;}
+  /* the app's camera dock has a fixed height: the box stays one line there (a list pasted into it still reads whole) */
+  #tab-scanner .scanner-layout.sc-native-cam .sc-cert-input{height:var(--sc-field-h) !important;max-height:var(--sc-field-h);border-radius:calc(var(--sc-field-h) / 2);}
+  #tab-scanner .sc-batch{margin:0;font-size:var(--sc-fs-label);font-weight:700;line-height:1.45;color:var(--sc-muted);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
   #tab-scanner .sc-cert-input:focus{background:var(--sc-fill-focus);box-shadow:inset 0 0 0 1px var(--sc-steel-ink), 0 0 0 3px var(--sc-focus-soft);}
   #tab-scanner .sc-cert-input:focus-visible{outline:none;}
   #tab-scanner .sc-cert-input::placeholder{color:var(--sc-ph);opacity:1;}
@@ -1291,47 +1315,52 @@ code{font-family:var(--font-mono);font-size:.92em;}
   }
   #tab-scanner .sc-earlier-del span{padding:0 20px;}
   #tab-scanner .sc-earlier-row.sc-swiping .sc-earlier-del{transition:none;}
-  #tab-scanner .sc-earlier-row + .sc-earlier-row::before{content:"";position:absolute;top:0;left:66px;right:0;height:1px;background:var(--sc-line);}
+  #tab-scanner .sc-earlier-row + .sc-earlier-row::before{content:"";position:absolute;top:0;left:calc(12px + var(--sc-thumb-w) + 10px);right:0;height:1px;background:var(--sc-line);}
+  /* A row, after Courtyard's scan list (owner, 11/23): the card's photo, its name and number in bold with its set muted under it, the grade and
+     whether we are buying it as chips, and what we pay on the right (the market and the confidence small under it). The cert is not in the row:
+     tap the row and the card opens with it. */
   #tab-scanner .sc-earlier-main{
-    flex:1 1 auto;min-width:0;display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:12px;align-items:start;
-    padding:9px 0 9px 14px;border:0;border-radius:16px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;
+    flex:1 1 auto;min-width:0;display:grid;grid-template-columns:var(--sc-thumb-w) minmax(0,1fr);column-gap:10px;align-items:start;
+    padding:10px 0 10px 12px;border:0;border-radius:16px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;
     -webkit-tap-highlight-color:transparent;
   }
   #tab-scanner .sc-earlier-main:active .title{color:var(--sc-steel-ink);}
-  #tab-scanner .sc-row-grade{
-    display:grid;place-items:center;width:40px;height:40px;border-radius:11px;background:var(--sc-grade-bg);box-shadow:inset 0 0 0 1px var(--sc-grade-ring-row), inset 0 1px 0 rgba(255,255,255,.12);
-    color:var(--sc-grade-ink);font-size:var(--sc-fs-body);font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em;
-  }
-  #tab-scanner .sc-row-grade.sc-unk{--sc-i:var(--i-barcode);color:var(--sc-muted);background:var(--sc-unk-badge-bg);}
-  #tab-scanner .sc-row-grade.sc-unk::before{width:18px;height:18px;}
   #tab-scanner .sc-earlier-row .name{display:flex;flex-direction:column;align-items:flex-start;min-width:0;}
   #tab-scanner .sc-earlier-row .title{
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-    font-size:var(--sc-fs-row);font-weight:700;line-height:1.3;color:var(--sc-ink);overflow-wrap:anywhere;
+    font-size:var(--sc-fs-row);font-weight:800;line-height:1.3;letter-spacing:-.005em;color:var(--sc-ink);overflow-wrap:anywhere;
   }
-  #tab-scanner .sc-earlier-row .meta{display:flex;flex-wrap:wrap;column-gap:10px;margin-top:3px;max-width:100%;}
-  /* The set keeps to one line: its name is cut short ("2021 Sword & Shield Evol…") and its #number never is. */
-  #tab-scanner .sc-earlier-row .set{display:flex;gap:4px;min-width:0;max-width:100%;white-space:nowrap;font-size:var(--sc-fs-label);font-weight:700;line-height:1.3;color:var(--sc-steel-ink);}
-  #tab-scanner .sc-earlier-row .set-name{min-width:0;overflow:hidden;text-overflow:ellipsis;}
-  #tab-scanner .sc-earlier-row .meta .cert{margin-top:0;}
-  #tab-scanner .sc-earlier-row .cert{margin-top:3px;font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
+  /* The set keeps to one line, cut short with an ellipsis. */
+  #tab-scanner .sc-earlier-row .set{max-width:100%;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--sc-fs-label);font-weight:600;line-height:1.35;color:var(--sc-muted);}
+  #tab-scanner .sc-earlier-row .chips{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin-top:6px;}
   #tab-scanner .sc-earlier-row .val{display:flex;flex-direction:column;align-items:flex-end;font-size:var(--sc-fs-body);font-weight:800;line-height:1.3;color:var(--sc-ink);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right;}
-  /* The market value under what we pay: smaller and dimmer (--sc-muted, so every theme keeps it readable) and one line. The two
-     line boxes (16px + 13px at 1.3) stay under the 40px grade circle and the name column, so the row is no taller than before. */
+  /* The market value under what we pay: smaller and dimmer (--sc-muted, so every theme keeps it readable) and one line. */
   #tab-scanner .sc-earlier-row .val-mkt{font-size:var(--sc-fs-label);font-weight:600;line-height:1.3;color:var(--sc-muted);}
+  /* Triumph's confidence under the market, a dot in its colour (5 green, 4 lime, 3 amber, below that the warning red) and the number in words. */
+  #tab-scanner .sc-earlier-row .val-conf{margin-top:1px;font-size:var(--sc-fs-label);font-weight:700;line-height:1.3;color:var(--sc-muted);font-variant-numeric:tabular-nums;white-space:nowrap;}
+  #tab-scanner .sc-earlier-row .val-conf::before{content:"";display:inline-block;width:7px;height:7px;margin-right:5px;border-radius:50%;background:var(--sc-faint);vertical-align:1px;}
+  #tab-scanner .sc-earlier-row .val-conf.sc-cf-5::before{background:var(--sc-clv);}
+  #tab-scanner .sc-earlier-row .val-conf.sc-cf-4::before{background:#BEF264;}
+  #tab-scanner .sc-earlier-row .val-conf.sc-cf-3::before{background:#FBBF24;}
+  #tab-scanner .sc-earlier-row .val-conf.sc-cf-0::before{background:var(--sc-err-ink);}
+  /* The status chips: text only (the column is narrow), a tint and an ink from the theme. Buying is teal, not buying and the errors red, waiting blue. */
   #tab-scanner .sc-earlier-row .status-pill{
-    display:inline-flex;align-items:center;gap:5px;height:24px;margin-top:7px;padding:0 9px;border:0;border-radius:999px;
+    display:inline-flex;align-items:center;height:24px;margin:0;padding:0 8px;border:0;border-radius:999px;
     background:var(--sc-grey-tint);color:var(--sc-muted);
-    font-family:inherit;font-size:var(--sc-fs-label);font-weight:700;letter-spacing:0;text-transform:none;line-height:1;white-space:nowrap;
+    font-family:inherit;font-size:var(--sc-fs-label);font-weight:800;letter-spacing:0;text-transform:none;line-height:1;white-space:nowrap;
   }
-  #tab-scanner .sc-earlier-row .status-pill::before{width:14px;height:14px;}
+  #tab-scanner .sc-earlier-row .status-pill::before{display:none;}
+  #tab-scanner .sc-earlier-row .status-pill.sc-chip-buy{background:var(--sc-teal-tint);color:var(--sc-teal-chip);}
   #tab-scanner .sc-earlier-row .status-pill.sc-chip-wait{background:var(--sc-wait-tint);color:var(--sc-steel-ink);}
-  #tab-scanner .sc-earlier-row .status-pill.sc-chip-hand{--sc-i:var(--i-pencil);padding-left:7px;background:var(--sc-teal-tint);color:var(--sc-teal-chip);}
-  #tab-scanner .sc-earlier-row .status-pill.sc-chip-no{--sc-i:var(--i-ban);padding-left:7px;background:var(--sc-grey-tint);color:var(--sc-muted);}
-  #tab-scanner .sc-earlier-row .status-pill.sc-chip-err{--sc-i:var(--i-alert);padding-left:7px;background:var(--sc-err-tint);color:var(--sc-err-ink);}
+  #tab-scanner .sc-earlier-row .status-pill.sc-chip-hand{background:var(--sc-wait-tint);color:var(--sc-steel-ink);}
+  #tab-scanner .sc-earlier-row .status-pill.sc-chip-no,#tab-scanner .sc-earlier-row .status-pill.sc-chip-err{background:var(--sc-err-tint);color:var(--sc-err-ink);}
+  /* Price + lock: what the portal lets this login do with the card, beside what we do with it. An option is an outline (Can lock, Queue for 3 AM),
+     a done thing is filled (Locked, teal like Buying). */
+  #tab-scanner .sc-earlier-row .status-pill.sc-chip-lock{background:none;color:var(--sc-steel-ink);box-shadow:inset 0 0 0 1px var(--sc-steel-ink);}
+  #tab-scanner .sc-earlier-row .status-pill.sc-chip-lock[data-kind="locked"]{background:var(--sc-teal-tint);color:var(--sc-teal-chip);box-shadow:none;}
   #tab-scanner .sc-earlier-remove{
     --sc-i:var(--i-x);
-    flex:none;display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin:2px 4px 0 0;padding:0;border:0;border-radius:50%;cursor:pointer;
+    flex:none;display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin:2px 2px 0 0;padding:0;border:0;border-radius:50%;cursor:pointer;
     background:transparent;color:var(--sc-faint);font-size:0;line-height:0;transition:background-color 150ms ease-out, color 150ms ease-out;
   }
   #tab-scanner .sc-earlier-remove::before{width:16px;height:16px;}
@@ -1533,22 +1562,18 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-sheet-down .sc-seller-market{margin-top:0;font-size:var(--sc-fs-num);}
   #tab-scanner .sc-sheet-down .sc-seller-market.sc-wait,#tab-scanner .sc-sheet-down .sc-seller-market.sc-plain{font-size:var(--sc-fs-row);}
 
-  /* The app's folded card, at 'up' and at 'mid' alike: a compact head (a 36px grade, the name, and the set and
-     cert on ONE line, the set's name cut short before its #number is: .sc-result-line holds them together, and only
-     the "Updated in pile" pill may wrap under them), so it stays one row and, at 'mid', leaves room for the sales
-     strip above the dock. */
+  /* The app's folded card, at 'up' and at 'mid' alike: a compact head (a 30px-wide photo, the name, and the grade chip with the set after it on
+     ONE line: the set is what gives, the chip never), so it stays one row and, at 'mid', leaves room for the sales strip above the dock.
+     The cert is on the opened card. On a page under 320px tall the photo waits for the opened card too. */
   #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result{padding:10px 14px 10px 12px;}
   #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-head{align-items:center;gap:12px;}
-  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-grade-dot{
-    width:36px;height:36px;border-radius:10px;font-size:var(--sc-fs-body);
-  }
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result .sc-thumb{--sc-thumb-w:30px;--sc-thumb-h:48px;border-radius:6px;}
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result .sc-thumb::before{width:16px;height:16px;}
   #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-words{padding-top:0;}
-  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-id{flex-direction:row;flex-wrap:wrap;align-items:center;gap:2px 6px;margin-top:2px;}
-  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-line{display:flex;align-items:center;gap:5px;min-width:0;max-width:100%;white-space:nowrap;}
-  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-set{display:contents;}
-  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-set-name{min-width:0;overflow:hidden;text-overflow:ellipsis;}
-  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-set-num{flex:none;}
-  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-cert-id{flex:none;margin-left:3px;}
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-id{gap:2px 6px;margin-top:2px;}
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-gchip{height:22px;padding:0 8px;}
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-set{order:0;flex:1 1 56px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result-cert-id{display:none;}
 
   /* 'up' (app 1.4, the sheet swiped up: review the pile). The scoreboard stays on top; the card folds into
      one row (its grade, name and cert) so the pile sits right under it, and tapping that row opens the
@@ -1595,6 +1620,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   /* A short phone leaves the page under 320px at the middle stop: one line of name keeps the cert number clear of the dock. */
   @media (max-height:320px){
     #tab-scanner .scanner-layout.sc-native-cam:not(.sc-sheet-up):not(.sc-card-open) .sc-result:not(.sc-result-flag) .sc-result-name{-webkit-line-clamp:1;text-wrap:wrap;}
+    #tab-scanner .scanner-layout.sc-native-cam:not(.sc-card-open) .sc-result .sc-thumb{display:none;}
   }
   /* ...and a page under 280px (a 360 x 800 phone with button navigation) has room for the card's head alone: the
      strip would only sit under the dock, so it waits for the opened card. */
@@ -1603,7 +1629,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   }
 
   @media (prefers-reduced-motion:reduce){
-    #tab-scanner .sc-result-more,#tab-scanner .sc-result-more-in,#tab-scanner .sc-grade-dot,#tab-scanner .sc-result{transition:none !important;}
+    #tab-scanner .sc-result-more,#tab-scanner .sc-result-more-in,#tab-scanner .sc-result{transition:none !important;}
     #tab-scanner .sc-wait,#tab-scanner .sc-note.sc-note-down::before{animation:none;}
     #tab-scanner .sc-earlier-slide,#tab-scanner .sc-earlier-del{transition:none !important;}
   }
@@ -1779,7 +1805,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-adjust-err[hidden],#tab-scanner .sc-adjust-status:empty{display:none;}
   /* A row's numbers: tap them to type a Market or Pay for that card. 44px to tap, the same press look as the name. */
   #tab-scanner .sc-earlier-val{
-    flex:none;display:flex;align-items:flex-start;justify-content:flex-end;min-width:44px;min-height:44px;margin:0;padding:9px 4px 9px 8px;
+    flex:none;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start;min-width:44px;min-height:44px;margin:0;padding:10px 4px 10px 8px;
     border:0;border-radius:14px;background:none;color:inherit;font:inherit;text-align:right;cursor:pointer;
     -webkit-tap-highlight-color:transparent;transition:background-color 150ms ease-out;
   }
@@ -2127,6 +2153,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .scanner-layout:not(.sc-lock-mode) .sc-lock-only{display:none !important;}
   #tab-scanner .scanner-layout.sc-lock-mode #sc-score,
   #tab-scanner .scanner-layout.sc-lock-mode #sc-result,
+  #tab-scanner .scanner-layout.sc-lock-mode #sc-pl,
   #tab-scanner .scanner-layout.sc-lock-mode #sc-seller,
   #tab-scanner .scanner-layout.sc-lock-mode #sc-rule-card,
   #tab-scanner .scanner-layout.sc-lock-mode #sc-earlier,
@@ -2177,7 +2204,9 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-sheet-down .sc-lk-market,#tab-scanner .sc-sheet-down .sc-lk-set,#tab-scanner .sc-sheet-down .sc-lk-id{display:none !important;}
   #tab-scanner .sc-sheet-down .sc-lk-card{padding:10px 14px;gap:8px;}
   #tab-scanner .sc-sheet-down .sc-lk-figs{display:flex;}
-  #tab-scanner .sc-sheet-down .sc-lk-grade{width:36px;height:36px;border-radius:11px;font-size:var(--sc-fs-body);}
+  #tab-scanner .sc-sheet-down .sc-lk-card .sc-thumb{--sc-thumb-w:30px;--sc-thumb-h:48px;border-radius:6px;}
+  #tab-scanner .sc-sheet-down .sc-lk-card .sc-thumb::before{width:16px;height:16px;}
+  #tab-scanner .sc-sheet-down .sc-lk-chips{margin-top:4px;}
   #tab-scanner .sc-sheet-down .sc-lk-name{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;}
 
   #tab-scanner .sc-lk{display:flex;flex-direction:column;gap:10px;min-width:0;}
@@ -2203,17 +2232,12 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-lk-card[data-fresh]{animation:scLkIn 260ms var(--sc-ease);}
   @keyframes scLkIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
   #tab-scanner .sc-lk-head{display:flex;gap:14px;align-items:flex-start;min-width:0;}
-  #tab-scanner .sc-lk-grade{
-    flex:none;display:grid;place-items:center;width:52px;height:52px;border-radius:15px;
-    background:var(--sc-grade-bg);color:#fff;font-size:calc(var(--sc-fs-num) * 1.2);font-weight:800;line-height:1;
-    font-variant-numeric:tabular-nums;letter-spacing:-.02em;
-    box-shadow:inset 0 0 0 1.5px var(--sc-grade-ring), inset 0 1px 0 rgba(255,255,255,.16), 0 0 0 2px rgba(6,10,18,.4), 0 5px 12px -5px rgba(0,0,0,.75);
-  }
-  #tab-scanner .sc-lk-grade.sc-unk{background:var(--sc-grey-tint);color:var(--sc-muted);box-shadow:none;}
-  #tab-scanner .sc-lk-words{flex:1 1 auto;min-width:0;padding-top:2px;}
+  #tab-scanner .sc-lk-card .sc-thumb{--sc-thumb-w:54px;--sc-thumb-h:88px;}
+  #tab-scanner .sc-lk-words{flex:1 1 auto;min-width:0;padding-top:1px;}
   #tab-scanner .sc-lk-name{font-size:var(--sc-fs-body);font-weight:800;line-height:1.3;letter-spacing:-.005em;color:var(--sc-ink);overflow-wrap:anywhere;text-wrap:balance;}
-  #tab-scanner .sc-lk-set{margin-top:2px;font-size:var(--sc-fs-label);font-weight:700;line-height:1.35;color:var(--sc-steel-ink);overflow-wrap:anywhere;}
-  #tab-scanner .sc-lk-id{margin-top:3px;font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-lk-set{margin-top:2px;font-size:var(--sc-fs-label);font-weight:600;line-height:1.35;color:var(--sc-muted);overflow-wrap:anywhere;}
+  #tab-scanner .sc-lk-chips{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:8px;}
+  #tab-scanner .sc-lk-id{font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
   #tab-scanner .sc-lk-figs{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:8px;}
   #tab-scanner .sc-lk-figs.sc-lk-solo{grid-template-columns:minmax(0,1fr);}
   #tab-scanner .sc-lk-figs .sc-tile{min-height:92px;}
@@ -2346,12 +2370,13 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-lk-sec{padding:12px 16px 4px;}
   #tab-scanner .sc-lk-sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:2px;}
   #tab-scanner .sc-lk-sec-n{font-size:var(--sc-fs-label);font-weight:700;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
-  #tab-scanner .sc-lk-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:2px 12px;align-items:center;padding:11px 0;border-top:1px solid var(--sc-line);}
+  #tab-scanner .sc-lk-row{position:relative;display:grid;grid-template-columns:var(--sc-thumb-w) minmax(0,1fr) auto;gap:2px 12px;align-items:center;padding:11px 0;border-top:1px solid var(--sc-line);}
   #tab-scanner .sc-lk-row:first-child{border-top:0;}
-  #tab-scanner .sc-lk-row .sc-lk-grade{grid-row:1 / span 3;align-self:start;width:40px;height:40px;border-radius:12px;font-size:var(--sc-fs-body);box-shadow:inset 0 0 0 1.5px var(--sc-grade-ring-row);}
-  #tab-scanner .sc-lk-row-name{grid-column:2;font-size:var(--sc-fs-row);font-weight:700;line-height:1.3;color:var(--sc-ink);overflow-wrap:anywhere;}
-  #tab-scanner .sc-lk-row-meta{grid-column:2;font-size:var(--sc-fs-label);line-height:1.35;color:var(--sc-muted);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
-  #tab-scanner .sc-lk-row-when{grid-column:2;font-size:var(--sc-fs-label);line-height:1.35;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-lk-row .sc-thumb{grid-row:1 / span 6;align-self:start;}
+  #tab-scanner .sc-lk-row-name{grid-column:2;font-size:var(--sc-fs-row);font-weight:800;line-height:1.3;letter-spacing:-.005em;color:var(--sc-ink);overflow-wrap:anywhere;}
+  #tab-scanner .sc-lk-row-set{grid-column:2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--sc-fs-label);font-weight:600;line-height:1.35;color:var(--sc-muted);}
+  #tab-scanner .sc-lk-row-chips{grid-column:2;display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin-top:4px;}
+  #tab-scanner .sc-lk-row-when{grid-column:2;margin-top:3px;font-size:var(--sc-fs-label);line-height:1.35;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
   #tab-scanner .sc-lk-row-you{grid-column:3;grid-row:1;justify-self:end;font-size:var(--sc-fs-body);font-weight:800;line-height:1.2;color:var(--sc-ink);font-variant-numeric:tabular-nums;white-space:nowrap;}
   #tab-scanner .sc-lk-row-rate{grid-column:3;grid-row:2;justify-self:end;font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);font-variant-numeric:tabular-nums;}
   #tab-scanner .sc-lk-row-why{grid-column:2 / -1;font-size:var(--sc-fs-label);font-weight:700;line-height:1.4;color:var(--sc-err-ink);}
@@ -2363,6 +2388,78 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-lk-rm:hover{color:var(--sc-ink);}
   #tab-scanner .sc-lk-empty{padding:18px 16px;}
   #tab-scanner .sc-lk-empty .sc-sub{margin-top:0;}
+
+  /* A pasted list's results (sourcer): one row per card, the grade where the cert would be, a short chip for what can be done with it, what
+     you get on the right. The whole row is the button: a tap opens the card. The cert is not in the row, it is on the card behind the tap. */
+  #tab-scanner .sc-lk-batch{gap:0;padding-bottom:12px;}
+  #tab-scanner .sc-lk-batch-sum{margin:0 0 4px;font-weight:700;font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-lk-picks > li + li{border-top:1px solid var(--sc-line);}
+  #tab-scanner .sc-lk-pick{
+    width:calc(100% + 16px);margin:0 -8px;padding:11px 8px;border:0;border-radius:12px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;
+    -webkit-tap-highlight-color:transparent;transition:background-color 150ms ease-out;
+  }
+  #tab-scanner .sc-lk-pick:hover{background:var(--sc-fill-card-bg);}
+  #tab-scanner .sc-lk-pick:active{background:var(--sc-fill-card-bg);}
+  #tab-scanner .sc-lk-pick:focus-visible{outline:2px solid var(--sc-focus);outline-offset:-2px;}
+  #tab-scanner .sc-lk-pick[data-dim] .sc-lk-row-you,#tab-scanner .sc-lk-pick[data-dim] .sc-lk-row-name{color:var(--sc-muted);}
+  /* What can be done with the card: a chip like the pile's, its tint and ink from the theme (teal can lock, blue waits for the window, red cannot). */
+  #tab-scanner .sc-lk-tag{
+    display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:999px;
+    background:var(--sc-grey-tint);color:var(--sc-muted);font-size:var(--sc-fs-label);font-weight:800;line-height:1;white-space:nowrap;
+  }
+  #tab-scanner .sc-lk-tag[data-tone="ok"]{background:var(--sc-teal-tint);color:var(--sc-teal-chip);}
+  #tab-scanner .sc-lk-tag[data-tone="bad"],#tab-scanner .sc-lk-tag[data-tone="warn"]{background:var(--sc-err-tint);color:var(--sc-err-ink);}
+  #tab-scanner .sc-lk-tag[data-tone="info"]{background:var(--sc-wait-tint);color:var(--sc-steel-ink);}
+  /* My locks: a tap on a row shows its cert number under its lines (the whole row is the target, under the words; the Take it off my list button stays its own). */
+  #tab-scanner .sc-lk-cert-hit{position:absolute;inset:0;z-index:0;margin:0;padding:0;border:0;border-radius:12px;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  #tab-scanner .sc-lk-cert-hit:active{background:var(--sc-fill-card-bg);}
+  #tab-scanner .sc-lk-cert-hit:focus-visible{outline:2px solid var(--sc-focus);outline-offset:-2px;}
+  #tab-scanner .sc-lk-row > :not(.sc-lk-cert-hit){position:relative;z-index:1;pointer-events:none;}
+  #tab-scanner .sc-lk-row > .sc-lk-rm,#tab-scanner .sc-lk-row > .sc-lk-row-cert{pointer-events:auto;} /* the button, and the cert number (to press and hold it) */
+  #tab-scanner .sc-lk-row-cert{grid-column:2 / -1;margin-top:2px;font-size:var(--sc-fs-label);line-height:1.35;color:var(--sc-muted);font-variant-numeric:tabular-nums;user-select:text;-webkit-user-select:text;}
+  #tab-scanner .sc-lk-pick-why{grid-column:2 / -1;margin-top:2px;font-size:var(--sc-fs-label);line-height:1.4;color:var(--sc-muted);overflow-wrap:anywhere;}
+  #tab-scanner .sc-lk-batch .sc-lk-note{margin:8px 0 0;}
+  #tab-scanner .sc-lk-batch .sc-lk-actions{margin-top:10px;}
+  #tab-scanner .sc-lk-list-foot .sc-btn{min-height:44px;}
+  #tab-scanner .sc-lk-backrow{display:flex;margin:-2px 0 0;}
+  #tab-scanner .sc-lk-back{--sc-i:var(--i-chevron-down);min-height:44px;gap:6px;padding:0 14px 0 10px;font-size:var(--sc-fs-row);}
+  #tab-scanner .sc-lk-back::before{content:"";flex:none;width:18px;height:18px;background:currentColor;-webkit-mask:var(--sc-i) center / contain no-repeat;mask:var(--sc-i) center / contain no-repeat;transform:rotate(90deg);}
+  #tab-scanner .sc-sheet-down .sc-lk-batch,#tab-scanner .sc-sheet-down .sc-lk-backrow{display:none !important;}
+  @media (prefers-reduced-motion:reduce){
+    #tab-scanner .sc-lk-pick{transition:none;}
+  }
+
+  /* Price + lock (a sourcer account whose mode is price_lock), under the card on screen: what you get if you lock it, the room left in its price range and
+     the one action; this week's locks under that. The pricing numbers stay where they were (Your offer, in the scoreboard), so this card does not
+     wear a second crimson tile: it is the surface with the ink of the theme, a small lock on its label, and the primary button's blue for the action
+     (red stays "We pay" and "no"). Every colour is a token of the chosen theme. */
+  #tab-scanner .sc-pl{display:flex;flex-direction:column;gap:10px;min-width:0;}
+  #tab-scanner .sc-pl-pane{display:flex;flex-direction:column;gap:10px;min-width:0;}
+  #tab-scanner .sc-pl-pane:empty{display:none;}
+  #tab-scanner .sc-pl .sc-lk-alert-card{margin-bottom:0;}
+  #tab-scanner .sc-pl-card{gap:12px;padding:14px 16px;}
+  #tab-scanner .sc-pl-for{margin:0;font-size:var(--sc-fs-label);font-weight:700;line-height:1.35;color:var(--sc-muted);overflow-wrap:anywhere;}
+  #tab-scanner .sc-pl-top{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:8px 18px;align-items:center;}
+  #tab-scanner .sc-pl-top.sc-pl-solo{grid-template-columns:minmax(0,1fr);}
+  #tab-scanner .sc-pl-you{display:flex;flex-direction:column;gap:1px;min-width:0;font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-pl-key{--sc-i:var(--i-lock);display:flex;align-items:center;gap:6px;font-size:var(--sc-fs-label);font-weight:800;line-height:1.3;letter-spacing:.09em;text-transform:uppercase;color:var(--sc-muted);}
+  #tab-scanner .sc-pl-key::before{content:"";flex:none;width:14px;height:14px;background:currentColor;-webkit-mask:var(--sc-i) center / contain no-repeat;mask:var(--sc-i) center / contain no-repeat;}
+  #tab-scanner .sc-pl-val{font-size:var(--sc-fs-num);font-weight:800;line-height:1.1;letter-spacing:-.015em;color:var(--sc-ink);white-space:nowrap;}
+  #tab-scanner .sc-pl-sub{font-size:var(--sc-fs-row);font-weight:700;line-height:1.3;color:var(--sc-muted);}
+  #tab-scanner .sc-pl-you[data-dim] .sc-pl-val{color:var(--sc-muted);}
+  #tab-scanner .sc-pl-info{display:flex;flex-direction:column;gap:3px;min-width:0;}
+  #tab-scanner .sc-pl-info .sc-lk-range-line{margin:0;}
+  #tab-scanner .sc-pl-card .sc-lk-note{margin:0;}
+  #tab-scanner .sc-pl-card .sc-lk-go{min-height:52px;}
+  #tab-scanner .sc-pl-locks-card{gap:10px;padding:12px 16px;}
+  #tab-scanner .sc-pl-tools{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:8px;}
+  #tab-scanner .sc-pl-tools .sc-btn{min-height:48px;padding:0 10px;}
+  #tab-scanner .sc-pl-tools .sc-lk-copy::before,#tab-scanner .sc-pl-tools .sc-lk-csv::before{display:none;} /* words only: two buttons side by side in a phone's width */
+  #tab-scanner .sc-sheet-down .sc-pl{display:none !important;}
+  @media (max-width:359px){
+    #tab-scanner .sc-pl-top{grid-template-columns:minmax(0,1fr);}
+    #tab-scanner .sc-pl-tools{grid-template-columns:minmax(0,1fr);}
+  }
   @media (max-width:359px){
     #tab-scanner .sc-lk-figs{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);}
     #tab-scanner .sc-lk-tools .sc-btn{font-size:var(--sc-fs-label);padding:0 8px;}
@@ -2488,17 +2585,18 @@ code{font-family:var(--font-mono);font-size:.92em;}
   <!-- Android app 1.4 with its sheet swiped down: the peek's one way up (asks the app for the 'up' stop). -->
   <button type="button" class="sc-sheet-cue" id="sc-sheet-cue">Swipe up to review</button>
 
-  <!-- The card on screen: the ringed grade, the slab's name and cert, then the avg of 3 and the CL value
-       side by side, and the line saying which rule priced it. -->
+  <!-- The card on screen: its photo, its name and number (bold) over its set, the grade chip and the cert, then the avg of 3 and the
+       CL value side by side, and the line saying which rule priced it. -->
   <section class="sc-card sc-result scanner-result sc-staff-only" id="sc-result" hidden>
     <div class="sc-result-head">
-      <span class="sc-grade-dot sc-unk" id="sc-grade-dot" aria-hidden="true"></span>
+      <span class="sc-thumb" id="sc-thumb" aria-hidden="true"></span>
       <div class="sc-result-words">
-        <div class="sc-result-name" id="sc-name">-</div>
+        <div class="sc-result-name"><span id="sc-name">-</span> <span class="sc-num" id="sc-num" hidden></span></div>
         <div class="sc-result-id">
-          <span class="sc-result-line"><span class="sc-result-set" id="sc-set" hidden><span class="sc-set-name" id="sc-set-name"></span> <span class="sc-set-num" id="sc-set-num"></span></span>
+          <span class="sc-result-set" id="sc-set" hidden><span class="sc-set-name" id="sc-set-name"></span></span>
+          <span class="sc-gchip sc-unk" id="sc-grade-chip" hidden></span>
           <span class="sc-result-grade" id="sc-grade">-</span>
-          <span class="sc-result-cert-id"><span class="sc-result-grader" id="sc-grader">-</span> <span class="sc-result-cert" id="sc-cert">-</span></span></span>
+          <span class="sc-result-cert-id"><span class="sc-result-grader" id="sc-grader">-</span> <span class="sc-result-cert" id="sc-cert">-</span></span>
           <span class="sc-rescan" id="sc-rescan-badge" hidden>Updated in pile</span>
         </div>
       </div>
@@ -2535,6 +2633,15 @@ code{font-family:var(--font-mono);font-size:.92em;}
       </div>
     </div>
     <button type="button" class="sc-result-open" id="sc-result-open" aria-label="Show details" aria-expanded="false"></button>
+  </section>
+
+  <!-- Price + lock (a sourcer account whose mode is price_lock; owners, lock-only accounts and a login nobody has named never see it): under the
+       card on screen, what you get if you lock it on our account, the room left in its price range, and Lock it / Queue for 3 AM; below it
+       this week's locks to copy into a ticket. Drawn by the SOURCER-LOCK block of the script from scanner/lockMode.js, with the same calls to the
+       triumph-sourcer function the lock screens make. Staff only, like the card above it: hide mode takes it off the phone. -->
+  <section class="sc-pl sc-staff-only" id="sc-pl" aria-label="Lock this card" hidden>
+    <div class="sc-pl-pane" id="sc-pl-card"></div>
+    <div class="sc-pl-pane" id="sc-pl-locks"></div>
   </section>
 
   <!-- Hide mode's seller card: the card's name and grade, small, and the MARKET, big. Nothing else is
@@ -2580,10 +2687,11 @@ code{font-family:var(--font-mono);font-size:.92em;}
     <section class="sc-entry" id="sc-box-card">
       <label class="sc-label" for="sc-cert-input">Cert number</label>
       <div class="sc-box">
-        <input class="sc-cert-input" id="sc-cert-input" type="text" inputmode="numeric" autocomplete="off"
-               placeholder="Number or PSA/CGC link">
+        <textarea class="sc-cert-input" id="sc-cert-input" rows="1" inputmode="text" enterkeyhint="go" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+                  placeholder="Number, link or pasted list"></textarea>
         <button type="button" class="sc-btn sc-btn-primary" id="sc-cert-go">Price it</button>
       </div>
+      <p class="sc-batch" id="sc-batch" role="status" aria-live="polite" hidden></p>
       <div class="sc-box-err" id="sc-box-err" role="alert" hidden></div>
       <div class="sc-grader-pick" id="sc-grader-pick" hidden>
         <div class="sc-grader-pick-text" id="sc-grader-pick-text">BGS or other grader: pick the grader</div>
@@ -3419,6 +3527,10 @@ function parseCerts(input, opts = {}) {
 
 const BOUGHT_BY_SCAN = ['psa', 'cgc'];
 const NOT_A_CERT = "That doesn't look like a cert number.";
+/** What parseOneCert says when it was handed several certs: one cert at a time is this reader's job, a list is parseCertList's. */
+const LIST_WORDS = 'That looks like more than one cert. Paste the whole list into the cert box.';
+/** ONE run of digits: "1234567 1234567" is two numbers, so it is not one (a space never glues two certs into one fake, longer cert). */
+const oneRunOfDigits = s => /^\d+$/.test(s);
 /** How PSA prints (and barcodes) an old cert: zero-padded to 8 digits, "00123456". */
 const PSA_PRINTED_LENGTH = 8;
 /** The fewest significant digits a typed "PSA <n>" may have: "PSA 10", "PSA 9", "psa 123" are grades or noise. */
@@ -3503,10 +3615,10 @@ function parseOneCert(raw, opts) {
     digits = link.digits;
     named = link.grader;
     viaLink = named === 'psa';
-  } else if (/^\d+$/.test(text.replace(/\s+/g, ''))) {
-    digits = text.replace(/\s+/g, '');
-  } else if (unlabelled !== text && /^\d+$/.test(unlabelled.replace(/\s+/g, ''))) {
-    digits = unlabelled.replace(/\s+/g, '');
+  } else if (oneRunOfDigits(text)) {
+    digits = text;
+  } else if (unlabelled !== text && oneRunOfDigits(unlabelled)) {
+    digits = unlabelled;
   } else {
     if (/https?:\/\//i.test(text)) return { ok: false, why: NOT_A_CERT };
     // Typed with a grader word: one grader word and one number ("cgc 4012345001234", "BGS 0012345678").
@@ -3519,6 +3631,8 @@ function parseOneCert(raw, opts) {
     } else {
       // Anything messier reads exactly as a ticket paste would.
       const found = parseCerts(text, { buyGraders: bought });
+      // Several certs in what was typed or pasted are a LIST, never "the first cert and the rest dropped": the cert box reads a list with parseCertList.
+      if (readsAsList(found, text)) return { ok: false, list: true, why: LIST_WORDS };
       if (found.certs.length) return { ok: true, cert: found.certs[0].cert, certKey: found.certs[0].certKey, grader: found.certs[0].grader };
       if (found.notBought.length) return { ok: false, grader: found.notBought[0].grader, why: found.notBought[0].grader.toUpperCase() + ' is not a grader we buy.' };
       if (found.unreadable.length) return { ok: false, why: 'Could not read that cert: ' + found.unreadable[0].why + '.' };
@@ -3568,6 +3682,74 @@ function parseOneCert(raw, opts) {
   return { ok: true, cert: digits, certKey: key, grader };
 }
 
+// ── The Scanner's cert box takes a LIST ────────────────────────────────────────────────────────────────
+// A seller's message, a Discord paste or a spreadsheet column can hold many certs: newlines, commas, semicolons, bars or spaces between
+// them. parseCertList reads them with parseCerts (the Discord ticket parser, unchanged: the same buckets, the same dedupe, the same
+// chat-line and grader rules) after turning every PSA/CGC cert link in the text into a line of its own. It adds two things the
+// ticket parser does not say out loud, so nothing is ever dropped without a word: a link that holds no cert number, and an old PSA
+// cert printed as 8 digits with its zeros ("00412345", which the ticket parser ignores like any short number) are both listed as unreadable.
+
+/** parseCerts' own words for a number too short to be a cert (it says them when a grader is named: "PSA 10" is a grade, not a cert). */
+const SHORT_WHY = 'too short to be a cert';
+const LINK_HINT = /psacard\.com|cgccards\.com|https?:\/\//i;
+
+/**
+ * readsAsList(found, text) -> boolean. Is what parseCerts read from the text a list of certs (more than one slab) and not one cert with
+ * words around it ("PSA 10 81234567": a grade and a cert)? Two or more real entries, or two or more refusals and certs spread over
+ * more than one line. A "too short" refusal is a grade or a year, not an entry on its own.
+ */
+function readsAsList(found, text) {
+  const valid = found.certs.length + found.notBought.length + found.repeats.length;
+  const real = found.unreadable.filter(u => u.why !== SHORT_WHY).length;
+  const lines = String(text == null ? '' : text).split(/\r?\n/).filter(l => l.trim()).length;
+  return valid + real >= 2 || (lines >= 2 && valid + found.unreadable.length >= 2);
+}
+
+/** Every PSA/CGC cert link in the text becomes its own line ("PSA 81234567"), so the ticket parser (which treats a line with a link as chat) sees it.
+    Returns { text, badLinks }: the rewritten text, and the links that name no cert. */
+function linksToLines(text) {
+  const out = [];
+  const badLinks = [];
+  for (const line of String(text).split(/\r?\n/)) {
+    if (!LINK_HINT.test(line)) { out.push(line); continue; }
+    const rest = [];
+    for (const tok of line.split(/[\s,;|]+/).filter(Boolean)) {
+      const t = unwrapScan(tok);
+      const info = /\//.test(t) ? linkInfo(t) : null;
+      if (info) out.push((info.grader ? info.grader.toUpperCase() + ' ' : '') + info.digits);
+      else if (/^(?:https?:\/\/)?(?:www\.)?(?:psacard|cgccards)\.com\//i.test(t)) badLinks.push({ text: tok, why: 'that link holds no cert number' });
+      else rest.push(tok);
+    }
+    if (rest.length) out.push(rest.join(' '));
+  }
+  return { text: out.join('\n'), badLinks };
+}
+
+/**
+ * parseCertList(input, { buyGraders, seen }) -> { isList, certs, notBought, unreadable, repeats }
+ * The same four buckets parseCerts answers (certs: [{ cert, certKey, grader }], in the order they were written, each slab once), plus
+ * isList: more than one cert in the text, so the cert box prices them all. When it is false the text is one cert (or none) and the
+ * one-cert reader, parseOneCert, takes it as it always did: a link, an old short cert, a "Cert #" label, a grader picker.
+ */
+function parseCertList(input, opts) {
+  const o = opts || {};
+  const text = String(input == null ? '' : input);
+  const rewritten = linksToLines(text);
+  const found = parseCerts(rewritten.text, o);
+  found.unreadable.push(...rewritten.badLinks);
+  // an old PSA cert printed as 8 digits with its zeros: the ticket parser ignores it (a short number), a list must say so
+  for (const line of rewritten.text.split(/\r?\n/)) {
+    if (isChatLine(line)) continue;
+    for (const tok of line.split(/[\s,;|]+/).filter(Boolean)) {
+      if (/^00\d{6}$/.test(tok) && !found.unreadable.some(u => u.text === tok)) {
+        found.unreadable.push({ text: tok, why: 'an old cert: type it on its own as PSA ' + tok });
+      }
+    }
+  }
+  found.isList = readsAsList(found, rewritten.text);
+  return found;
+}
+
 window.Certs = {
   parseCerts: parseCerts,
   certKey: certKey,
@@ -3577,6 +3759,8 @@ window.Certs = {
   parseOneCert: parseOneCert,
   certFromLink: certFromLink,
   unwrapScan: unwrapScan,
+  parseCertList: parseCertList,
+  readsAsList: readsAsList,
 };
 })();
 
@@ -8386,6 +8570,8 @@ function factsOf(card) {
   return {
     avgDone: avgDone,
     avgPending: card.avgStatus === 'pending',
+    // An account WITHOUT averages (owner decision 2026-11-23): its pile never asks Card Ladder, so the average is not on its way and never will be.
+    avgOff: card.avgStatus === 'off',
     avg3: avg3,
     // The average rests on fewer than 3 sales: the bot's avg3Thin, so a band that prices on the average is paid on the lowest known sale.
     thin: avgDone && thinOf(card.sales, avg3),
@@ -8400,6 +8586,11 @@ function factsOf(card) {
     clClv: clClv,
     triumphLast: triumphLast,
   };
+}
+
+/** { avgOff: true } on a price held for an average this account does not get, else nothing (the key is absent, so other prices keep their exact shape). */
+function offFlag(f) {
+  return f.avgOff ? { avgOff: true } : {};
 }
 
 function slabOf(card, f) {
@@ -8431,13 +8622,16 @@ function priceOnSheet(card, sheet, rule, ctx, f, lower) {
   // While the average is on its way, a card an average band could take is NOT priced on CL value
   // alone: with the lowest-payout rule the average could lower that quote, and a pay figure must
   // never drop after it was shown. rules.js needsCardLadder is the check the bot itself makes.
-  var couldNeedAvg = !f.avgDone && ctx.priceCore.needsCardLadder(hint, sheet, basis);
+  // An account without averages (avgStatus 'off') waits on nothing: a card that an average could change reads "Needs average of 3" for good, never a
+  // price on the value alone and never a pass. A card with no Triumph value has nothing to hold, so it falls through to its own "no value".
+  var avgOff = f.avgOff && f.clv != null;
+  var couldNeedAvg = !f.avgDone && (!f.avgOff || f.clv != null) && ctx.priceCore.needsCardLadder(hint, sheet, basis);
   // The CLV cap reads that same average and can only lower a CL-value quote, so a card a CL-value row could take waits for
   // it too (rules.js clvCapInPlay; with the cap at 0 nothing waits). The bot's own ask needs Triumph's last sale for this,
   // which the lookup does not carry yet, and even a last sale near the value leaves an average far under it still to land.
   // `clvCapHold` tells the page which wait this is, so staff read the right reason under the square.
-  if (f.avgPending && ctx.priceCore.clvCapInPlay(hint, sheet, basis)) return { awaitingAverage: true, rule: rule, clvCapHold: true };
-  if (couldNeedAvg && f.avgPending) return { awaitingAverage: true, rule: rule };
+  if ((f.avgPending || avgOff) && ctx.priceCore.clvCapInPlay(hint, sheet, basis)) return Object.assign({ awaitingAverage: true, rule: rule, clvCapHold: true }, offFlag(f));
+  if (couldNeedAvg && (f.avgPending || avgOff)) return Object.assign({ awaitingAverage: true, rule: rule }, offFlag(f));
   var slab = slabOf(card, f);
   var opts = lower ? { basis: basis } : {};
   var priced = ctx.priceCore.priceSlab(slab, sheet, opts);
@@ -8465,7 +8659,7 @@ function priceOnSheet(card, sheet, rule, ctx, f, lower) {
   var out = Object.assign({}, priced, { rule: rule });
   // Rejected with no average to be had (failed/timed out), but an average band could still take it:
   // "needs average", never a pass.
-  if (priced.rejected && couldNeedAvg) out.awaitingAverage = true;
+  if (priced.rejected && couldNeedAvg) { out.awaitingAverage = true; if (f.avgOff) out.avgOff = true; }
   return out;
 }
 
@@ -8500,9 +8694,9 @@ function offerFor(card, choice, ctx) {
   if (c.rule === 'flat') {
     if (c.flatPct == null) return { noPct: true, rule: 'flat' };
     var basis = lower ? 'lowest' : (c.flatBasis === 'avg3' ? 'avg3' : 'clv');
-    if (basis !== 'clv' && f.avgPending) return { awaitingAverage: true, basis: basis, pct: c.flatPct, rule: 'flat' };
+    if (basis !== 'clv' && (f.avgPending || f.avgOff)) return Object.assign({ awaitingAverage: true, basis: basis, pct: c.flatPct, rule: 'flat' }, offFlag(f));
     var basisCents = basis === 'lowest' ? lowerOf(f.clv, f.avg3e) : basis === 'avg3' ? f.avg3e : f.clv;
-    if (basis === 'avg3' && !f.avgDone) return { awaitingAverage: true, basis: basis, pct: c.flatPct, rule: 'flat' };
+    if (basis === 'avg3' && !f.avgDone) return Object.assign({ awaitingAverage: true, basis: basis, pct: c.flatPct, rule: 'flat' }, offFlag(f));
     if (basisCents == null) {
       // A typed percent of an average Card Ladder answered without: the lowest known sale stands in for it (the 'lowest' basis), or
       // the card is rejected when none is known. Nothing at all to take a percent of: rejected, never handed to a person.
@@ -8523,7 +8717,7 @@ function offerFor(card, choice, ctx) {
 
   var sheet = c.rule === 'consignor' ? ctx.consignorSettings : scannerSheetOf(ctx.settings);
   if (!sheet) return { noSheet: true, rule: c.rule };
-  if (lower && f.avgPending) return { awaitingAverage: true, rule: c.rule }; // the lower is not known yet
+  if (lower && (f.avgPending || f.avgOff)) return Object.assign({ awaitingAverage: true, rule: c.rule }, offFlag(f)); // the lower is not known yet (or never will be)
   return priceOnSheet(card, sheet, c.rule, ctx, f, lower);
 }
 
@@ -8575,11 +8769,14 @@ function normalNote(scannerSheet) {
   return scannerSheet ? '' : '(using consignor rates: set Scanner rates on the portal)';
 }
 
+/** What an account without averages reads on a card whose band prices on the average of 3 (never a number, never a wait). */
+var NEEDS_AVG_OFF = 'Needs average of 3';
+
 /** The Pay square. "Not buying right now" when no rule takes the card. */
 function payText(price, avgStatus, fmt) {
   if (!price) return '-';
   if (typeof price.payoutCents === 'number') return fmt(price.payoutCents);
-  if (price.awaitingAverage) return avgStatus === 'pending' ? 'Getting average…' : 'Needs average';
+  if (price.awaitingAverage) return avgStatus === 'pending' ? 'Getting average…' : (avgStatus === 'off' || price.avgOff) ? NEEDS_AVG_OFF : 'Needs average';
   if (price.rejected) return 'Not buying right now';
   if (price.noSheet) return price.rule === 'consignor' ? 'No consignor sheet' : 'No rate sheet';
   if (price.noPct) return 'Type a percent';
@@ -8659,6 +8856,7 @@ function marketLook(market) {
 }
 
 window.OfferRules = {
+  NEEDS_AVG_OFF: NEEDS_AVG_OFF,
   trendingDownOf: trendingDownOf,
   scannerSheetOf: scannerSheetOf,
   RULES: RULES,
@@ -8948,6 +9146,8 @@ window.NativeBridge = {
 //    ("2005 Pokemon EX Deoxys #108 Rayquaza Gold Star Holo"). On a phone the line is cut off before the part
 //    that tells two slabs apart, so the Scanner leads with the card ("Rayquaza Gold Star Holo") and puts the
 //    set under it ("2005 EX Deoxys #108"). A title with no card number is shown whole, unchanged.
+//    shortCard (below) is the same idea for a scan ROW (Courtyard's look: "Eevee #173" over its set), and it also reads PSA's label order,
+//    which is how Triumph names a slab; gradeLabel, confView and photoSrc are the row's grade chip, confidence and card photo.
 // 2. salesView: the sales the averages answer carries (scanner/avgClient.js's `sales`, newest first) as the
 //    small chips the card shows ("$1,625" over "2d"): which three make the Avg of 3, and which one the outlier
 //    rule left out (a price far above the card's own history: on the card it reads as a likely shill bid).
@@ -8983,6 +9183,139 @@ function splitTitle(title) {
   var setName = m[1].replace(BRAND_RE, '$1').trim() || m[1];
   var number = '#' + m[2];
   return { name: m[3], set: setName + ' ' + number, setName: setName, number: number };
+}
+
+// ── a scan row's words: the short name, the set, the grade chip, the photo ──────────────────────────────────────
+//
+// Courtyard's row reads "Eevee #173" (bold), the set muted under it, "PSA 9", a status chip and the price: what the
+// card IS matters more than its cert, which is one tap away. Triumph names a slab the way PSA's label does, in capitals
+// and in label order (year, the CARD, #number, then the set or variety: "2023 ALAKAZAM ex #203 SPECIAL ART RARE"), and
+// Card Ladder names it the other way round (year, set, #number, the card: "2005 Pokemon EX Deoxys #108 Rayquaza Gold
+// Star Holo"). shortCard reads both, so a row never leads with a set's name as if it were the card.
+
+// "<before> #<number>" and anything after it. The number may carry letters, dashes and a slash ("TG02", "OP01-120", "3/64").
+var NUM_RE = /^(.*?\S)\s+#\s?([A-Za-z0-9][A-Za-z0-9.\-\/]*)(?:\s+(\S.*))?$/;
+var YEAR_RE = /^(\d{4}(?:-\d{2,4})?)\s+/;
+// A grade written into the name ("... #15 PSA 8 NM-MT"): the grade chip says it, so the name does not.
+var GRADE_TAIL_RE = /^(.*\S)\s+(?:PSA|BGS|CGC|SGC)\s+\d+(?:\.\d+)?(?:\s+(?:GEM[- ]?MT|GEM[- ]?MINT|MINT|NM[- ]?MT|NM|EX[- ]?MT|EX|VG[- ]?EX|VG|GOOD|FAIR|POOR|PRISTINE|BLACK LABEL))*$/i;
+// The brand word right after the year, dropped (every card at the table is a Pokemon card); not where it starts a set's own name.
+var BRAND_FIRST_RE = /^Pok[eé]mon\s+(?!(?:go|center|card)\b)/i;
+// A language code after a set code ("SVP EN EEVEE"): the set code and the language are the set, the rest is the card.
+var LANG_CODE_RE = /^(?:EN|ENG|JP|JPN|KOR|CHN)$/;
+// What stays in capitals when a shouting title is put in title case.
+var KEEP_CAPS = {};
+('EX GX V VMAX VSTAR VUNION SIR SAR UR AR SR HR RR CHR CSR SSR TAG DX FA EN ENG JP JPN KOR CHN SVP SWSH SV SM XY BW DP HGSS PCG TCG CCG ' +
+ 'PSA BGS CGC SGC NBA NFL MLB NHL WNBA USA MVP RC SP SSP ETB CL WOTC OP LV GO XD II III IV VI VII VIII IX').split(' ').forEach(function (w) { KEEP_CAPS[w] = true; });
+
+function oneSpace(s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); }
+
+/** True for PSA-label capitals: all capitals, apart from short lower-case tags like "ex" in "ALAKAZAM ex". */
+function isShouting(s) {
+  var letters = String(s == null ? '' : s).replace(/\b[a-z]{1,3}\b/g, '').replace(/[^A-Za-z]/g, '');
+  return letters.length >= 3 && !/[a-z]/.test(letters);
+}
+
+function titleToken(t) {
+  if (/\d/.test(t)) return /^\d+(?:ST|ND|RD|TH)$/.test(t) ? t.toLowerCase() : t; // "1ST" -> "1st"; "SV2A", "TG02", "151" stay as they are
+  if (t !== t.toUpperCase() || KEEP_CAPS[t]) return t; // mixed or lower case, or a code that is written in capitals
+  return t.charAt(0) + t.slice(1).toLowerCase();
+}
+
+/** "ALAKAZAM ex" -> "Alakazam ex", "SPECIAL ART RARE" -> "Special Art Rare". Text that is not all capitals is left exactly as it is. */
+function titleCase(s) {
+  var t = String(s == null ? '' : s);
+  return isShouting(t) ? t.replace(/[A-Za-z0-9]+(?:'[A-Za-z]+)?/g, titleToken) : t;
+}
+
+/**
+ * shortCard(title) -> { name, card, number, set, year }
+ *   name   "Eevee #173": the card and its number, what a row leads with
+ *   card   "Eevee", number "#173"
+ *   set    "2025 SVP EN": the year and the set or variety, the muted line under it ('' when the title gives none)
+ *   year   "2025"
+ * A title with no "#number", or one the card cannot be told from its set in (a Card Ladder title with nothing after the number), is the
+ * name whole with no set line. Capitals are put in title case only when the whole part is capitals; a grade tail ("PSA 8 NM-MT") is dropped.
+ * Never throws and never returns an empty name for a non-empty title.
+ */
+function shortCard(title) {
+  var t = oneSpace(title);
+  var g = GRADE_TAIL_RE.exec(t);
+  if (g) t = g[1];
+  var whole = { name: titleCase(t), card: titleCase(t), number: '', set: '', year: '' };
+  var m = NUM_RE.exec(t);
+  if (!m) return whole;
+  var before = m[1];
+  var number = '#' + m[2];
+  var after = m[3] || '';
+  if (after && (/^\d+(?:\s|$)/.test(after) || !/[A-Za-z]/.test(after))) return whole; // "#SV-P 001 Pikachu", "#12 10": a number with a space in it
+  var year = '';
+  var rest = before;
+  var y = YEAR_RE.exec(before);
+  if (y) { year = y[1]; rest = before.slice(y[0].length); }
+  rest = rest.replace(BRAND_FIRST_RE, '').trim();
+  var shouting = isShouting(rest + ' ' + after);
+  var card;
+  var bits; // the set line's parts, each already in its final case
+  if (after && !shouting) { // Card Ladder's order: year, set, #number, then the card
+    card = after;
+    bits = [year, titleCase(rest)];
+  } else if (!after && !shouting) { // nothing after the number and no label capitals: the card cannot be told from its set
+    return whole;
+  } else if (!rest || (after && !/^[A-Za-z][A-Za-z0-9'&\/\- ]*$/.test(rest))) {
+    // PSA's order, but what is before the number is a code ("TGPI/CLFA/IGLYBF.GX"), not a name: the card is what follows
+    if (!after) return whole;
+    card = after;
+    bits = [year, rest];
+  } else { // PSA's label order: year, the card, #number, then the set or variety
+    var words = rest.split(' ');
+    var cut = -1;
+    for (var i = 0; i < words.length - 1 && cut < 0; i++) if (LANG_CODE_RE.test(words[i])) cut = i;
+    card = cut >= 0 ? words.slice(cut + 1).join(' ') : rest;
+    bits = [year, cut >= 0 ? titleCase(words.slice(0, cut + 1).join(' ')) : '', titleCase(after)];
+  }
+  var cardText = titleCase(card);
+  return {
+    name: cardText + ' ' + number, card: cardText, number: number, year: year,
+    set: bits.filter(Boolean).join(' '),
+  };
+}
+
+/**
+ * gradeLabel(grader, grade) -> "PSA 9": the grader and the number in the grade ("8.5" stays, "GEM MT 10" is "10"), or just the grader when the grade
+ * is not known yet, or a short letter grade ("A"). '' when neither is known.
+ */
+function gradeLabel(grader, grade) {
+  var who = oneSpace(grader).toUpperCase();
+  var text = oneSpace(grade);
+  var n = /\d+(?:\.\d+)?/.exec(text);
+  var what = n ? n[0] : (/^[A-Za-z]{1,3}$/.test(text) ? text.toUpperCase() : '');
+  return [who, what].filter(Boolean).join(' ');
+}
+
+/**
+ * confView(confidence) -> { known, n, level, text }. `level` is 5, 4, 3 or 0 (1 and 2, and not known): the same steps the scoreboard's pill
+ * colours by (the rate bands' own gate is >= 4, never a rounded number), `text` is "Conf 5".
+ */
+function confView(confidence) {
+  var n = confidence == null || confidence === '' ? NaN : Number(confidence);
+  if (!isFinite(n)) return { known: false, n: null, level: 0, text: 'Conf n/a' };
+  return { known: true, n: n, level: n >= 5 ? 5 : n >= 4 ? 4 : n >= 3 ? 3 : 0, text: 'Conf ' + n };
+}
+
+// The card's photo, as Triumph answers it: an https image on PSA's CloudFront distribution (pinned to that one host), in that CDN's path shape. The
+// server (sourcer-lock/logic.ts safeImageUrl) lets nothing else through; the page asks the same question again before it puts a URL in a page, so a
+// saved pile or a changed server can never make the phone load an address from anywhere else.
+var PHOTO_HOST_RE = /^d1htnxwo4o0jhw\.cloudfront\.net$/;
+var PHOTO_PATH_RE = /^\/cert\/\d{1,15}\/[A-Za-z0-9_-]{6,64}\.(?:jpe?g|png|webp)$/i;
+
+/** The photo URL a row may draw, or '' (no photo: the row draws its placeholder). Never throws. */
+function photoSrc(raw) {
+  if (typeof raw !== 'string') return '';
+  var s = raw.trim();
+  if (!s || s.length > 300 || /[\s\u0000-\u001f\u007f\\<>"'`]/.test(s)) return '';
+  var m = /^https:\/\/([^\/?#:@]+)(\/[^?#]*)$/i.exec(s); // no credentials, port, query or fragment
+  if (!m || !PHOTO_HOST_RE.test(m[1].toLowerCase()) || !PHOTO_PATH_RE.test(m[2])) return '';
+  return 'https://' + m[1].toLowerCase() + m[2];
 }
 
 /** 'YYYY-MM-DD' -> a local Date at midnight, or null. */
@@ -9115,6 +9448,11 @@ function salesView(sales, opts) {
 
 window.CardView = {
   splitTitle: splitTitle,
+  shortCard: shortCard,
+  titleCase: titleCase,
+  gradeLabel: gradeLabel,
+  confView: confView,
+  photoSrc: photoSrc,
   saleWhen: saleWhen,
   shortAgo: shortAgo,
   chipPrice: chipPrice,
@@ -9549,8 +9887,12 @@ window.ScanAccount = {
  *  decides, and it also knows the owners' other logins (one linked to Josh's or Penguin's Discord), which no id list on
  *  the phone can. Every other login reads as a sourcer until its answer is in. */
 var OWNER_USER_IDS = ['d3214c2a-4222-4171-9153-fe7ec466fc24'];
-/** This phone's copy of the server's answer about the last login that read the Scanner sheet: { uid, owner } (roleRecord). */
+/** This phone's copy of the server's answer about the last login that read the Scanner sheet: { uid, owner } for an owner,
+ *  { uid, owner: false, mode } for a sourcer (roleRecord; roleCacheOf reads it back). */
 var ROLE_CACHE_KEY = 'iopViewerRole';
+/** A sourcer account's MODE, set by an owner (/sourcer mode): 'lock' = lock only (Scan / Allocation / My locks, the default) or
+ *  'price_lock' = the pricing screen plus a Lock option. The same two words as rates-portal/access.ts and sourcer-portal/logic.ts. */
+var SOURCER_MODES = ['lock', 'price_lock'];
 /** The most the Adjust % box takes either way, in points: -100 takes every band to 0%, +100 every band to 100%. */
 var ADJUST_LIMIT = 100;
 /** The user_metadata key the box is saved under (auth.updateUser({ data: { scanner_adjust_points: -5 } })). */
@@ -9702,13 +10044,58 @@ function isOwnerId(id) { return typeof id === 'string' && OWNER_USER_IDS.indexOf
 
 /**
  * The server's answer about the login that read the Scanner sheet (slab-rates GET /scanner's body, on its 404 too:
- * viewer.role 'owner' or 'sourcer') -> { uid, owner } for `uid` (the token's own user, the one that asked), else null:
- * no user, or a body that says nothing usable (a slab-rates that does not answer it yet).
+ * viewer.role 'owner' or 'sourcer', and for a sourcer viewer.mode 'lock' | 'price_lock') -> { uid, owner } for an owner, { uid,
+ * owner: false, mode } for a sourcer, for `uid` (the token's own user, the one that asked), else null: no user, or a body that
+ * says nothing usable (a slab-rates that does not answer it yet).
  */
 function roleRecord(uid, body) {
   if (typeof uid !== 'string' || !uid || !isObj(body) || !isObj(body.viewer)) return null;
   var r = body.viewer.role;
-  return r === 'owner' || r === 'sourcer' ? { uid: uid, owner: r === 'owner' } : null;
+  if (r === 'owner') return { uid: uid, owner: true };
+  // a sourcer's mode rides along ('lock' | 'price_lock'); a slab-rates that says none, or something else, is 'lock': the mode that shows LESS.
+  // Its AVERAGES flag rides along only when it is exactly true (absent = off: a slab-rates from before the flag, or an account an owner never turned on).
+  if (r !== 'sourcer') return null;
+  var rec = { uid: uid, owner: false, mode: sourcerModeOf(body.viewer.mode) };
+  if (body.viewer.avg === true) rec.avg = true;
+  return rec;
+}
+
+/** The mode a stored or served value means: exactly 'price_lock', else 'lock'. Anything unreadable is never more access. */
+function sourcerModeOf(v) {
+  return v === 'price_lock' ? 'price_lock' : 'lock';
+}
+
+/** This phone's saved copy of the server's answer (ROLE_CACHE_KEY, already parsed) as a role record, else null: it has to name its
+ *  login and say owner or not. A sourcer's copy from before the modes existed has no mode and reads as 'lock'. */
+function roleCacheOf(raw) {
+  if (!isObj(raw) || typeof raw.uid !== 'string' || !raw.uid || typeof raw.owner !== 'boolean') return null;
+  if (raw.owner) return { uid: raw.uid, owner: true };
+  var rec = { uid: raw.uid, owner: false, mode: sourcerModeOf(raw.mode) };
+  if (raw.avg === true) rec.avg = true;
+  return rec;
+}
+
+/** Are two role records the same answer (same login, same role, and for a sourcer the same mode)? A new answer that differs
+ *  is kept and acted on: an owner moving an account from lock only to price + lock reaches the phone this way. */
+function sameRole(a, b) {
+  if (!isObj(a) || !isObj(b) || a.uid !== b.uid || a.owner !== b.owner) return false;
+  return a.owner === true || (sourcerModeOf(a.mode) === sourcerModeOf(b.mode) && (a.avg === true) === (b.avg === true));
+}
+
+/** Does the login `id` get Card Ladder's AVERAGE OF 3 in its pricing? An owner always does (the screen it always had); a sourcer only when the
+ *  server said so for THAT login (`known`, roleRecord's: avg true); a login nobody has answered for yet, another login's answer, or a malformed
+ *  record does not: the app never asks Card Ladder for a login it cannot name an owner or an averages account. */
+function avgOf(id, known) {
+  var role = roleOf(id, known);
+  if (role === 'owner') return true;
+  return role === 'sourcer' && known.avg === true;
+}
+
+/** The MODE of the login `id` for a sourcer the phone knows (`known`, roleRecord's for THAT login): 'lock' or 'price_lock';
+ *  null for everyone else (an owner has none, a login nobody has answered for yet has none). */
+function modeOf(id, known) {
+  if (roleOf(id, known) !== 'sourcer') return null;
+  return sourcerModeOf(known.mode);
 }
 
 /** Whether the login `id` is an owner: the server's answer for THAT login when the phone has one (`known`, roleRecord's),
@@ -10079,7 +10466,7 @@ function cardFigures(entry, override, money, compedCents) {
 function shownPrice(price, figures) {
   if (!figures || (!figures.payEdited && !figures.payFromMarket)) return price;
   var out = Object.assign({}, isObj(price) ? price : {}, { payoutCents: figures.payCents, edited: true });
-  ['rejected', 'staffPrice', 'awaitingAverage', 'noSheet', 'noPct', 'clvCapHold', 'avgMissing'].forEach(function (k) { delete out[k]; });
+  ['rejected', 'staffPrice', 'awaitingAverage', 'noSheet', 'noPct', 'clvCapHold', 'avgMissing', 'avgOff'].forEach(function (k) { delete out[k]; });
   return out;
 }
 
@@ -10151,6 +10538,7 @@ function bandsFor(sheet, adjust, rule, points, prices) {
 window.PileRates = {
   OWNER_USER_IDS: OWNER_USER_IDS,
   ROLE_CACHE_KEY: ROLE_CACHE_KEY,
+  SOURCER_MODES: SOURCER_MODES,
   ADJUST_LIMIT: ADJUST_LIMIT,
   ADJUST_KEY: ADJUST_KEY,
   ADJUST_CACHE_KEY: ADJUST_CACHE_KEY,
@@ -10173,6 +10561,11 @@ window.PileRates = {
   claimsOf: claimsOf,
   isOwnerId: isOwnerId,
   roleRecord: roleRecord,
+  sourcerModeOf: sourcerModeOf,
+  roleCacheOf: roleCacheOf,
+  sameRole: sameRole,
+  modeOf: modeOf,
+  avgOf: avgOf,
   ownerOf: ownerOf,
   roleOf: roleOf,
   viewerOf: viewerOf,
@@ -10851,18 +11244,19 @@ function csvName(nowMs) {
   return 'my-locks-' + (p ? p.year + '-' + p.month + '-' + p.day : 'list') + '.csv';
 }
 
-/** One lock (or queued card) as the words a row shows. */
+/**
+ * One lock (or queued card) as the words a row shows. A row leads with the card (Courtyard's way: the card, its grade and what became of it), so the
+ * cert is its detail, not part of it: `cert` is the grader and the number ("PSA 81234567") for the tap that shows it, and '' when there is no card name
+ * (then the cert IS the name, and is not said twice).
+ */
 function lockRow(l, nowMs) {
-  var parts = [];
-  var gradeText = [l.grader, l.grade].filter(function (x) { return x !== null && x !== undefined && x !== ''; }).join(' ');
-  if (gradeText) parts.push(gradeText);
-  if (l.card && l.cert) parts.push(l.cert); // with no card name the cert IS the name: it is not said twice
+  var certText = l.card && l.cert !== null && l.cert !== undefined && l.cert !== '' ? [l.grader ? String(l.grader).toUpperCase() : '', l.cert].filter(Boolean).join(' ') : '';
   var stamp = l.lockedAt || l.queuedAt || l.attemptedAt || l.at;
   var pct = l.yourPct !== null && l.yourPct !== undefined ? pctText(l.yourPct) : '';
   var hasMarket = l.marketValue !== null && l.marketValue !== undefined && isNum(Number(l.marketValue));
   return {
     name: l.card || ('Cert ' + l.cert),
-    meta: parts.join(' · '),
+    cert: certText,
     when: etStamp(stamp),
     youGet: l.yourDollars !== null && l.yourDollars !== undefined && isNum(Number(l.yourDollars)) ? moneyText(l.yourDollars) : '',
     rate: pct,
@@ -10905,7 +11299,61 @@ function outcomeOf(what, item, res, words) {
   return { tone: 'bad', text: name + ' was NOT locked. ' + (nl.reason || 'Not accepted right now.') };
 }
 
+// ── a pasted list of certs ────────────────────────────────────────────────────────────────────────────────────────
+
+/** The short word a card carries in a pasted list, by what cardPhase says it is. */
+var LIST_CHIP = {
+  lockable: 'Can lock', queueable: 'Queue for 3 AM', queued: 'In your 3 AM list', locked: 'Locked',
+  full: 'No room', blocked: 'Not available', paused: 'Paused', error: 'Could not check',
+};
+/** The kinds that read dim in a list: nothing can be done with the card from here. */
+var LIST_DIM = { full: true, blocked: true, paused: true, error: true };
+
+/** What a card in a pasted list is: cardPhase, except that a card the sourcer has just locked reads Locked even while Triumph would still take it. */
+function listPhase(item, ctx) {
+  var p = cardPhase(item, ctx);
+  if (item && item.mine === 'locked' && p.kind !== 'locked') {
+    return { kind: 'locked', tone: 'ok', status: 'You locked this card', note: '', youLabel: 'You get', youText: p.youText, act: null, actLabel: '', confirmText: '' };
+  }
+  return p;
+}
+
+/**
+ * One checked card as a row of a pasted list. 'item' is one lookup result as the function answers it, 'ctx' is { open, paused, opensAt }
+ * as for cardPhase. Returns { kind, tone, chip, why, dim, you, rate, grade }: the same kind cardPhase gives (lockable, queueable, queued,
+ * locked, full, blocked, paused, error), the short chip words, one plain line of why when there is one, what you get in dollars and
+ * percent ('' when there is no rate), and the grader and grade ("PSA 9") a row says in place of the cert (the cert is on the card behind the tap).
+ */
+function listRow(item, ctx) {
+  var p = listPhase(item, ctx);
+  var it = item || {};
+  var why = '';
+  if (p.kind === 'queueable' || p.kind === 'blocked') why = p.status;
+  else if (p.kind === 'error') why = 'Tap to check this one again.';
+  var hasRate = hasNum(it.youGetPct);
+  return {
+    kind: p.kind, tone: p.tone, chip: LIST_CHIP[p.kind] || 'Not available', why: why, dim: !!LIST_DIM[p.kind],
+    you: hasRate && hasNum(it.youGetDollars) ? moneyText(it.youGetDollars) : '',
+    rate: hasRate ? pctText(it.youGetPct) : '',
+    grade: [it.grader ? String(it.grader).toUpperCase() : '', it.grade ? String(it.grade) : ''].filter(Boolean).join(' '),
+  };
+}
+
+/** What a pasted list holds, as words: "9 can lock, 2 no room, 1 not available". Kinds with none are not said; '' for an empty list. */
+function listCountsText(items, ctx) {
+  var n = { lockable: 0, queueable: 0, queued: 0, locked: 0, full: 0, blocked: 0, paused: 0, error: 0 };
+  (Array.isArray(items) ? items : []).forEach(function (it) { var k = listPhase(it, ctx).kind; if (k in n) n[k]++; });
+  var words = [
+    ['lockable', 'can lock'], ['queueable', 'can queue'], ['queued', 'in your 3 AM list'], ['locked', 'locked'],
+    ['full', 'no room'], ['blocked', 'not available'], ['paused', 'paused'], ['error', 'could not be checked'],
+  ];
+  return words.filter(function (w) { return n[w[0]] > 0; }).map(function (w) { return n[w[0]] + ' ' + w[1]; }).join(', ');
+}
+
 window.LockMode = {
+  listRow: listRow,
+  listCountsText: listCountsText,
+  LIST_CHIP: LIST_CHIP,
   SOFT_CODES: SOFT_CODES,
   windowLine: windowLine,
   moneyText: moneyText,
@@ -10943,6 +11391,99 @@ window.LockMode = {
   lockRow: lockRow,
   lockConfirmText: lockConfirmText,
   outcomeOf: outcomeOf,
+};
+})();
+
+(function () {
+'use strict';
+// A pasted list of certs on the Scanner page: how it is split into calls, and the words that say how it went.
+//
+// The cert box takes one cert or a whole list (certs.js parseCertList reads it). An owner's list is priced one card after another
+// through the page's own pricing queue; a sourcer's list is looked up in calls of at most MAX_PER_CALL cards (the function refuses
+// more than 50 at a time, sourcer-lock/logic.ts MAX_CERTS) and shown as a list. This file is the pure part of both: the batches
+// and the one-line summary ("12 priced, 1 unreadable, 2 repeats") and what was left out of the list, in plain words.
+//
+// Pure like every scanner/ sibling (rates-portal/build-portal.js embeds it whole as window.CertList), so the page and the tests read
+// the same code. Every word a person can read here is plain: no em dash, no en dash.
+'use strict';
+
+/** The most cards one lookup call may hold: the function's own limit (sourcer-lock/logic.ts MAX_CERTS, pinned by certList.test.js). */
+var MAX_PER_CALL = 50;
+/** How many left-out entries are named in the note before it says "and N more". */
+var NAME_UP_TO = 3;
+
+function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+function whole(n) { n = Number(n); return isFinite(n) && n > 0 ? Math.floor(n) : 0; }
+
+/** Splits a list into batches of at most `size` (default MAX_PER_CALL), in order. Nothing in, nothing out. */
+function chunk(items, size) {
+  var n = Math.max(1, whole(size) || MAX_PER_CALL);
+  var list = Array.isArray(items) ? items : [];
+  var out = [];
+  for (var i = 0; i < list.length; i += n) out.push(list.slice(i, i + n));
+  return out;
+}
+
+/**
+ * The one-line summary under the cert box.
+ *   s = { kind: 'price' | 'check', total, done, failed, unreadable, repeats, notBought }
+ * `total` cards were sent to be priced (or checked, for a sourcer); `done` have an answer, `failed` could not be answered. While some
+ * are still out it reads "Pricing 7 of 12 cards, 1 unreadable, 2 repeats."; when all are in, "12 priced, 1 unreadable, 2 repeats."
+ * (cards that could not be priced: "9 priced, 3 not priced, ..."). Counts of nothing are not said.
+ */
+function summaryText(s) {
+  s = s || {};
+  var check = s.kind === 'check';
+  var total = whole(s.total);
+  var done = Math.min(whole(s.done), total);
+  var failed = Math.min(whole(s.failed), total - done);
+  var open = total - done - failed;
+  var parts = [];
+  if (total) {
+    if (open > 0) parts.push((check ? 'Checking ' : 'Pricing ') + done + ' of ' + plural(total, 'card', 'cards'));
+    else {
+      parts.push(done + (check ? ' checked' : ' priced'));
+      if (failed) parts.push(failed + (check ? ' not checked' : ' not priced'));
+    }
+  }
+  var u = whole(s.unreadable);
+  var r = whole(s.repeats);
+  var nb = whole(s.notBought);
+  if (u) parts.push(u + ' unreadable');
+  if (r) parts.push(plural(r, 'repeat', 'repeats'));
+  if (nb) parts.push(nb + ' not bought');
+  return parts.length ? parts.join(', ') + '.' : '';
+}
+
+/** One left-out entry as words: "1234567890123456 (too long to be a cert)", "BGS 12345678 (BGS not bought)". */
+function leftOutOne(x) {
+  if (!x) return '';
+  var name = x.text !== undefined && x.text !== null ? String(x.text) : (x.grader ? String(x.grader).toUpperCase() + ' ' : '') + String(x.cert === undefined || x.cert === null ? '' : x.cert);
+  name = name.trim();
+  var why = x.why ? String(x.why).replace(/\.$/, '') : '';
+  return why ? name + ' (' + why + ')' : name;
+}
+
+/**
+ * What was left out of the list, named: "Left out: 1234567890123456 (too long to be a cert), BGS 12345678 (BGS not bought) and 2 more."
+ * Up to three are named. '' when nothing was left out. Repeats are counted in the summary, not named: they are on the list already.
+ */
+function leftOutText(unreadable, notBought) {
+  var all = (Array.isArray(unreadable) ? unreadable : []).concat(Array.isArray(notBought) ? notBought : []).map(leftOutOne).filter(Boolean);
+  if (!all.length) return '';
+  var named = all.slice(0, NAME_UP_TO);
+  var more = all.length - named.length;
+  var body = named.join(', ');
+  return 'Left out: ' + body + (more > 0 ? ' and ' + more + ' more' : '') + '.';
+}
+
+window.CertList = {
+  MAX_PER_CALL: MAX_PER_CALL,
+  NAME_UP_TO: NAME_UP_TO,
+  chunk: chunk,
+  summaryText: summaryText,
+  leftOutText: leftOutText,
+  leftOutOne: leftOutOne,
 };
 })();
 /* SCANNER-CORE:END */
@@ -16101,6 +16642,7 @@ window.SinglesPrice = {
       certInput: document.getElementById('sc-cert-input'),
       certGo: document.getElementById('sc-cert-go'),
       boxErr: document.getElementById('sc-box-err'),
+      batch: document.getElementById('sc-batch'),
       signin: document.getElementById('sc-signin'),
       email: document.getElementById('sc-email'),
       password: document.getElementById('sc-password'),
@@ -16126,7 +16668,8 @@ window.SinglesPrice = {
       name: document.getElementById('sc-name'),
       nameSet: document.getElementById('sc-set'),
       nameSetName: document.getElementById('sc-set-name'),
-      nameSetNum: document.getElementById('sc-set-num'),
+      nameNum: document.getElementById('sc-num'),
+      thumb: document.getElementById('sc-thumb'),
       recent: document.getElementById('sc-recent'),
       recentList: document.getElementById('sc-recent-list'),
       recentShill: document.getElementById('sc-recent-shill'),
@@ -16177,7 +16720,7 @@ window.SinglesPrice = {
       flatPct: document.getElementById('sc-flat-pct'),
       flatErr: document.getElementById('sc-flat-err'),
       rateLabel: document.getElementById('sc-rate-label'),
-      gradeDot: document.getElementById('sc-grade-dot'),
+      gradeChip: document.getElementById('sc-grade-chip'),
       sheetCue: document.getElementById('sc-sheet-cue'),
       resultOpen: document.getElementById('sc-result-open'),
       conf: document.getElementById('sc-conf'),
@@ -16280,17 +16823,23 @@ window.SinglesPrice = {
     var roleKnown = (function () {
       try {
         var r = JSON.parse(localStorage.getItem(PileRates.ROLE_CACHE_KEY) || 'null');
-        return r && typeof r.uid === 'string' && typeof r.owner === 'boolean' ? { uid: r.uid, owner: r.owner } : null;
+        return PileRates.roleCacheOf(r);
       } catch (e) { return null; }
     })();
     /** The server's answer about the login that read the Scanner sheet (`body`: GET /scanner's, its 404's too), for the
         token it was read with. A body that says nothing (an older slab-rates) leaves what the phone knew. */
     function noteRole(tok, body) {
       var rec = PileRates.roleRecord(PileRates.viewerOf(tok, decodeBase64).id, body);
-      if (!rec || (roleKnown && roleKnown.uid === rec.uid && roleKnown.owner === rec.owner)) return;
+      // the same login, role AND mode is nothing new; an owner moving an account between modes arrives as a new answer
+      if (!rec || PileRates.sameRole(roleKnown, rec)) return;
+      var avgWas = roleKnown ? PileRates.avgOf(rec.uid, roleKnown) : null;
       roleKnown = rec;
       try { localStorage.setItem(PileRates.ROLE_CACHE_KEY, JSON.stringify(rec)); } catch (e) { /* this visit only */ }
       applyLockMode();
+      // the averages flag moved for this login: the cards already in the pile follow it (resumeAveragePolls)
+      // (the FIRST answer for this phone has no "was": with averages on, the cards scanned before it get theirs now)
+      var avgNow = PileRates.avgOf(rec.uid, roleKnown);
+      if ((avgWas === null ? avgNow : avgWas !== avgNow) && typeof resumeAveragePolls === 'function') { try { resumeAveragePolls(); } catch (e) { /* drawing must never hold up the answer */ } }
     }
     function viewer() {
       var tok = session && session.access_token ? session.access_token : null;
@@ -16314,6 +16863,14 @@ window.SinglesPrice = {
       return !o.keep;
     }
     function isSourcer() { return !viewer().owner; }
+    /** Does this login get Card Ladder's AVERAGE OF 3 in its pricing (PileRates.avgOf)? Owners (Josh, Penguin) always; a sourcer only when an owner turned it
+        on for the account (/sourcer avg, GET /scanner viewer.avg). Everyone else prices on the instant Card Ladder value from Triumph and never asks Card
+        Ladder for anything: a card whose band needs the average reads "Needs average of 3". A token that names no user (only a test or a broken phone)
+        keeps the pricing it always had, like roleState. */
+    function avgOn() {
+      var v = viewer();
+      return v.id ? PileRates.avgOf(v.id, roleKnown) : true;
+    }
     /** 'owner' | 'sourcer' | 'unknown' (PileRates.roleOf): Josh's login is the owner at once, every other login is 'unknown' until the
         server's answer for it is in (roleKnown). isSourcer() above still reads an unknown login as a sourcer for its figures; what
         decides the SCREEN is this (lkMode). */
@@ -16908,6 +17465,7 @@ window.SinglesPrice = {
       session = null;
       saveSession(null);
       refreshFlight = null;
+      batch = null; renderBatch(); // the next login never sees this one's pasted-list summary
       dom.password.value = '';
       showSigninStep('form');
       if (message) signinError(message);
@@ -17264,14 +17822,61 @@ window.SinglesPrice = {
 
     function money(cents) { return PriceCore.money.fmt(cents); }
 
-    /** The grade on the card: "Grade 9" in #sc-grade (what a screen reader reads, and what it always said),
-        and just the number in the ringed circle (a barcode mark there while the grade is not known). */
-    function showGrade(gradeText, gradeNumber) {
+    // ── the card's photo (Triumph's imageUrl, through the server's allow-list and CardView.photoSrc again here). One box of a fixed size either
+    // way: the photo when there is one, the slab outline behind it when there is not, or when the phone could not load it (the error handler
+    // below takes the broken image out and remembers the address, so a redraw never asks for it again). ──
+    var photoFailed = {};
+    /** The URL to draw, or '' (no photo, an address CardView.photoSrc refuses, or one this phone already could not load). */
+    function photoUsable(url) {
+      var s = CardView.photoSrc(url);
+      return s && !photoFailed[s] ? s : '';
+    }
+    function photoImg(src) {
+      return '<img src="' + esc(src) + '" alt="" loading="lazy" decoding="async" draggable="false" referrerpolicy="no-referrer">';
+    }
+    /** A photo box for a row built as HTML. */
+    function thumbHtml(url) {
+      var s = photoUsable(url);
+      return '<span class="sc-thumb" aria-hidden="true"' + (s ? ' data-src="' + esc(s) + '"' : '') + '>' + (s ? photoImg(s) : '') + '</span>';
+    }
+    /** The photo box that is on the page already (the card on screen): redrawn only when its photo changes, so an average landing never reloads it. */
+    function setThumb(el, url) {
+      if (!el) return;
+      var s = photoUsable(url);
+      var was = el.getAttribute ? el.getAttribute('data-src') : null;
+      if ((was || '') === s) return;
+      el.setAttribute('data-src', s);
+      el.innerHTML = s ? photoImg(s) : '';
+    }
+    function photoLoadFailed(ev) {
+      var img = ev && ev.target;
+      if (!img || String(img.tagName || '').toUpperCase() !== 'IMG') return;
+      var box = img.parentNode;
+      if (!box || !box.classList || !box.classList.contains('sc-thumb')) return;
+      var src = img.getAttribute ? img.getAttribute('src') : '';
+      if (src) photoFailed[src] = true;
+      if (box.setAttribute) box.setAttribute('data-src', '');
+      if (box.removeChild) box.removeChild(img);
+    }
+    // an image's error event does not bubble: catch it on the way down
+    if (typeof document.addEventListener === 'function') document.addEventListener('error', photoLoadFailed, true);
+
+    /** The grade chip a row draws ("PSA 9"; just the grader, muted, when the grade is not known; nothing when neither is). */
+    function gradeChipHtml(grader, gradeN) {
+      var label = CardView.gradeLabel(grader, gradeN != null ? String(gradeN) : '');
+      return label ? '<span class="sc-gchip' + (gradeN == null ? ' sc-unk' : '') + '">' + esc(label) + '</span>' : '';
+    }
+
+    /** The grade on the card: "Grade 9" in #sc-grade (what a screen reader reads, and what it always said), and the chip ("PSA 9", or just
+        the grader, muted, while the grade is not known) for everyone else. */
+    function showGrade(gradeText, gradeNumber, grader) {
       dom.grade.textContent = gradeText ? ('Grade ' + gradeText) : '-';
-      if (!dom.gradeDot) return;
+      if (!dom.gradeChip) return;
       var n = gradeNumber != null ? gradeNumber : gradeNum(gradeText);
-      dom.gradeDot.textContent = n != null ? String(n) : '';
-      dom.gradeDot.classList.toggle('sc-unk', n == null);
+      var label = CardView.gradeLabel(grader, n != null ? String(n) : '');
+      dom.gradeChip.textContent = label;
+      dom.gradeChip.hidden = !label;
+      dom.gradeChip.classList.toggle('sc-unk', n == null);
     }
 
     var noteFlag = false; // the note is a warning or the down line, not the quiet band name
@@ -17353,16 +17958,17 @@ window.SinglesPrice = {
       el.classList.toggle('sc-wait', look === 'wait');
       el.classList.toggle('sc-no', look === 'no');
     }
-    /** The card's name: the card itself first, its year, set and number on the quieter line under it
-        (CardView.splitTitle). A title with no card number shows whole, with no second line. The set's name and
-        its number are two spans, so the app's folded card can cut the name short and keep the number. */
-    function showName(title) {
-      var parts = CardView.splitTitle(title);
-      dom.name.textContent = parts.name;
+    /** The card's name as a scan row reads it (CardView.shortCard): the card and its number in bold, its year and set on the quieter line under it
+        ("Eevee #173" over "2025 SVP EN"), whichever order the title was written in. A title the card cannot be told from its set in shows whole,
+        with no set line. The card's photo goes with it (none clears it). */
+    function showName(title, imageUrl) {
+      var c = CardView.shortCard(title);
+      dom.name.textContent = c.card;
+      if (dom.nameNum) { dom.nameNum.textContent = c.number; dom.nameNum.hidden = !c.number; }
+      setThumb(dom.thumb, imageUrl);
       if (!dom.nameSet) return;
-      dom.nameSetName.textContent = parts.setName;
-      dom.nameSetNum.textContent = parts.number;
-      dom.nameSet.hidden = !parts.set;
+      dom.nameSetName.textContent = c.set;
+      dom.nameSet.hidden = !c.set;
     }
 
     /** Card Ladder's newest sales as chips under the name, and as a trend line in the opened card (staff only:
@@ -17456,7 +18062,7 @@ window.SinglesPrice = {
       showName(grader.toUpperCase() + ' ' + cert);
       dom.cert.textContent = cert;
       dom.grader.textContent = grader.toUpperCase();
-      showGrade(null);
+      showGrade(null, null, grader);
       clearSquares(LOOKING_UP, 'wait');
       dom.rescanBadge.hidden = true;
       hideRetry();
@@ -17464,18 +18070,20 @@ window.SinglesPrice = {
       currentKey = null;
       sellerView = { name: grader.toUpperCase() + ' ' + cert, grade: '', market: { cents: null, pending: true } };
       renderSeller();
+      plSync(); // no card on screen yet: no Lock card
     }
 
     function renderNotSignedIn(cert, grader, message) {
       dom.result.hidden = false;
       showName(grader.toUpperCase() + ' ' + cert);
-      dom.cert.textContent = cert; dom.grader.textContent = grader.toUpperCase(); showGrade(null);
+      dom.cert.textContent = cert; dom.grader.textContent = grader.toUpperCase(); showGrade(null, null, grader);
       clearSquares('Sign in to price');
       showNote(message || 'Sign in above for live prices. This needs your scanner login.', true);
       renderAuthState();
       currentKey = null;
       sellerView = { name: grader.toUpperCase() + ' ' + cert, grade: '', market: null };
       renderSeller();
+      plSync();
     }
 
     function renderError(cert, grader, msg) {
@@ -17485,6 +18093,7 @@ window.SinglesPrice = {
       currentKey = null;
       sellerView = { name: grader.toUpperCase() + ' ' + cert, grade: '', market: null };
       renderSeller();
+      plSync();
     }
 
     // ── the rule toggle + Normal/Lower (scanner/offerRules.js): every pile card is priced under the
@@ -17551,6 +18160,7 @@ window.SinglesPrice = {
         cert: cert, grader: g, title: title, titles: [title, lookup.cardTitle, lookup.cardName].filter(Boolean), clvCents: clvCents, triumphLastSaleCents: triumphLastSaleCents,
         grade: gradeNum(lookup.grade), gradeText: lookup.grade ? String(lookup.grade) : null,
         confidence: lookup.confidence != null ? lookup.confidence : null,
+        imageUrl: CardView.photoSrc(lookup.imageUrl) || null,
         // Same fallback the bot uses when Triumph gives no category/year (triumph.js's mapSport/mapYear):
         // read it off the card title. SportCore IS that code.
         sport: SportCore.mapSport({ category: lookup.category }, title), year: SportCore.mapYear({ year: lookup.year }, title), language: PriceCore.languageOf(title),
@@ -17574,6 +18184,8 @@ window.SinglesPrice = {
     /** Puts one card's facts in the pile and on screen, then asks for its average. A Triumph answer and
         the Triumph-down fallback below both end here. */
     function takeCard(cert, g, facts) {
+      // An account without averages never has one on its way: the card is priced on Triumph's value alone ('off', see OfferRules), at once.
+      if (!avgOn()) facts = avgOffFacts(facts);
       var r = pile.addCard(cert, g, facts.clvCents, null);
       var entry = pile.list()[r.index];
       var key = pileMetaKey(g, entry.certKey);
@@ -17584,6 +18196,11 @@ window.SinglesPrice = {
       renderCurrent();
       dom.rescanBadge.hidden = !r.rescanned;
       startAveragePoll(key);
+    }
+
+    /** A card's facts for an account without averages: no average, no Card Ladder value, no sales, and the status 'off' (never 'pending'). */
+    function avgOffFacts(f) {
+      return Object.assign({}, f, { avgStatus: 'off', avg3Cents: null, avgReason: null, clClvCents: null, sales: null });
     }
 
     /** What scanner/triumphDown.js reads a fallback card with: the same sport/year/language/grade code a
@@ -17619,6 +18236,7 @@ window.SinglesPrice = {
      */
     function startAveragePoll(key) {
       if (lkOn()) return; // a sourcer never asks Card Ladder for anything
+      if (!avgOn()) return; // and neither does an account without averages (its cards are 'off', see takeCard)
       stopAveragePoll(key);
       var meta = pileMeta[key];
       if (!meta || !meta.facts) return;
@@ -17673,10 +18291,10 @@ window.SinglesPrice = {
       var fig = entry ? figuresOf(entry) : null;
       var shown = PileRates.shownPrice(price, fig);
       dom.result.hidden = false;
-      showName(f.title);
+      showName(f.title, f.imageUrl);
       dom.cert.textContent = f.cert;
       dom.grader.textContent = f.grader.toUpperCase();
-      showGrade(f.gradeText, f.grade);
+      showGrade(f.gradeText, f.grade, f.grader);
 
       var tv = triumphValue(f);
       var clvWaiting = tv == null && TriumphDown.waitingForValue(f);
@@ -17706,6 +18324,7 @@ window.SinglesPrice = {
         market: fig && fig.marketEdited ? { cents: fig.marketCents, pending: false } : OfferRules.marketFor(f, price, choice.mode)
       };
       renderSeller();
+      plSync(); // price + lock: the Lock card follows the card on screen
     }
 
     /** The small explanation under the squares (staff only). The squares themselves stay uncluttered. */
@@ -17729,6 +18348,8 @@ window.SinglesPrice = {
             : choice.mode === 'lower'
             ? 'Lower uses the lower of CL value and avg of 3, so this waits for the average.'
             : 'Does not fit a band on CL value alone, but an avg-of-3 band might still take it - not a pass yet.', true);
+        } else if (f.avgStatus === 'off') {
+          showNote('This card is priced on the average of 3 sales, which is not part of this account.', true);
         } else if (f.avgStatus === 'timeout') {
           showNote('No answer from the PC bot after ' + Math.round(AVG_POLL_TIMEOUT_MS / 60000) + ' minutes. Not confirmed as a pass - rescan this cert to check again.', true);
         } else if (f.avgStatus === 'failed') {
@@ -17829,16 +18450,16 @@ window.SinglesPrice = {
       if (asked) asked.then(function () { repaintForSheets(); });
     }
 
-    // Each pill's look (sc-chip-*): blue while it waits on an average, teal for one staff prices by hand, grey
-    // for not buying, the red tint when there is no sheet or percent to price it with.
+    // Each status chip's look (sc-chip-*): teal for a card we are buying, blue while it waits on an average and for one staff prices by hand,
+    // red for not buying and for no sheet or percent to price it with.
     function pillFor(price) {
-      if (!price || price.noSheet) return ' <span class="status-pill st-unknown sc-chip-err">Unpriced</span>';
-      if (price.noPct) return ' <span class="status-pill st-unknown sc-chip-err">No percent</span>';
+      if (!price || price.noSheet) return '<span class="status-pill st-unknown sc-chip-err">Unpriced</span>';
+      if (price.noPct) return '<span class="status-pill st-unknown sc-chip-err">No percent</span>';
       // Ambiguous, not declined - never the same "Not buying" pill a genuine out-of-range slab gets.
-      if (price.awaitingAverage) return ' <span class="status-pill st-unknown sc-chip-wait">Needs average</span>';
-      if (price.rejected) return ' <span class="status-pill st-cancelled sc-chip-no">Not buying</span>';
-      if (price.staffPrice) return ' <span class="status-pill st-unknown sc-chip-hand">No value</span>';
-      return '';
+      if (price.awaitingAverage) return '<span class="status-pill st-unknown sc-chip-wait">' + (price.avgOff ? OfferRules.NEEDS_AVG_OFF : 'Needs average') + '</span>';
+      if (price.rejected) return '<span class="status-pill st-cancelled sc-chip-no">Not buying</span>';
+      if (price.staffPrice) return '<span class="status-pill st-unknown sc-chip-hand">No value</span>';
+      return '<span class="status-pill st-active sc-chip-buy">Buying</span>';
     }
 
     /** Redraws the whole pile from `pile`/`pileMeta` - called after every add/remove/clear/re-price,
@@ -17899,7 +18520,7 @@ window.SinglesPrice = {
         return !pileLeaving[pileMetaKey(c.grader, c.certKey)]; // swiped away, gone in a moment
       }).map(function (c) {
         var meta = pileMeta[pileMetaKey(c.grader, c.certKey)] || {};
-        var title = CardView.splitTitle(meta.card || (c.grader.toUpperCase() + ' ' + c.cert));
+        var title = CardView.shortCard(meta.card || (c.grader.toUpperCase() + ' ' + c.cert));
         // The figures the pile counts (PileRates.cardFigures): a typed Pay, else a typed Market at the card's pile rate, else its
         // price. The big number is that pay (a sourcer's offer), or "-" when nothing pays for the card: the pill says why (Not buying,
         // Needs average...), and the market value has its own line under it, so it is never shown twice.
@@ -17917,22 +18538,26 @@ window.SinglesPrice = {
         var weLine = sourcer ? '<span class="val-we">We pay ' + (we && typeof we.payoutCents === 'number' ? money(we.payoutCents) : '-') + '</span>' : '';
         var key = pileMetaKey(c.grader, c.certKey);
         var g = gradeNum(meta.grade);
-        // A row: the grade in a circle, the card's name over its cert (and its pill), what we pay on the right with the card's market under it.
+        // Triumph's confidence, small under the market, when the card has a Triumph value (the scoreboard's pill shows it on the same terms)
+        var conf = meta.facts && triumphValue(meta.facts) != null ? CardView.confView(meta.facts.confidence) : null;
+        var confHtml = conf && conf.known ? '<span class="val-conf sc-cf-' + conf.level + '">' + esc(conf.text) + '</span>' : '';
+        // A row, after Courtyard's scan list: the card's photo, its name and number over its set, the grade and whether we are buying it as chips, what
+        // we pay on the right with the card's market and confidence under it. The cert is not in the row (tap it and the card opens with it).
         // Tapping the name prices the card again; tapping the numbers opens Edit card (a typed figure wears the teal pencil).
         // The red Delete sits behind the row and .sc-earlier-slide moves over it when the row is swiped left.
         return '<div class="sc-earlier-row">' +
           '<span class="sc-earlier-del" aria-hidden="true"><span>Delete</span></span>' +
           '<div class="sc-earlier-slide">' +
           '<button type="button" class="sc-earlier-main" data-cert="' + esc(c.cert) + '" data-grader="' + esc(c.grader) + '">' +
-            '<span class="sc-row-grade' + (g == null ? ' sc-unk' : '') + '" aria-hidden="true">' + (g == null ? '' : esc(String(g))) + '</span>' +
-            '<span class="name"><span class="title">' + esc(title.name) + '</span>' +
-              ' <span class="meta">' + (title.set ? '<span class="set"><span class="set-name">' + esc(title.setName) + '</span> ' + esc(title.number) + '</span>' : '') +
-              '<span class="cert">' + esc(c.grader.toUpperCase()) + ' ' + esc(c.cert) + '</span></span>' + pillFor(PileRates.shownPrice(c.price, fig)) + '</span>' +
+            thumbHtml(meta.facts && meta.facts.imageUrl) +
+            '<span class="name"><span class="title">' + esc(title.card) + (title.number ? ' <span class="num">' + esc(title.number) + '</span>' : '') + '</span>' +
+              (title.set ? '<span class="set">' + esc(title.set) + '</span>' : '') +
+              '<span class="chips">' + gradeChipHtml(c.grader, g) + pillFor(PileRates.shownPrice(c.price, fig)) + plChipHtml(key) + '</span></span>' +
           '</button>' +
           '<button type="button" class="sc-earlier-val" data-key="' + esc(key) + '" aria-label="' +
             esc((sourcer ? 'Your offer ' : 'Pay ') + valueText + ', market ' + marketText + (edited ? ', edited' : '') + '. Edit ' + c.grader.toUpperCase() + ' ' + c.cert) + '">' +
             '<span class="val"><span class="val-pay' + (payEdited ? ' sc-edited' : '') + '">' + valueText + '</span>' + weLine +
-            '<span class="val-mkt' + (fig.marketEdited ? ' sc-edited' : '') + '">Mkt ' + marketText + '</span></span>' +
+            '<span class="val-mkt' + (fig.marketEdited ? ' sc-edited' : '') + '">Mkt ' + marketText + '</span></span>' + confHtml +
           '</button>' +
           '<button type="button" class="sc-earlier-remove" data-cert="' + esc(c.cert) + '" data-grader="' + esc(c.grader) + '" data-key="' + esc(key) + '" aria-label="Remove ' + esc(c.cert) + '">✕</button>' +
           '</div>' +
@@ -18489,6 +19114,7 @@ window.SinglesPrice = {
         dom.result.hidden = true;
         clearSquares(); // We pay sits in the scoreboard, outside the card: not the removed card's price any more
         renderSeller();
+        plSync();
       }
       savePile();
       pileTouching = false; // this redraw is the tap's own result: it never waits
@@ -18625,6 +19251,7 @@ window.SinglesPrice = {
     var LOOKUP_TOTAL_MS = 20000;
     var scanQueue = [];
     function drainScanQueue() {
+      renderBatch(); // a card of a pasted list has come in (or failed): the line under the cert box counts it
       if (busy || !scanQueue.length) return;
       var next = scanQueue.shift();
       priceCert(next.cert, next.grader);
@@ -18797,6 +19424,7 @@ window.SinglesPrice = {
             applyFailure(cert, grader, attempt, describeFailure('Lookup: ' + lookup.error, attempt));
             return;
           }
+          plTake(cert, grader, lookup, r.body.lock); // price + lock: what the function said about locking this card, kept for the Lock card
           onLookup(cert, grader, lookup);
         }, function (e) {
           busy = false;
@@ -18837,6 +19465,12 @@ window.SinglesPrice = {
       alloc: document.getElementById('sc-lk-alloc'),
       locks: document.getElementById('sc-lk-locks')
     };
+    // Price + lock: the Lock card under the card on screen, and this week's locks under that (see plOn).
+    var plUi = {
+      root: document.getElementById('sc-pl'),
+      card: document.getElementById('sc-pl-card'),
+      locks: document.getElementById('sc-pl-locks')
+    };
     var LK_CERT_GO = dom.certGo.textContent;
     var LK_TIMEOUT_MS = 20000;
     var LK_STATUS_EVERY_MS = 30000;
@@ -18852,20 +19486,69 @@ window.SinglesPrice = {
         ctx: { open: null, paused: false, opensAt: null }, win: null,
         alloc: null, allocAt: 0, allocBusy: false, allocErr: '', allocRecvAt: 0, allocCat: null, allocOpen: {}, allocTimer: null, allocTick: null,
         data: null, dataAt: 0, dataBusy: false, dataReload: false, dataErr: '',
-        scope: 'week', notice: '', noticeTimer: null, fresh: false
+        scope: 'week', notice: '', noticeTimer: null, fresh: false,
+        list: null, fromList: false, // a pasted list ({ items: [{ cert, grader, bare, res }], busy, err }), and whether the card on screen was opened from it
+        certOpen: {}, // My locks rows whose cert number is showing (a tap on the row), by cert
+        plKey: null // price + lock: the pile key of the card the Lock card (lk.item) is about
       };
     }
     var lk = lkFresh('off');
-    /** What the lock screens are doing for this login: 'lock' (the server says it is a sourcer), 'check' (nobody has said who this login
+    // The photo of every card this phone looked up, kept for My locks (a lock row has no photo of its own: the function stores none). The address only, as
+    // CardView.photoSrc lets it through; the newest LK_PHOTO_MAX; kept on the phone so a reload still has them.
+    var LK_PHOTO_KEY = 'iopLkPhotos';
+    var LK_PHOTO_MAX = 200;
+    function lkPhotoKey(cert) { return Certs.certKey(String(cert === null || cert === undefined ? '' : cert)); }
+    function lkPhotosLoad() {
+      var out = { order: [], map: {} };
+      try {
+        var raw = JSON.parse(localStorage.getItem(LK_PHOTO_KEY) || 'null');
+        if (raw && Array.isArray(raw.order) && raw.map && typeof raw.map === 'object') {
+          raw.order.slice(-LK_PHOTO_MAX).forEach(function (k) {
+            var s = typeof raw.map[k] === 'string' ? CardView.photoSrc(raw.map[k]) : '';
+            if (s && !out.map[k]) { out.map[k] = s; out.order.push(k); }
+          });
+        }
+      } catch (e) { /* none kept: photos come back as cards are scanned */ }
+      return out;
+    }
+    var lkPhotos = lkPhotosLoad();
+    /** Keeps the photo a lookup answer carries (when there is one the page may draw) under its cert. */
+    function lkPhotoNote(res) {
+      var s = res && res.cert !== undefined && res.cert !== null ? CardView.photoSrc(res.imageUrl) : '';
+      var k = s ? lkPhotoKey(res.cert) : '';
+      if (!k || lkPhotos.map[k] === s) return;
+      if (!lkPhotos.map[k]) lkPhotos.order.push(k);
+      lkPhotos.map[k] = s;
+      while (lkPhotos.order.length > LK_PHOTO_MAX) delete lkPhotos.map[lkPhotos.order.shift()];
+      try { localStorage.setItem(LK_PHOTO_KEY, JSON.stringify(lkPhotos)); } catch (e) { /* this visit only */ }
+    }
+    function lkPhotoOf(cert) { return lkPhotos.map[lkPhotoKey(cert)] || null; }
+    /** What the lock screens are doing for this login: 'lock' (the server says it is a sourcer on a lock-only account, the default) or
+        'price_lock' (a sourcer whose owner chose price + lock: GET /scanner viewer.mode, acctMode()), 'check' (nobody has said who this login
         is yet: a neutral "Checking your account", nothing priced, nothing locked: failing OPEN would hand an unknown sourcer Card Ladder,
         failing the other way would hand an owner the lock screens), or 'off' (an owner, or signed out). */
     function lkMode() {
       if (!session) return 'off';
       var r = roleState();
-      return r === 'sourcer' ? 'lock' : r === 'unknown' ? 'check' : 'off';
+      if (r === 'sourcer') return acctMode() === 'price_lock' ? 'price_lock' : 'lock';
+      return r === 'unknown' ? 'check' : 'off';
     }
-    /** Are the lock screens in charge of the scanner (lock or check)? Then no Card Ladder, no pile, no owner pricing. */
-    function lkOn() { return lkMode() !== 'off'; }
+    /** A sourcer account's MODE as the server last said it for THIS login (GET /scanner viewer.mode, kept on the phone with the role):
+        'lock' (lock only, the default) or 'price_lock' (the pricing screen plus a Lock option); null for an owner or a login nobody
+        has answered for yet. Missing, unreadable or an older slab-rates is 'lock': the mode that shows LESS, never more. */
+    function acctMode() {
+      var v = viewer();
+      return v.id ? PileRates.modeOf(v.id, roleKnown) : null;
+    }
+    /** May this mode lock? Both sourcer modes lock through the same function at the same payout (Triumph's % minus the person's cut):
+        'lock' and 'price_lock'. Not 'check' (nobody has said who this login is) and not 'off' (an owner). */
+    function lkLocks(mode) { return mode === 'lock' || mode === 'price_lock'; }
+    /** Are the lock screens in charge of the scanner (lock or check)? Then no Card Ladder, no pile, no owner pricing. A 'price_lock'
+        account is NOT here: it keeps the pricing screen (the pile, the rate sheets, Card Ladder's average) and gets a Lock card under
+        the card on screen (plOn). An owner is in neither. */
+    function lkOn() { var m = lkMode(); return m === 'lock' || m === 'check'; }
+    /** Is this login a price + lock sourcer: the pricing screen with a Lock option? */
+    function plOn() { return lkMode() === 'price_lock'; }
 
     function applyLockMode() {
       SinglesPane.refresh(); // who may see Singles (owners only, never in lock mode) may have changed with this
@@ -18877,15 +19560,36 @@ window.SinglesPrice = {
       lkAllocStop();
       if (lk.noticeTimer !== null) clearTimeout(lk.noticeTimer);
       if (lk.alertTimer !== null) clearTimeout(lk.alertTimer);
+      var wasPl = lk.mode === 'price_lock';
       lk = lkFresh(mode);
+      plForget(); // another login's lock answers are never on this one's pile
+      if (wasPl) renderPile(); // its rows carry no lock chips any more (plChipHtml reads the new mode)
+      batch = null; renderBatch(); // another login's pasted list is never the summary on this one's screen
       if (mode === 'off') {
         dom.layout.classList.remove('sc-lock-mode');
         dom.layout.classList.remove('sc-role-check');
         lkUi.root.hidden = true;
         lkUi.root.removeAttribute('data-checking');
         dom.certGo.textContent = LK_CERT_GO;
+        plRender(); // (hides the Lock card)
         return;
       }
+      if (mode === 'price_lock') {
+        // The pricing screen stays exactly as a sourcer's always was (the pile, the rate sheets, Card Ladder's average, hide mode); what is new is the
+        // Lock card under the card on screen. The lock machinery runs for it: the window and the pause every 30 s, and this week's locks.
+        dom.layout.classList.remove('sc-lock-mode');
+        dom.layout.classList.remove('sc-role-check');
+        lkUi.root.hidden = true;
+        lkUi.root.removeAttribute('data-checking');
+        dom.certGo.textContent = LK_CERT_GO;
+        lk.on = true;
+        renderLock();
+        lkStartTimer();
+        lkStatus();
+        lkLoadLocks(true);
+        return;
+      }
+      plRender(); // (hides the Lock card)
       dom.layout.classList.add('sc-lock-mode');
       lkUi.root.hidden = false;
       stopAllAveragePolls();
@@ -18936,7 +19640,7 @@ window.SinglesPrice = {
     // ── the function: one request, the session refreshed once on a 401, every way it can go wrong named ──
     function lkCall(action, extra) {
       // the function is only ever asked for a login the server has called a sourcer
-      if (lk.mode !== 'lock') return Promise.resolve({ ok: false, status: 0, body: {}, notReady: true });
+      if (!lkLocks(lk.mode)) return Promise.resolve({ ok: false, status: 0, body: {}, notReady: true });
       var payload = { action: action };
       Object.keys(extra || {}).forEach(function (k) { payload[k] = extra[k]; });
       function once() {
@@ -18993,21 +19697,23 @@ window.SinglesPrice = {
     function lkNotice(text) {
       lk.notice = text;
       if (lk.noticeTimer !== null) clearTimeout(lk.noticeTimer);
-      lk.noticeTimer = setTimeout(function () { lk.noticeTimer = null; lk.notice = ''; if (lk.on && lk.tab === 'locks') renderLockLocks(); }, 3500);
+      lk.noticeTimer = setTimeout(function () { lk.noticeTimer = null; lk.notice = ''; if (lk.on && lk.tab === 'locks') renderLockLocks(); else if (lk.on && lk.mode === 'price_lock') plRender(); }, 3500);
       if (lk.tab === 'locks') renderLockLocks();
+      else if (lk.mode === 'price_lock') plRender();
     }
     /** "Checking your account": the whole screen while the server has not said who this login is. */
     function renderLockCheck() {
       var slow = lk.roleTries >= 2;
       lkUi.scan.hidden = false; lkUi.alloc.hidden = true; lkUi.locks.hidden = true;
       lkUi.banner.hidden = true;
-      lkUi.scan.innerHTML = '<div class="sc-card sc-lk-card" aria-busy="true"><div class="sc-lk-head"><span class="sc-lk-grade sc-unk" aria-hidden="true"></span>' +
+      lkUi.scan.innerHTML = '<div class="sc-card sc-lk-card" aria-busy="true"><div class="sc-lk-head"><span class="sc-thumb" aria-hidden="true"></span>' +
         '<div class="sc-lk-words"><div class="sc-lk-name sc-wait">Checking your account</div><div class="sc-lk-id">' +
         (slow ? 'Taking longer than usual. Check your signal.' : 'One moment') + '</div></div></div>' +
         (slow ? '<div class="sc-lk-actions">' + lkButton('role-retry', 'Try again', 'sc-btn-quiet sc-btn-block') + '</div>' : '') + '</div>';
     }
     function renderLock(fresh) {
       if (lk.mode === 'check') { renderLockCheck(); return; }
+      if (lk.mode === 'price_lock') { plSync(); return; } // the Lock card under the priced card, not the lock screens
       if (fresh) lk.fresh = true;
       renderLockTabs();
       renderLockBanner();
@@ -19034,18 +19740,25 @@ window.SinglesPrice = {
     }
 
     function renderLockScan() {
+      if (lk.mode === 'price_lock') { plRender(); return; } // (a lock's outcome said in words: the Lock card carries it)
       var h;
       if (lk.phase === 'idle') {
         h = '<div class="sc-card sc-lk-card sc-lk-idle"><div class="sc-lk-idle-title">Scan a slab</div>' +
           '<p class="sc-sub">Point the camera at the barcode, or type the cert number below. You will see what you get and whether it can lock.</p></div>';
       } else if (lk.phase === 'checking') {
-        h = '<div class="sc-card sc-lk-card" aria-busy="true"><div class="sc-lk-head"><span class="sc-lk-grade sc-unk" aria-hidden="true"></span>' +
+        h = '<div class="sc-card sc-lk-card" aria-busy="true"><div class="sc-lk-head"><span class="sc-thumb" aria-hidden="true"></span>' +
           '<div class="sc-lk-words"><div class="sc-lk-name sc-wait">Checking ' + esc(lk.checking || '') + '</div><div class="sc-lk-id">One moment</div></div></div></div>';
       } else if (lk.phase === 'failed') {
         h = '<div class="sc-card sc-lk-card"><div class="sc-lk-status" data-tone="bad" role="alert">' + esc(lk.note) + '</div>' +
           (lk.last ? '<div class="sc-lk-actions">' + lkButton('recheck', 'Try again', 'sc-btn-quiet sc-btn-block') + '</div>' : '') + '</div>';
+      } else if (lk.phase === 'list') {
+        h = lkListHtml();
       } else {
         h = lkCardHtml();
+      }
+      // a pasted list stays until another one replaces it (or Clear list): from a card, or from the idle screen, one tap goes back to it
+      if (lk.list && lk.phase !== 'list' && lk.phase !== 'checking' && lk.phase !== 'working' && lk.phase !== 'confirm') {
+        h = '<div class="sc-lk-backrow">' + lkButton('back', 'Back to the list (' + lk.list.items.length + ')', 'sc-btn-quiet sc-lk-back') + '</div>' + h;
       }
       // what became of a lock or a queue while the camera was already on the next card: said first, in words, until it times out
       if (lk.alert) h = '<div class="sc-card sc-lk-card sc-lk-alert-card"><div class="sc-lk-status sc-lk-alert" data-tone="' + esc(lk.alert.tone) + '" role="alert">' + esc(lk.alert.text) + '</div></div>' + h;
@@ -19056,11 +19769,11 @@ window.SinglesPrice = {
       }
     }
 
-    function lkCardHtml() {
-      var item = lk.item;
+    /** What the card on the lock screen is and offers right now (LockMode.cardPhase) with the lock's own states on top (confirming, going
+        through, locked, test mode): the words, the tone, the figures and the buttons. The lock screens' card and a price + lock account's
+        Lock card (plCardHtml) both read it. `withNext` adds the lock screens' "Scan next card" / "Back to the list" button to a done card. */
+    function lkCardState(item, withNext) {
       var p = LockMode.cardPhase(item, lk.ctx);
-      var parts = CardView.splitTitle(item.card || '');
-      var gradeN = gradeNum(item.grade);
       var dim = p.kind === 'blocked' || p.kind === 'full' || p.kind === 'paused' || p.kind === 'error';
       var noRate = item.youGetPct === null || item.youGetPct === undefined;
       var big = noRate ? 'No rate' : LockMode.pctText(item.youGetPct);
@@ -19074,12 +19787,12 @@ window.SinglesPrice = {
       if (done && done.kind === 'locked') {
         kind = 'locked'; tone = 'ok'; status = 'Locked';
         note = 'You locked this card for ' + LockMode.youGetText({ youGetPct: done.pct, youGetDollars: done.dollars }) + '.' + (done.ledger === false ? ' It is not on My locks yet: check My locks in a minute, and if it is still missing, message us in Discord with the cert number.' : '');
-        actions = '<div class="sc-lk-actions">' + lkButton('next', 'Scan next card', 'sc-btn-quiet sc-btn-block') + '</div>';
+        if (withNext) actions = '<div class="sc-lk-actions">' + lkButton('next', lk.list && lk.fromList ? 'Back to the list' : 'Scan next card', 'sc-btn-quiet sc-btn-block') + '</div>';
         dim = false;
       } else if (done && done.kind === 'test') {
         kind = 'test'; tone = 'info'; status = 'Test mode';
         note = 'Nothing was sent to Triumph. This card would have locked.';
-        actions = '<div class="sc-lk-actions">' + lkButton('next', 'Scan next card', 'sc-btn-quiet sc-btn-block') + '</div>';
+        if (withNext) actions = '<div class="sc-lk-actions">' + lkButton('next', lk.list && lk.fromList ? 'Back to the list' : 'Scan next card', 'sc-btn-quiet sc-btn-block') + '</div>';
         dim = false;
       } else if (lk.phase === 'confirm') {
         actions = '<div class="sc-clear-confirm sc-lk-confirm" role="alert"><div class="sc-clear-confirm-text">' + esc(p.confirmText) + '</div>' +
@@ -19094,13 +19807,20 @@ window.SinglesPrice = {
       } else if (p.kind === 'paused') {
         actions = '<div class="sc-lk-actions">' + lkButton('', 'Locking is paused', 'sc-btn-quiet sc-btn-block sc-lk-go', ' disabled') + '</div>';
       }
+      return { p: p, dim: dim, noRate: noRate, big: big, sub: sub, kind: kind, tone: tone, status: status, note: note, actions: actions, rangeLine: LockMode.cardRangeLine(item) };
+    }
+    function lkCardHtml() {
+      var item = lk.item;
+      var st = lkCardState(item, true);
+      var parts = CardView.shortCard(item.card || '');
+      var gradeN = gradeNum(item.grade);
+      var dim = st.dim, noRate = st.noRate, big = st.big, sub = st.sub, p = st.p, kind = st.kind, tone = st.tone, status = st.status, note = st.note, actions = st.actions, rangeLine = st.rangeLine;
       var grader = String(item.grader || '').toUpperCase();
-      var rangeLine = LockMode.cardRangeLine(item);
       return '<div class="sc-card sc-lk-card" data-kind="' + esc(kind) + '">' +
-        '<div class="sc-lk-head"><span class="sc-lk-grade' + (gradeN === null ? ' sc-unk' : '') + '" aria-hidden="true">' + (gradeN !== null ? esc(String(gradeN)) : '') + '</span>' +
-        '<div class="sc-lk-words"><div class="sc-lk-name">' + esc(parts.name || ('Cert ' + item.cert)) + '</div>' +
-        (parts.set ? '<div class="sc-lk-set">' + esc(parts.setName) + ' ' + esc(parts.number) + '</div>' : '') +
-        '<div class="sc-lk-id">' + esc((grader ? grader + ' ' : '') + item.cert) + (item.grade ? ', grade ' + esc(item.grade) : '') + '</div></div></div>' +
+        '<div class="sc-lk-head">' + thumbHtml(item.imageUrl) +
+        '<div class="sc-lk-words"><div class="sc-lk-name">' + esc(parts.card || ('Cert ' + item.cert)) + (parts.number ? ' <span class="sc-num">' + esc(parts.number) + '</span>' : '') + '</div>' +
+        (parts.set ? '<div class="sc-lk-set">' + esc(parts.set) + '</div>' : '') +
+        '<div class="sc-lk-chips">' + gradeChipHtml(item.grader, gradeN) + '<span class="sc-lk-id">' + esc((grader ? grader + ' ' : '') + item.cert) + '</span></div></div></div>' +
         '<div class="sc-lk-figs' + (noRate ? ' sc-lk-solo' : '') + '">' + (noRate ? '' : '<div class="sc-tile sc-tile-pay sc-lk-you' + (dim ? ' sc-lk-dim' : '') + '"><div class="sc-tile-top"><div class="sc-key">' + esc(p.youLabel) + '</div></div>' +
         '<div class="sc-pay-val">' + esc(big) + '</div>' + (sub ? '<div class="sc-lk-sub">' + esc(sub) + '</div>' : '') + '</div>') +
         '<div class="sc-tile sc-lk-market"><div class="sc-tile-top"><div class="sc-key">Market</div></div><div class="sc-pay-val">' + esc(LockMode.moneyText(item.marketValue)) + '</div></div></div>' +
@@ -19112,8 +19832,8 @@ window.SinglesPrice = {
     }
 
     // ── a scan: check the cert (this is what a sourcer's priceCert is) ──
-    function lkCheck(cert, grader) {
-      if (lk.mode !== 'lock') { renderLock(); return Promise.resolve(); } // nobody has said who this login is yet: nothing is checked
+    function lkCheck(cert, grader, fromList) {
+      if (!lkLocks(lk.mode)) { renderLock(); return Promise.resolve(); } // nobody has said who this login is yet: nothing is checked
       var bare = grader === 'psa' ? Certs.certKey(cert) : cert;
       // the camera reads the same barcode again while it is held up: a card being asked about, confirmed or locked is left alone
       if (lk.checking === bare || (lk.item && lk.item.cert === bare && (lk.phase === 'confirm' || lk.phase === 'working'))) return Promise.resolve();
@@ -19121,6 +19841,7 @@ window.SinglesPrice = {
       // that answer is never thrown away with the card it was about.
       if (lk.phase === 'working') { lk.queuedScan = { cert: cert, grader: grader }; return Promise.resolve(); }
       lk.last = { cert: cert, grader: grader };
+      lk.fromList = !!fromList; // a card asked about again from the pasted list goes back to it; a scan does not
       lk.checking = bare; lk.item = null; lk.phase = 'checking'; lk.note = ''; lk.done = null;
       lkSetTabQuiet('scan');
       renderLock();
@@ -19134,10 +19855,122 @@ window.SinglesPrice = {
           return;
         }
         lk.item = r.body.results[0] || { cert: bare, error: 'no answer' };
+        lkPhotoNote(lk.item);
         lk.phase = 'ready';
         lkTakeWindow(r.body.lock);
+        lkListTake(lk.item); // a card that is on the pasted list is fresher there too
         renderLock(true);
       });
+    }
+
+    // ── a pasted list: the cards are looked up in calls of at most CertList.MAX_PER_CALL (the function takes 50 at a time) and drawn as a
+    // list, one row per card; a tap opens a row as the card, with its Lock it / Queue for 3 AM exactly as a scan has them ──
+    /** The row of the pasted list a lookup answer belongs to (matched on the cert without its zeros, as the function names it), or null. */
+    function lkListItemOf(cert) {
+      if (!lk.list) return null;
+      var k = Certs.certKey(String(cert));
+      for (var i = 0; i < lk.list.items.length; i++) if (Certs.certKey(lk.list.items[i].bare) === k) return lk.list.items[i];
+      return null;
+    }
+    function lkListTake(res) {
+      var it = res && res.cert !== undefined ? lkListItemOf(res.cert) : null;
+      if (it) it.res = res;
+    }
+    /** What a list has on screen right now: the answers in, and (once nothing is out any more) the ones that never came. */
+    function lkListStats() {
+      var L = lk.list;
+      if (!L) return { done: 0, failed: 0 };
+      var done = L.items.filter(function (it) { return it.res; }).length;
+      return { done: done, failed: L.busy ? 0 : L.items.length - done };
+    }
+    function lkListChanged() {
+      if (lk.on && lk.phase === 'list') renderLock(); // a card opened from the list is left alone: a re-draw would drop a finger's tap
+      renderBatch();
+    }
+    /** -> true when the list went off to be checked. */
+    function lkCheckList(items) {
+      if (!lkLocks(lk.mode)) { renderLock(); return false; } // nobody has said who this login is yet: nothing is checked
+      // A lock or a queue is out for the card on screen: its answer must land on that card, so a list waits for it
+      if (lk.phase === 'working') { showBoxErr('A lock is going through. Wait for it to finish, then paste the list again.'); return false; }
+      lk.last = null; lk.checking = null; lk.item = null; lk.note = ''; lk.done = null; lk.queuedScan = null; lk.alert = null; lk.fromList = false;
+      lk.list = { items: items.map(function (it) { return { cert: it.cert, grader: it.grader, bare: it.grader === 'psa' ? Certs.certKey(it.cert) : it.cert, res: null }; }), busy: true, err: '' };
+      lk.phase = 'list';
+      lkSetTabQuiet('scan');
+      renderLock(true);
+      lkRunList(lk.list);
+      return true;
+    }
+    /** Looks up every card of the list that has no answer yet, one call of up to 50 after another (rows appear as each call lands). A call that
+        fails ends the run: what has no answer stays asked for under "Try again". */
+    function lkRunList(list) {
+      var gen = lk.gen;
+      var calls = CertList.chunk(list.items.filter(function (it) { return !it.res; }), CertList.MAX_PER_CALL);
+      var at = 0;
+      list.busy = true; list.err = '';
+      function current() { return lk.gen === gen && lk.list === list; }
+      function next() {
+        if (!current()) return Promise.resolve();
+        if (at >= calls.length) { list.busy = false; lkListChanged(); return Promise.resolve(); }
+        var group = calls[at++];
+        return lkCall('lookup', { certs: group.map(function (it) { return it.bare; }) }).then(function (r) {
+          if (!current()) return;
+          if (!r.ok || !r.body || !Array.isArray(r.body.results)) {
+            list.busy = false; list.err = lkFailWords(r) || 'Something went wrong. Try again.';
+            if (!r.frozen) feedback.play('bad');
+            lkListChanged();
+            return;
+          }
+          var by = {};
+          r.body.results.forEach(function (x) { if (x && x.cert !== undefined && x.cert !== null) by[Certs.certKey(String(x.cert))] = x; });
+          group.forEach(function (it) { it.res = by[Certs.certKey(it.bare)] || { cert: it.bare, error: 'no answer' }; lkPhotoNote(it.res); });
+          lkTakeWindow(r.body.lock);
+          lkListChanged();
+          return next();
+        });
+      }
+      renderBatch();
+      return next();
+    }
+    function lkBackToList() {
+      if (!lk.list || lk.phase === 'working') return;
+      lk.item = null; lk.checking = null; lk.phase = 'list'; lk.note = ''; lk.done = null; lk.fromList = false;
+      renderLock();
+    }
+    function lkListRowHtml(it) {
+      var res = it.res;
+      var row = LockMode.listRow(res, lk.ctx);
+      var parts = CardView.shortCard(res.card || '');
+      var gradeN = gradeNum(res.grade);
+      var name = parts.card || ('Cert ' + (res.cert || it.cert));
+      return '<li><button type="button" class="sc-lk-row sc-lk-pick" data-lk-act="open" data-cert="' + esc(it.cert) + '"' + (row.dim ? ' data-dim' : '') + '>' +
+        thumbHtml(res.imageUrl) +
+        '<span class="sc-lk-row-name">' + esc(name) + (parts.number ? ' <span class="sc-num">' + esc(parts.number) + '</span>' : '') + '</span>' +
+        (parts.set ? '<span class="sc-lk-row-set">' + esc(parts.set) + '</span>' : '') +
+        '<span class="sc-lk-row-chips">' + gradeChipHtml(res.grader, gradeN) + '<span class="sc-lk-tag" data-tone="' + esc(row.tone) + '">' + esc(row.chip) + '</span></span>' +
+        (row.why ? '<span class="sc-lk-pick-why">' + esc(row.why) + '</span>' : '') +
+        (row.you ? '<span class="sc-lk-row-you">' + esc(row.you) + '</span>' : '') +
+        (row.rate ? '<span class="sc-lk-row-rate">' + esc(row.rate) + '</span>' : '') +
+        '</button></li>';
+    }
+    function lkListHtml() {
+      var L = lk.list;
+      var answered = L.items.filter(function (it) { return it.res; });
+      var left = L.items.length - answered.length;
+      var counts = LockMode.listCountsText(answered.map(function (it) { return it.res; }), lk.ctx);
+      var sum = L.busy ? 'Checking ' + answered.length + ' of ' + L.items.length + (counts ? '. ' + counts : '') : counts;
+      var h = '<section class="sc-card sc-lk-sec sc-lk-batch"' + (L.busy ? ' aria-busy="true"' : '') + '><div class="sc-lk-sec-h"><h3 class="sc-h">Your list</h3><span class="sc-lk-sec-n">' + L.items.length + '</span></div>' +
+        (sum ? '<p class="sc-lk-fine sc-lk-batch-sum">' + esc(sum) + '</p>' : '');
+      if (answered.length) {
+        h += '<ul class="sc-lk-list sc-lk-picks">';
+        answered.forEach(function (it) { h += lkListRowHtml(it); });
+        h += '</ul>';
+      }
+      if (!L.busy && left > 0) {
+        h += '<p class="sc-lk-note" data-tone="bad" role="alert">' + esc((L.err || 'Something went wrong.') + ' ' + left + (left === 1 ? ' card was' : ' cards were') + ' not checked.') + '</p>' +
+          '<div class="sc-lk-actions">' + lkButton('list-retry', 'Try again', 'sc-btn-quiet sc-btn-block') + '</div>';
+      }
+      h += '<div class="sc-lk-actions sc-lk-list-foot">' + lkButton('list-clear', 'Clear list', 'sc-btn-quiet sc-btn-block') + '</div></section>';
+      return h;
     }
     function lkSetTabQuiet(tab) {
       if (lk.tab === tab) return;
@@ -19163,7 +19996,7 @@ window.SinglesPrice = {
           lk.ctx.open = r.body.window.open;
           lk.ctx.opensAt = r.body.window.opensAt;
         }
-        if (lk.phase !== 'working' && lkWinSig() !== before) renderLock(); // only when something it shows changed: a re-draw drops a finger's tap and the focus
+        if (lk.phase !== 'working' && lkWinSig() !== before) { renderLock(); if (lk.mode === 'price_lock') renderPile(); } // only when something it shows changed: a re-draw drops a finger's tap and the focus (price + lock: the pile's lock chips follow the window too)
       });
     }
 
@@ -19187,9 +20020,9 @@ window.SinglesPrice = {
     function lkAnnounce(o) {
       if (lk.alertTimer !== null) clearTimeout(lk.alertTimer);
       lk.alert = o;
-      lk.alertTimer = setTimeout(function () { lk.alertTimer = null; lk.alert = null; if (lk.mode === 'lock' && lk.tab === 'scan') renderLockScan(); }, 12000);
+      lk.alertTimer = setTimeout(function () { lk.alertTimer = null; lk.alert = null; if (lkLocks(lk.mode) && lk.tab === 'scan') renderLockScan(); }, 12000);
       if (o.tone === 'ok') { feedback.play('ok'); bridge.haptic('success'); } else feedback.play('bad');
-      if (lk.mode === 'lock' && lk.tab === 'scan') renderLockScan();
+      if (lkLocks(lk.mode) && lk.tab === 'scan') renderLockScan();
     }
     /** The scan that came in while a lock or a queue was out: checked now that the answer is in. */
     function lkRunQueuedScan() {
@@ -19212,7 +20045,8 @@ window.SinglesPrice = {
         lkLoadLocks(true);
         // another card is on screen now (it should not happen: a scan waits for this answer): say what became of THIS one, in words
         if (lk.item !== item) { lkAnnounce(LockMode.outcomeOf('lock', item, r, lkFailWords(r))); return; }
-        var spoken = lk.queuedScan ? LockMode.outcomeOf('lock', item, r, lkFailWords(r)) : null; // the next slab is waiting: this card is about to leave the screen
+        // the next slab is waiting (lock screens), or the pricing screen has moved on to another card (price + lock): this card is about to leave the screen
+        var spoken = lk.queuedScan || plAway() ? LockMode.outcomeOf('lock', item, r, lkFailWords(r)) : null;
         lkSettle(item, r, function (b) {
           if (b.dryRun) { lk.phase = 'done'; lk.done = { kind: 'test' }; return; }
           if (b.locked && b.locked.length) {
@@ -19232,6 +20066,7 @@ window.SinglesPrice = {
         });
         if (spoken) lkAnnounce(spoken);
         renderLock();
+        if (lk.mode === 'price_lock') renderPile(); // the pile row's chip: Locked, In your 3 AM list
         lkRunQueuedScan();
       });
     }
@@ -19245,7 +20080,7 @@ window.SinglesPrice = {
         lk.dataAt = 0;
         lkLoadLocks(true);
         if (lk.item !== item) { lkAnnounce(LockMode.outcomeOf('queue', item, r, lkFailWords(r))); return; }
-        var spoken = lk.queuedScan ? LockMode.outcomeOf('queue', item, r, lkFailWords(r)) : null;
+        var spoken = lk.queuedScan || plAway() ? LockMode.outcomeOf('queue', item, r, lkFailWords(r)) : null;
         lkSettle(item, r, function (b) {
           if ((b.queued && b.queued.length) || (b.alreadyQueued && b.alreadyQueued.length)) { item.mine = 'queued'; lk.phase = 'ready'; feedback.play('ok'); return; }
           var nq = (b.notQueued && b.notQueued[0]) || {};
@@ -19254,6 +20089,7 @@ window.SinglesPrice = {
         });
         if (spoken) lkAnnounce(spoken);
         renderLock();
+        if (lk.mode === 'price_lock') renderPile(); // the pile row's chip: Locked, In your 3 AM list
         lkRunQueuedScan();
       });
     }
@@ -19267,6 +20103,7 @@ window.SinglesPrice = {
         if (item && item.cert === c) item.mine = null;
         lkLoadLocks(true);
         renderLock();
+        if (lk.mode === 'price_lock') renderPile();
       });
     }
 
@@ -19279,8 +20116,27 @@ window.SinglesPrice = {
       if (act === 'confirm-yes') { if (lk.phase === 'confirm') lkDo(); return; }
       if (act === 'queue') { if (lk.phase === 'ready' && lk.item && LockMode.cardPhase(lk.item, lk.ctx).act === 'queue') lkQueue(); return; }
       if (act === 'unqueue') { lkUnqueue(cert); return; }
-      if (act === 'recheck') { if (lk.last) lkCheck(lk.last.cert, lk.last.grader); return; }
+      if (act === 'recheck' && lk.mode === 'price_lock') { plRecheck(); return; } // the Lock card asks about the card it is under
+      if (act === 'recheck') { if (lk.last) lkCheck(lk.last.cert, lk.last.grader, lk.fromList); return; }
+      if (act === 'open') {
+        // a row of the pasted list opens as the card (its answer is already in: Check again asks for a fresh one)
+        var row = lk.phase === 'list' && lk.list ? lk.list.items.filter(function (it) { return it.cert === cert && it.res; })[0] : null;
+        if (!row) return;
+        lk.item = row.res; lk.last = { cert: row.cert, grader: row.grader }; lk.fromList = true; lk.phase = 'ready'; lk.note = ''; lk.done = null; lk.alert = null;
+        renderLock(true);
+        return;
+      }
+      if (act === 'back') { lkBackToList(); return; }
+      if (act === 'list-retry') { if (lk.list && !lk.list.busy) { lkRunList(lk.list); lkListChanged(); } return; }
+      if (act === 'list-clear') {
+        if (!lk.list || lk.phase === 'working') return;
+        lk.list = null; lk.fromList = false; lk.item = null; lk.checking = null; lk.phase = 'idle'; lk.note = ''; lk.done = null;
+        batch = null; renderBatch();
+        renderLock();
+        return;
+      }
       if (act === 'next') {
+        if (lk.list && lk.fromList) { lkBackToList(); return; } // a card opened from the pasted list goes back to it
         lk.item = null; lk.phase = 'idle'; lk.done = null; lk.note = ''; lk.alert = null;
         renderLock();
         if (!appSheet() && dom.certInput.focus) dom.certInput.focus();
@@ -19288,6 +20144,12 @@ window.SinglesPrice = {
       }
       if (act === 'copy') { lkCopy(); return; }
       if (act === 'csv') { lkCsv(); return; }
+      if (act === 'cert') { // a My locks row: its cert number shows, and a second tap hides it
+        var ck = String(cert);
+        if (lk.certOpen[ck]) delete lk.certOpen[ck]; else lk.certOpen[ck] = true;
+        renderLockLocks();
+        return;
+      }
       if (act === 'scope-week' || act === 'scope-all') { lk.scope = act === 'scope-all' ? 'all' : 'week'; renderLockLocks(); return; }
       if (act === 'locks-refresh') { lkLoadLocks(true); return; }
       if (act === 'alloc-refresh') { lkLoadAlloc(true); return; }
@@ -19464,12 +20326,22 @@ window.SinglesPrice = {
     }
     function lkRowHtml(l, now, kind) {
       var r = LockMode.lockRow(l, now);
+      var parts = CardView.shortCard(l.card || '');
       var gradeN = gradeNum(l.grade);
+      var open = !!lk.certOpen[String(l.cert)];
       var cls = 'sc-lk-row' + (kind === 'queued' ? ' sc-lk-queued' : kind === 'pending' ? ' sc-lk-pending' : '');
-      var h = '<li class="' + cls + '"><span class="sc-lk-grade' + (gradeN === null ? ' sc-unk' : '') + '" aria-hidden="true">' + (gradeN !== null ? esc(String(gradeN)) : '') + '</span>' +
-        '<span class="sc-lk-row-name">' + esc(r.name) + '</span>' +
-        '<span class="sc-lk-row-meta">' + esc(r.meta) + '</span>' +
-        '<span class="sc-lk-row-when">' + esc(r.when) + (r.market && kind !== 'missed' ? ' · market ' + esc(r.market) : '') + '</span>';
+      var chip = kind === 'queued' ? ['Queued', 'info'] : kind === 'pending' ? ['Not confirmed', 'warn'] : kind === 'missed' ? ['Not locked', 'bad'] : ['Locked', 'ok'];
+      // After Courtyard's rows: the photo (the one this phone saw when it looked the card up, else the outline), the card and its number, its set, the
+      // grade and what became of it as chips. The cert is the row's detail: a tap on the row shows it (the Take it off my list button stays its own).
+      var h = '<li class="' + cls + '"' + (open ? ' data-open=""' : '') + '>' +
+        '<button type="button" class="sc-lk-cert-hit" data-lk-act="cert" data-cert="' + esc(l.cert) + '" aria-expanded="' + (open ? 'true' : 'false') + '" aria-label="' +
+          esc((open ? 'Hide' : 'Show') + ' the cert number for ' + (parts.name || r.name)) + '"></button>' +
+        thumbHtml(l.imageUrl || lkPhotoOf(l.cert)) +
+        '<span class="sc-lk-row-name">' + esc(parts.card || r.name) + (parts.number ? ' <span class="sc-num">' + esc(parts.number) + '</span>' : '') + '</span>' +
+        (parts.set ? '<span class="sc-lk-row-set">' + esc(parts.set) + '</span>' : '') +
+        '<span class="sc-lk-row-chips">' + gradeChipHtml(l.grader, gradeN) + '<span class="sc-lk-tag" data-tone="' + chip[1] + '">' + chip[0] + '</span></span>' +
+        '<span class="sc-lk-row-when">' + esc(r.when) + (r.market && kind !== 'missed' ? ' · market ' + esc(r.market) : '') + '</span>' +
+        (open && r.cert ? '<span class="sc-lk-row-cert">' + esc(r.cert) + '</span>' : '');
       if (kind === 'missed') {
         h += '<span class="sc-lk-row-why">' + esc(l.reason || '') + '</span>';
       } else {
@@ -19593,6 +20465,121 @@ window.SinglesPrice = {
       download();
     }
 
+    // ── PRICE + LOCK ──────────────────────────────────────────────────────────────────────────────────────────────
+    // A sourcer account whose owner chose price + lock keeps the pricing screen a sourcer always had (the card, the pile, "Your offer" and
+    // "We pay", Card Ladder's average, the rate sheets, hide mode) and gets one thing more: a Lock card under the card on screen. The
+    // triumph-sourcer function already answers the same lookup the pricing screen asks with what that login gets (youGetPct, youGetDollars),
+    // whether Triumph has room for the card (allocation, takeable, reason) and whether locking is open, so the card is the lock screens' own
+    // words (LockMode.cardPhase) and the lock screens' own calls (lock with the price the person confirmed, queue for 3 AM, take off the list).
+    // Nothing here knows what Triumph pays us: that never leaves the function, and the answer the pile keeps is what the function sent.
+    // An owner never gets here (plOn is false for anything but a sourcer on a price_lock account), and a lock-only account has the lock screens.
+    var PL_MAX = 200;
+    var plRes = { order: [], map: {} }; // the lookup answer of each card the pricing screen priced this visit, by pile key (memory only: allocation moves)
+    function plForget() { plRes = { order: [], map: {} }; }
+    /** Has the pricing screen moved on from the card a lock or a queue was started for? Then its outcome is said in words, as on the lock screens. */
+    function plAway() { return lk.mode === 'price_lock' && lk.plKey !== currentKey; }
+    function plKeyOf(cert, grader) { return pileMetaKey(String(grader || '').toLowerCase(), Certs.certKey(String(cert))); }
+    /** Keeps the function's lookup answer for a card the pricing screen has just priced, and what it said about the window and the pause. */
+    function plTake(cert, grader, res, info) {
+      if (!plOn() || !res || typeof res !== 'object' || res.error) return;
+      var key = plKeyOf(cert, grader);
+      if (!plRes.map[key]) plRes.order.push(key);
+      plRes.map[key] = { res: res, at: Date.now() };
+      while (plRes.order.length > PL_MAX) delete plRes.map[plRes.order.shift()];
+      lkTakeWindow(info);
+    }
+    /** Binds the Lock card to the card on screen (a new card, or a fresh answer for it, starts from "ready") and draws it. A lock or a queue that is
+        out keeps the card it was started for until its answer is in, and a card just locked keeps its "Locked" while it is the one on screen. */
+    function plSync() {
+      if (!plOn()) { plRender(); return; }
+      var rec = currentKey ? plRes.map[currentKey] || null : null;
+      var item = rec ? rec.res : null;
+      var held = lk.phase === 'working' || (lk.phase === 'done' && lk.plKey === currentKey);
+      if (!held && (lk.plKey !== currentKey || lk.item !== item)) {
+        lk.plKey = currentKey; lk.item = item; lk.phase = item ? 'ready' : 'idle'; lk.note = ''; lk.done = null;
+      }
+      plRender();
+    }
+    function plRender() {
+      if (!plOn()) { plUi.card.innerHTML = ''; plUi.locks.innerHTML = ''; plUi.root.hidden = true; return; }
+      var card = plCardHtml();
+      var locks = plLocksHtml();
+      plUi.card.innerHTML = card;
+      plUi.locks.innerHTML = locks;
+      plUi.root.hidden = !(card || locks);
+    }
+    /** The Lock card: what you get, whether Triumph has room for the card and how much, and the one action (Lock it, or Queue for 3 AM while the
+        window is shut). The card's photo, name and grade are the card above it, so this one only says them when it is about another card. */
+    function plCardHtml() {
+      var h = '';
+      if (lk.alert) h += '<div class="sc-card sc-lk-card sc-lk-alert-card"><div class="sc-lk-status sc-lk-alert" data-tone="' + esc(lk.alert.tone) + '" role="alert">' + esc(lk.alert.text) + '</div></div>';
+      var item = lk.item;
+      if (!item) return h;
+      if (lk.phase === 'checking') return h + '<div class="sc-card sc-lk-card sc-pl-card" aria-busy="true"><div class="sc-lk-status" data-tone="info" role="status">Checking this card</div></div>';
+      var st = lkCardState(item, false);
+      var parts = CardView.shortCard(item.card || '');
+      var forLine = lk.plKey !== currentKey
+        ? '<p class="sc-pl-for">' + esc((parts.card ? parts.card + (parts.number ? ' ' + parts.number : '') : 'Cert ' + item.cert) + (item.grade ? ', ' + String(item.grader || '').toUpperCase() + ' ' + item.grade : '')) + '</p>' : '';
+      var you = st.noRate ? '' : '<div class="sc-pl-you"' + (st.dim ? ' data-dim' : '') + '><div class="sc-pl-key">' + esc(st.p.youLabel) + '</div>' +
+        '<div class="sc-pl-val">' + esc(st.big) + '</div>' + (st.sub ? '<div class="sc-pl-sub">' + esc(st.sub) + '</div>' : '') + '</div>';
+      // (the room left is what it was before the lock: a locked card does not repeat it beside "Locked")
+      var room = st.rangeLine && st.kind !== 'locked' && st.kind !== 'test' ? st.rangeLine : null;
+      var info = '<div class="sc-pl-info"><div class="sc-lk-status" data-tone="' + esc(st.tone) + '" data-kind="' + esc(st.kind) + '" role="status">' + esc(st.status) + '</div>' +
+        (room ? '<p class="sc-lk-range-line" data-tone="' + esc(room.tone) + '">' + esc(room.text) + '</p>' : '') + '</div>';
+      return h + '<div class="sc-card sc-lk-card sc-pl-card" data-kind="' + esc(st.kind) + '">' + forLine +
+        '<div class="sc-pl-top' + (st.noRate ? ' sc-pl-solo' : '') + '">' + you + info + '</div>' +
+        (st.note ? '<p class="sc-lk-note">' + esc(st.note) + '</p>' : '') +
+        (lk.note ? '<p class="sc-lk-note" data-tone="bad" role="alert">' + esc(lk.note) + '</p>' : '') +
+        st.actions + '</div>';
+    }
+    /** This week's locks, for the ticket: what the lock screens' My locks tab gives (the count and what it comes to, Copy the cert numbers, a CSV). */
+    function plLocksHtml() {
+      var d = lk.data;
+      if (!d) return '';
+      var scoped = LockMode.locksInScope(d.locks, Date.now(), 'week');
+      var queued = d.queued ? d.queued.length : 0;
+      if (!scoped.length && !queued) return '';
+      var n = scoped.length;
+      return '<section class="sc-card sc-lk-sum sc-pl-locks-card" aria-label="My locks">' +
+        '<div class="sc-lk-sec-h"><h3 class="sc-h">My locks</h3>' + (n ? '<span class="sc-lk-sec-n">this week</span>' : '') + '</div>' +
+        '<div class="sc-lk-sum-text">' + esc(LockMode.locksSummary(scoped).text) + '</div>' +
+        (queued ? '<p class="sc-lk-fine">' + esc(queued + (queued === 1 ? ' card is' : ' cards are') + ' queued for 3 AM. They lock when the window opens.') + '</p>' : '') +
+        '<div class="sc-pl-tools">' + lkButton('copy', n ? 'Copy ' + n + ' for ticket' : 'Copy for ticket', 'sc-btn-primary sc-lk-copy', n ? '' : ' disabled') +
+        lkButton('csv', 'Download CSV', 'sc-btn-quiet sc-lk-csv', n ? '' : ' disabled') + '</div>' +
+        '<p class="sc-lk-notice" role="status" aria-live="polite">' + esc(lk.notice || '') + '</p></section>';
+    }
+    /** Check again on the Lock card: asks the function about the card once more (the window, the room and the price move) and keeps the answer. */
+    function plRecheck() {
+      var item = lk.item;
+      if (!item || lk.phase === 'working' || lk.phase === 'checking') return Promise.resolve();
+      var gen = lk.gen;
+      var key = lk.plKey;
+      lk.phase = 'checking'; lk.note = ''; plRender();
+      return lkCall('lookup', { certs: [item.cert] }).then(function (r) {
+        if (lk.gen !== gen) return;
+        var res = r.ok && r.body && Array.isArray(r.body.results) ? r.body.results[0] : null;
+        var here = lk.plKey === key && lk.item === item; // still the card the answer is about
+        if (!res || res.error) {
+          if (here) { lk.phase = 'ready'; lk.note = lkFailWords(r) || 'Could not check this card. Try again.'; feedback.play('bad'); }
+          plSync();
+          return;
+        }
+        lkTakeWindow(r.body.lock);
+        if (key && plRes.map[key]) plRes.map[key] = { res: res, at: Date.now() };
+        if (here) { lk.item = res; lk.phase = 'ready'; lk.note = ''; }
+        plSync();
+        renderPile();
+      });
+    }
+    /** The pile row's chip for what this login can do with the card at the portal: an option (Can lock, Queue for 3 AM) or a done thing (Locked). */
+    function plChipHtml(key) {
+      var rec = plOn() ? plRes.map[key] : null;
+      if (!rec) return '';
+      var row = LockMode.listRow(rec.res, lk.ctx);
+      if (row.kind !== 'lockable' && row.kind !== 'queueable' && row.kind !== 'queued' && row.kind !== 'locked') return '';
+      return '<span class="status-pill st-unknown sc-chip-lock" data-kind="' + esc(row.kind) + '">' + esc(row.chip) + '</span>';
+    }
+
     function wireLock() {
       // Nothing is asked of Triumph while the page is hidden: the minute timer stops, and comes back (with a fresh read if the numbers went stale) when it is shown.
       document.addEventListener('visibilitychange', function () {
@@ -19633,6 +20620,13 @@ window.SinglesPrice = {
         var act = t.closest('[data-lk-act]');
         if (act) lkAct(act.getAttribute('data-lk-act'), act.getAttribute('data-cert'));
       });
+      // the Lock card under a priced card (price + lock): the same buttons, the same handler
+      plUi.root.addEventListener('click', function (ev) {
+        var t = ev.target;
+        if (!t || !t.closest || !plOn()) return;
+        var act = t.closest('[data-lk-act]');
+        if (act) lkAct(act.getAttribute('data-lk-act'), act.getAttribute('data-cert'));
+      });
     }
     /* SOURCER-LOCK:END */
 
@@ -19666,9 +20660,79 @@ window.SinglesPrice = {
       return false;
     }
 
+    // ── a pasted LIST in the cert box: one cert is read as it always was (parseOneCert), more than one is a list (certs.js parseCertList: newlines,
+    // commas, spaces, a Discord paste, with the Discord ticket parser's own rules for chat lines and graders). An owner's list goes through
+    // priceCert one card after another (its serial queue, then the average poller) into the pile; a sourcer's goes to the lock screens as a list
+    // (lkCheckList). Either way the line under the box says how it went: "12 priced, 1 unreadable, 2 repeats." ──
+    var batch = null; // { kind: 'price' | 'check', items: [{ cert, grader }], unreadable, repeats, notBought } of the list the summary is about
+    /** How far an owner's list has got: a card is done when it is in the pile; once nothing is queued or out any more, the rest were not priced. */
+    function ownerBatchStats(b) {
+      var idle = !busy && !scanQueue.length;
+      var done = 0;
+      b.items.forEach(function (it) { if (pileFactsFor(it.cert, it.grader)) done++; });
+      return { done: done, failed: idle ? b.items.length - done : 0 };
+    }
+    function renderBatch() {
+      if (!dom.batch) return;
+      var text = '';
+      if (batch) {
+        var st = batch.kind === 'check' ? lkListStats() : ownerBatchStats(batch);
+        text = CertList.summaryText({ kind: batch.kind, total: batch.items.length, done: st.done, failed: st.failed, unreadable: batch.unreadable, repeats: batch.repeats, notBought: batch.notBought });
+      }
+      dom.batch.textContent = text;
+      dom.batch.hidden = !text;
+    }
+    /** -> true when the list was taken (the box can be emptied). */
+    function takeList(list) {
+      hideGraderPick();
+      var items = list.certs.map(function (c) { return { cert: c.cert, grader: c.grader }; });
+      var kind = lkOn() ? 'check' : 'price';
+      if (items.length) {
+        if (kind === 'check') {
+          showBoxErr('');
+          if (!lkCheckList(items)) return false;
+        } else {
+          showBoxErr('');
+          items.forEach(function (it) { priceCert(it.cert, it.grader); });
+        }
+      }
+      batch = { kind: kind, items: items, unreadable: list.unreadable.length, repeats: list.repeats.length, notBought: list.notBought.length };
+      showBoxErr(CertList.leftOutText(list.unreadable, list.notBought));
+      renderBatch();
+      return true;
+    }
+    /** The cert box is as tall as what is in it, a few lines at most (the CSS max-height), and one line when empty. Not in the app's camera dock. */
+    var certBoxGrown = false;
+    function sizeCertBox() {
+      var el = dom.certInput;
+      if (!el || !el.style) return;
+      el.style.height = ''; // one line, then measured: what is in the box says how tall it needs to be
+      var want = 0;
+      if (!dom.layout.classList.contains('sc-native-cam')) {
+        var scroll = Number(el.scrollHeight);
+        if (scroll > Number(el.clientHeight) + 1) want = scroll;
+      }
+      if (want) {
+        el.style.height = want + 'px';
+        if (!certBoxGrown) el.setAttribute('data-multi', '');
+        certBoxGrown = true;
+      } else if (certBoxGrown) {
+        el.removeAttribute('data-multi');
+        certBoxGrown = false;
+      }
+    }
+
     function submitTyped() {
-      var parsed = Certs.parseOneCert(dom.certInput.value, { buyGraders: scanBuyGraders() });
-      if (takeParsed(parsed)) dom.certInput.value = '';
+      var text = dom.certInput.value;
+      var opts = { buyGraders: scanBuyGraders() };
+      var list = Certs.parseCertList(text, opts);
+      if (list.isList) {
+        if (takeList(list)) { dom.certInput.value = ''; sizeCertBox(); }
+        return;
+      }
+      var parsed = Certs.parseOneCert(text, opts);
+      batch = null; renderBatch();
+      if (takeParsed(parsed)) { dom.certInput.value = ''; sizeCertBox(); }
     }
 
     function pickGrader(grader) {
@@ -20376,7 +21440,9 @@ window.SinglesPrice = {
       });
       renderSoundButton();
       dom.certGo.addEventListener('click', submitTyped);
-      dom.certInput.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); submitTyped(); } });
+      // Enter prices what is in the box (a pasted list keeps its lines); Shift+Enter starts a new line for someone typing a list by hand
+      dom.certInput.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); submitTyped(); } });
+      dom.certInput.addEventListener('input', sizeCertBox);
       dom.signinGo.addEventListener('click', doSignIn);
       dom.password.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); doSignIn(); } });
       // sourcer accounts: create an account with a setup code, and the paused screen's way back
@@ -20435,6 +21501,8 @@ window.SinglesPrice = {
         sellerView = null;
         dom.result.hidden = true;
         clearSquares();
+        batch = null; renderBatch(); // the last seller's pasted list is not this one's
+        plForget(); plSync(); // nor is the last seller's Lock card
         renderPile();
       });
 
@@ -20446,7 +21514,7 @@ window.SinglesPrice = {
         var open = !dom.layout.classList.contains('sc-type-open');
         setTypeOpen(open);
         if (open) dom.certInput.focus();
-        else dom.certInput.value = ''; // closing the row drops what was typed: a later scan must never append to hidden digits
+        else { dom.certInput.value = ''; sizeCertBox(); } // closing the row drops what was typed: a later scan must never append to hidden digits
       });
 
       // ── the rule toggle (which of our sheets, or a flat %) and Normal / Lower ──
@@ -20548,12 +21616,22 @@ window.SinglesPrice = {
         straight back from the GET; nothing is re-queued that is still fresh. */
     function resumeAveragePolls() {
       if (lkOn()) return; // (a pile left on a sourcer's phone from before lock mode is never polled)
+      var on = avgOn();
+      var moved = false;
       pile.list().forEach(function (e) {
         var key = pileMetaKey(e.grader, e.certKey);
         var meta = pileMeta[key];
         var st = meta && meta.facts ? meta.facts.avgStatus : null;
+        // The flag moved since this card was priced (an owner turned averages on or off for the account): an account without them reads every card
+        // that was waiting as 'off' (and stops polling it), one that has them again asks for the average the cards that said 'off' never had.
+        // Every status but 'off' goes: a card that is 'done' or 'failed' carries an average (or a Card Ladder value) this account must never show.
+        if (!on && meta && meta.facts && st !== 'off') {
+          stopAveragePoll(key); meta.facts = avgOffFacts(meta.facts); moved = true; return;
+        }
+        if (on && st === 'off') { meta.facts = Object.assign({}, meta.facts, { avgStatus: 'pending' }); st = 'pending'; moved = true; }
         if ((st === 'pending' || st === 'timeout' || st === 'error') && !avgPolls[key]) startAveragePoll(key);
       });
+      if (moved) { repriceAll(); renderPile(); renderCurrent(); }
     }
 
     // ── Singles (owners only; rates-portal/singles-pane.html, which draws and runs it). These are its only ties to the slab
