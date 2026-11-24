@@ -173,6 +173,9 @@ function installThemes(win) {
         root.setAttribute('data-iop-theme-choice', choice);
       }
     } catch (e) { /* the default look stays */ }
+    // The page's very first frames, before the Scanner panel's own theme styles (in the body) are read: the head paints the plain
+    // background from this (rates-portal/page.html, html[data-iop-theme]:not([data-iop-styled])), so a light theme never opens dark.
+    try { if (root && root.style && typeof root.style.setProperty === 'function' && shown.bg) root.style.setProperty('--iop-first-bg', shown.bg); } catch (e) { /* the default backdrop for a moment */ }
     try {
       if (schemeMeta) schemeMeta.content = shownId === DEFAULT_THEME && schemeAsShipped ? schemeAsShipped : (shown.light ? 'light' : 'dark');
       if (themeColorMeta) themeColorMeta.content = shownId === DEFAULT_THEME && themeColorAsShipped ? themeColorAsShipped : shown.bg;
@@ -228,6 +231,259 @@ window.ScannerTheme = {
 })();
 /* THEME-CORE:END */
 try { if (window.ScannerTheme) window.ScannerTheme.installThemes(window); } catch (e) { /* the default look */ }
+</script>
+<style>
+/* Scanner pages, their first frames (scanner/theme.js, scanner/tabCache.js). Until the Scanner panel's own styles have been read
+   (they sit in the body), the page is already the chosen theme's background (--iop-first-bg, set by the theme script in the
+   head) with no default glow, so Daylight never opens dark for a moment; and while a returning owner's tab bar is still being read
+   (html[data-iop-tabs], set in the head), the Scanner screen is out of sight, so no frame shows it without its bar. */
+html[data-iop-theme]:not([data-iop-styled]){background:var(--iop-first-bg, var(--bg));}
+html[data-iop-theme]:not([data-iop-styled]) body{background:var(--iop-first-bg, var(--bg));}
+html[data-iop-theme]:not([data-iop-styled])::before,html[data-iop-theme]:not([data-iop-styled])::after{display:none;}
+html[data-iop-tabs]:not([data-iop-bar]) #tab-scanner{visibility:hidden;}
+</style>
+<!-- The bottom tab bar's first frame, decided here in the head before anything is drawn (Penguin, 11/24: "for a split second i only
+     see slabs and sheets tabs, and then i see the 3 tabs"; scanner/tabCache.js). For a returning owner it reads the tabs this login
+     last settled on (iopTabBar), and for an owner with nothing remembered it says "wait" (the bar's space kept, empty). It only
+     marks <html data-iop-tabs>; the Scanner screen stays out of sight until the bar's own markup has been read and drawn (the small
+     script right after #sc-tabbar), so no frame shows the screen without its bar. Storage only, no request, never a token stored;
+     a sourcer, the signed out and a login not answered for yet get nothing here (so never Singles). -->
+<script>
+/* TABCACHE-CORE:START - generated from scanner/tabCache.js by build-portal.js, do not edit by hand */
+(function () {
+'use strict';
+// The bottom tab bar's memory (IOP Pricing, Penguin 11/24: "when i open the IOP pricing app, for a split second i only see slabs
+// and sheets tabs, and then i see the 3 tabs. fix that"). The Singles tab waits for singles-live's /status, which answers a moment
+// after the page opens, so the bar used to start as Slabs | Sheet and grow a third tab. Now the page remembers the last set of tabs
+// it settled on (and for whom) under iopTabBar, and a returning owner's bar is drawn from that on the very first frame, by a small
+// script right after the bar's own markup; the Scanner module then checks it against the real answers and only ever changes it
+// smoothly (a tab that goes away folds up, the pill glides).
+//
+// What may be shown from memory, and what never:
+//   - the memory is a HINT for one signed-in identity: the login's Supabase user id (`sub`), never a token and never anything
+//     taken from the email. A token that names no user gets no memory at all. Another identity's memory is ignored;
+//   - only a tab whose own answer is still on its way (Singles before /status) is taken from memory; a tab the page already knows
+//     is off is never shown, and one it knows is on is always shown;
+//   - the first-frame draw is for an owner only, and only when this phone's own record of the login's role (the server's answer,
+//     iopViewerRole, or the owners' own user ids) says owner, whatever the memory says: a sourcer, a login not answered for yet and
+//     the signed out (no session) get nothing drawn from memory, so never Singles.
+// Pure: no DOM, no storage of its own (a localStorage-like object is passed in), unit-tested in scanner/tabCache.test.js and
+// embedded whole in the page (build-portal.js) as window.TabCache.
+
+var KEY = 'iopTabBar';
+/** A first-ever load (nothing remembered) waits this long for the answers still out before it shows the safe tabs. */
+var CAP_MS = 1500;
+/** Every tab the bar knows, in order, with its word. The page's TABS list must name the same ids. */
+var TAB_IDS = ['slabs', 'singles', 'sheet'];
+var LABELS = { slabs: 'Slabs', singles: 'Singles', sheet: 'Sheet' };
+/** Tabs only an owner may ever see. */
+var OWNER_ONLY = ['singles'];
+
+function isObj(v) { return !!v && typeof v === 'object' && !Array.isArray(v); }
+
+/** The user id (`sub`) a Supabase access token names, else null. `decode` is atob (or a test's). Never throws. */
+function subOf(token, decode) {
+  try {
+    if (typeof token !== 'string') return null;
+    var part = token.split('.')[1];
+    if (!part || typeof decode !== 'function') return null;
+    var b64 = part.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    var c = JSON.parse(decode(b64));
+    return isObj(c) && typeof c.sub === 'string' && c.sub ? c.sub : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/** A signed-in session (iopScannerAuth, parsed) -> who it is, for the memory: 'u:<user id>'; null when nobody is signed in or the
+ *  token names no user (no memory then: real Supabase tokens always carry `sub`). Holds nothing secret. */
+function identityOf(session, decode) {
+  if (!isObj(session) || typeof session.access_token !== 'string' || !session.access_token) return null;
+  var sub = subOf(session.access_token, decode);
+  return sub ? 'u:' + sub : null;
+}
+
+function cleanTabs(list) {
+  if (!Array.isArray(list)) return null;
+  var out = [];
+  list.forEach(function (id) { if (TAB_IDS.indexOf(id) >= 0 && out.indexOf(id) < 0) out.push(id); });
+  return out;
+}
+
+/** The memory as stored (a JSON string, or null) -> { who, role, tabs } or null when missing or unreadable. */
+function parseCache(raw) {
+  var r;
+  try { r = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { return null; }
+  if (!isObj(r) || r.v !== 1 || typeof r.who !== 'string' || !r.who) return null;
+  if (r.role !== 'owner' && r.role !== 'sourcer') return null;
+  var tabs = cleanTabs(r.tabs);
+  if (!tabs) return null;
+  return { who: r.who, role: r.role, tabs: tabs };
+}
+
+function readCache(storage) {
+  try { return storage ? parseCache(storage.getItem(KEY)) : null; } catch (e) { return null; }
+}
+
+/** Remember the settled bar for `who` in `role`. Writes only when it changed. Never throws. */
+function writeCache(storage, who, role, tabs) {
+  if (!storage || typeof who !== 'string' || !who || (role !== 'owner' && role !== 'sourcer')) return false;
+  var list = cleanTabs(tabs) || [];
+  if (role !== 'owner') list = list.filter(function (id) { return OWNER_ONLY.indexOf(id) < 0; });
+  var text = JSON.stringify({ v: 1, who: who, role: role, tabs: list });
+  try {
+    if (storage.getItem(KEY) === text) return false;
+    storage.setItem(KEY, text);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function clearCache(storage) {
+  try { if (storage && storage.getItem(KEY) !== null) storage.removeItem(KEY); } catch (e) { /* nothing to forget */ }
+}
+
+/** The remembered tabs for exactly this identity and role, else null (another login's, another role's, or none). */
+function cachedFor(rec, who, role) {
+  if (!isObj(rec) || !who || rec.who !== who || rec.role !== role) return null;
+  return rec.tabs.slice();
+}
+
+/**
+ * The tabs the bar shows now. `states`: the TABS in order, each { id, state } with state 'yes' (allowed), 'no' (not), or
+ * 'pending' (its answer is still on its way: Singles before /status). `cached`: cachedFor(...) or null. `capped`: the first-ever
+ * wait (CAP_MS) is over.
+ *   - 'yes' is shown, 'no' never is;
+ *   - 'pending' is shown only when the memory for this identity had it;
+ *   - nothing remembered and something pending (and not capped): `waiting` - the bar keeps its space with no tabs in it yet;
+ *   - a bar with one tab is no bar.
+ * -> { ids, waiting }
+ */
+function shownTabs(states, cached, capped) {
+  var ids = [];
+  var pending = false;
+  (Array.isArray(states) ? states : []).forEach(function (t) {
+    if (!t || TAB_IDS.indexOf(t.id) < 0) return;
+    if (t.state === 'yes') ids.push(t.id);
+    else if (t.state === 'pending') {
+      pending = true;
+      if (cached && cached.indexOf(t.id) >= 0) ids.push(t.id);
+    }
+  });
+  // a wait is only worth a reserved bar when the answers still out could make it a bar at all (two tabs or more)
+  var could = (Array.isArray(states) ? states : []).filter(function (t) { return t && (t.state === 'yes' || t.state === 'pending'); }).length;
+  if (ids.length < 2) ids = [];
+  return { ids: ids, waiting: pending && !cached && !capped && could > 1 };
+}
+
+/**
+ * The very first frame's bar, from storage alone (run in the page head, before anything is drawn).
+ * `o`: { session (iopScannerAuth, raw), roleRaw (iopViewerRole, raw), cacheRaw (iopTabBar, raw), kind (iopKind), ownerIds, decode }.
+ * -> { ids, cur } (an owner's remembered bar), { ids: [], cur: null, wait: true } (an owner with nothing remembered for this login:
+ *    the bar's space is kept, empty, until the answers are in), or null (draw nothing: the Scanner module draws the bar when it knows).
+ * The login's role is decided here exactly as the Scanner does it (PileRates.roleOf): this phone's saved answer for THAT user id,
+ * else an owner's own user id; anyone else is not known yet, and gets nothing from memory.
+ */
+function earlyTabs(o) {
+  o = o || {};
+  var session;
+  try { session = JSON.parse(o.session || 'null'); } catch (e) { return null; }
+  var who = identityOf(session, o.decode);
+  if (!who) return null;
+  var sub = who.slice(2);
+  var role;
+  var known = null;
+  try { known = JSON.parse(o.roleRaw || 'null'); } catch (e) { known = null; }
+  if (isObj(known) && known.uid === sub && typeof known.owner === 'boolean') role = known.owner ? 'owner' : 'sourcer';
+  else role = Array.isArray(o.ownerIds) && o.ownerIds.indexOf(sub) >= 0 ? 'owner' : 'unknown';
+  // Only an owner's bar is drawn (or waited for) this early: a sourcer's bar (Slabs | Sheet, once SHEET_FOR_SOURCERS is on) has no
+  // answer to wait for, so the Scanner draws it right away anyway, and a flag turned off since must not show it for a frame.
+  if (role !== 'owner') return null;
+  var rec = parseCache(o.cacheRaw);
+  if (!rec || rec.who !== who || rec.role !== 'owner') return { ids: [], cur: null, wait: true };
+  var ids = rec.tabs.slice();
+  if (ids.length < 2) return null;
+  var cur = ids.indexOf(o.kind) >= 0 ? o.kind : 'slabs';
+  if (ids.indexOf(cur) < 0) cur = ids[0];
+  return { ids: ids, cur: cur };
+}
+
+/**
+ * From the tabs on the bar to the next set, smoothly: the next set in its order, with each tab that is going away kept where it
+ * was (so it can fold up in place) and each new one marked. -> [{ id, gone, fresh }]
+ */
+function morph(oldIds, newIds) {
+  var prev = cleanTabs(oldIds) || [];
+  var next = cleanTabs(newIds) || [];
+  var out = next.map(function (id) { return { id: id, gone: false, fresh: prev.indexOf(id) < 0 }; });
+  prev.forEach(function (id, i) {
+    if (next.indexOf(id) >= 0) return;
+    // after the nearest earlier tab that stays (or at the start)
+    var at = 0;
+    for (var j = i - 1; j >= 0; j--) {
+      var k = -1;
+      for (var q = 0; q < out.length; q++) if (out[q].id === prev[j]) { k = q; break; }
+      if (k >= 0) { at = k + 1; break; }
+    }
+    out.splice(at, 0, { id: id, gone: true, fresh: false });
+  });
+  return out;
+}
+
+/** The bar's buttons as HTML, the same bytes from the first-frame script and the Scanner (so the hand-over changes nothing).
+ *  `items`: morph()'s, or plain ids. A tab going away keeps its look (data-gone) but is no longer a tab (no data-tab, not
+ *  focusable, hidden from screen readers). */
+function buttonsHtml(items, cur) {
+  return (items || []).map(function (it) {
+    var t = typeof it === 'string' ? { id: it, gone: false, fresh: false } : it;
+    var word = LABELS[t.id] || t.id;
+    if (t.gone) return '<button type="button" class="sc-tab sc-tab-out" data-gone="' + t.id + '" tabindex="-1" aria-hidden="true" disabled>' + word + '</button>';
+    return '<button type="button" class="sc-tab' + (t.fresh ? ' sc-tab-new' : '') + '" data-tab="' + t.id + '"' + (t.id === cur ? ' aria-current="page"' : '') + '>' + word + '</button>';
+  }).join('');
+}
+
+window.TabCache = {
+  KEY: KEY,
+  CAP_MS: CAP_MS,
+  TAB_IDS: TAB_IDS,
+  LABELS: LABELS,
+  OWNER_ONLY: OWNER_ONLY,
+  subOf: subOf,
+  identityOf: identityOf,
+  parseCache: parseCache,
+  readCache: readCache,
+  writeCache: writeCache,
+  clearCache: clearCache,
+  cachedFor: cachedFor,
+  shownTabs: shownTabs,
+  earlyTabs: earlyTabs,
+  morph: morph,
+  buttonsHtml: buttonsHtml,
+};
+})();
+/* TABCACHE-CORE:END */
+(function () {
+  var root = document.documentElement;
+  try {
+    var ls = null;
+    try { ls = window.localStorage; } catch (e) { ls = null; }
+    if (!ls || !window.TabCache) return;
+    var get = function (k) { try { return ls.getItem(k); } catch (e) { return null; } };
+    var early = window.TabCache.earlyTabs({
+      session: get('iopScannerAuth'), roleRaw: get('iopViewerRole'), cacheRaw: get(window.TabCache.KEY), kind: get('iopKind'),
+      ownerIds: /* TABCACHE-OWNERS */["d3214c2a-4222-4171-9153-fe7ec466fc24"]/* /TABCACHE-OWNERS */, decode: typeof atob === 'function' ? function (s) { return atob(s); } : null,
+    });
+    window.TabCache.early = early;
+    if (!early) return;
+    root.setAttribute('data-iop-tabs', early.wait ? 'wait' : early.ids.join(',') + '|' + early.cur);
+    // whatever happens to the script after the bar, the screen is never kept out of sight past the page being read
+    var shown = function () { try { root.setAttribute('data-iop-bar', ''); } catch (e) { /* stays */ } };
+    document.addEventListener('DOMContentLoaded', shown);
+    setTimeout(shown, 3000);
+  } catch (e) { try { root.removeAttribute('data-iop-tabs'); } catch (e2) { /* the default */ } }
+})();
 </script>
 <!-- The home-screen app (Safari's Share, Add to Home Screen; Chrome's Install): opens full screen with no browser bar. build-portal.js keeps this block on
      the app page (app.html) only, the page icedoutpenguin.app serves; the other pages and the phone apps' own web views are not home-screen apps. Every path is
@@ -2441,8 +2697,8 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     content:"";flex:none;width:24px;height:24px;background:currentColor;
     -webkit-mask:var(--sc-i) center / contain no-repeat;mask:var(--sc-i) center / contain no-repeat;
   }
-  #tab-scanner .sc-tab[data-tab="singles"]{--sc-i:var(--i-card);}
-  #tab-scanner .sc-tab[data-tab="sheet"]{--sc-i:var(--i-sheet);}
+  #tab-scanner .sc-tab:is([data-tab="singles"],[data-gone="singles"]){--sc-i:var(--i-card);}
+  #tab-scanner .sc-tab:is([data-tab="sheet"],[data-gone="sheet"]){--sc-i:var(--i-sheet);}
   #tab-scanner .sc-tab[aria-current="page"]{color:var(--sc-blue);}
   #tab-scanner .sc-tab:active{transform:scale(.95);transition-duration:0s;}
   @media (prefers-reduced-motion:reduce){ #tab-scanner .sc-tab{transition:none;} #tab-scanner .sc-tab:active{transform:none;} }
@@ -2459,6 +2715,40 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .sc-tabbar.sc-tab-anim::after{transition:transform 320ms cubic-bezier(.34,1.32,.64,1), opacity 160ms ease-out;}
   #tab-scanner .sc-tabbar.sc-tab-anim .sc-tab[aria-current="page"]::before{animation:sc-tab-pop 340ms cubic-bezier(.34,1.56,.64,1) both;}
   #tab-scanner .sc-tabbar.sc-tab-anim .sc-tab[aria-current="page"]{animation:sc-tab-ink 220ms ease-out both;}
+  /* When the bar's tabs change (scanner/tabCache.js: an answer that differs from what the bar remembered, e.g. Singles turned off),
+     the tab going away folds up where it is (.sc-tab-out) and a new one opens (.sc-tab-new), the others widening or narrowing with
+     it, never jumping; the pill follows the tab on show frame by frame meanwhile (.sc-tab-follow: no glide of its own). The 4px
+     gap a folding tab leaves is folded with it. A first-ever load keeps the bar's space empty (.sc-tabs-wait) and fades the tabs in
+     (.sc-tabs-fade). Reduced motion: no folding at all, the new set just fades in. */
+  @keyframes sc-tab-fold{from{opacity:1;flex-grow:1;max-width:168px;min-width:44px;}to{opacity:0;flex-grow:0;max-width:0;min-width:0;padding:0;margin-right:-4px;}}
+  @keyframes sc-tab-open{from{opacity:0;flex-grow:0;max-width:0;min-width:0;padding:0;margin-right:-4px;}to{opacity:1;flex-grow:1;max-width:168px;min-width:44px;}}
+  #tab-scanner .sc-tab.sc-tab-out{animation:sc-tab-fold 300ms cubic-bezier(.2,.8,.2,1) forwards;pointer-events:none;overflow:hidden;white-space:nowrap;}
+  #tab-scanner .sc-tab.sc-tab-new{animation:sc-tab-open 300ms cubic-bezier(.2,.8,.2,1) backwards;overflow:hidden;white-space:nowrap;}
+  #tab-scanner .sc-tabbar.sc-tab-follow::after{transition:none;}
+  /* the first-ever wait: the bar is already there (its background and top line), just with no tabs in it yet */
+  #tab-scanner .sc-tabbar.sc-tabs-wait{box-sizing:border-box;min-height:calc(var(--sc-tabbar-h) + env(safe-area-inset-bottom));}
+  #tab-scanner .sc-tabbar.sc-tabs-fade .sc-tab{animation:sc-tab-fade 220ms ease-out backwards;}
+  #tab-scanner .sc-tabbar.sc-tabs-fade::after{animation:sc-tab-fade 220ms ease-out backwards;}
+  /* the bar going away (signed out, a sourcer's answer): it fades out, then gives its space back */
+  #tab-scanner .sc-tabbar.sc-tabs-leaving{opacity:0;transition:opacity 160ms ease-out;pointer-events:none;}
+  /* reduced motion, a changed set: the old bar (.sc-tabs-ghost, laid over the new one) fades out as the new one fades in */
+  #tab-scanner .sc-tabs-ghost{
+    position:absolute;inset:0;z-index:2;display:flex;justify-content:center;gap:4px;padding:inherit;pointer-events:none;
+    background:var(--sc-dock);animation:sc-tab-fade 160ms linear reverse forwards;
+  }
+  #tab-scanner .sc-tabs-ghost .sc-tab.sc-was-on{color:var(--sc-blue);}
+  #tab-scanner .sc-tabs-ghost-pill{
+    position:absolute;left:0;top:3px;z-index:0;width:58px;height:30px;margin-left:-29px;border-radius:15px;
+    background:color-mix(in srgb, var(--sc-blue) 18%, transparent);
+  }
+  @media (prefers-reduced-motion:reduce){
+    /* plain fades, but real ones: the page's global reduced-motion rule would cut them to nothing (one empty frame) */
+    #tab-scanner .sc-tab.sc-tab-out{animation:sc-tab-fade 160ms linear reverse forwards;animation-duration:160ms!important;}
+    #tab-scanner .sc-tab.sc-tab-new{animation:sc-tab-fade 160ms linear backwards;animation-duration:160ms!important;}
+    #tab-scanner .sc-tabbar.sc-tabs-fade .sc-tab,#tab-scanner .sc-tabbar.sc-tabs-fade::after{animation:sc-tab-fade 160ms linear backwards;animation-duration:160ms!important;}
+    #tab-scanner .sc-tabs-ghost{animation-duration:160ms!important;}
+    #tab-scanner .sc-tabbar.sc-tabs-leaving{transition:opacity 160ms linear;transition-duration:160ms!important;}
+  }
   @keyframes sc-tab-pop{0%{transform:scale(.82);}60%{transform:scale(1.1);}100%{transform:none;}}
   @keyframes sc-tab-ink{from{color:var(--sc-muted);}to{color:var(--sc-blue);}}
   /* The screen coming in: its parts fade in and slide about 10px from the side of the tab that was tapped (sc-tab-in-r: a tab to the
@@ -2809,6 +3099,8 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   }
 </style>
 <div class="tab active" id="tab-scanner">
+<!-- The Scanner's styles are in and its panel is open: the head's first-frame stand-in (the theme's plain background) steps aside. -->
+<script>try { document.documentElement.setAttribute('data-iop-styled', ''); } catch (e) { /* the stand-in stays: same colours */ }</script>
 <div class="scanner-layout" id="sc-layout">
 
   <header class="sc-brand">
@@ -3676,6 +3968,72 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
      login is, or to a sourcer while SHEET_FOR_SOURCERS is off. After #sc-layout on purpose: the keyboard rule
      (.sc-kbd-open ~ .sc-tabbar) and the app's peek (which hides the layout's other children) both rely on it. -->
 <div class="sc-tabbar" id="sc-tabbar" role="group" aria-label="Screens" hidden></div>
+<!-- The bar's first frame (Penguin, 11/24: "for a split second i only see slabs and sheets tabs, and then i see the 3 tabs"). This runs
+     right after the bar's markup, before the big scripts, while the page is still being read: what the head decided (TabCache.early,
+     from iopTabBar, scanner/tabCache.js) is drawn at once, a returning owner's final tabs or an owner's empty, kept space, so the
+     first frame already has them and the screen above it already sits clear of the bar. Then the screen is let into sight
+     (data-iop-bar). Only for the SAME signed-in login, and only when this phone's own record of that login says owner. Anything else:
+     nothing is drawn here and the Scanner module draws the bar as before. Any fault leaves the bar hidden. The ScannerTab module
+     takes it over (and checks it) when it starts. -->
+<script>
+(function () {
+  var html = document.documentElement;
+  // The camera box (a phone's or a computer's browser, not the apps): when its camera came up last time (iopCamOn) and the screen
+  // opening is the slab one, the box starts in its full "Starting camera" state, as the camera's own start would put it a moment
+  // later (autoCamera takes it over, and puts the slim off row back if the camera does not start after all).
+  try {
+    var ls0 = window.localStorage;
+    var kind0 = ls0.getItem('iopKind');
+    var e0 = window.TabCache ? window.TabCache.early : null;
+    var auth0 = JSON.parse(ls0.getItem('iopScannerAuth') || 'null');
+    var slabScreen = e0 && !e0.wait ? e0.cur === 'slabs' && kind0 !== 'singles' : kind0 !== 'singles' && kind0 !== 'sheet';
+    if (!window.penguinNative && ls0.getItem('iopCamOn') === '1' && auth0 && auth0.access_token && slabScreen) {
+      var vfw = document.getElementById('sc-vf-wrap'), vf0 = document.getElementById('sc-vf'), off0 = document.getElementById('sc-vf-off');
+      if (vfw && vf0 && off0) { vf0.hidden = false; off0.hidden = true; vfw.setAttribute('data-early-cam', ''); }
+    }
+  } catch (e) { /* the box starts slim, as before */ }
+  try {
+    var bar = document.getElementById('sc-tabbar');
+    var root = document.getElementById('tab-scanner');
+    var early = window.TabCache ? window.TabCache.early : null;
+    if (!bar || !root || !early) return;
+    root.classList.add('sc-has-tabbar');
+    if (early.wait) {
+      // an owner with nothing remembered for this login: the bar's space (and its own background) is kept, with no tabs in it yet,
+      // so the screen above never moves when they come (the Scanner module fades them in once the answers are in)
+      bar.classList.add('sc-tabs-wait');
+      bar.hidden = false;
+      bar.setAttribute('data-early', 'wait');
+      return;
+    }
+    bar.innerHTML = window.TabCache.buttonsHtml(early.ids, early.cur);
+    bar.hidden = false;
+    bar.setAttribute('data-early', early.ids.join(',') + '|' + early.cur);
+    // the pill under the tab on show, where the Scanner module would put it (placeTabPill)
+    var on = bar.querySelector('[aria-current="page"]');
+    if (on && on.offsetWidth) {
+      bar.style.setProperty('--sc-tab-x', Math.round(on.offsetLeft + on.offsetWidth / 2) + 'px');
+      bar.classList.add('sc-tab-ind');
+    }
+    if (early.cur === 'sheet') {
+      var sub = document.querySelector('#tab-scanner .sc-brand-sub');
+      if (sub) sub.textContent = 'Sheet';
+    }
+    // ...and the screen of the tab on show, so the slab screen is never seen under a Singles or Sheet tab: its pane's own markup
+    // shows (the pane fills it in when it opens, a moment later). The Scanner takes it back off if that pane does not open.
+    if (early.cur === 'sheet' || early.cur === 'singles') {
+      var layout = document.getElementById('sc-layout');
+      var pane = document.getElementById(early.cur === 'sheet' ? 'sc-sh' : 'sc-sg');
+      if (layout && pane) {
+        layout.classList.add(early.cur === 'sheet' ? 'sc-sheet-mode' : 'sc-singles-mode');
+        pane.hidden = false;
+        bar.setAttribute('data-early-mode', early.cur);
+      }
+    }
+  } catch (e) { /* the Scanner module draws the bar */ }
+  finally { try { html.setAttribute('data-iop-bar', ''); } catch (e) { /* the head's own fallback shows the screen */ } }
+})();
+</script>
 
 <!-- Settings (the gear above): a Theme section, one row per theme (the script fills it from
      window.IOPTheme.list(), see scanner/theme.js), tapping a row applies it at once; and, while signed in, an
@@ -15837,6 +16195,8 @@ window.SinglesPrice = {
     var stream = null, camStarting = false, camGen = 0, camMsg = '';
     // camAsking: opened by itself in a browser, while it asks whether the camera is already allowed (it is about to start).
     // camLive: the picture has real frames (it fades in over the dark box then). LIVE_FALLBACK_MS: a browser that never says so.
+    // camHeld: opened from the bar's memory before singles-live's first answer; no camera until it says on (camHeldTap: by a tap).
+    var camHeld = false, camHeldTap = false;
     var camAsking = false, camLive = false, liveTimer = null, LIVE_FALLBACK_MS = 1500;
     // camPerm: what the browser last said about the camera ('granted' / 'prompt' / 'denied'), null while not known yet. The full
     // waiting box is shown only when it will start; a browser that is going to wait for a tap goes straight to the slim off row.
@@ -15952,6 +16312,17 @@ window.SinglesPrice = {
     function allowed() { try { return !!(host && host.allowed()); } catch (e) { return false; } }
     /** May the Singles tab show right now: an owner, outside lock mode, while singles-live says on. */
     function available() { return !!host && allowed() && liveState === true; }
+    /** Is Singles' answer still on its way: an owner, outside lock mode, before singles-live's first /status answer (the bar may show
+        the Singles tab from memory meanwhile, rates-portal/page.html renderTabs). A read that failed is an answer (hidden). */
+    function pending() { return !!host && allowed() && liveState === null; }
+    /** Did the last /status read fail (no answer, so Singles is hidden for now)? The bar does not remember a set of tabs from a failure. */
+    function failed() { return !!host && allowed() && statusFailed && liveState !== true; }
+    /** Did this login's bar have Singles last time (the page's memory, iopTabBar)? Then, while the first /status answer is still on its
+        way, Singles opens as it was left (the last choice) instead of showing the slab screen under a Singles tab; an answer of off
+        then closes it again (refresh). Only ever for an owner: allowed() comes first everywhere this is read. */
+    function remembered() { try { return !!(host && typeof host.remembers === 'function' && host.remembers()); } catch (e) { return false; } }
+    /** May Singles be on right now: singles-live said on, or (before its first answer) the memory says it was there. */
+    function mayBeOn() { return liveState === true || (liveState === null && remembered()); }
     /** The tab bar redraws (who may see Singles, or whether it is on, may have changed). */
     function changed() { try { if (host && typeof host.changed === 'function') host.changed(); } catch (e) { /* the bar redraws next time */ } }
 
@@ -15970,10 +16341,13 @@ window.SinglesPrice = {
       }).then(function () {
         statusAsking = false;
         statusAt = now();
+        var wasOn = on; // (opened from memory before this answer: an answer of off closes it in refresh, which brings the slab camera back)
         refresh();
+        // Opened from memory before this answer, its camera held back: singles-live said on, so it comes up now.
+        if (on && camHeld && liveState === true) { camHeld = false; camAsking = false; camUp(camHeldTap); }
         mayAutoEnter = false;
         // The slab camera was held back for a Singles that isn't coming (claimsCamera): it comes up now.
-        if (before === null && liveState !== true && !on && active && getKey(KIND_KEY) === 'singles') host.slabCamerasBack(false);
+        if (before === null && liveState !== true && !on && !wasOn && active && getKey(KIND_KEY) === 'singles') host.slabCamerasBack(false);
       });
     }
     function statusDue() {
@@ -15991,7 +16365,7 @@ window.SinglesPrice = {
         return;
       }
       if (statusDue()) askStatus();
-      if (liveState !== true) { if (on) leave(false); changed(); return; }
+      if (!mayBeOn()) { if (on) leave(false); changed(); return; }
       if (!on && active && mayAutoEnter && getKey(KIND_KEY) === 'singles') { mayAutoEnter = false; enter(false); }
       if (on && ratesDue()) ensureData();
       changed();
@@ -16010,7 +16384,7 @@ window.SinglesPrice = {
     /** The tab bar's Singles / Slabs (and "That's a slab: switch to Slabs?"). Remembered under iopKind. */
     function pickKind(kind) {
       if (kind === 'singles') {
-        if (on || !allowed() || liveState !== true) return;
+        if (on || !allowed() || !mayBeOn()) return;
         setKey(KIND_KEY, 'singles');
         buzz();
         enter(true);
@@ -16032,6 +16406,20 @@ window.SinglesPrice = {
       ensureData();
       render();
       placeGuide();
+      // Opened from memory (the bar's last choice) before singles-live has said it is on: the camera is held back (no camera is
+      // asked for a Singles that may be off), the box keeping its full size, until the answer comes (askStatus).
+      if (liveState !== true) {
+        camHeld = true;
+        camHeldTap = !!byTap;
+        camAsking = true;
+        renderCam();
+      } else camUp(byTap);
+      if (liveState === true && pile) refreshStaleLive();
+      changed();
+    }
+
+    function camUp(byTap) {
+      if (!on) return;
       // In the apps the page's own camera is allowed and the panel was just sent away; in a browser, a tap on the tab is the
       // person asking (the browser may ask for permission). Opened by itself (the last choice kept) it waits for a tap,
       // unless the browser already allows the camera.
@@ -16047,11 +16435,11 @@ window.SinglesPrice = {
           else if (on) renderCam();
         });
       }
-      if (liveState === true && pile) refreshStaleLive();
-      changed();
     }
 
     function leave(byTap) {
+      camHeld = false;
+      camAsking = false;
       stopCamera();
       clearTimeout(nextTimer);
       on = false;
@@ -16068,7 +16456,7 @@ window.SinglesPrice = {
       mayAutoEnter = true;
       if (tickTimer === null) tickTimer = setInterval(function () { if (active) refresh(); }, TICK_MS);
       refresh();
-      if (on) { el.root.hidden = false; render(); placeGuide(); if (!stream && host.inApp()) startCamera(); }
+      if (on) { el.root.hidden = false; render(); placeGuide(); if (!stream && !camHeld && host.inApp()) startCamera(); }
     }
     function paneDeactivate() {
       active = false;
@@ -16180,7 +16568,7 @@ window.SinglesPrice = {
       } catch (e) { return Promise.resolve(false); }
     }
     function startCamera() {
-      if (!on || !active || stream || camStarting) return;
+      if (!on || !active || stream || camStarting || camHeld) return;
       if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
         camMsg = "This browser can't use the camera here. Type the card's name or number below.";
         render();
@@ -17021,7 +17409,7 @@ window.SinglesPrice = {
 
     return {
       attach: attach, activate: paneActivate, deactivate: paneDeactivate, refresh: refresh, isOn: isOn, claimsCamera: claimsCamera,
-      slabScanned: slabScanned, cardRead: cardRead, available: available, pick: pickKind,
+      slabScanned: slabScanned, cardRead: cardRead, available: available, pending: pending, failed: failed, pick: pickKind,
     };
   })();
 /* SINGLES-PANE-JS:END */
@@ -17942,7 +18330,7 @@ window.SheetFiles = {
     return {
       attach: call('attach'), activate: call('activate'), deactivate: call('deactivate'), refresh: call('refresh'),
       isOn: call('isOn', false), claimsCamera: call('claimsCamera', false), slabScanned: call('slabScanned'), cardRead: call('cardRead'),
-      available: call('available', false), pick: call('pick'),
+      available: call('available', false), pending: call('pending', false), failed: call('failed', false), pick: call('pick'),
     };
   })(window.SinglesPane);
   // The Sheet tab (rates-portal/sheet-pane.html, its own <script> after the Sheet core): reached the same way, through a guard that
@@ -22402,23 +22790,46 @@ window.SheetFiles = {
       if (cam || cameraStarting) return;
       startCamera().catch(function () { /* message already set inside startCamera() */ });
     }
+    // The camera box on the first frame (a browser whose camera came up last time, iopCamOn): the small script after the tab bar puts
+    // the box in its starting state at once (data-early-cam), so it is never the slim off row first and then a jump to the full box.
+    // The first autoCamera takes it over: the camera starting keeps it, anything else puts the off row back.
+    var CAM_ON_KEY = 'iopCamOn';
+    function rememberCamOn(on) {
+      try { var s = safeLocalStorage(); if (!s) return; if (on) s.setItem(CAM_ON_KEY, '1'); else if (s.getItem(CAM_ON_KEY) !== null) s.removeItem(CAM_ON_KEY); } catch (e) { /* next time starts slim */ }
+    }
+    function takeEarlyCam() {
+      try {
+        var w = document.getElementById('sc-vf-wrap');
+        if (!w || !w.hasAttribute || !w.hasAttribute('data-early-cam')) return false;
+        w.removeAttribute('data-early-cam');
+        return true;
+      } catch (e) { return false; }
+    }
+    function undoEarlyCam() { if (!cam && !cameraStarting) { dom.vf.hidden = true; dom.vfOff.hidden = false; } }
+    setTimeout(function () { if (takeEarlyCam()) undoEarlyCam(); }, 4000); // the Scanner never opened: never a box left starting
     function autoCamera() {
-      if (SinglesPane.claimsCamera()) return; // Singles has its own camera (on, or about to come back on by itself): never two at once
-      if (bridge.cameraPanelSupported()) return; // app 1.10: the camera starts OFF, its panel's switch turns it on
-      if (!scannerActive || cameraTurnedOff || !session || nativeScannerOpen || cam || cameraStarting) return;
-      if (bridge.isAvailable()) { turnCameraOn(); return; }
-      if (!cameraSupported()) return;
+      var early = takeEarlyCam();
+      if (!autoCameraNow(early) && early) undoEarlyCam();
+    }
+    /** -> true when the camera box is taken care of (the camera is starting or on, or a check that sets the box right is under way). */
+    function autoCameraNow(early) {
+      if (SinglesPane.claimsCamera()) return false; // Singles has its own camera (on, or about to come back on by itself): never two at once
+      if (bridge.cameraPanelSupported()) return false; // app 1.10: the camera starts OFF, its panel's switch turns it on
+      if (cam || cameraStarting) return true;
+      if (!scannerActive || cameraTurnedOff || !session || nativeScannerOpen) return false;
+      if (bridge.isAvailable()) { turnCameraOn(); return !!(cam || cameraStarting); }
+      if (!cameraSupported()) return false;
       watchPermission();
       // A phone's browser (Josh, 11/19: "it should be like the app when it's automatic"): the camera starts by itself as soon as the
       // Scanner is open and signed in. The first time, the browser asks for permission right there; if nobody answers, the one-tap
       // Allow camera state comes up (startCamWatch), and a block says how to undo it on this phone.
-      if (camKind === 'phone') { turnCameraOn(); return; }
+      if (camKind === 'phone') { turnCameraOn(); return !!(cam || cameraStarting); }
       // A computer's browser, or an app's web view without the bridge: only once the browser has ALREADY allowed the camera, as before
       // (never a permission prompt out of nowhere); the camera button, or the browser's own settings, start it otherwise.
       // The browser has already said yes (its live permission, watched above): the camera box takes its full size right away while the
       // check runs, so coming back from Singles or the Sheet never shows the slim off row first and then jumps (Penguin, 11/24).
       var preShown = false;
-      if (camPermStatus && camPermStatus.state === 'granted' && dom.vf.hidden) {
+      if (early || (camPermStatus && camPermStatus.state === 'granted' && dom.vf.hidden)) {
         preShown = true;
         dom.vf.hidden = false;
         dom.vfOff.hidden = true;
@@ -22428,6 +22839,7 @@ window.SheetFiles = {
         if (ok && scannerActive && !cameraTurnedOff && session && !cam && !cameraStarting) turnCameraOn();
         else if (preShown && !cam && !cameraStarting) { dom.vf.hidden = true; dom.vfOff.hidden = false; }
       });
+      return preShown;
     }
     function cameraAllowedAlready() {
       try {
@@ -22487,6 +22899,7 @@ window.SheetFiles = {
         if (gen !== camGen || !scannerActive) { c.stop(); return; }
         settle();
         cam = c;
+        if (!bridge.isAvailable()) rememberCamOn(true);
         camNeedsTap = null;
         dom.allow.hidden = true;
         dom.vf.hidden = false;
@@ -22513,6 +22926,7 @@ window.SheetFiles = {
         if (gen !== camGen) return; // a replaced start's refusal says nothing about the new one
         settle();
         var problem = AutoScan.problemFor((err && err.problem) || 'failed', { userGesture: userGesture, permission: camPermStatus ? camPermStatus.state : null });
+        rememberCamOn(false);
         camNeedsTap = AutoScan.needsTap(problem) ? 'retry' : null;
         showOff(AutoScan.cameraHelp(problem, platform), AutoScan.tapLabel(problem));
         throw err;
@@ -22998,6 +23412,8 @@ window.SheetFiles = {
     SinglesPane.attach({
       layout: dom.layout, bridge: bridge, feedback: feedback,
       allowed: function () { return !!session && roleState() === 'owner' && !lkOn(); },
+      // this login's bar had Singles last time (iopTabBar): before /status answers, Singles opens as it was left
+      remembers: function () { return tabRemembers('singles'); },
       inApp: function () { return bridge.isAvailable(); },
       changed: function () { renderTabs(); },
       slabCamerasOff: function () {
@@ -23038,48 +23454,255 @@ window.SheetFiles = {
       var m = lkMode();
       return m === 'off' ? 'owner' : m === 'lock' ? 'sourcer' : 'none';
     }
-    /** The tabs on show right now, in order: [] means no bar. */
-    function tabsNow() {
-      if (!TABS) return [];
+    // ── The bar's first frame and its memory (Penguin, 11/24: "for a split second i only see slabs and sheets tabs, and then i see
+    // the 3 tabs. fix that. looks unprofessional"). Singles' answer (singles-live's /status) comes a moment after the page opens, so
+    // the bar remembers the tabs it last settled on for THIS login (iopTabBar, scanner/tabCache.js: a non-secret id of the login, its
+    // role and the tab ids, never a token). A returning login's bar is drawn from it before any other script runs (the small script
+    // after the bar's markup), and here a tab whose answer is still out (Singles before /status) is shown only when the memory had it.
+    // When the answers differ from the memory the bar changes smoothly: a tab going away folds up where it was, a new one opens, the
+    // pill follows the tab on show the whole way (reduced motion: a plain fade). A first-ever load (nothing remembered) keeps the bar's
+    // space with no tabs in it until the answers are in, at most TabCache.CAP_MS, then shows what is known (Slabs | Sheet for an
+    // owner), and fades them in. Signed out, a login not answered for yet, and a sourcer get exactly what they got before: Singles is
+    // never shown to them, from memory or otherwise (Singles' own allowed() is false for them).
+    var tabMem = window.TabCache || null;
+    var tabCapped = false, tabCapTimer = null;
+    function tabWho() {
+      if (!tabMem || !session) return null;
+      return tabMem.identityOf(session, typeof atob === 'function' ? function (x) { return atob(x); } : null);
+    }
+    /** Did this login's remembered bar (as an owner) have tab `id`? */
+    function tabRemembers(id) {
+      if (!tabMem || barRole() !== 'owner') return false;
+      var c = tabMem.cachedFor(tabMem.readCache(safeLocalStorage()), tabWho(), 'owner');
+      return !!c && c.indexOf(id) >= 0;
+    }
+    /** Each tab's answer right now: 'yes', 'no', or 'pending' (Singles, an owner's, while /status is still out). */
+    function tabStates(role) {
+      return TABS.map(function (t) {
+        var ok = false;
+        try { ok = !!t.allowed(role); } catch (e) { ok = false; }
+        if (!ok && t.id === 'singles' && role === 'owner' && SinglesPane.pending()) return { id: t.id, state: 'pending' };
+        return { id: t.id, state: ok ? 'yes' : 'no' };
+      });
+    }
+    /** -> { ids, waiting, settled }: the tabs on show (TabCache.shownTabs), and whether every answer is in (so the memory can be kept). */
+    function tabsPlan() {
+      if (!TABS) return { ids: [], waiting: false, settled: false };
       var role = barRole();
-      if (role === 'none') return [];
-      var list = TABS.filter(function (t) { try { return !!t.allowed(role); } catch (e) { return false; } });
-      return list.length > 1 ? list : [];
+      if (role === 'none') return { ids: [], waiting: false, settled: false };
+      var states = tabStates(role);
+      // every answer is in: nothing pending, and Singles' last /status read did not fail (a failure hides Singles, but it is not an
+      // answer worth remembering)
+      var settled = !states.some(function (t) { return t.state === 'pending'; }) && !(role === 'owner' && SinglesPane.failed());
+      if (!tabMem) {
+        var plain = states.filter(function (t) { return t.state === 'yes'; }).map(function (t) { return t.id; });
+        return { ids: plain.length > 1 ? plain : [], waiting: false, settled: settled };
+      }
+      var who = tabWho();
+      var plan = tabMem.shownTabs(states, tabMem.cachedFor(tabMem.readCache(safeLocalStorage()), who, role), tabCapped);
+      return { ids: plan.ids, waiting: plan.waiting, settled: settled, role: role, who: who };
+    }
+    /** The tabs on show right now, in order: [] means no bar. (A tab shown from memory counts: tapping it is remembered, below.) */
+    function tabsNow() {
+      var ids = tabsPlan().ids;
+      return TABS ? TABS.filter(function (t) { return ids.indexOf(t.id) >= 0; }) : [];
     }
     function sheetOn() { return SheetPane.isOn(); }
-    function tabOn() { return singlesOn() ? 'singles' : sheetOn() ? 'sheet' : 'slabs'; }
+    /** The tab on show: the screen that is on, or Singles while it is about to come back by itself (the last choice, its answer still out). */
+    function tabOn() {
+      if (singlesOn()) return 'singles';
+      if (sheetOn()) return 'sheet';
+      try { if (SinglesPane.claimsCamera()) return 'singles'; } catch (e) { /* slabs */ }
+      return 'slabs';
+    }
     function savedKind() { try { var s = safeLocalStorage(); return s ? s.getItem(KIND_KEY) : null; } catch (e) { return null; } }
     function saveKind(kind) { try { var s = safeLocalStorage(); if (s) s.setItem(KIND_KEY, kind); } catch (e) { /* this visit only */ } }
     var sheetMayAuto = true; // opening the Scanner goes back to the Sheet when it was the last tab (until the first tap)
-    var tabsDrawn = null;
+    // What the bar holds: its ids and the tab on show ('slabs,singles,sheet|slabs'), null while it was never drawn. A bar the first-frame
+    // script drew is taken over as it is (data-early), so the hand-over itself changes nothing on screen.
+    var tabsDrawn = null, tabIdsDrawn = [], tabCurDrawn = null;
+    var tabTapping = false; // a tap on the bar is being handled (pickTab brings its own screen in)
+    var earlyMode = null; // the screen the first-frame script put up ('sheet' | 'singles'), until the Scanner's first activate
+    (function adoptEarly() {
+      try {
+        var early = dom.tabbar && dom.tabbar.getAttribute ? dom.tabbar.getAttribute('data-early') : null;
+        if (!early) return;
+        tabsDrawn = early;
+        tabIdsDrawn = early === 'wait' ? [] : early.split('|')[0].split(',').filter(Boolean);
+        tabCurDrawn = early === 'wait' ? null : early.split('|')[1] || null;
+        dom.tabbar.removeAttribute('data-early');
+        earlyMode = dom.tabbar.getAttribute('data-early-mode');
+        dom.tabbar.removeAttribute('data-early-mode');
+      } catch (e) { /* drawn fresh */ }
+    })();
+    var TAB_MORPH_MS = 300, TAB_FADE_MS = 160;
+    var tabMorphTimer = null, tabFollowGen = 0;
+    function tabReducedMotion() {
+      try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }
+    }
+    function tabNow() { try { return typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now(); } catch (e) { return Date.now(); } }
+    /** Where the pill is now (its --sc-tab-x), or null when it is not on show. */
+    function tabPillX() {
+      try {
+        if (!dom.tabbar.classList.contains('sc-tab-ind')) return null;
+        var v = parseFloat(dom.tabbar.style.getPropertyValue('--sc-tab-x'));
+        return isFinite(v) ? v : null;
+      } catch (e) { return null; }
+    }
+    /** While the tabs fold or open, the pill glides from where it was (`fromX`) to the tab on show, which may itself be moving: frame
+        by frame, eased in and out over about TAB_MORPH_MS (no CSS glide of its own then, .sc-tab-follow: it would lag behind). */
+    function followTabPill(fromX) {
+      if (typeof requestAnimationFrame !== 'function' || fromX === null) { placeTabPill(); return; }
+      var gen = ++tabFollowGen;
+      // progress counts frames' time, at most 20 ms a frame: a frame the phone was too busy to draw (the screen changing under it) is
+      // never made up in one leap
+      var done = 0, last = tabNow();
+      if (dom.tabbar.classList) dom.tabbar.classList.add('sc-tab-follow');
+      (function step() {
+        if (gen !== tabFollowGen) return;
+        var on = null;
+        try { on = dom.tabbar.querySelector('[aria-current="page"]'); } catch (e) { on = null; }
+        var t = tabNow();
+        done += Math.min(20, Math.max(0, t - last));
+        last = t;
+        var p = Math.min(1, done / TAB_MORPH_MS);
+        if (on && on.offsetWidth && !dom.tabbar.hidden) {
+          var to = on.offsetLeft + on.offsetWidth / 2;
+          var e = p * p * (3 - 2 * p); // smoothstep: no jump at the start, no jolt at the end
+          dom.tabbar.style.setProperty('--sc-tab-x', Math.round(fromX + (to - fromX) * e) + 'px');
+          dom.tabbar.classList.add('sc-tab-ind');
+        }
+        if (p < 1) { requestAnimationFrame(step); return; }
+        placeTabPill();
+        if (dom.tabbar.classList) dom.tabbar.classList.remove('sc-tab-follow');
+      })();
+    }
+    /** Reduced motion: the old bar fades out over the new one as the new one fades in (a crossfade, never an empty frame), no sliding. */
+    function crossfadeTabs(oldIds, oldCur, oldX) {
+      var ghost = null;
+      try {
+        ghost = document.createElement('div');
+        ghost.className = 'sc-tabs-ghost';
+        ghost.setAttribute('aria-hidden', 'true');
+        ghost.innerHTML = oldIds.map(function (id) {
+          var word = tabMem && tabMem.LABELS[id] ? tabMem.LABELS[id] : id;
+          return '<button type="button" class="sc-tab' + (id === oldCur ? ' sc-was-on' : '') + '" data-gone="' + id + '" tabindex="-1" disabled>' + esc(word) + '</button>';
+        }).join('') + (oldX !== null ? '<i class="sc-tabs-ghost-pill" style="transform:translateX(' + Math.round(oldX) + 'px)"></i>' : '');
+        dom.tabbar.appendChild(ghost);
+      } catch (e) { ghost = null; }
+      // (the ghost has the bar's own background, so the new tabs under it show through exactly as it fades)
+      setTimeout(function () {
+        try { if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost); } catch (e) { /* drawn over next time */ }
+      }, TAB_FADE_MS + 40);
+    }
     function renderTabs() {
       if (!dom.tabbar || !TABS) return; // (applyLockMode can run before this part of the module has)
-      var list = tabsNow();
-      var ids = list.map(function (t) { return t.id; });
+      var plan = tabsPlan();
+      var ids = plan.ids;
       if (sheetOn() && ids.indexOf('sheet') < 0) SheetPane.leave(); // no longer allowed: back to Slabs (iopKind kept)
       if (sheetMayAuto && scannerActive && ids.indexOf('sheet') >= 0 && !sheetOn() && !singlesOn() && savedKind() === 'sheet') {
         sheetMayAuto = false;
         SheetPane.enter();
       }
+      // The memory: an owner's bar, kept once every answer is in (a /status read that failed is not an answer: the last record stays,
+      // so one network blip never teaches the next open a bar without Singles); dropped when nobody is signed in, or when the login it
+      // was kept for turns out not to be an owner (a sourcer's phone gets nothing new in storage: its bar never waits for an answer).
+      if (tabMem) {
+        var mem = safeLocalStorage();
+        if (!session) tabMem.clearCache(mem);
+        else if (plan.settled && plan.who && plan.role === 'owner') tabMem.writeCache(mem, plan.who, 'owner', ids);
+        else if (plan.who && plan.role === 'sourcer') { var had = tabMem.readCache(mem); if (had && had.who === plan.who) tabMem.clearCache(mem); }
+        // a first-ever wait has a cap (counted from the Scanner asking, so a slow phone reading the page still gets its full wait):
+        // then the bar shows what is known
+        if (plan.waiting && !tabCapped && tabCapTimer === null) {
+          tabCapTimer = setTimeout(function () { tabCapped = true; renderTabs(); }, tabMem.CAP_MS);
+        }
+      }
       var cur = tabOn();
-      var html = list.map(function (t) {
-        return '<button type="button" class="sc-tab" data-tab="' + t.id + '"' + (t.id === cur ? ' aria-current="page"' : '') + '>' + esc(t.label) + '</button>';
-      }).join('');
-      if (!list.length && tabsDrawn === null) return; // never shown: nothing to take away (a sourcer's screen stays exactly as it was)
+      if (ids.indexOf(cur) < 0) cur = ids.length ? ids[0] : 'slabs'; // never a tab that is not on the bar
+      if (!ids.length && !plan.waiting && tabsDrawn === null) return; // never shown: nothing to take away (a sourcer's screen stays exactly as it was)
       // the header's word under the logo says which screen this is: "Sheet" on the Sheet (it is not pricing anything)
       try {
         var sub = document.querySelector('#tab-scanner .sc-brand-sub');
         var word = cur === 'sheet' ? 'Sheet' : 'Pricing';
         if (sub && sub.textContent !== word) sub.textContent = word;
       } catch (e) { /* the header keeps its word */ }
-      if (html === tabsDrawn) { placeTabPill(); return; }
-      tabsDrawn = html;
-      dom.tabbar.innerHTML = html;
-      dom.tabbar.hidden = !list.length;
-      placeTabPill();
-      // the class is on #tab-scanner, not on the layout: the layout's own classes (the app's sheet, lock mode) stay exactly as they were
+      var key = plan.waiting ? 'wait' : ids.join(',') + '|' + cur;
+      if (key === tabsDrawn) { if (!dom.tabbar.classList.contains('sc-tab-follow')) placeTabPill(); return; }
       var root = document.getElementById('tab-scanner') || dom.layout;
-      if (list.length) root.classList.add('sc-has-tabbar'); else root.classList.remove('sc-has-tabbar');
+      var hadTabs = tabIdsDrawn.length > 0;
+      var oldIds = tabIdsDrawn.slice(), oldCur = tabCurDrawn, oldX = tabPillX();
+      tabsDrawn = key;
+      clearTimeout(tabMorphTimer);
+      dom.tabbar.classList.remove('sc-tabs-leaving');
+      if (key === 'wait') {
+        // first-ever load: the bar's space is kept (the screen above never moves), with no tabs in it yet
+        dom.tabbar.innerHTML = '';
+        dom.tabbar.hidden = false;
+        dom.tabbar.classList.add('sc-tabs-wait');
+        root.classList.add('sc-has-tabbar');
+        tabIdsDrawn = [];
+        tabCurDrawn = null;
+        placeTabPill();
+        return;
+      }
+      if (!ids.length && hadTabs && !dom.tabbar.hidden && tabMem) {
+        // the bar goes away (signed out, the role came back as a sourcer's): its tabs stop being tabs at once and the bar fades out,
+        // then its space is given back
+        dom.tabbar.innerHTML = tabMem.buttonsHtml(oldIds.map(function (id) { return { id: id, gone: true, fresh: false }; }), null);
+        dom.tabbar.classList.remove('sc-tabs-wait', 'sc-tab-ind');
+        dom.tabbar.classList.add('sc-tabs-leaving');
+        tabIdsDrawn = [];
+        tabCurDrawn = null;
+        tabMorphTimer = setTimeout(function () {
+          if (tabsDrawn !== key) return;
+          dom.tabbar.classList.remove('sc-tabs-leaving');
+          dom.tabbar.innerHTML = '';
+          dom.tabbar.hidden = true;
+          root.classList.remove('sc-has-tabbar');
+        }, TAB_FADE_MS);
+        return;
+      }
+      var wasWaiting = dom.tabbar.classList.contains('sc-tabs-wait');
+      dom.tabbar.classList.remove('sc-tabs-wait');
+      var sameSet = ids.join(',') === oldIds.join(',');
+      var smooth = hadTabs && !sameSet && ids.length > 0 && !dom.tabbar.hidden;
+      if (smooth && tabMem && !tabReducedMotion()) {
+        // the tabs that go away fold up where they were, the new ones open, the pill glides along; then the bar is drawn plain
+        dom.tabbar.innerHTML = tabMem.buttonsHtml(tabMem.morph(oldIds, ids), cur);
+        followTabPill(oldX);
+        tabMorphTimer = setTimeout(function () {
+          if (tabsDrawn !== key) return;
+          dom.tabbar.innerHTML = tabMem.buttonsHtml(ids, cur);
+          if (!dom.tabbar.classList.contains('sc-tab-follow')) placeTabPill();
+        }, TAB_MORPH_MS);
+      } else {
+        dom.tabbar.innerHTML = tabMem ? tabMem.buttonsHtml(ids, cur) : ids.map(function (id) {
+          return '<button type="button" class="sc-tab" data-tab="' + id + '"' + (id === cur ? ' aria-current="page"' : '') + '>' + esc(id.charAt(0).toUpperCase() + id.slice(1)) + '</button>';
+        }).join('');
+        dom.tabbar.hidden = !ids.length;
+        if (smooth && tabMem) crossfadeTabs(oldIds, oldCur, oldX); // reduced motion: old fades out as the new fades in
+        else if (ids.length && wasWaiting) {
+          // the first tabs after a wait: a plain fade in (the bar's own background was already there)
+          dom.tabbar.classList.remove('sc-tabs-fade');
+          try { void dom.tabbar.offsetWidth; } catch (e) { /* fades anyway */ }
+          dom.tabbar.classList.add('sc-tabs-fade');
+          tabMorphTimer = setTimeout(function () { dom.tabbar.classList.remove('sc-tabs-fade'); }, TAB_MORPH_MS);
+        }
+        placeTabPill();
+      }
+      // A change the person did not tap for (an answer that differs from the memory) moved the tab on show: its screen comes in the
+      // way a tap brings one in (a short fade and slide), never a hard cut. (A tap does this itself, in pickTab.)
+      if (smooth && oldCur && oldCur !== cur && !tabTapping) {
+        var from = oldIds.indexOf(oldCur), to = ids.indexOf(cur);
+        animateTabIn(to < from ? -1 : 1);
+      }
+      tabIdsDrawn = ids.slice();
+      tabCurDrawn = cur;
+      dom.tabbar.hidden = !ids.length;
+      if (dom.tabbar.removeAttribute) dom.tabbar.removeAttribute('data-early');
+      // the class is on #tab-scanner, not on the layout: the layout's own classes (the app's sheet, lock mode) stay exactly as they were
+      if (ids.length) root.classList.add('sc-has-tabbar'); else root.classList.remove('sc-has-tabbar');
     }
     /** The accent pill under the tab on show: the bar's ::after, moved to that tab's centre (--sc-tab-x). No tab, or a bar not
         laid out (hidden): no pill. Only looks: nothing here changes which tab is on. */
@@ -23119,16 +23742,25 @@ window.SheetFiles = {
       var cur = tabOn();
       if (id === cur) { try { window.scrollTo(0, 0); } catch (e) { /* stays */ } return; }
       var order = tabsNow().map(function (t) { return t.id; });
+      tabTapping = true; // (renderTabs leaves the screen's slide-in to this tap)
       if (dom.tabbar && dom.tabbar.classList) dom.tabbar.classList.add('sc-tab-anim'); // the pill glides to the new tab
-      if (cur === 'singles') SinglesPane.pick('slabs'); // Singles' camera stops and the slab camera comes back (it buzzes)
+      // Singles only about to come back by itself (its answer still out): there is no Singles screen to leave, only the choice
+      var claimedOnly = cur === 'singles' && !singlesOn();
+      if (cur === 'singles' && !claimedOnly) SinglesPane.pick('slabs'); // Singles' camera stops and the slab camera comes back (it buzzes)
       if (cur === 'sheet') SheetPane.leave();
-      if (id === 'singles') SinglesPane.pick('singles'); // sends the slab cameras away, starts its own (it buzzes, saves iopKind)
-      else {
+      if (id === 'singles') {
+        SinglesPane.pick('singles'); // sends the slab cameras away, starts its own (it buzzes, saves iopKind)
+        // (shown from memory and not yet able to open: the choice is kept, and Singles opens by itself when /status says on)
+        if (!singlesOn()) { saveKind('singles'); buzzTab(); }
+      } else {
         if (id === 'sheet') SheetPane.enter();
         saveKind(id);
-        if (cur !== 'singles') buzzTab();
+        if (cur !== 'singles' || claimedOnly) buzzTab();
+        // the slab camera was held back for that Singles (claimsCamera): it comes up now
+        if (claimedOnly && scannerActive) { if (bridge.cameraPanelSupported()) showPanelIfReady(); else autoCamera(); }
       }
       renderTabs();
+      tabTapping = false;
       // a new screen starts at its top (never halfway down the last one's pile), and comes in from the side of the tab tapped
       try { window.scrollTo(0, 0); } catch (e) { /* stays */ }
       animateTabIn(order.indexOf(id) - order.indexOf(cur));
@@ -23248,6 +23880,17 @@ window.SheetFiles = {
       SinglesPane.activate();
       SheetPane.activate();
       renderTabs();
+      // the screen the first-frame script put up, if its pane did not open after all (no longer allowed, not loaded): the slab screen
+      if (earlyMode) {
+        var em = earlyMode;
+        earlyMode = null;
+        var emOn = em === 'sheet' ? sheetOn() : singlesOn();
+        if (!emOn) {
+          dom.layout.classList.remove(em === 'sheet' ? 'sc-sheet-mode' : 'sc-singles-mode');
+          var emPane = document.getElementById(em === 'sheet' ? 'sc-sh' : 'sc-sg');
+          if (emPane) emPane.hidden = true;
+        }
+      }
       if (lk.on) { // back on this tab: the status ticks again, and so does the Allocation tab if it is the one showing (with a fresh read if its numbers went stale)
         lkStartTimer(); lkStatus();
         if (lk.tab === 'alloc') { if (lk.alloc && Date.now() - lk.allocAt >= LK_ALLOC_EVERY_MS - 1000) lkLoadAlloc(true); lkAllocStart(); }
