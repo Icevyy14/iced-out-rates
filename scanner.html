@@ -9128,13 +9128,15 @@ window.AvgClient = {
 // (the 2026-11-13 incident: our server answered in 2.5 s and the phone still said Triumph was down).
 //
 // A Triumph answer with NO PRICE (its failed lookup answers HTTP 200 with marketValue 0 and grade '', cert
-// 148753188) takes the same fill: noPriceFacts marks it, and the average's answer brings its Card Ladder
-// value and the grade (and name) the answer lacked. Without that grade a PSA 7+ band could not take it.
+// 148753188; a very low pop slab has no Card Ladder value) is DECIDED AT ONCE (owner rule 2026-11-24: a card
+// either fits our rules or it does not): noValueFacts marks it `noValue`, the page asks for no average for it,
+// and it reads "Not buying: no Card Ladder value" on the first render. (Until 2026-11-24 it waited on the
+// average's answer to fill a value in, so a pop 1 slab spun for minutes and then fell back anyway.)
 //
 // This file is only the decisions, so they can be unit-tested without a page:
 //   isTriumphDown(failure)      is this failed lookup "Triumph is down"? Only an HTTP 5xx answer is.
 //   downFacts(...)              the facts a card starts with when its lookup failed that way (or got no answer)
-//   noPriceFacts(facts, prev)   a Triumph answer with no price: the fill marks it like a fallback card
+//   noValueFacts(facts)         a Triumph answer with no price: marked `noValue`, decided at once, no average asked
 //   noteFor(facts)              the staff note for a card that is waiting: DOWN_NOTE, SLOW_NOTE or NOPRICE_NOTE
 //   fillFromAverage(...)        the facts once the average's answer arrives (CL value, name, grade)
 //   waitingForValue(facts)      a fallback card still waiting on its CL value (the page says so, staff only)
@@ -9252,25 +9254,15 @@ function downFacts(cert, grader, prev, deps, why) {
 }
 
 /**
- * The facts for a card Triumph ANSWERED but with no price (`facts` as the page's onLookup builds them, with
- * clvCents null: Triumph's failed lookup answers marketValue 0 and grade ''). Priced as it stands, the card
- * would sit on Card Ladder's value with no grade, so every PSA 7+ band turns it away or a lower band takes
- * it. It is marked like a fallback card (`clvFromAvg`, `downWhy: 'noprice'`) so the average's answer fills
- * its Card Ladder value in, and the grade or name the answer lacked. What Triumph did say (its title, sport,
- * year, confidence, any grade) stands: fillFromAverage never replaces a name or grade a card already has.
- * `prev` is what the pile already holds for the cert: a value an earlier average filled in stays while the
- * card asks again (a re-scan), as downFacts keeps one. A card with a Triumph value comes back unchanged.
+ * The facts for a card Triumph ANSWERED but with no price (`facts` as the page's onLookup builds them, with clvCents null:
+ * Triumph's failed lookup answers marketValue 0 and grade ''). There is no Card Ladder value to price on and none is
+ * waited for: the card is marked `noValue` so the page asks no average for it and the rules turn it down on the first
+ * render ("Not buying: no Card Ladder value"). What Triumph did say (title, sport, year, grade) stands. A card with a
+ * Triumph value comes back unchanged.
  */
-function noPriceFacts(facts, prev) {
+function noValueFacts(facts) {
   if (!facts || typeof facts !== 'object' || validCents(facts.clvCents) != null) return facts;
-  var next = Object.assign({}, facts, { clvCents: null, clvFromAvg: true, downWhy: 'noprice' });
-  var keep = prev && typeof prev === 'object' && prev.clvFromAvg === true && validCents(prev.clvCents) != null &&
-    !(next.grade != null && prev.grade != null && next.grade !== prev.grade); // never a value for another grade
-  if (!keep) return next;
-  next.clvCents = validCents(prev.clvCents);
-  if (next.grade == null && !next.gradeText) { next.grade = prev.grade == null ? null : prev.grade; next.gradeText = prev.gradeText || null; }
-  if (!hasOwnName(next) && hasOwnName(prev)) { next.title = prev.title; next.sport = prev.sport; next.year = prev.year; next.language = prev.language; }
-  return next;
+  return Object.assign({}, facts, { clvCents: null, noValue: true });
 }
 
 /** The staff note for a card that is waiting for its value: the words say why it is waiting. */
@@ -9334,7 +9326,7 @@ window.TriumphDown = {
   isDownStatus: isDownStatus,
   isTriumphDown: isTriumphDown,
   downFacts: downFacts,
-  noPriceFacts: noPriceFacts,
+  noValueFacts: noValueFacts,
   noteFor: noteFor,
   waitingForValue: waitingForValue,
   fillFromAverage: fillFromAverage,
@@ -20072,8 +20064,8 @@ window.SheetFiles = {
       var title = lookup.card || (g.toUpperCase() + ' ' + cert);
       // A Triumph value of 0 (or less, or not a number) is "Triumph has no price", never a price: Triumph's failed lookup answers
       // HTTP 200 with marketValue 0 and grade '', and a 0 here would beat Card Ladder's value (offerRules factsOf prefers Triumph's),
-      // price the card "Not buying" and show $0.00. With none the card prices on Card Ladder's, as the bot does (triumph.js mapTriumphResult),
-      // and TriumphDown.noPriceFacts below has the average's answer fill in that value and the grade Triumph left blank.
+      // price the card "Not buying" and show $0.00. With none the card is DECIDED AT ONCE (owner rule 2026-11-24, no hand pricing): no average is
+      // asked, no spinner, "Not buying: no Card Ladder value" on the first render (TriumphDown.noValueFacts below marks it `noValue`).
       var mvDollars = Number(lookup.marketValue);
       var clvCents = lookup.marketValue != null && isFinite(mvDollars) && mvDollars > 0 ? Math.round(mvDollars * 100) : null;
       // Triumph's own last sale for the cert, when the lookup carries one (dollars, like marketValue): the CLV cap's
@@ -20095,9 +20087,9 @@ window.SheetFiles = {
       if (prev && prev.avgStatus === 'done') { // a re-scan shows the average it already had while it re-checks
         facts.avgStatus = 'done'; facts.avg3Cents = prev.avg3Cents; facts.sales = prev.sales || null; facts.clClvCents = prev.clClvCents == null ? null : prev.clClvCents;
       }
-      // No Triumph value: without the grade from Card Ladder's answer a PSA 7+ band could not take the card (an NFL PSA 10 read
-      // "Not buying", a Pokemon PSA 10 dropped to the any-grade band). Unchanged for a card Triumph priced.
-      takeCard(cert, g, TriumphDown.noPriceFacts(facts, prev));
+      // No Triumph value: nothing to wait for (a very low pop slab has no Card Ladder value either), so it never joins the average poll.
+      // Unchanged for a card Triumph priced.
+      takeCard(cert, g, TriumphDown.noValueFacts(facts));
     }
 
     /** The facts the pile already holds for a cert (null when it is new). */
@@ -20111,7 +20103,8 @@ window.SheetFiles = {
         the Triumph-down fallback below both end here. */
     function takeCard(cert, g, facts) {
       // An account without averages never has one on its way: the card is priced on Triumph's value alone ('off', see OfferRules), at once.
-      if (!avgOn()) facts = avgOffFacts(facts);
+      // A card Triumph gave no value for (facts.noValue) is the same for EVERY account: nothing to wait for, no average asked.
+      if (!avgOn() || facts.noValue) facts = avgOffFacts(facts);
       var r = pile.addCard(cert, g, facts.clvCents, null);
       var entry = pile.list()[r.index];
       var key = pileMetaKey(g, entry.certKey);
@@ -20167,6 +20160,7 @@ window.SheetFiles = {
       var meta = pileMeta[key];
       if (!meta || !meta.facts) return;
       var f = meta.facts;
+      if (f.noValue) return; // Triumph gave no value: decided at once, never asked (takeCard)
       var poll = { handle: null };
       avgPolls[key] = poll;
       poll.handle = avgPoller.watch({ cert: f.cert, grader: f.grader }, function (avgState, final) {
@@ -20284,6 +20278,9 @@ window.SheetFiles = {
           var info = describeFailure(f.avgReason || 'Could not reach the averages service.', 0);
           showNote(info.message + ' Not confirmed as a pass.', true);
         }
+      } else if (priced.rejected && f.noValue) {
+        // Triumph gave no value and none is waited for: the plain reason, at once.
+        showNote('Not buying: no Card Ladder value.', true);
       } else if (priced.rejected) {
         // A card no band takes, or one a rule turns down with its own plain reason (language, no value, not enough sales...): say which.
         showNote(!priced.why || priced.why === PriceCore.REJECT_WHY
@@ -23640,7 +23637,7 @@ window.SheetFiles = {
         if (!on && meta && meta.facts && st !== 'off') {
           stopAveragePoll(key); meta.facts = avgOffFacts(meta.facts); moved = true; return;
         }
-        if (on && st === 'off') { meta.facts = Object.assign({}, meta.facts, { avgStatus: 'pending' }); st = 'pending'; moved = true; }
+        if (on && st === 'off' && !(meta && meta.facts && meta.facts.noValue)) { meta.facts = Object.assign({}, meta.facts, { avgStatus: 'pending' }); st = 'pending'; moved = true; }
         if ((st === 'pending' || st === 'timeout' || st === 'error') && !avgPolls[key]) startAveragePoll(key);
       });
       if (moved) { repriceAll(); renderPile(); renderCurrent(); }
