@@ -2128,6 +2128,46 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-earlier-main{transition:background-color 150ms ease-out;}
   #tab-scanner .sc-earlier-main:active{background:var(--sc-fill-card-bg);transition-duration:0s;}
   #tab-scanner .sc-earlier-row.sc-swiping .sc-earlier-main:active{background:none;}
+  /* ── the press (Penguin, 11/24: "make the buttons feel more satisfying and reactive"). The Scanner module marks the control under
+     a finger with .sc-press on pointerdown, at once, and keeps it at least ~110ms so even a quick tap is seen, then lets go. In:
+     a quick shrink (scale .96, a touch darker); out: a springy return with a slight overshoot. It uses the separate `scale`
+     property, so a control's own transform is never replaced; once the module is up (.sc-press-ready on #tab-scanner) the old
+     :active shrinks stand down so a press is never shrunk twice (without the module they work exactly as before). Disabled
+     controls never move. Rows that swipe (the pile) only darken. Reduced motion: no shrink, the colour change stays. */
+  /* zero specificity (:where): a control that sets its own touch-action (Hide's touch-action:none for the hold, the pile rows' pan-y) keeps it */
+  :where(#tab-scanner.sc-press-ready) :where(button,.sc-btn,[role="button"]){touch-action:manipulation;}
+  #tab-scanner.sc-press-ready :is(.sc-btn,.sc-start,.sc-seg-btn,.sc-brand-gear,.sc-theme-opt,.sc-account-entry,.sc-vf-round,.sc-type-btn,.sc-hide-btn,.sc-tab,.sc-lk-chip,.sc-sg-chip,.sc-sg-tile,.sc-sg-alt,.sc-sg-step,.sc-sh-x,.sc-earlier-remove,.sc-vf-shutter):active{transform:none;}
+  #tab-scanner.sc-press-ready .scanner-layout.sc-native-cam .sc-account-entry:active{transform:none;}
+  #tab-scanner.sc-press-ready :is(.sc-btn,.sc-start,.sc-seg-btn,.sc-brand-gear,.sc-theme-opt,.sc-account-entry,.sc-vf-round,.sc-type-btn,.sc-hide-btn,.sc-tab,.sc-lk-chip,.sc-sg-chip,.sc-sg-tile,.sc-sg-alt,.sc-sg-step,.sc-sh-x,.sc-earlier-remove,.sc-vf-shutter,.sc-sh-pick,.sc-lk-pick,.sc-lk-cert-hit,.sc-sheet-cue,.sc-result-open){
+    transition:scale 280ms cubic-bezier(.34,1.56,.64,1), filter 200ms ease-out, transform 160ms ease-out, background-color 150ms ease-out,
+      color 150ms ease-out, box-shadow 200ms ease-out, opacity 150ms ease-out;
+  }
+  #tab-scanner.sc-press-ready .sc-press.sc-press:not(:disabled):not(.holding){
+    scale:.96;filter:brightness(.9);
+    transition:scale 100ms cubic-bezier(.2,.8,.2,1), filter 90ms ease-out, transform 160ms ease-out, background-color 90ms ease-out,
+      color 90ms ease-out, box-shadow 100ms ease-out, opacity 90ms ease-out;
+  }
+  #tab-scanner.sc-press-ready .sc-press.sc-press:is(.sc-vf-round,.sc-brand-gear,.sc-type-btn,.sc-sg-step,.sc-sh-x,.sc-earlier-remove):not(:disabled){scale:.88;}
+  /* these two carry the same :not() chain as the general press above so they outrank it (1,6,0 over 1,5,0) */
+  #tab-scanner.sc-press-ready .sc-press.sc-press.sc-tab:not(:disabled):not(.holding){scale:.92;filter:none;}
+  #tab-scanner.sc-press-ready .sc-press.sc-press:not(:disabled):not(.holding):is(.sc-sg-row-in,.sc-earlier-main,.sc-sh-pick,.sc-lk-pick,.sc-lk-cert-hit,.sc-sheet-cue,.sc-result-open){scale:none;filter:brightness(.92);}
+  #tab-scanner.sc-press-ready .sc-press.sc-press.sc-btn-primary:not(:disabled){filter:brightness(.88) saturate(1.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.1), 0 2px 6px -4px var(--sc-accent-glow);}
+  /* The shutter: a bigger, satisfying press (the button gives a little, the white disc a lot) and a ring that pulses out as the
+     picture is taken (.sc-shot, a click). The ring is white like the shutter itself, on the camera picture in every theme. */
+  #tab-scanner.sc-press-ready .sc-vf-shutter span{transition:transform 300ms cubic-bezier(.34,1.56,.64,1);}
+  #tab-scanner.sc-press-ready .sc-vf-shutter:active span{transform:none;}
+  #tab-scanner.sc-press-ready .sc-press.sc-press.sc-vf-shutter:not(:disabled){scale:.94;filter:none;}
+  #tab-scanner.sc-press-ready .sc-press.sc-vf-shutter:not(:disabled) span{transform:scale(.8);transition:transform 90ms ease-out;}
+  #tab-scanner .sc-vf-shutter.sc-shot{animation:sc-shot-ring 460ms ease-out;}
+  @keyframes sc-shot-ring{from{box-shadow:0 0 0 0 rgba(255,255,255,.75);}to{box-shadow:0 0 0 18px rgba(255,255,255,0);}}
+  @media (prefers-reduced-motion:reduce){
+    #tab-scanner.sc-press-ready .sc-press.sc-press:not(:disabled),
+    #tab-scanner.sc-press-ready .sc-press.sc-press.sc-tab,
+    #tab-scanner.sc-press-ready .sc-press.sc-press:is(.sc-vf-round,.sc-brand-gear,.sc-type-btn,.sc-sg-step,.sc-sh-x,.sc-earlier-remove,.sc-vf-shutter):not(:disabled){scale:none !important;}
+    #tab-scanner.sc-press-ready .sc-press.sc-vf-shutter:not(:disabled) span{transform:none;opacity:.8;}
+    #tab-scanner.sc-press-ready :is(.sc-btn,.sc-start,.sc-seg-btn,.sc-brand-gear,.sc-theme-opt,.sc-account-entry,.sc-vf-round,.sc-type-btn,.sc-hide-btn,.sc-tab,.sc-lk-chip,.sc-sg-chip,.sc-sg-tile,.sc-sg-alt,.sc-sg-step,.sc-sh-x,.sc-earlier-remove,.sc-vf-shutter){transition-property:filter, background-color, color, box-shadow, opacity;}
+    #tab-scanner .sc-vf-shutter.sc-shot{animation:none;}
+  }
   @media (hover:none){
     #tab-scanner .sc-start:hover,#tab-scanner .sc-btn-primary:hover,#tab-scanner .sc-btn-quiet:hover,
     #tab-scanner .sc-btn-danger:hover,#tab-scanner .sc-brand-gear:hover:not(:active){filter:none;}
@@ -2204,6 +2244,43 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-tab[aria-current="page"]{color:var(--sc-blue);}
   #tab-scanner .sc-tab:active{transform:scale(.95);transition-duration:0s;}
   @media (prefers-reduced-motion:reduce){ #tab-scanner .sc-tab{transition:none;} #tab-scanner .sc-tab:active{transform:none;} }
+  /* The tab on show sits on a soft pill of the theme's accent (Penguin, 11/24: "make the transitions smooth"). The pill is the
+     bar's own ::after, placed under the tab on show by the Scanner module (--sc-tab-x, the tab's centre); on a tap it glides to the
+     new tab with a little spring and the new tab's icon pops. The tabs sit above it. */
+  #tab-scanner .sc-tab{position:relative;z-index:1;}
+  #tab-scanner .sc-tabbar::after{
+    content:"";position:absolute;left:0;top:3px;z-index:0;width:58px;height:30px;margin-left:-29px;border-radius:15px;pointer-events:none;
+    background:color-mix(in srgb, var(--sc-blue) 18%, transparent);
+    transform:translateX(var(--sc-tab-x, 0px));opacity:0;
+  }
+  #tab-scanner .sc-tabbar.sc-tab-ind::after{opacity:1;}
+  #tab-scanner .sc-tabbar.sc-tab-anim::after{transition:transform 320ms cubic-bezier(.34,1.32,.64,1), opacity 160ms ease-out;}
+  #tab-scanner .sc-tabbar.sc-tab-anim .sc-tab[aria-current="page"]::before{animation:sc-tab-pop 340ms cubic-bezier(.34,1.56,.64,1) both;}
+  #tab-scanner .sc-tabbar.sc-tab-anim .sc-tab[aria-current="page"]{animation:sc-tab-ink 220ms ease-out both;}
+  @keyframes sc-tab-pop{0%{transform:scale(.82);}60%{transform:scale(1.1);}100%{transform:none;}}
+  @keyframes sc-tab-ink{from{color:var(--sc-muted);}to{color:var(--sc-blue);}}
+  /* The screen coming in: its parts fade in and slide about 10px from the side of the tab that was tapped (sc-tab-in-r: a tab to the
+     right, so it comes from the right), 220ms, easing out. Only the parts that change between tabs move; the header and the fixed
+     docks never get a transform (it would unpin a fixed dock for the moment it runs), and the fill is "backwards" so nothing is left
+     transformed afterwards. CSS only: a barcode that lands mid-way is read and shown exactly as ever. */
+  @keyframes sc-tab-in-r{from{opacity:0;transform:translateX(10px);}to{opacity:1;transform:none;}}
+  @keyframes sc-tab-in-l{from{opacity:0;transform:translateX(-10px);}to{opacity:1;transform:none;}}
+  @keyframes sc-tab-fade{from{opacity:0;}to{opacity:1;}}
+  #tab-scanner .scanner-layout.sc-tab-in > :is(#sc-vf-wrap,#sc-score,#sc-sheet-cue,#sc-result,#sc-pl,#sc-seller,#sc-lock,#sc-rule-card,#sc-earlier,#sc-account-open),
+  #tab-scanner .scanner-layout.sc-tab-in > #sc-sg > :not(.sc-sg-dock):not(.sc-sg-toast),
+  #tab-scanner .scanner-layout.sc-tab-in > #sc-sh > :not(.sc-sh-dock):not(.sc-sh-toast){
+    animation:sc-tab-in-r 220ms cubic-bezier(.2,.8,.2,1) backwards;
+  }
+  #tab-scanner .scanner-layout.sc-tab-in.sc-tab-in-l > :is(#sc-vf-wrap,#sc-score,#sc-sheet-cue,#sc-result,#sc-pl,#sc-seller,#sc-lock,#sc-rule-card,#sc-earlier,#sc-account-open),
+  #tab-scanner .scanner-layout.sc-tab-in.sc-tab-in-l > #sc-sg > :not(.sc-sg-dock):not(.sc-sg-toast),
+  #tab-scanner .scanner-layout.sc-tab-in.sc-tab-in-l > #sc-sh > :not(.sc-sh-dock):not(.sc-sh-toast){animation-name:sc-tab-in-l;}
+  @media (prefers-reduced-motion:reduce){
+    #tab-scanner .scanner-layout.sc-tab-in > :is(#sc-vf-wrap,#sc-score,#sc-sheet-cue,#sc-result,#sc-pl,#sc-seller,#sc-lock,#sc-rule-card,#sc-earlier,#sc-account-open),
+    #tab-scanner .scanner-layout.sc-tab-in > #sc-sg > :not(.sc-sg-dock):not(.sc-sg-toast),
+    #tab-scanner .scanner-layout.sc-tab-in > #sc-sh > :not(.sc-sh-dock):not(.sc-sh-toast){animation-name:sc-tab-fade;animation-duration:140ms;animation-timing-function:linear;}
+    #tab-scanner .sc-tabbar.sc-tab-anim::after{transition:opacity 160ms linear;}
+    #tab-scanner .sc-tabbar.sc-tab-anim .sc-tab[aria-current="page"]::before{animation:none;}
+  }
   /* the page scrolls clear of the bar, and each dock sits on top of it */
   #tab-scanner.sc-has-tabbar .scanner-layout{padding-bottom:calc(var(--sc-dock-h) + var(--sc-tabbar-h) + env(safe-area-inset-bottom));}
   #tab-scanner.sc-has-tabbar .scanner-layout:not(.sc-kbd-open):not(.sc-native-cam) .sc-controls,
@@ -2844,8 +2921,29 @@ code{font-family:var(--font-mono);font-size:.92em;}
     border-radius:var(--sc-r-card);background:var(--sc-cam);box-shadow:inset 0 0 0 1px var(--sc-line);
     touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
   }
-  #tab-scanner .sc-sg-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+  /* The picture fades in once it really has frames (sc-sg-cam-live), over the dark box: never a jump, never a flash. */
+  #tab-scanner .sc-sg-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 260ms var(--sc-ease);}
   #tab-scanner .sc-sg-video[hidden]{display:none;}
+  #tab-scanner .sc-sg-cam.sc-sg-cam-live .sc-sg-video{opacity:1;}
+  /* Starting (Penguin, 11/24: "it goes from that to this for a second when I switch tabs"): the box is already its full size,
+     calm and dark, with a small spinner and "Starting the camera..." in the middle. Only a camera that is really OFF (turned off,
+     blocked, failed) shrinks to the slim row below. */
+  #tab-scanner .sc-sg-cam-wait{
+    position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;pointer-events:none;
+    color:color-mix(in srgb, var(--sc-danger-ink) 78%, transparent);font-size:var(--sc-fs-label);font-weight:700;line-height:1.35;
+    animation:sc-sg-appear 200ms var(--sc-ease) both;
+  }
+  #tab-scanner .sc-sg-cam-wait[hidden]{display:none;}
+  #tab-scanner .sc-sg-spin{
+    width:26px;height:26px;border-radius:50%;
+    border:3px solid color-mix(in srgb, var(--sc-danger-ink) 20%, transparent);border-top-color:var(--sc-danger-ink);
+    animation:sc-sg-spin 850ms linear infinite;
+  }
+  @keyframes sc-sg-spin{to{transform:rotate(360deg);}}
+  @keyframes sc-sg-appear{from{opacity:0;}to{opacity:1;}}
+  @keyframes sc-sg-breathe{from{opacity:.35;}to{opacity:1;}}
+  /* the camera's own controls come in softly with the picture */
+  #tab-scanner .sc-sg-bottom,#tab-scanner #sc-sg-cam-stop,#tab-scanner .sc-sg-guide{animation:sc-sg-appear 240ms var(--sc-ease) both;}
   #tab-scanner .sc-sg-guide{
     position:absolute;left:50%;top:50%;width:40%;aspect-ratio:63/88;transform:translate(-50%,-50%);border-radius:14px;pointer-events:none;
     /* the outline is the danger ink token, white in all nine themes, so it reads on the camera picture (dark in every theme) */
@@ -2853,7 +2951,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
     transition:box-shadow 220ms var(--sc-ease);
   }
   #tab-scanner .sc-sg-guide.sc-sg-placed{transform:none;}
-  #tab-scanner .sc-sg-cam.sc-sg-reading .sc-sg-guide{animation:sc-sg-glow 1.1s ease-in-out infinite alternate;}
+  /* sc-sg-appear stays first in the list while reading, so when the read ends the finished fade-in is kept, not restarted (no blink) */
+  #tab-scanner .sc-sg-cam.sc-sg-reading .sc-sg-guide{animation:sc-sg-appear 240ms var(--sc-ease) both, sc-sg-glow 1.1s ease-in-out infinite alternate;}
   #tab-scanner .sc-sg-cam.sc-sg-ok .sc-sg-guide{box-shadow:0 0 0 3px var(--sc-clv), 0 0 26px 2px color-mix(in srgb, var(--sc-clv) 55%, transparent), 0 0 0 9999px color-mix(in srgb, var(--sc-cam) 42%, transparent);}
   #tab-scanner .sc-sg-cam.sc-sg-look .sc-sg-guide{box-shadow:0 0 0 3px var(--sc-steel-ink), 0 0 26px 2px var(--sc-wait-tint), 0 0 0 9999px color-mix(in srgb, var(--sc-cam) 42%, transparent);}
   @keyframes sc-sg-glow{
@@ -2863,6 +2962,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   /* Camera off, the same as the slab camera (Penguin, 11/23): no big panel, the frame shrinks to one slim row with the
      round camera button and a short line (the slab's own .sc-vf-off / .sc-start / .sc-vf-off-text look). Tap it, it's on. */
   #tab-scanner .sc-sg-cam.sc-sg-cam-is-off{height:auto;background:var(--sc-fill-card-bg);}
+  #tab-scanner .sc-sg-cam.sc-sg-cam-is-off .sc-sg-cam-off{animation:sc-sg-appear 200ms var(--sc-ease) both;}
   #tab-scanner .sc-sg-cam-off[hidden]{display:none;}
   #tab-scanner .sc-sg-bottom{position:absolute;left:12px;right:12px;bottom:12px;display:flex;align-items:center;gap:10px;}
   #tab-scanner .sc-sg-bottom[hidden],#tab-scanner .sc-sg-guide[hidden]{display:none;}
@@ -2906,6 +3006,8 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-sg-score{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:8px;container-type:inline-size;}
   #tab-scanner .sc-sg-score .sc-math{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
   #tab-scanner .sc-sg-score .sc-pile-sub{white-space:normal;overflow:visible;text-overflow:clip;}
+  /* the pay note is filled a moment after the pane first shows: an empty one still holds its line, so WE PAY / THIS VISIT never grows */
+  #tab-scanner .sc-sg-score .sc-math:empty::before{content:"\00a0";}
 
   /* the card on screen */
   #tab-scanner .sc-sg-card{padding:14px;}
@@ -3053,12 +3155,15 @@ code{font-family:var(--font-mono);font-size:.92em;}
   @media (prefers-reduced-motion:reduce){
     #tab-scanner .sc-sg-guide,#tab-scanner .sc-sg-row-in,#tab-scanner .sc-sg-toast{transition:none;}
     #tab-scanner .sc-sg-tile:active,#tab-scanner .sc-sg-alt:active{transform:none;}
-    #tab-scanner .sc-sg-cam.sc-sg-reading .sc-sg-guide,#tab-scanner .sc-sg-tile,#tab-scanner .sc-sg-row.sc-sg-new .sc-sg-row-in{animation:none;}
+    #tab-scanner .sc-sg-guide,#tab-scanner .sc-sg-cam.sc-sg-reading .sc-sg-guide,#tab-scanner .sc-sg-tile,#tab-scanner .sc-sg-row.sc-sg-new .sc-sg-row-in{animation:none;}
+    #tab-scanner .sc-sg-video{transition:opacity 120ms linear;}
+    #tab-scanner .sc-sg-spin{animation:sc-sg-breathe 900ms ease-in-out infinite alternate;}
   }
 </style>
 <section class="sc-sg sc-singles-only" id="sc-sg" aria-label="Raw cards" hidden>
   <div class="sc-sg-cam" id="sc-sg-cam">
     <video class="sc-sg-video" id="sc-sg-video" autoplay playsinline muted hidden></video>
+    <div class="sc-sg-cam-wait" id="sc-sg-cam-wait" role="status" hidden><span class="sc-sg-spin" aria-hidden="true"></span><span>Starting the camera…</span></div>
     <div class="sc-sg-guide" id="sc-sg-guide" aria-hidden="true"></div>
     <div class="sc-vf-off sc-sg-cam-off" id="sc-sg-cam-off">
       <div class="sc-start-row"><button type="button" class="sc-start" id="sc-sg-cam-on" aria-label="Turn camera on" title="Turn camera on">Turn camera on</button></div>
@@ -13659,6 +13764,18 @@ function cameraHint(o) {
   return o.ready ? 'One card in the frame, then tap' : 'Starting the camera…';
 }
 
+/**
+ * What the camera box shows (Penguin, 11/24: no jump when switching tabs). `stream`: the camera is running; `starting`: it was asked
+ * for and is on its way; `live`: the picture has real frames. While starting (and while the picture has no frames yet) the box keeps
+ * its FULL size with a calm "Starting the camera..." in it (wait); the slim off row (off) is only for a camera that is really off.
+ */
+function cameraView(o) {
+  var stream = !!(o && o.stream);
+  var starting = !stream && !!(o && o.starting);
+  var live = stream && !!(o && o.live);
+  return { off: !stream && !starting, starting: starting, wait: starting || (stream && !live), live: live };
+}
+
 /** A tap on the camera (take the picture), not a drag or a press and hold: moved under 12 points, let go within 0.6 s. */
 function isTap(t) { return Math.hypot(t.dx, t.dy) < 12 && t.ms < 600; }
 
@@ -14409,7 +14526,7 @@ function createSinglesFlow(deps) {
     loadPile: loadPile, savePile: savePile, loadToCheck: loadToCheck, saveToCheck: saveToCheck,
     // engine-free
     printingLabel: printingLabel, plural: plural, matchMeta: matchMeta, lineMeta: lineMeta, shortName: shortName,
-    cardLabel: cardLabel, addedNote: addedNote, headerInfo: headerInfo, cameraHint: cameraHint, isTap: isTap,
+    cardLabel: cardLabel, addedNote: addedNote, headerInfo: headerInfo, cameraHint: cameraHint, cameraView: cameraView, isTap: isTap,
     LIVE_MAX_AGE_MS: LIVE_MAX_AGE_MS, liveFromLines: liveFromLines, freshLive: freshLive, staleLiveIds: staleLiveIds,
     lineOf: lineOf, pickLine: pickLine, addPick: addPick, undoPick: undoPick, removeCopies: removeCopies,
     CARD_RATIO: CARD_RATIO, guideRect: guideRect, guideCrop: guideCrop,
@@ -14434,6 +14551,7 @@ window.SinglesFlow = {
   addedNote: addedNote,
   headerInfo: headerInfo,
   cameraHint: cameraHint,
+  cameraView: cameraView,
   isTap: isTap,
   LIVE_MAX_AGE_MS: LIVE_MAX_AGE_MS,
   liveFromLines: liveFromLines,
@@ -15515,6 +15633,12 @@ window.SinglesPrice = {
     var matching = 0, capturing = false, jobs = 0, seller = 0;
     var note = '', noteTimer = null, nextTimer = null, toastTimer = null, toastUndo = null, flashTimer = null;
     var stream = null, camStarting = false, camGen = 0, camMsg = '';
+    // camAsking: opened by itself in a browser, while it asks whether the camera is already allowed (it is about to start).
+    // camLive: the picture has real frames (it fades in over the dark box then). LIVE_FALLBACK_MS: a browser that never says so.
+    var camAsking = false, camLive = false, liveTimer = null, LIVE_FALLBACK_MS = 1500;
+    // camPerm: what the browser last said about the camera ('granted' / 'prompt' / 'denied'), null while not known yet. The full
+    // waiting box is shown only when it will start; a browser that is going to wait for a tap goes straight to the slim off row.
+    var camPerm = null;
     var shownVisit = null, shownPay = null;
     var lastKeys = {};
 
@@ -15568,7 +15692,7 @@ window.SinglesPrice = {
       var root = document.getElementById('sc-sg');
       if (!h || !root || !window.SinglesFlow || !window.SinglesPrice) return; // not this page, or a page without the engine: inert
       host = h;
-      ['sc-sg', 'sc-sg-cam', 'sc-sg-video', 'sc-sg-guide', 'sc-sg-cam-off', 'sc-sg-cam-text', 'sc-sg-cam-on', 'sc-sg-cam-stop',
+      ['sc-sg', 'sc-sg-cam', 'sc-sg-video', 'sc-sg-guide', 'sc-sg-cam-wait', 'sc-sg-cam-off', 'sc-sg-cam-text', 'sc-sg-cam-on', 'sc-sg-cam-stop',
         'sc-sg-matching', 'sc-sg-bottom', 'sc-sg-hint', 'sc-sg-shutter', 'sc-sg-slab', 'sc-sg-slab-text', 'sc-sg-slab-yes', 'sc-sg-slab-no',
         'sc-sg-pay', 'sc-sg-pay-note', 'sc-sg-visit', 'sc-sg-visit-sub', 'sc-sg-card', 'sc-sg-check', 'sc-sg-check-count', 'sc-sg-strip',
         'sc-sg-pile', 'sc-sg-pile-count', 'sc-sg-rows', 'sc-sg-pile-empty', 'sc-sg-totals', 'sc-sg-confirm', 'sc-sg-confirm-text',
@@ -15577,6 +15701,8 @@ window.SinglesPrice = {
       ].forEach(function (id) { el[id.replace(/^sc-(sg-)?/, '')] = document.getElementById(id); });
       el.root = root;
       wire();
+      // learn early whether the browser already allows the camera (enter() sizes the box by it); the apps never ask
+      try { if (!host.inApp()) cameraAllowedAlready(); } catch (e) { /* learned on the first visit instead */ }
     }
 
     function on_(node, type, fn) { if (node && node.addEventListener) node.addEventListener(type, fn); }
@@ -15584,6 +15710,8 @@ window.SinglesPrice = {
       on_(el['cam-on'], 'click', function () { startCamera(); });
       on_(el['cam-stop'], 'click', function () { stopCamera(); camMsg = ''; render(); });
       on_(el.shutter, 'click', function (ev) { if (ev && ev.stopPropagation) ev.stopPropagation(); shutter(); });
+      on_(el.video, 'playing', videoLive);
+      on_(el.video, 'loadeddata', videoLive);
       var down = null;
       on_(el.cam, 'pointerdown', function (ev) { down = { x: ev.clientX, y: ev.clientY, t: now() }; });
       on_(el.cam, 'pointerup', function (ev) {
@@ -15706,7 +15834,17 @@ window.SinglesPrice = {
       // person asking (the browser may ask for permission). Opened by itself (the last choice kept) it waits for a tap,
       // unless the browser already allows the camera.
       if (byTap || host.inApp()) startCamera();
-      else cameraAllowedAlready().then(function (ok) { if (ok && on && active) startCamera(); });
+      else {
+        // the box keeps its full size while the browser answers (a quick "yes" starts the camera with no jump), but only when the
+        // camera is (or may well be) allowed: one the browser has said will ask goes straight to the off row (never full, then slim)
+        camAsking = camPerm === 'granted' || (camPerm === null && hasPermissionsApi());
+        if (camAsking) renderCam();
+        cameraAllowedAlready().then(function (ok) {
+          camAsking = false;
+          if (ok && on && active) startCamera();
+          else if (on) renderCam();
+        });
+      }
       if (liveState === true && pile) refreshStaleLive();
       changed();
     }
@@ -15827,10 +15965,16 @@ window.SinglesPrice = {
     }
 
     // ── the camera (the page's own; never at the same time as a slab camera) ─────────────────────────
+    function hasPermissionsApi() {
+      try { return !!navigator.permissions && typeof navigator.permissions.query === 'function'; } catch (e) { return false; }
+    }
     function cameraAllowedAlready() {
       try {
-        if (!navigator.permissions || typeof navigator.permissions.query !== 'function') return Promise.resolve(false);
-        return navigator.permissions.query({ name: 'camera' }).then(function (p) { return !!p && p.state === 'granted'; }, function () { return false; });
+        if (!hasPermissionsApi()) return Promise.resolve(false);
+        return navigator.permissions.query({ name: 'camera' }).then(function (p) {
+          camPerm = p && p.state ? String(p.state) : camPerm;
+          return !!p && p.state === 'granted';
+        }, function () { return false; });
       } catch (e) { return Promise.resolve(false); }
     }
     function startCamera() {
@@ -15852,7 +15996,11 @@ window.SinglesPrice = {
         camStarting = false;
         if (gen !== camGen || !on || !active) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
         stream = s;
+        camPerm = 'granted';
         camMsg = '';
+        camLive = false;
+        clearTimeout(liveTimer);
+        liveTimer = setTimeout(videoLive, LIVE_FALLBACK_MS);
         el.video.srcObject = s;
         var p = el.video.play && el.video.play();
         if (p && p.catch) p.catch(function () { /* autoplay muted: plays anyway */ });
@@ -15861,15 +16009,28 @@ window.SinglesPrice = {
       }, function (e) {
         if (gen !== camGen) return;
         camStarting = false;
+        if (e && e.name === 'NotAllowedError') camPerm = 'denied';
         camMsg = e && e.name === 'NotAllowedError'
           ? "The camera is blocked for this page. Allow it in the browser's settings, or type the card below."
           : "The camera didn't start. Tap Turn camera on to try again, or type the card below.";
         render();
       });
     }
+    /** The picture has frames: it fades in (once per start). */
+    function videoLive() {
+      clearTimeout(liveTimer);
+      liveTimer = null;
+      if (!stream || camLive) return;
+      camLive = true;
+      if (on) renderCam();
+    }
     function stopCamera() {
       camGen++;
       camStarting = false;
+      camAsking = false;
+      camLive = false;
+      clearTimeout(liveTimer);
+      liveTimer = null;
       if (stream) { try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { /* already stopped */ } }
       stream = null;
       if (el.video) { try { el.video.srcObject = null; } catch (e) { /* fake video */ } }
@@ -16473,9 +16634,13 @@ window.SinglesPrice = {
     function renderCam() {
       if (!on || !flow) return;
       var ready = !!stream;
+      var view = flow.cameraView ? flow.cameraView({ stream: ready, starting: camStarting || camAsking, live: camLive }) : { off: !ready, starting: false, wait: false, live: ready };
       el.video.hidden = !ready;
-      el['cam-off'].hidden = ready;
-      el.cam.classList.toggle('sc-sg-cam-is-off', !ready);
+      el['cam-off'].hidden = !view.off;
+      el['cam-wait'].hidden = !view.wait;
+      el.cam.classList.toggle('sc-sg-cam-is-off', view.off);
+      el.cam.classList.toggle('sc-sg-cam-starting', view.starting);
+      el.cam.classList.toggle('sc-sg-cam-live', view.live);
       el['cam-stop'].hidden = !ready;
       el.bottom.hidden = !ready;
       el.guide.hidden = !ready;
@@ -18092,7 +18257,8 @@ window.SheetFiles = {
     function safeLocalStorage() { try { return window.localStorage; } catch (e) { return null; } }
     var feedback = ScanFeedback.createFeedback({
       audio: FeedbackAudio,
-      vibrate: (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') ? navigator.vibrate.bind(navigator) : null,
+      // looked up at each buzz (not bound once), so the press module's note-the-buzz wrapper below sees these too
+      vibrate: (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') ? function (p) { return navigator.vibrate(p); } : null,
       storage: safeLocalStorage()
     });
 
@@ -22191,8 +22357,18 @@ window.SheetFiles = {
       if (camKind === 'phone') { turnCameraOn(); return; }
       // A computer's browser, or an app's web view without the bridge: only once the browser has ALREADY allowed the camera, as before
       // (never a permission prompt out of nowhere); the camera button, or the browser's own settings, start it otherwise.
+      // The browser has already said yes (its live permission, watched above): the camera box takes its full size right away while the
+      // check runs, so coming back from Singles or the Sheet never shows the slim off row first and then jumps (Penguin, 11/24).
+      var preShown = false;
+      if (camPermStatus && camPermStatus.state === 'granted' && dom.vf.hidden) {
+        preShown = true;
+        dom.vf.hidden = false;
+        dom.vfOff.hidden = true;
+        dom.vfStatus.textContent = AutoScan.stageText('asking');
+      }
       cameraAllowedAlready().then(function (ok) {
         if (ok && scannerActive && !cameraTurnedOff && session && !cam && !cameraStarting) turnCameraOn();
+        else if (preShown && !cam && !cameraStarting) { dom.vf.hidden = true; dom.vfOff.hidden = false; }
       });
     }
     function cameraAllowedAlready() {
@@ -22838,13 +23014,43 @@ window.SheetFiles = {
         var word = cur === 'sheet' ? 'Sheet' : 'Pricing';
         if (sub && sub.textContent !== word) sub.textContent = word;
       } catch (e) { /* the header keeps its word */ }
-      if (html === tabsDrawn) return;
+      if (html === tabsDrawn) { placeTabPill(); return; }
       tabsDrawn = html;
       dom.tabbar.innerHTML = html;
       dom.tabbar.hidden = !list.length;
+      placeTabPill();
       // the class is on #tab-scanner, not on the layout: the layout's own classes (the app's sheet, lock mode) stay exactly as they were
       var root = document.getElementById('tab-scanner') || dom.layout;
       if (list.length) root.classList.add('sc-has-tabbar'); else root.classList.remove('sc-has-tabbar');
+    }
+    /** The accent pill under the tab on show: the bar's ::after, moved to that tab's centre (--sc-tab-x). No tab, or a bar not
+        laid out (hidden): no pill. Only looks: nothing here changes which tab is on. */
+    function placeTabPill() {
+      try {
+        var on = dom.tabbar.querySelector ? dom.tabbar.querySelector('[aria-current="page"]') : null;
+        if (!on || dom.tabbar.hidden || !on.offsetWidth) { dom.tabbar.classList.remove('sc-tab-ind'); return; }
+        dom.tabbar.style.setProperty('--sc-tab-x', Math.round(on.offsetLeft + on.offsetWidth / 2) + 'px');
+        dom.tabbar.classList.add('sc-tab-ind');
+      } catch (e) { /* no pill */ }
+    }
+    try { window.addEventListener('resize', function () { if (dom.tabbar && !dom.tabbar.hidden) placeTabPill(); }); } catch (e) { /* no resize */ }
+    // The screen coming in after a tap on the bar (CSS: .sc-tab-in, -r from the right, -l from the left): its parts fade and slide in.
+    // Classes only, taken off once the animation is over; the switch itself (and any scan) never waits for it.
+    var TAB_IN_MS = 220;
+    var tabInTimer = null, tabAnimTimer = null;
+    function animateTabIn(dir) {
+      var L = dom.layout;
+      if (!L || !L.classList) return;
+      L.classList.remove('sc-tab-in', 'sc-tab-in-r', 'sc-tab-in-l');
+      try { void L.offsetWidth; } catch (e) { /* restarts anyway */ }
+      L.classList.add('sc-tab-in', dir < 0 ? 'sc-tab-in-l' : 'sc-tab-in-r');
+      clearTimeout(tabInTimer);
+      tabInTimer = setTimeout(function () { L.classList.remove('sc-tab-in', 'sc-tab-in-r', 'sc-tab-in-l'); }, TAB_IN_MS + 80);
+      if (dom.tabbar && dom.tabbar.classList) {
+        dom.tabbar.classList.add('sc-tab-anim');
+        clearTimeout(tabAnimTimer);
+        tabAnimTimer = setTimeout(function () { dom.tabbar.classList.remove('sc-tab-anim'); }, 420);
+      }
     }
     function buzzTab() {
       try { if (navigator.vibrate) navigator.vibrate(8); else if (bridge.isAvailable()) bridge.haptic('success'); } catch (e) { /* no buzz */ }
@@ -22854,6 +23060,8 @@ window.SheetFiles = {
       if (!tabsNow().some(function (t) { return t.id === id; })) return;
       var cur = tabOn();
       if (id === cur) { try { window.scrollTo(0, 0); } catch (e) { /* stays */ } return; }
+      var order = tabsNow().map(function (t) { return t.id; });
+      if (dom.tabbar && dom.tabbar.classList) dom.tabbar.classList.add('sc-tab-anim'); // the pill glides to the new tab
       if (cur === 'singles') SinglesPane.pick('slabs'); // Singles' camera stops and the slab camera comes back (it buzzes)
       if (cur === 'sheet') SheetPane.leave();
       if (id === 'singles') SinglesPane.pick('singles'); // sends the slab cameras away, starts its own (it buzzes, saves iopKind)
@@ -22863,6 +23071,9 @@ window.SheetFiles = {
         if (cur !== 'singles') buzzTab();
       }
       renderTabs();
+      // a new screen starts at its top (never halfway down the last one's pile), and comes in from the side of the tab tapped
+      try { window.scrollTo(0, 0); } catch (e) { /* stays */ }
+      animateTabIn(order.indexOf(id) - order.indexOf(cur));
     }
     if (dom.tabbar) {
       dom.tabbar.addEventListener('click', function (ev) {
@@ -22870,6 +23081,81 @@ window.SheetFiles = {
         if (b) pickTab(b.getAttribute('data-tab'));
       });
     }
+
+    // ── The press (Penguin, 11/24: "make the buttons feel more satisfying and reactive"). One listener on the Scanner for every
+    // control on its phone screens (the tab bar, the docks, the pile, the Sheet, the camera buttons, Josh's sourcer screens): the
+    // control under the finger gets .sc-press the moment it lands (the CSS shrinks it a little), and keeps it at least PRESS_MIN_MS
+    // so even a quick tap is seen; a scroll that starts on it (pointercancel) lets go at once. Disabled controls are left alone.
+    // A tap that ends in a click also gives a light buzz in the apps (the bridge's 'select', which both apps already take: iPhone a
+    // selection tick, silent where it can't tick; Android a click), unless that click already buzzed for itself (the tab bar, Add...). Never in a browser, never for a mouse.
+    // The shutter also gets its ring (.sc-shot). Looks and the buzz only: no click is held, changed or stopped here.
+    var PRESS_SEL = 'button, .sc-btn, [role="button"], .sc-sg-tile, .sc-sg-alt, .sc-sg-row-in, .sc-earlier-main, .sc-sh-pick, .sc-lk-pick, .sc-lk-cert-hit';
+    var PRESS_MIN_MS = 110;
+    var SHOT_MS = 470;
+    var lastHapticAt = 0;
+    function installPressFeel() {
+      var root = document.getElementById('tab-scanner');
+      if (!root || !root.addEventListener || !root.classList) return;
+      var rawHaptic = bridge.haptic;
+      bridge.haptic = function (kind) { lastHapticAt = Date.now(); return rawHaptic.call(bridge, kind); };
+      // Android's WebView has navigator.vibrate, and the tab bar, Add, Undo... buzz through it first: note those buzzes too, so a
+      // press that already buzzed is never buzzed a second time by the app (iPhone's WebView has no vibrate, nothing changes there).
+      try {
+        if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function' && !navigator.vibrate.__iopNoted) {
+          var rawVibrate = navigator.vibrate;
+          var noted = function () { lastHapticAt = Date.now(); return rawVibrate.apply(navigator, arguments); };
+          noted.__iopNoted = true;
+          navigator.vibrate = noted;
+        }
+      } catch (e) { /* a read-only vibrate: the tap buzz may double on Android, nothing else */ }
+      var held = null, heldAt = 0, letGo = null, letGoTimer = null, touchAt = 0, touchOn = null;
+      function pressable(t) {
+        var b = t && t.closest ? t.closest(PRESS_SEL) : null;
+        if (!b || (root.contains && !root.contains(b))) return null;
+        if (b.disabled || (b.getAttribute && b.getAttribute('aria-disabled') === 'true') || (b.classList && b.classList.contains('holding'))) return null;
+        return b;
+      }
+      function dropNow(b) { if (b && b.classList) b.classList.remove('sc-press'); }
+      root.addEventListener('pointerdown', function (ev) {
+        if (ev.button > 0) return;
+        var b = pressable(ev.target);
+        if (!b) return;
+        if (letGo && letGo !== b) dropNow(letGo);
+        clearTimeout(letGoTimer); letGo = null;
+        if (held && held !== b) dropNow(held);
+        held = b; heldAt = Date.now();
+        b.classList.add('sc-press');
+        if (ev.pointerType === 'touch' || ev.pointerType === 'pen') { touchAt = heldAt; touchOn = b; } else touchOn = null;
+      }, true);
+      function up() {
+        if (!held) return;
+        var b = held; held = null;
+        letGo = b;
+        clearTimeout(letGoTimer);
+        letGoTimer = setTimeout(function () { if (letGo === b) letGo = null; dropNow(b); }, Math.max(0, PRESS_MIN_MS - (Date.now() - heldAt)));
+      }
+      function cancel() { if (held) { dropNow(held); held = null; } touchOn = null; }
+      window.addEventListener('pointerup', up, true);
+      window.addEventListener('pointercancel', cancel, true);
+      window.addEventListener('scroll', function () { if (held && Date.now() - heldAt > 60) cancel(); }, { capture: true, passive: true });
+      root.addEventListener('click', function (ev) {
+        var b = pressable(ev.target);
+        if (!b) return;
+        if (b.classList.contains('sc-vf-shutter')) {
+          b.classList.remove('sc-shot');
+          try { void b.offsetWidth; } catch (e) { /* restarts anyway */ }
+          b.classList.add('sc-shot');
+          setTimeout(function () { b.classList.remove('sc-shot'); }, SHOT_MS);
+        }
+        var clickAt = Date.now();
+        if (touchOn !== b || clickAt - touchAt > 1500 || !bridge.isAvailable()) return;
+        touchOn = null;
+        // after the click's own handlers: one that buzzed for itself is not buzzed twice
+        setTimeout(function () { if (lastHapticAt < clickAt) { try { bridge.haptic('select'); } catch (e) { /* no buzz */ } } }, 0);
+      }, true);
+      root.classList.add('sc-press-ready');
+    }
+    try { installPressFeel(); } catch (e) { /* the plain :active presses stay */ }
 
     // ── The Sheet's ties to the slab screen: the slab camera's reads come in through handleScanned (above), and the cert reader is
     // the page's own (certs.js parseOneCert: PSA/CGC links, leading zeros, a typed grader word). NO LOOKUP (Penguin, 11/24): the
