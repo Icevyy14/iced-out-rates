@@ -3064,6 +3064,10 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .sc-pl{display:flex;flex-direction:column;gap:10px;min-width:0;}
   #tab-scanner .sc-pl-pane{display:flex;flex-direction:column;gap:10px;min-width:0;}
   #tab-scanner .sc-pl-pane:empty{display:none;}
+  #tab-scanner .sc-pl-bar:empty{display:none;}
+  #tab-scanner .sc-pl-alloc-btn{min-height:46px;}
+  #tab-scanner .sc-pl-alloc-btn[aria-expanded="true"]{background:var(--sc-fill-card-bg);color:var(--sc-ink);}
+  #tab-scanner .sc-pl-card[data-kind="full"] .sc-pl-solo .sc-lk-status{font-size:var(--sc-fs-row);font-weight:700;line-height:1.4;}
   #tab-scanner .sc-pl .sc-lk-alert-card{margin-bottom:0;}
   #tab-scanner .sc-pl-card{gap:12px;padding:14px 16px;}
   #tab-scanner .sc-pl-for{margin:0;font-size:var(--sc-fs-label);font-weight:700;line-height:1.35;color:var(--sc-muted);overflow-wrap:anywhere;}
@@ -3260,8 +3264,10 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
        this week's locks to copy into a ticket. Drawn by the SOURCER-LOCK block of the script from scanner/lockMode.js, with the same calls to the
        triumph-sourcer function the lock screens make. Staff only, like the card above it: hide mode takes it off the phone. -->
   <section class="sc-pl sc-staff-only" id="sc-pl" aria-label="Lock this card" hidden>
+    <div class="sc-pl-bar" id="sc-pl-bar"></div>
     <div class="sc-pl-pane" id="sc-pl-card"></div>
     <div class="sc-pl-pane" id="sc-pl-locks"></div>
+    <div class="sc-pl-pane sc-pl-alloc" id="sc-pl-alloc" hidden></div>
   </section>
 
   <!-- Hide mode's seller card: the card's name and grade, small, and the MARKET, big. Nothing else is
@@ -11752,6 +11758,33 @@ function cardPhase(item, ctx) {
   return phase;
 }
 
+// ── Price + lock: which of the two the card on screen shows ────────────────────────────────────────────────────────
+
+/** What a price + lock card says when the portal has no room for it: no percentage, no dollars, only this. */
+var PORTAL_FULL_TEXT = "The portal is full for this card's range right now";
+
+/**
+ * Price + lock accounts see the Lock card only for a card WE ARE NOT BUYING (the owner's rule: "if it doesn't fit our normal buying allocations, they have
+ * the option to lock it"). `buy` is what the pricing screen says about the card: 'buying' (it has our offer), 'wait' (the price is still on its way: an
+ * average is being fetched) or 'not' (no offer: Not buying, Needs average of 3, no rate sheet). Returns null when nothing is to be drawn for the card
+ * (we are buying it, or the price has not settled), else { p, kind, tone, status, note, showYou, youLabel, label, alternative }:
+ *   showYou      the percentage and dollars are shown only when the card can be locked or queued, or is already locked or queued (never when the portal
+ *                is full, paused, not available or could not be checked)
+ *   label        the small line over the figures ("Lock it on the portal"): the lock is the alternative to our offer, and says so
+ *   status       for a full range: PORTAL_FULL_TEXT
+ * A card already locked or queued by this login stays on screen whatever we offer for it (it is a done thing, and says so).
+ */
+function priceLockView(item, ctx, buy) {
+  if (!item || item.error) return null; // (an error has no card to draw; the call that failed says so)
+  var mine = item.mine === 'locked' || item.mine === 'queued';
+  if (!mine && buy !== 'not') return null;
+  var p = cardPhase(item, ctx);
+  var showYou = p.kind === 'lockable' || p.kind === 'queueable' || p.kind === 'queued' || p.kind === 'locked';
+  var status = p.kind === 'full' && p.status === NO_ROOM_TEXT ? PORTAL_FULL_TEXT : p.status;
+  var label = p.kind === 'locked' ? 'You locked it for' : p.kind === 'queued' ? 'Queued for' : 'Lock it on the portal';
+  return { p: p, kind: p.kind, tone: p.tone, status: status, note: p.note, showYou: showYou, youLabel: label, label: label, alternative: !mine };
+}
+
 /** The strip above the card: paused first, then the window. null when there is nothing to say. */
 function bannerOf(state, nowMs) {
   if (!state) return null;
@@ -11924,8 +11957,10 @@ function toCents(n) { return Math.round(Number(n) * 100); }
  * function says no rate covers for this login, or calls full, is not open either. Compared in cents, so $100.01 against $100.01 is never a rounding miss.
  */
 function rangeIsOpen(x) {
-  if (!x || !hasNum(x.left)) return false;
+  if (!x) return false;
   if (x.open === false || x.full === true) return false;
+  if (x.unlimited === true) return true; // an infinite range (no cap): there is always room in it
+  if (!hasNum(x.left)) return false;
   var floor = Math.max(hasNum(x.min) ? Number(x.min) : 0, ALLOC_OPEN_MIN);
   return toCents(x.left) >= toCents(floor);
 }
@@ -11939,6 +11974,7 @@ function rangeIsOpen(x) {
  */
 function cardRoom(item) {
   var a = item && item.allocation;
+  if (a && a.unlimited === true) return { open: true, range: true, pot: false }; // an infinite range always has room for the card
   if (!a || !hasNum(a.left)) return null;
   if (a.ownCounted === true || !hasNum(item.marketValue)) return { open: true, range: true, pot: false };
   var need = toCents(item.marketValue);
@@ -11953,7 +11989,7 @@ function cardRangeLine(item) {
   if (!room || !room.open) return null;
   if (item.reasonCode === 'range_full' || item.reasonCode === 'allocation_full') return null; // the function just said no room: no number beside that
   var a = item.allocation;
-  var parts = ['Range left: ' + dollarsPlain(a.left)];
+  var parts = [a.unlimited === true ? 'Range left: Unlimited' : 'Range left: ' + dollarsPlain(a.left)];
   if (a.specialty && hasNum(a.specialty.left)) parts.push(String(a.specialty.label || 'Pot') + ' left: ' + dollarsPlain(a.specialty.left));
   if (a.ownCounted === true) parts.push('May read low');
   return { text: parts.join(' · '), tone: 'plain' };
@@ -11962,7 +11998,7 @@ function cardRangeLine(item) {
 /** One open range as a row: "$25.01 to $100 · $500 left" (`text`), its two halves, and "You get 91%" only when the card's ranges pay different rates. */
 function allocRow(r, straddles) {
   var range = spanText(r.min, r.max);
-  var leftText = dollarsPlain(r.left) + ' left';
+  var leftText = r.unlimited === true ? 'Unlimited room' : dollarsPlain(r.left) + ' left';
   var you = straddles ? youGetSpan(r.youGetPct, r.youGetPctHigh) : '';
   return { range: range, leftText: leftText, text: range + ' · ' + leftText, you: you ? 'You get ' + you : '' };
 }
@@ -12056,11 +12092,12 @@ function allocView(a, st) {
       var rate = ratesOf(open);
       if (rate.lo === null && hasNum(g.youGetPct)) rate = ratesOf([g]); // ranges that carry no rate of their own: the group's
       var straddles = rate.lo !== null && rate.hi > rate.lo;
-      var left = leftOf(open);
+      var unl = open.some(function (r) { return r.unlimited === true; });
+      var left = unl ? null : leftOf(open);
       var range = coverOf(open);
       var rules = rulesText(g);
       groups.push({
-        id: g.id, left: left, leftText: dollarsPlain(left), youGet: rate.lo === null ? '' : youGetSpan(rate.lo, straddles ? rate.hi : null), youGetNone: noRate,
+        id: g.id, left: left, leftText: unl ? 'Unlimited' : dollarsPlain(left), leftWord: unl ? 'room' : 'left', unlimited: unl, youGet: rate.lo === null ? '' : youGetSpan(rate.lo, straddles ? rate.hi : null), youGetNone: noRate,
         range: range, rules: rules, line: rules ? range + ' · ' + rules : range,
         count: open.length, toggle: plural(open.length, 'open range', 'open ranges'), expanded: !!expanded[g.id],
         rows: open.map(function (r) { return allocRow(r, straddles); }),
@@ -12091,11 +12128,12 @@ function allocView(a, st) {
         var rateOnScan = open.some(function (r) { return r.rateOnScan; });
         var rate = ratesOf(open);
         var straddles = rate.lo !== null && rate.hi > rate.lo;
-        var left = leftOf(open);
+        var unl = open.some(function (r) { return r.unlimited === true; });
+        var left = unl ? null : leftOf(open);
         var range = coverOf(open);
         var rules = rulesText(first);
         pots.push({
-          id: id, label: label, left: left, leftText: dollarsPlain(left),
+          id: id, label: label, left: left, leftText: unl ? 'Unlimited' : dollarsPlain(left), leftWord: unl ? 'room' : 'left', unlimited: unl,
           youGet: rateOnScan || rate.lo === null ? '' : youGetSpan(rate.lo, straddles ? rate.hi : null), youGetNone: rateOnScan ? 'Scan a card to see' : noRate,
           rateOnScan: rateOnScan, range: range, rules: rules, line: rules ? range + ' · ' + rules : range,
           names: p.names.map(nameCase), expanded: !!expanded[id], count: open.length, toggle: plural(open.length, 'open range', 'open ranges'),
@@ -12312,6 +12350,8 @@ window.LockMode = {
   nameCase: nameCase,
   rangeIsOpen: rangeIsOpen,
   cardRoom: cardRoom,
+  priceLockView: priceLockView,
+  PORTAL_FULL_TEXT: PORTAL_FULL_TEXT,
   allocView: allocView,
   cardRangeLine: cardRangeLine,
   locksInScope: locksInScope,
@@ -21354,8 +21394,10 @@ window.SheetFiles = {
     // Price + lock: the Lock card under the card on screen, and this week's locks under that (see plOn).
     var plUi = {
       root: document.getElementById('sc-pl'),
+      bar: document.getElementById('sc-pl-bar'),
       card: document.getElementById('sc-pl-card'),
-      locks: document.getElementById('sc-pl-locks')
+      locks: document.getElementById('sc-pl-locks'),
+      alloc: document.getElementById('sc-pl-alloc')
     };
     var LK_CERT_GO = dom.certGo.textContent;
     var LK_TIMEOUT_MS = 20000;
@@ -21998,6 +22040,7 @@ window.SheetFiles = {
     function lkAct(act, cert) {
       if (act.indexOf('alloc-') === 0 && lkAllocAct(act)) return;
       if (act === 'role-retry') { lkRoleAsk(); return; }
+      if (act === 'pl-alloc') { plToggleAlloc(); return; }
       // each tap only means something in the state that drew its button (a late or doubled tap does nothing)
       if (act === 'lock') { if (lk.item && lk.phase === 'ready' && LockMode.cardPhase(lk.item, lk.ctx).act === 'lock') { lk.phase = 'confirm'; lk.note = ''; renderLock(); } return; }
       if (act === 'confirm-no') { if (lk.phase === 'confirm') { lk.phase = 'ready'; renderLock(); } return; }
@@ -22068,8 +22111,11 @@ window.SheetFiles = {
       if (!a || a.ageSeconds === null || a.ageSeconds === undefined) return null;
       return Number(a.ageSeconds) + Math.max(0, (Date.now() - lk.allocRecvAt) / 1000);
     }
+    /** Where the Allocation view is drawn: the lock-only account's tab, or (price + lock) the pane under the pricing card. */
+    function lkAllocPane() { return lk.mode === 'price_lock' ? plUi.alloc : lkUi.alloc; }
     function lkAllocAge() {
-      var el = lkUi.alloc.querySelector ? lkUi.alloc.querySelector('[data-lk-age]') : null;
+      var pane = lkAllocPane();
+      var el = pane.querySelector ? pane.querySelector('[data-lk-age]') : null;
       if (el && !lk.allocErr) el.textContent = LockMode.updatedText(lkAllocAgeNow());
     }
     function lkLoadAlloc(force) {
@@ -22102,7 +22148,7 @@ window.SheetFiles = {
       h += '<p class="sc-lk-grp-line"><span class="sc-lk-grp-range">' + esc(g.range + (g.rules ? ' ·' : '')) + '</span>' + (g.rules ? ' <span class="sc-lk-grp-rules">' + esc(g.rules) + '</span>' : '') + '</p>';
       var you = g.youGet ? '<span class="sc-lk-grp-you-v">' + esc(g.youGet) + '</span>'
         : '<span class="sc-lk-grp-you-v" data-quiet>' + esc(g.youGetNone || (g.rateOnScan ? 'Scan a card to see' : 'No rate')) + '</span>';
-      h += '<div class="sc-lk-grp-head"><div class="sc-lk-grp-left"><span class="sc-lk-left-n">' + esc(g.leftText) + '</span><span class="sc-lk-left-w">left</span></div>' +
+      h += '<div class="sc-lk-grp-head"><div class="sc-lk-grp-left"><span class="sc-lk-left-n">' + esc(g.leftText) + '</span><span class="sc-lk-left-w">' + esc(g.leftWord || 'left') + '</span></div>' +
         '<div class="sc-lk-grp-you"><span class="sc-lk-grp-you-k">You get</span>' + you + '</div></div>';
       if (pot && g.names && g.names.length) {
         var open = !!lk.allocOpen[g.id + ':names'];
@@ -22138,7 +22184,7 @@ window.SheetFiles = {
           ? '<div class="sc-card sc-lk-card" aria-busy="true"><div class="sc-lk-name sc-wait">Loading what is left</div></div>'
           : '<div class="sc-card sc-lk-card"><div class="sc-lk-status" data-tone="bad" role="alert">' + esc(lk.allocErr || 'Could not load what is left.') + '</div>' +
             '<div class="sc-lk-actions">' + lkButton('alloc-refresh', 'Try again', 'sc-btn-quiet sc-btn-block') + '</div></div>';
-        lkUi.alloc.innerHTML = h;
+        lkAllocPane().innerHTML = h;
         return;
       }
       var now = Date.now();
@@ -22157,7 +22203,7 @@ window.SheetFiles = {
         var listed = LockMode.bandGroups(a.bands, now);
         if (listed.length) h += '<div class="sc-card sc-lk-window"><p class="sc-lk-fine">' + esc(LockMode.ALLOC_NOTES.unread) + '</p></div>' + lkRatesHtml(listed);
         else h += '<div class="sc-card sc-lk-empty"><p class="sc-sub">' + esc(LockMode.ALLOC_NOTES.unreadEmpty) + '</p></div>';
-        lkUi.alloc.innerHTML = h;
+        lkAllocPane().innerHTML = h;
         return;
       }
       var v = LockMode.allocView(a, { cat: lk.allocCat, expanded: lk.allocOpen });
@@ -22175,12 +22221,13 @@ window.SheetFiles = {
         h += '<h3 class="sc-h sc-lk-sec-title">Specialty</h3>';
         v.pots.forEach(function (p) { h += lkAllocCardHtml(p, true); });
       }
-      lkUi.alloc.innerHTML = h;
+      lkAllocPane().innerHTML = h;
     }
     /** After a tap redraws the pane, the button that was tapped is back under the thumb and keyboard focus goes with it. */
     function lkAllocRefocus(act) {
       try {
-        var el = lkUi.alloc.querySelector ? lkUi.alloc.querySelector('[data-lk-act="' + String(act).replace(/"/g, '') + '"]') : null;
+        var pane = lkAllocPane();
+        var el = pane.querySelector ? pane.querySelector('[data-lk-act="' + String(act).replace(/"/g, '') + '"]') : null;
         if (el && el.focus) el.focus();
       } catch (e) { /* focus is a nicety */ }
     }
@@ -22385,16 +22432,46 @@ window.SheetFiles = {
       var held = lk.phase === 'working' || (lk.phase === 'done' && lk.plKey === currentKey);
       if (!held && (lk.plKey !== currentKey || lk.item !== item)) {
         lk.plKey = currentKey; lk.item = item; lk.phase = item ? 'ready' : 'idle'; lk.note = ''; lk.done = null;
+        if (lk.tab === 'alloc' && lk.plKey !== null) { lk.tab = 'scan'; lkAllocStop(); } // a new card on screen: its Lock card, not the allocation
       }
       plRender();
     }
+    /** Is the Allocation view open on a price + lock screen? (the lock-only Allocation tab, in place of the Lock card and My locks) */
+    function plAllocOpen() { return lk.mode === 'price_lock' && lk.tab === 'alloc'; }
     function plRender() {
-      if (!plOn()) { plUi.card.innerHTML = ''; plUi.locks.innerHTML = ''; plUi.root.hidden = true; return; }
-      var card = plCardHtml();
-      var locks = plLocksHtml();
-      plUi.card.innerHTML = card;
-      plUi.locks.innerHTML = locks;
-      plUi.root.hidden = !(card || locks);
+      if (!plOn()) { plUi.bar.innerHTML = ''; plUi.card.innerHTML = ''; plUi.locks.innerHTML = ''; plUi.alloc.innerHTML = ''; plUi.alloc.hidden = true; plUi.root.hidden = true; return; }
+      var open = plAllocOpen();
+      plUi.bar.innerHTML = '<button type="button" class="sc-btn sc-btn-quiet sc-btn-block sc-pl-alloc-btn" data-lk-act="pl-alloc" aria-expanded="' + (open ? 'true' : 'false') + '">' +
+        (open ? 'Hide allocation' : 'Allocation: what is open') + '</button>';
+      if (open) {
+        plUi.card.innerHTML = ''; plUi.locks.innerHTML = '';
+        plUi.alloc.hidden = false;
+        renderLockAlloc();
+      } else {
+        plUi.alloc.hidden = true; plUi.alloc.innerHTML = '';
+        plUi.card.innerHTML = plCardHtml();
+        plUi.locks.innerHTML = plLocksHtml();
+      }
+      plUi.root.hidden = false; // (the Allocation button is always there)
+    }
+    /** The Allocation button on a price + lock screen: shows what is open per group and range, the same view a lock-only account has as its tab. */
+    function plToggleAlloc() {
+      if (!plOn()) return;
+      if (lk.tab === 'alloc') { lk.tab = 'scan'; lkAllocStop(); plRender(); return; }
+      lk.tab = 'alloc';
+      plRender();
+      lkLoadAlloc(false); lkAllocStart();
+    }
+    /** What the pricing screen says about a card: 'buying' (it has our offer), 'wait' (its price is still on its way) or 'not' (no offer: Not buying, Needs
+        average of 3, no rate sheet). The Lock card and the row's lock chip are for a card we are NOT buying only. */
+    function plBuyState(key) {
+      var meta = key ? pileMeta[key] : null;
+      var entry = key ? pileEntry(key) : null;
+      if (!meta || !meta.facts || !entry || !entry.price) return 'wait';
+      var shown = PileRates.shownPrice(entry.price, figuresOf(entry));
+      if (shown && typeof shown.payoutCents === 'number') return 'buying';
+      if (shown && shown.awaitingAverage && meta.facts.avgStatus === 'pending') return 'wait';
+      return 'not';
     }
     /** The Lock card: what you get, whether Triumph has room for the card and how much, and the one action (Lock it, or Queue for 3 AM while the
         window is shut). The card's photo, name and grade are the card above it, so this one only says them when it is about another card. */
@@ -22403,19 +22480,28 @@ window.SheetFiles = {
       if (lk.alert) h += '<div class="sc-card sc-lk-card sc-lk-alert-card"><div class="sc-lk-status sc-lk-alert" data-tone="' + esc(lk.alert.tone) + '" role="alert">' + esc(lk.alert.text) + '</div></div>';
       var item = lk.item;
       if (!item) return h;
+      // One or the other: a card we are BUYING shows only our offer (above); the Lock card is the alternative for a card we are not buying. A lock or a
+      // queue in flight, and a card this login already locked or queued, stay on screen whatever we offer for them.
+      var inFlight = lk.phase === 'working' || lk.phase === 'confirm' || lk.phase === 'done' || lk.phase === 'checking';
+      var pv = LockMode.priceLockView(item, lk.ctx, plBuyState(lk.plKey));
+      if (!pv && !inFlight) return h;
       if (lk.phase === 'checking') return h + '<div class="sc-card sc-lk-card sc-pl-card" aria-busy="true"><div class="sc-lk-status" data-tone="info" role="status">Checking this card</div></div>';
       var st = lkCardState(item, false);
+      var settled = lk.phase !== 'ready'; // a confirm, a lock, an outcome: the card's own words (lkCardState)
+      var youKey = st.kind === 'locked' ? 'You locked it for' : pv ? pv.youLabel : 'Lock it on the portal';
+      var showYou = !st.noRate && (settled || !pv || pv.showYou);
+      if (pv && !settled) { st.status = pv.status; st.tone = pv.tone; st.note = pv.note; st.kind = pv.kind; }
       var parts = CardView.shortCard(item.card || '');
       var forLine = lk.plKey !== currentKey
         ? '<p class="sc-pl-for">' + esc((parts.card ? parts.card + (parts.number ? ' ' + parts.number : '') : 'Cert ' + item.cert) + (item.grade ? ', ' + String(item.grader || '').toUpperCase() + ' ' + item.grade : '')) + '</p>' : '';
-      var you = st.noRate ? '' : '<div class="sc-pl-you"' + (st.dim ? ' data-dim' : '') + '><div class="sc-pl-key">' + esc(st.p.youLabel) + '</div>' +
-        '<div class="sc-pl-val">' + esc(st.big) + '</div>' + (st.sub ? '<div class="sc-pl-sub">' + esc(st.sub) + '</div>' : '') + '</div>';
+      var you = !showYou ? '' : '<div class="sc-pl-you"' + (st.dim ? ' data-dim' : '') + '><div class="sc-pl-key">' + esc(youKey) + '</div>' +
+        '<div class="sc-pl-val">' + esc(st.big) + '</div>' + (st.sub ? '<div class="sc-pl-sub">' + esc('You get ' + st.sub) + '</div>' : '') + '</div>';
       // (the room left is what it was before the lock: a locked card does not repeat it beside "Locked")
       var room = st.rangeLine && st.kind !== 'locked' && st.kind !== 'test' ? st.rangeLine : null;
       var info = '<div class="sc-pl-info"><div class="sc-lk-status" data-tone="' + esc(st.tone) + '" data-kind="' + esc(st.kind) + '" role="status">' + esc(st.status) + '</div>' +
         (room ? '<p class="sc-lk-range-line" data-tone="' + esc(room.tone) + '">' + esc(room.text) + '</p>' : '') + '</div>';
       return h + '<div class="sc-card sc-lk-card sc-pl-card" data-kind="' + esc(st.kind) + '">' + forLine +
-        '<div class="sc-pl-top' + (st.noRate ? ' sc-pl-solo' : '') + '">' + you + info + '</div>' +
+        '<div class="sc-pl-top' + (!showYou ? ' sc-pl-solo' : '') + '">' + you + info + '</div>' +
         (st.note ? '<p class="sc-lk-note">' + esc(st.note) + '</p>' : '') +
         (lk.note ? '<p class="sc-lk-note" data-tone="bad" role="alert">' + esc(lk.note) + '</p>' : '') +
         st.actions + '</div>';
@@ -22465,6 +22551,7 @@ window.SheetFiles = {
       if (!rec) return '';
       var row = LockMode.listRow(rec.res, lk.ctx);
       if (row.kind !== 'lockable' && row.kind !== 'queueable' && row.kind !== 'queued' && row.kind !== 'locked') return '';
+      if ((row.kind === 'lockable' || row.kind === 'queueable') && plBuyState(key) !== 'not') return ''; // a card we are buying shows our offer only
       return '<span class="status-pill st-unknown sc-chip-lock" data-kind="' + esc(row.kind) + '">' + esc(row.chip) + '</span>';
     }
 
