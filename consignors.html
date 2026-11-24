@@ -808,6 +808,8 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
           </div>
         </div>
         <label class="aa-check"><input type="checkbox" id="aa-avg"> <span>Averages on (prices on Card Ladder&#39;s average of 3)</span></label>
+        <label class="aa-check"><input type="checkbox" id="aa-singles"> <span>Singles on (shows the Singles tab)</span></label>
+        <label class="aa-check"><input type="checkbox" id="aa-sheet"> <span>Sheet on (shows the Sheet tab)</span></label>
         <div class="aa-actions">
           <button type="button" class="btn btn-sm btn-save" id="aa-add-btn">Add account and get setup code</button>
         </div>
@@ -836,6 +838,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     #aa-card .aa-controls .form-select,#aa-card .aa-controls .form-input{padding:8px 10px;}
     #aa-card .aa-switch{width:100%;padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);background:var(--s2);color:var(--dim);font-family:var(--font-ui);font-size:13px;font-weight:700;cursor:pointer;text-align:left;}
     #aa-card .aa-switch[aria-checked="true"]{border-color:var(--buy);color:var(--text);background:color-mix(in srgb, var(--buy) 18%, var(--s2));}
+    #aa-card .aa-flags{grid-template-columns:1fr 1fr;margin-top:10px;}
     #aa-card .aa-read{display:grid;grid-template-columns:1.3fr .8fr .9fr;gap:10px;font-size:13px;}
     #aa-card .aa-read .form-label{margin-bottom:3px;}
     #aa-card .aa-note{font-size:11px;color:var(--dim);}
@@ -861,6 +864,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
       #aa-card .aa-list{grid-template-columns:1fr;}
       #aa-card .aa-controls,#aa-card .aa-read{grid-template-columns:1fr 1fr;}
       #aa-card .aa-controls > :first-child,#aa-card .aa-read > :first-child{grid-column:1 / -1;}
+      #aa-card .aa-flags > :first-child{grid-column:auto;}
       #aa-card .aa-add-grid{grid-template-columns:1fr;gap:0;}
       #aa-card .aa-actions .btn,#aa-card #aa-toggle,#aa-card #aa-removed-toggle{min-height:44px;}
       #aa-card .aa-actions .btn{flex:1 1 auto;}
@@ -3848,7 +3852,9 @@ window.LedgerView = {
       discord: document.getElementById('aa-discord'),
       mode: document.getElementById('aa-mode'),
       cut: document.getElementById('aa-cut'),
-      avg: document.getElementById('aa-avg')
+      avg: document.getElementById('aa-avg'),
+      singles: document.getElementById('aa-singles'),
+      sheet: document.getElementById('aa-sheet')
     };
     if (!dom.card || !dom.list || !dom.add) return null;
 
@@ -3911,6 +3917,10 @@ window.LedgerView = {
       'bad-avg': 'Averages must be on or off.',
       'mode-unavailable': 'The database update for App mode is not applied yet.',
       'avg-unavailable': 'The database update for Averages is not applied yet.',
+      'bad-singles': 'Singles must be on or off.',
+      'bad-sheet': 'Sheet must be on or off.',
+      'singles-unavailable': 'The database update for Singles and Sheet is not applied yet.',
+      'sheet-unavailable': 'The database update for Singles and Sheet is not applied yet.',
       'frozen': 'That account is frozen. Unfreeze it first.',
       'no-username': 'An email login has no setup code.',
       'not-found': 'That account is not there any more. The list was reloaded.',
@@ -3960,7 +3970,7 @@ window.LedgerView = {
       h += '</div>';
       h += '<div class="aa-meta">' + esc(metaText(a)) + '</div>';
       if (isOwner(a)) {
-        h += '<div class="aa-read"><div><span class="form-label">App mode</span>Owner</div><div><span class="form-label">Averages</span>On</div><div><span class="form-label">Cut</span>None</div></div>';
+        h += '<div class="aa-read"><div><span class="form-label">App mode</span>Owner</div><div><span class="form-label">Averages</span>On</div><div><span class="form-label">Cut</span>None</div><div><span class="form-label">Singles</span>On</div><div><span class="form-label">Sheet</span>On</div></div>';
         h += '<div class="aa-note">Owner account, read only here.</div></div>';
         return h;
       }
@@ -3968,11 +3978,17 @@ window.LedgerView = {
       if (!inRemoved) {
         var m = a.mode === 'price_lock' ? 'price_lock' : 'lock';
         var avgOn = a.avg === true;
+        var singlesOn = a.singles === true;
+        var sheetOn = a.sheet === true;
         h += '<div class="aa-controls">';
         h += '<div><label class="form-label" for="aa-mode-' + esc(uid) + '">App mode</label><select class="form-select" id="aa-mode-' + esc(uid) + '" data-k="mode" data-uid="' + esc(uid) + '"' + off + '>' +
           '<option value="lock"' + (m === 'lock' ? ' selected' : '') + '>Lock only</option><option value="price_lock"' + (m === 'price_lock' ? ' selected' : '') + '>Price + lock</option></select></div>';
         h += '<div><span class="form-label" id="aa-avg-l-' + esc(uid) + '">Averages</span><button type="button" class="aa-switch" role="switch" aria-checked="' + (avgOn ? 'true' : 'false') + '" aria-labelledby="aa-avg-l-' + esc(uid) + '" data-act="avg" data-uid="' + esc(uid) + '"' + off + '>' + (avgOn ? 'On' : 'Off') + '</button></div>';
         h += '<div><label class="form-label" for="aa-cut-' + esc(uid) + '">Cut (points)</label><input class="form-input" id="aa-cut-' + esc(uid) + '" type="number" inputmode="decimal" min="0" max="30" step="0.25" data-k="cut" data-uid="' + esc(uid) + '" value="' + esc(String(a.cutPoints == null ? DEFAULT_CUT : Number(a.cutPoints))) + '"' + off + '></div>';
+        h += '</div>';
+        h += '<div class="aa-controls aa-flags">';
+        h += '<div><span class="form-label" id="aa-singles-l-' + esc(uid) + '">Singles</span><button type="button" class="aa-switch" role="switch" aria-checked="' + (singlesOn ? 'true' : 'false') + '" aria-labelledby="aa-singles-l-' + esc(uid) + '" data-act="singles" data-uid="' + esc(uid) + '"' + off + '>' + (singlesOn ? 'On' : 'Off') + '</button></div>';
+        h += '<div><span class="form-label" id="aa-sheet-l-' + esc(uid) + '">Sheet</span><button type="button" class="aa-switch" role="switch" aria-checked="' + (sheetOn ? 'true' : 'false') + '" aria-labelledby="aa-sheet-l-' + esc(uid) + '" data-act="sheet" data-uid="' + esc(uid) + '"' + off + '>' + (sheetOn ? 'On' : 'Off') + '</button></div>';
         h += '</div>';
         h += '<div class="aa-actions">';
         if (a.status === 'frozen') h += btn('Unfreeze', 'unfreeze', uid, 'Let them sign in again');
@@ -4125,6 +4141,10 @@ window.LedgerView = {
       if (action === 'avg') {
         var next = a.avg !== true;
         act(uid, 'avg', { avg: next }, 'Saved. Averages are ' + (next ? 'on' : 'off') + ' for ' + who + '.', function (r) { merge(r.sourcer); });
+      } else if (action === 'singles' || action === 'sheet') {
+        var nextFlag = a[action] !== true;
+        var flagBody = {}; flagBody[action] = nextFlag;
+        act(uid, action, flagBody, 'Saved. ' + (action === 'singles' ? 'Singles' : 'Sheet') + ' is ' + (nextFlag ? 'on' : 'off') + ' for ' + who + '.', function (r) { merge(r.sourcer); });
       } else if (action === 'freeze') {
         act(uid, 'freeze', {}, who + ' is frozen: signed out and cannot sign in.', function (r) { merge(r.sourcer); });
       } else if (action === 'unfreeze') {
@@ -4151,6 +4171,8 @@ window.LedgerView = {
       var discord = String(dom.discord.value || '').trim();
       var mode = dom.mode.value === 'price_lock' ? 'price_lock' : 'lock';
       var avg = dom.avg.checked === true;
+      var singles = dom.singles.checked === true;
+      var sheet = dom.sheet.checked === true;
       var cutRaw = String(dom.cut.value).trim();
       var cut = cutRaw === '' ? DEFAULT_CUT : Number(cutRaw);
       if (name.length < 2) { setStatus('Enter a name with at least 2 letters or numbers.', true); return; }
@@ -4179,13 +4201,15 @@ window.LedgerView = {
         var steps = [];
         if (mode !== 'lock') steps.push(['mode', { userId: uid, mode: mode }]);
         if (avg) steps.push(['avg', { userId: uid, avg: true }]);
+        if (singles) steps.push(['singles', { userId: uid, singles: true }]);
+        if (sheet) steps.push(['sheet', { userId: uid, sheet: true }]);
         if (cut !== DEFAULT_CUT) steps.push(['cut', { userId: uid, points: cut }]);
         var problems = [];
         var chain = steps.reduce(function (p, s) {
           return p.then(function () {
             return call(s[0], s[1]).then(function (o) {
               if (o.status >= 200 && o.status < 300 && o.body && o.body.ok !== false) merge(o.body.sourcer);
-              else problems.push(s[0] === 'mode' ? 'App mode' : s[0] === 'avg' ? 'Averages' : 'The cut');
+              else problems.push(s[0] === 'mode' ? 'App mode' : s[0] === 'avg' ? 'Averages' : s[0] === 'singles' ? 'Singles' : s[0] === 'sheet' ? 'Sheet' : 'The cut');
             }, function () { problems.push(s[0]); });
           });
         }, Promise.resolve());
