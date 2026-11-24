@@ -780,6 +780,9 @@ code{font-family:var(--font-mono);font-size:.92em;}
     --i-plusminus:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3v14'/%3E%3Cpath d='M5 10h14'/%3E%3Cpath d='M5 21h14'/%3E%3C/svg%3E");
     --i-rotate:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8'/%3E%3Cpath d='M3 3v5h5'/%3E%3C/svg%3E");
     --i-slab:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='2.5' width='14' height='19' rx='2.5'/%3E%3Cpath d='M8.5 6.5h7'/%3E%3Crect x='8.5' y='10' width='7' height='8' rx='1'/%3E%3C/svg%3E");
+    /* the bottom tab bar's Singles (a raw card) and Sheet (a cert list); Slabs uses --i-slab above */
+    --i-card:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='6' y='3' width='12' height='18' rx='2'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3Cpath d='M9 17h6'/%3E%3C/svg%3E");
+    --i-sheet:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='8' height='4' x='8' y='2' rx='1'/%3E%3Cpath d='M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2'/%3E%3Cpath d='M12 11h4'/%3E%3Cpath d='M12 16h4'/%3E%3Cpath d='M8 11h.01'/%3E%3Cpath d='M8 16h.01'/%3E%3C/svg%3E");
 
     font-family:var(--sc-font);font-weight:500;color:var(--sc-ink);
     -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;caret-color:var(--sc-steel-ink);
@@ -2160,24 +2163,70 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-lk-alert-card{margin-bottom:10px;}
   /* The app's peek (sheet down) keeps the scan card, compact: what it is, what you get, whether it can lock. */
   #tab-scanner .scanner-layout.sc-lock-mode.sc-native-cam.sc-sheet-down > #sc-lock{display:flex !important;}
-  /* Slabs | Singles (owners only, rates-portal/singles-pane.html). The switch sits directly under the camera in both modes
-     (Penguin, 11/23): in a browser under the slab camera, above the WE PAY tiles; in the app at the top of the sheet under the
-     camera panel at the mid and up stops, and on the peek ('down') on the pull tab itself, beside "Swipe up to review";
-     on Singles under its own camera (the pane moves it there). Never shown in lock mode. Singles mode hides every slab part
-     (their ids and code are untouched) and shows the pane. */
-  #tab-scanner .sc-kind{align-self:center;width:min(100%, 320px);}
-  #tab-scanner .scanner-layout.sc-native-cam .sc-kind{order:-4;}
-  /* On the peek ('down') the switch shares the bottom row, the pull tab, with "Swipe up to review" (switch on the left, the way up
-     on the right, both 44px tall), so the peek is exactly as tall as it was before the switch: 22 + 60 + 4 + 44 = 130px, well
-     inside the app's 156px. A grid only while the switch shows; sourcers, lock mode and the signed out keep the old column. */
-  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down:has(> .sc-kind:not([hidden])){display:grid;grid-template-columns:auto minmax(0, 1fr);gap:4px 8px;align-items:center;}
-  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down:has(> .sc-kind:not([hidden])) > *{grid-column:1 / -1;}
-  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down:has(> .sc-kind:not([hidden])) > .sc-kind{order:8;grid-column:1;width:auto;min-width:156px;padding:3px;}
-  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down:has(> .sc-kind:not([hidden])) > .sc-sheet-cue{order:9;grid-column:2;justify-content:flex-end;padding:0 4px;}
-  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down .sc-kind .sc-seg-btn{min-height:38px;padding-left:10px;padding-right:10px;font-size:var(--sc-fs-label);}
-  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down .sc-kind::before{top:3px;bottom:3px;left:3px;width:calc(50% - 4px);}
-  #tab-scanner .sc-kind .sc-seg-btn{flex:1 1 0;justify-content:center;}
-  #tab-scanner .scanner-layout.sc-lock-mode .sc-kind{display:none !important;}
+  /* ── The bottom tab bar (Penguin, 11/24: "slabs, singles, sheet and whatever we wanna add in the future"). It replaced the
+     old Slabs | Singles switch. A permanent bar at the very bottom of the screen, like an iPhone's: an icon and a word per tab,
+     the one on show in the theme's own colour (--sc-blue: each theme's accent). The tabs come from one list in the Scanner
+     module (TABS); who sees which is decided there. Signed out, a login not answered for yet, and a sourcer while
+     SHEET_FOR_SOURCERS is off: no bar, and none of these rules applies (they all hang off #tab-scanner.sc-has-tabbar).
+     Every tab's own bottom controls (the slab dock Normal / Lower / Hide, the Singles dock, the Sheet's cert box) sit directly
+     on top of the bar, never behind it, and the bar pads itself by the home bar's inset. While the keyboard is up the bar
+     steps aside (the docks go back to the bottom, as they always did). */
+  #tab-scanner{--sc-tabbar-h:50px;}
+  #tab-scanner .sc-tabbar{
+    position:fixed;left:0;right:0;bottom:0;z-index:25;display:flex;justify-content:center;gap:4px;
+    padding:0 max(8px, calc((100vw - 520px) / 2)) env(safe-area-inset-bottom);
+    background:var(--sc-dock);box-shadow:inset 0 1px 0 var(--sc-line);
+  }
+  #tab-scanner .sc-tabbar[hidden],#tab-scanner .scanner-layout.sc-kbd-open ~ .sc-tabbar{display:none;}
+  #tab-scanner .sc-tab{
+    --sc-i:var(--i-slab);
+    flex:1 1 0;max-width:168px;min-width:44px;height:var(--sc-tabbar-h);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    padding:0 4px;border:0;border-radius:14px;background:none;cursor:pointer;color:var(--sc-muted);
+    font:inherit;font-size:var(--sc-fs-label);font-weight:800;line-height:1.1;letter-spacing:.01em;
+    -webkit-tap-highlight-color:transparent;transition:color 150ms ease-out, transform 150ms ease-out;
+  }
+  #tab-scanner .sc-tab::before{
+    content:"";flex:none;width:24px;height:24px;background:currentColor;
+    -webkit-mask:var(--sc-i) center / contain no-repeat;mask:var(--sc-i) center / contain no-repeat;
+  }
+  #tab-scanner .sc-tab[data-tab="singles"]{--sc-i:var(--i-card);}
+  #tab-scanner .sc-tab[data-tab="sheet"]{--sc-i:var(--i-sheet);}
+  #tab-scanner .sc-tab[aria-current="page"]{color:var(--sc-blue);}
+  #tab-scanner .sc-tab:active{transform:scale(.95);transition-duration:0s;}
+  @media (prefers-reduced-motion:reduce){ #tab-scanner .sc-tab{transition:none;} #tab-scanner .sc-tab:active{transform:none;} }
+  /* the page scrolls clear of the bar, and each dock sits on top of it */
+  #tab-scanner.sc-has-tabbar .scanner-layout{padding-bottom:calc(var(--sc-dock-h) + var(--sc-tabbar-h) + env(safe-area-inset-bottom));}
+  #tab-scanner.sc-has-tabbar .scanner-layout:not(.sc-kbd-open):not(.sc-native-cam) .sc-controls,
+  #tab-scanner.sc-has-tabbar .scanner-layout:not(.sc-kbd-open).sc-native-cam .sc-dock,
+  #tab-scanner.sc-has-tabbar .scanner-layout:not(.sc-kbd-open) .sc-sg-dock,
+  #tab-scanner.sc-has-tabbar .scanner-layout:not(.sc-kbd-open) .sc-sh-dock{
+    bottom:calc(var(--sc-tabbar-h) + env(safe-area-inset-bottom));padding-bottom:var(--sc-dock-pad-bottom);
+  }
+  #tab-scanner.sc-has-tabbar .scanner-layout:not(.sc-kbd-open) .sc-sg-toast{
+    bottom:calc(var(--sc-dock-pad-top) + var(--sc-dock-ctl) + var(--sc-dock-gap) + var(--sc-field-h, var(--sc-dock-ctl)) + var(--sc-dock-pad-bottom) + var(--sc-tabbar-h) + env(safe-area-inset-bottom) + 10px);
+  }
+  #tab-scanner.sc-has-tabbar .scanner-layout:not(.sc-kbd-open) .sc-sh-toast{
+    bottom:calc(var(--sc-dock-pad-top) + var(--sc-field-h) + var(--sc-dock-pad-bottom) + var(--sc-tabbar-h) + env(safe-area-inset-bottom) + 10px);
+  }
+  /* The app's peek ('down', 156px above the home bar, its top 22px under the sheet's handle): the pull tab goes FIRST, right under
+     the handle ("Swipe up to review", still a full 44px to tap), then WE PAY / THIS VISIT (or the Sheet's count), then the bar:
+     44 + 60 + 50 = 154px. The switch that used to share the pull tab's row is gone (the bar is the way between screens). */
+  body:has(#tab-scanner.sc-has-tabbar .sc-native-cam.sc-sheet-down) .main{padding-top:0;}
+  #tab-scanner.sc-has-tabbar .scanner-layout.sc-native-cam.sc-sheet-down{gap:0;padding-bottom:calc(var(--sc-tabbar-h) + env(safe-area-inset-bottom));}
+  #tab-scanner.sc-has-tabbar .scanner-layout.sc-native-cam.sc-sheet-down .sc-sheet-cue{order:-9;align-items:flex-end;padding-bottom:7px;}
+  #tab-scanner.sc-has-tabbar .scanner-layout.sc-native-cam.sc-sheet-down .sc-seller{padding-top:8px;padding-bottom:8px;}
+  /* Singles (owners only, rates-portal/singles-pane.html) and the Sheet (rates-portal/sheet-pane.html) each hide every slab part
+     while they are on (their ids and code are untouched) and show their own pane. The Sheet keeps the slab camera: in a browser
+     #sc-vf-wrap stays, and in the app the camera panel above the page; the pull tab stays for the peek. */
+  #tab-scanner .scanner-layout.sc-sheet-mode #sc-score,
+  #tab-scanner .scanner-layout.sc-sheet-mode #sc-result,
+  #tab-scanner .scanner-layout.sc-sheet-mode #sc-seller,
+  #tab-scanner .scanner-layout.sc-sheet-mode #sc-lock,
+  #tab-scanner .scanner-layout.sc-sheet-mode #sc-dock,
+  #tab-scanner .scanner-layout.sc-sheet-mode #sc-rule-card,
+  #tab-scanner .scanner-layout.sc-sheet-mode #sc-earlier{display:none !important;}
+  /* (a sourcer's peek keeps the lock card: not on the Sheet, which is a sheet of certs, never a lock) */
+  #tab-scanner .scanner-layout.sc-sheet-mode.sc-lock-mode.sc-native-cam.sc-sheet-down > #sc-lock{display:none !important;}
   #tab-scanner .scanner-layout:not(.sc-singles-mode) .sc-singles-only{display:none !important;}
   #tab-scanner .scanner-layout.sc-singles-mode #sc-vf-wrap,
   #tab-scanner .scanner-layout.sc-singles-mode #sc-score,
@@ -2545,16 +2594,6 @@ code{font-family:var(--font-mono);font-size:.92em;}
     </div>
   </section>
 
-  <!-- Slabs | Singles (Penguin's side, rates-portal/singles-pane.html): hidden for everyone until the script shows it, only to an
-       owner, signed in, outside lock mode, while singles-live says it is on. Sourcers and the signed out never see it.
-       It sits directly under the camera in both modes (Penguin, 11/23: "the same place as it is on slabs, on the bottom pull
-       tab"): here, under the slab camera and above the WE PAY tiles; in the apps, at the top of the sheet under the camera
-       panel, the pull tab, at every stop; on Singles the pane moves it under its own camera (SinglesPane's placeSwitch). -->
-  <div class="sc-seg sc-kind" id="sc-kind" role="group" aria-label="What you are scanning" hidden>
-    <button type="button" class="sc-seg-btn" data-kind="slabs" aria-pressed="true">Slabs</button>
-    <button type="button" class="sc-seg-btn" data-kind="singles" aria-pressed="false">Singles</button>
-  </div>
-
   <!-- The scoreboard: the two numbers said out loud, directly under the camera. What we pay for the card on
        screen (with the rule's math), and what this visit's pile comes to. In the Android app it is the top
        of the sheet at every stop. -->
@@ -2777,17 +2816,6 @@ code{font-family:var(--font-mono);font-size:.92em;}
 
 <!-- SINGLES-PANE:START - generated from rates-portal/singles-pane.html by build-portal.js, do not edit by hand -->
 <style>
-  /* ── the Slabs | Singles switch (its markup is page.html's #sc-kind): the coloured part slides across ── */
-  #tab-scanner .sc-kind{position:relative;isolation:isolate;}
-  #tab-scanner .sc-kind::before{
-    content:"";position:absolute;z-index:-1;top:4px;bottom:4px;left:4px;width:calc(50% - 5px);border-radius:999px;
-    background:linear-gradient(180deg, var(--sc-blue-top), var(--sc-blue-bot));
-    box-shadow:var(--sc-hi), 0 6px 14px -6px var(--sc-accent-glow);
-    transition:transform 180ms var(--sc-ease);
-  }
-  #tab-scanner .sc-kind[data-kind="singles"]::before{transform:translateX(calc(100% + 2px));}
-  #tab-scanner .sc-kind .sc-seg-btn,#tab-scanner .sc-kind .sc-seg-btn[aria-pressed="true"]{background:none;box-shadow:none;}
-  #tab-scanner .sc-kind .sc-seg-btn[aria-pressed="true"]{color:var(--sc-on-accent);}
   #tab-scanner .scanner-layout.sc-singles-mode{
     --sc-dock-h:calc(var(--sc-dock-pad-top) + var(--sc-dock-ctl) + var(--sc-dock-gap) + var(--sc-field-h) + var(--sc-dock-pad-bottom));
   }
@@ -2799,7 +2827,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
 
   /* the camera, with the card outline. About as big as the slab camera panel in the apps (Penguin, 11/23: "make the area of the
      camera bigger"): 60% of the screen's height (506px on a 390x844 phone), never under 280px, and at most 560px on a tall or desktop
-     screen. On a short phone it leaves 330px under it for the switch and WE PAY above the dock (a 375x667 phone: 337px, not 400px).
+     screen. On a short phone it leaves 330px under it for WE PAY above the dock (a 375x667 phone: 337px, not 400px).
      svh where the browser has it, so the iPhone's sliding toolbar never resizes it; the card outline is placed to fit it. */
   #tab-scanner .sc-sg-cam{
     position:relative;min-width:0;height:clamp(280px, min(60vh, 100vh - 330px), 560px);height:clamp(280px, min(60svh, 100svh - 330px), 560px);overflow:hidden;isolation:isolate;
@@ -3013,7 +3041,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   .sc-sg-fly{position:fixed;z-index:40;pointer-events:none;border-radius:10px;object-fit:cover;box-shadow:0 10px 24px -8px var(--sc-dock-sh);}
 
   @media (prefers-reduced-motion:reduce){
-    #tab-scanner .sc-kind::before,#tab-scanner .sc-sg-guide,#tab-scanner .sc-sg-row-in,#tab-scanner .sc-sg-toast{transition:none;}
+    #tab-scanner .sc-sg-guide,#tab-scanner .sc-sg-row-in,#tab-scanner .sc-sg-toast{transition:none;}
     #tab-scanner .sc-sg-tile:active,#tab-scanner .sc-sg-alt:active{transform:none;}
     #tab-scanner .sc-sg-cam.sc-sg-reading .sc-sg-guide,#tab-scanner .sc-sg-tile,#tab-scanner .sc-sg-row.sc-sg-new .sc-sg-row-in{animation:none;}
   }
@@ -3102,7 +3130,235 @@ code{font-family:var(--font-mono);font-size:.92em;}
 </section>
 <!-- SINGLES-PANE:END -->
 
+<!-- SHEET-PANE:START - generated from rates-portal/sheet-pane.html by build-portal.js, do not edit by hand -->
+<style>
+  /* ── the Sheet pane ── */
+  #tab-scanner .scanner-layout:not(.sc-sheet-mode) .sc-sheet-only{display:none !important;}
+  #tab-scanner .scanner-layout.sc-sheet-mode:not(.sc-type-open),
+  #tab-scanner .scanner-layout.sc-sheet-mode.sc-native-cam:not(.sc-type-open){
+    --sc-dock-h:calc(var(--sc-dock-pad-top) + var(--sc-field-h) + var(--sc-dock-pad-bottom));
+  }
+  #tab-scanner .sc-sh{display:flex;flex-direction:column;gap:10px;min-width:0;}
+  #tab-scanner .sc-sh[hidden]{display:none;}
+  #tab-scanner .scanner-layout.sc-native-cam .sc-sh{order:-3;}
+
+  /* the head: which sheet (tap for the others), Export, the big count, "Not exported yet", and what just happened */
+  #tab-scanner .sc-sh-head{display:flex;flex-direction:column;gap:6px;padding:12px 14px 14px 16px;}
+  #tab-scanner .sc-sh-top{display:flex;align-items:center;gap:10px;min-width:0;}
+  #tab-scanner .sc-sh-pick{
+    --sc-i:var(--i-chevron-down);
+    flex:1 1 auto;min-width:0;display:inline-flex;align-items:center;gap:6px;min-height:44px;margin-left:-8px;padding:0 8px;
+    border:0;border-radius:14px;background:none;color:var(--sc-ink);font:inherit;font-size:var(--sc-fs-body);font-weight:800;line-height:1.2;
+    text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  }
+  #tab-scanner .sc-sh-pick::after{
+    content:"";flex:none;width:18px;height:18px;background:currentColor;color:var(--sc-muted);
+    -webkit-mask:var(--sc-i) center / contain no-repeat;mask:var(--sc-i) center / contain no-repeat;
+  }
+  #tab-scanner .sc-sh-pick:active{background:var(--sc-fill-card-bg);}
+  #tab-scanner .sc-sh-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #tab-scanner .sc-sh-top .sc-btn{flex:none;}
+  #tab-scanner .sc-sh-count{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;min-width:0;}
+  #tab-scanner .sc-sh-num{font-size:var(--sc-fs-hero);font-weight:800;line-height:1;letter-spacing:-.02em;color:var(--sc-ink);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-sh-unit{font-size:var(--sc-fs-body);font-weight:800;color:var(--sc-muted);}
+  #tab-scanner .sc-sh-flag{
+    align-self:center;display:inline-flex;align-items:center;min-height:26px;padding:0 10px;border-radius:999px;
+    background:var(--sc-wait-tint);color:var(--sc-ink);font-size:var(--sc-fs-label);font-weight:800;line-height:1.2;
+  }
+  #tab-scanner .sc-sh-flag[hidden]{display:none;}
+  #tab-scanner .sc-sh-last{min-height:1.4em;font-size:var(--sc-fs-row);font-weight:700;line-height:1.4;color:var(--sc-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #tab-scanner .sc-sh-last.sc-sh-bad{color:var(--sc-err-ink);}
+  #tab-scanner .sc-sh-last.sc-sh-good{color:var(--sc-ink);}
+
+  /* the list: newest on top, a number, the cert big (and its grader); swipe left (or the x) takes one off */
+  #tab-scanner .sc-sh-list{padding:4px 0;overflow:hidden;}
+  #tab-scanner .sc-sh-empty{margin:0;padding:18px 16px;font-size:var(--sc-fs-body);font-weight:700;line-height:1.45;color:var(--sc-muted);text-align:center;}
+  #tab-scanner .sc-sh-empty[hidden]{display:none;}
+  #tab-scanner .sc-sh-row{position:relative;overflow:hidden;touch-action:pan-y;}
+  #tab-scanner .sc-sh-row + .sc-sh-row::before{content:"";position:absolute;top:0;left:58px;right:0;height:1px;background:var(--sc-line);}
+  #tab-scanner .sc-sh-slide{position:relative;display:flex;align-items:center;gap:10px;min-height:64px;padding:8px 4px 8px 14px;transition:transform 200ms ease-out;}
+  #tab-scanner .sc-sh-row.sc-swiping .sc-sh-slide{transition:none;}
+  #tab-scanner .sc-sh-del{
+    position:absolute;top:2px;bottom:2px;right:0;width:0;display:flex;align-items:center;justify-content:flex-end;overflow:hidden;
+    border-radius:16px;background:var(--sc-danger-bg);color:var(--sc-danger-ink);
+    font-size:var(--sc-fs-row);font-weight:800;white-space:nowrap;pointer-events:none;transition:width 200ms ease-out;
+  }
+  #tab-scanner .sc-sh-del span{padding:0 20px;}
+  #tab-scanner .sc-sh-row.sc-swiping .sc-sh-del{transition:none;}
+  #tab-scanner .sc-sh-n{
+    flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:var(--sc-fill-card-bg);
+    color:var(--sc-muted);font-size:var(--sc-fs-label);font-weight:800;font-variant-numeric:tabular-nums;
+  }
+  #tab-scanner .sc-sh-words{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px;}
+  #tab-scanner .sc-sh-certline{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;min-width:0;}
+  #tab-scanner .sc-sh-cert{font-size:calc(var(--sc-fs-body) + 3px);font-weight:800;line-height:1.2;letter-spacing:.01em;color:var(--sc-ink);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-sh-grader{flex:none;padding:1px 8px;border-radius:8px;background:var(--sc-grade-bg);color:var(--sc-grade-ink);font-size:var(--sc-fs-label);font-weight:800;white-space:nowrap;}
+  #tab-scanner .sc-sh-row.sc-sh-flash .sc-sh-slide{background:var(--sc-wait-tint);border-radius:16px;}
+  #tab-scanner .sc-sh-x{
+    --sc-i:var(--i-x);
+    flex:none;display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;border-radius:50%;background:none;cursor:pointer;
+    color:var(--sc-faint);-webkit-tap-highlight-color:transparent;
+  }
+  #tab-scanner .sc-sh-x::before{content:"";width:16px;height:16px;background:currentColor;-webkit-mask:var(--sc-i) center / contain no-repeat;mask:var(--sc-i) center / contain no-repeat;}
+  #tab-scanner .sc-sh-x:active{color:var(--sc-err-ink);background:var(--sc-err-tint);}
+
+  /* the dock: type a cert (a slab with no barcode, a scanner gun, a pasted PSA/CGC link), pinned like the slab dock */
+  #tab-scanner .sc-sh-dock{
+    position:fixed;left:0;right:0;bottom:0;z-index:20;
+    padding:var(--sc-dock-pad-top) max(16px, calc((100vw - 520px) / 2)) calc(var(--sc-dock-pad-bottom) + env(safe-area-inset-bottom));
+    background:linear-gradient(180deg, var(--sc-dock-top) 0, var(--sc-dock) 100%);
+    border-radius:24px 24px 0 0;box-shadow:inset 0 1px 0 var(--sc-dock-hi), 0 -12px 28px -10px var(--sc-dock-sh);
+  }
+  #tab-scanner .sc-sh-type{display:flex;gap:8px;}
+  #tab-scanner .sc-sh-type .sc-input{height:var(--sc-field-h);font-size:calc(var(--sc-fs-body) + 1px);}
+  #tab-scanner .sc-sh-type .sc-btn{flex:none;min-width:84px;min-height:var(--sc-field-h);}
+
+  /* a note above the dock: "Removed 0123 · Undo", "Already on sheet X · Open" */
+  #tab-scanner .sc-sh-toast{
+    position:fixed;left:50%;z-index:30;
+    bottom:calc(var(--sc-dock-pad-top) + var(--sc-field-h) + var(--sc-dock-pad-bottom) + env(safe-area-inset-bottom) + 10px);
+    display:flex;align-items:center;gap:6px;max-width:min(92vw, 480px);padding:6px 6px 6px 14px;border-radius:999px;
+    background:var(--sc-surface-bg);box-shadow:var(--sc-sh-card), inset 0 0 0 1px var(--sc-line);
+    color:var(--sc-ink);font-size:var(--sc-fs-row);font-weight:700;transform:translate(-50%, 0);
+  }
+  #tab-scanner .sc-sh-toast[hidden]{display:none;}
+  #tab-scanner .sc-sh-toast-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #tab-scanner .sc-sh-toast .sc-btn{flex:none;min-height:36px;padding:0 14px;}
+  #tab-scanner .sc-sh-toast .sc-btn[hidden]{display:none;}
+
+  /* the two sheets that slide up (the page's Settings look): the sheet picker, and Export */
+  #tab-scanner .sc-sh-dialog .sc-settings-head{margin-bottom:4px;}
+  #tab-scanner .sc-sh-sheet-list{display:flex;flex-direction:column;gap:2px;padding:4px;border-radius:var(--sc-r-tile);background:var(--sc-card-bg);box-shadow:var(--sc-sh-card);}
+  #tab-scanner .sc-sh-sheet-opt{
+    display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:0 14px;border:0;border-radius:16px;
+    background:none;color:var(--sc-ink);font:inherit;font-size:var(--sc-fs-body);font-weight:700;line-height:1.2;text-align:left;cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #tab-scanner .sc-sh-sheet-opt[aria-current="true"]{background:var(--sc-fill-card-bg);box-shadow:inset 0 0 0 1.5px var(--sc-steel-ink);}
+  #tab-scanner .sc-sh-sheet-opt-name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #tab-scanner .sc-sh-sheet-opt-n{flex:none;color:var(--sc-muted);font-size:var(--sc-fs-row);font-weight:800;font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-sh-sheet-opt-flag{flex:none;padding:2px 8px;border-radius:999px;background:var(--sc-wait-tint);font-size:var(--sc-fs-label);font-weight:800;}
+  #tab-scanner .sc-sh-tools{display:flex;flex-direction:column;gap:8px;margin-top:14px;}
+  #tab-scanner .sc-sh-tools-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  #tab-scanner .sc-sh-form,#tab-scanner .sc-sh-confirm{display:flex;flex-direction:column;gap:10px;margin-top:14px;padding:14px;border-radius:var(--sc-r-tile);background:var(--sc-card-bg);box-shadow:var(--sc-sh-card);}
+  #tab-scanner .sc-sh-confirm{background:var(--sc-err-tint);}
+  #tab-scanner .sc-sh-form[hidden],#tab-scanner .sc-sh-confirm[hidden],#tab-scanner .sc-sh-tools[hidden]{display:none;}
+  #tab-scanner .sc-sh-confirm-text{margin:0;font-size:var(--sc-fs-body);font-weight:700;line-height:1.45;color:var(--sc-ink);}
+  #tab-scanner .sc-sh-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  #tab-scanner .sc-sh-btns .sc-btn{min-height:48px;}
+  #tab-scanner .sc-sh-export-sub{margin:2px 4px 12px;font-size:var(--sc-fs-row);font-weight:600;line-height:1.45;color:var(--sc-muted);}
+  #tab-scanner .sc-sh-export-btns{display:flex;flex-direction:column;gap:10px;}
+  #tab-scanner .sc-sh-export-btns .sc-btn{justify-content:flex-start;min-height:60px;padding:0 20px;font-size:calc(var(--sc-fs-body) + 1px);border-radius:18px;}
+  #tab-scanner .sc-sh-export-btns .sc-btn::before{content:"";flex:none;width:22px;height:22px;background:currentColor;-webkit-mask:var(--sc-i) center / contain no-repeat;mask:var(--sc-i) center / contain no-repeat;}
+  #tab-scanner .sc-sh-export-btns [data-export="copy"]{--sc-i:var(--i-copy);}
+  #tab-scanner .sc-sh-export-btns [data-export="csv"],#tab-scanner .sc-sh-export-btns [data-export="xlsx"]{--sc-i:var(--i-download);}
+  #tab-scanner .sc-sh-export-hint{margin-left:auto;padding-left:12px;color:var(--sc-muted);font-size:var(--sc-fs-label);font-weight:700;}
+  #tab-scanner .sc-sh-export-btns .sc-btn-primary .sc-sh-export-hint{color:inherit;opacity:.85;}
+  #tab-scanner .sc-sh-export-note{min-height:1.45em;margin:12px 4px 0;font-size:var(--sc-fs-body);font-weight:800;line-height:1.45;color:var(--sc-ink);}
+
+  /* the app's peek ('down'): the scanner is the screen. Just the count and what just happened, one row, between the pull tab and the bar */
+  #tab-scanner .scanner-layout.sc-sheet-mode.sc-native-cam.sc-sheet-down > #sc-sh{display:flex !important;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down #sc-sh > :not(.sc-sh-head){display:none !important;}
+  #tab-scanner .sc-sh-peek-name{display:none;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down .sc-sh-head{
+    display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"count name" "count last";align-items:center;gap:0 12px;padding:6px 16px;
+  }
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down .sc-sh-count{grid-area:count;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down .sc-sh-peek-name{
+    grid-area:name;display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;
+    font-size:var(--sc-fs-row);font-weight:800;line-height:1.3;color:var(--sc-ink);
+  }
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down .sc-sh-top,#tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down .sc-sh-flag{display:none;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down .sc-sh-count{flex:none;flex-wrap:nowrap;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down .sc-sh-num{font-size:calc(var(--sc-fs-num) + 4px);}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down .sc-sh-last{grid-area:last;min-width:0;min-height:0;line-height:1.3;text-align:right;}
+
+  @media (prefers-reduced-motion:reduce){
+    #tab-scanner .sc-sh-slide,#tab-scanner .sc-sh-del{transition:none;}
+  }
+</style>
+<section class="sc-sh sc-sheet-only" id="sc-sh" aria-label="Sheet" hidden>
+  <section class="sc-card sc-sh-head" id="sc-sh-head">
+    <div class="sc-sh-top">
+      <button type="button" class="sc-sh-pick" id="sc-sh-pick" aria-haspopup="dialog" aria-controls="sc-sh-sheets" title="Your sheets"><span class="sc-sh-name" id="sc-sh-name">Sheet</span></button>
+      <button type="button" class="sc-btn sc-btn-primary" id="sc-sh-export-open" aria-haspopup="dialog" aria-controls="sc-sh-export" disabled>Export</button>
+    </div>
+    <div class="sc-sh-count"><span class="sc-sh-num" id="sc-sh-num">0</span><span class="sc-sh-unit" id="sc-sh-unit">slabs</span><span class="sc-sh-flag" id="sc-sh-unexported" hidden>Not exported yet</span></div>
+    <div class="sc-sh-peek-name" id="sc-sh-peek-name" aria-hidden="true"></div>
+    <div class="sc-sh-last" id="sc-sh-last" role="status">Scan a slab's barcode to add it</div>
+  </section>
+
+  <section class="sc-card sc-sh-list" aria-label="Certs on this sheet">
+    <div id="sc-sh-rows"></div>
+    <p class="sc-sh-empty" id="sc-sh-empty">No slabs on this sheet yet. A slab with no barcode? Type its cert below.</p>
+  </section>
+
+  <div class="sc-sh-dock" id="sc-sh-dock">
+    <form class="sc-sh-type" id="sc-sh-type" autocomplete="off">
+      <input class="sc-input" id="sc-sh-input" type="text" inputmode="numeric" enterkeyhint="done" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
+        placeholder="Type a cert" aria-label="Type a cert number, or paste a PSA or CGC link">
+      <button type="submit" class="sc-btn sc-btn-primary" id="sc-sh-add">Add</button>
+    </form>
+  </div>
+
+  <div class="sc-sh-toast" id="sc-sh-toast" role="status" hidden>
+    <span class="sc-sh-toast-text" id="sc-sh-toast-text"></span>
+    <button type="button" class="sc-btn sc-btn-quiet" id="sc-sh-toast-act" hidden>Undo</button>
+  </div>
+
+  <dialog class="sc-settings sc-sh-dialog" id="sc-sh-sheets" aria-labelledby="sc-sh-sheets-title">
+    <div class="sc-settings-head">
+      <h2 class="sc-settings-title" id="sc-sh-sheets-title">Your sheets</h2>
+      <button type="button" class="sc-btn sc-btn-quiet" id="sc-sh-sheets-done">Done</button>
+    </div>
+    <div class="sc-sh-sheet-list" id="sc-sh-sheet-list"></div>
+    <div class="sc-sh-tools" id="sc-sh-tools">
+      <button type="button" class="sc-btn sc-btn-primary sc-btn-block" id="sc-sh-new">New sheet</button>
+      <div class="sc-sh-tools-row">
+        <button type="button" class="sc-btn sc-btn-quiet" id="sc-sh-rename">Rename</button>
+        <button type="button" class="sc-btn sc-btn-quiet" id="sc-sh-delete">Delete</button>
+      </div>
+    </div>
+    <form class="sc-sh-form" id="sc-sh-name-form" autocomplete="off" hidden>
+      <label class="sc-field"><span class="sc-label" id="sc-sh-name-label">Name the new sheet</span>
+        <input class="sc-input" id="sc-sh-name-input" type="text" maxlength="60" enterkeyhint="done" autocomplete="off"></label>
+      <div class="sc-sh-btns">
+        <button type="submit" class="sc-btn sc-btn-primary" id="sc-sh-name-save">Create</button>
+        <button type="button" class="sc-btn sc-btn-quiet" id="sc-sh-name-cancel">Cancel</button>
+      </div>
+    </form>
+    <div class="sc-sh-confirm" id="sc-sh-delete-confirm" role="alert" hidden>
+      <p class="sc-sh-confirm-text" id="sc-sh-delete-text">Delete this sheet? This can't be undone.</p>
+      <div class="sc-sh-btns">
+        <button type="button" class="sc-btn sc-btn-danger" id="sc-sh-delete-yes">Yes, delete</button>
+        <button type="button" class="sc-btn sc-btn-quiet" id="sc-sh-delete-no">Cancel</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="sc-settings sc-sh-dialog" id="sc-sh-export" aria-labelledby="sc-sh-export-title">
+    <div class="sc-settings-head">
+      <h2 class="sc-settings-title" id="sc-sh-export-title">Export</h2>
+      <button type="button" class="sc-btn sc-btn-quiet" id="sc-sh-export-done">Done</button>
+    </div>
+    <p class="sc-sh-export-sub" id="sc-sh-export-sub">Certs only, in the order you scanned them.</p>
+    <div class="sc-sh-export-btns" id="sc-sh-export-btns">
+      <button type="button" class="sc-btn sc-btn-primary" data-export="copy">Copy certs<span class="sc-sh-export-hint">Paste in a ticket</span></button>
+      <button type="button" class="sc-btn sc-btn-quiet" data-export="csv">CSV<span class="sc-sh-export-hint">Plain list file</span></button>
+      <button type="button" class="sc-btn sc-btn-quiet" data-export="xlsx">Excel<span class="sc-sh-export-hint">Long certs stay whole</span></button>
+    </div>
+    <p class="sc-sh-export-note" id="sc-sh-export-note" role="status"></p>
+  </dialog>
+</section>
+<!-- SHEET-PANE:END -->
+
 </div>
+
+<!-- The bottom tab bar (Penguin, 11/24): Slabs | Singles | Sheet for an owner, drawn by the Scanner module from its TABS list
+     (an icon and a word each). Hidden until the script shows it, and never shown signed out, before the server has said who a
+     login is, or to a sourcer while SHEET_FOR_SOURCERS is off. After #sc-layout on purpose: the keyboard rule
+     (.sc-kbd-open ~ .sc-tabbar) and the app's peek (which hides the layout's other children) both rely on it. -->
+<div class="sc-tabbar" id="sc-tabbar" role="group" aria-label="Screens" hidden></div>
 
 <!-- Settings (the gear above): a Theme section, one row per theme (the script fills it from
      window.IOPTheme.list(), see scanner/theme.js), tapping a row applies it at once; and, while signed in, an
@@ -15234,7 +15490,7 @@ window.SinglesPrice = {
     // answer of off hides Singles at once; a read that fails keeps an earlier "on" (a blip at a show) and is tried again soon.
     var liveState = null, statusAsking = false, statusAt = 0, statusFailed = false, tickTimer = null;
     // Opening the page, or coming back to the Scanner, reopens Singles when it was the last choice (and the slab camera waits for
-    // it: claimsCamera). A later "on" (after an off or no answer) only shows the switch, so an owner scanning slabs meanwhile is
+    // it: claimsCamera). A later "on" (after an off or no answer) only shows the Singles tab, so an owner scanning slabs meanwhile is
     // never pulled away mid-scan.
     var mayAutoEnter = true;
     var on = false, active = false;
@@ -15300,10 +15556,9 @@ window.SinglesPrice = {
     function attach(h) {
       if (host) return;
       var root = document.getElementById('sc-sg');
-      var kind = document.getElementById('sc-kind');
-      if (!h || !root || !kind || !window.SinglesFlow || !window.SinglesPrice) return; // not this page, or a page without the engine: inert
+      if (!h || !root || !window.SinglesFlow || !window.SinglesPrice) return; // not this page, or a page without the engine: inert
       host = h;
-      ['sc-sg', 'sc-kind', 'sc-sg-cam', 'sc-sg-video', 'sc-sg-guide', 'sc-sg-cam-off', 'sc-sg-cam-text', 'sc-sg-cam-on', 'sc-sg-cam-stop',
+      ['sc-sg', 'sc-sg-cam', 'sc-sg-video', 'sc-sg-guide', 'sc-sg-cam-off', 'sc-sg-cam-text', 'sc-sg-cam-on', 'sc-sg-cam-stop',
         'sc-sg-matching', 'sc-sg-bottom', 'sc-sg-hint', 'sc-sg-shutter', 'sc-sg-slab', 'sc-sg-slab-text', 'sc-sg-slab-yes', 'sc-sg-slab-no',
         'sc-sg-pay', 'sc-sg-pay-note', 'sc-sg-visit', 'sc-sg-visit-sub', 'sc-sg-card', 'sc-sg-check', 'sc-sg-check-count', 'sc-sg-strip',
         'sc-sg-pile', 'sc-sg-pile-count', 'sc-sg-rows', 'sc-sg-pile-empty', 'sc-sg-totals', 'sc-sg-confirm', 'sc-sg-confirm-text',
@@ -15311,16 +15566,11 @@ window.SinglesPrice = {
         'sc-sg-skip', 'sc-sg-find', 'sc-sg-search', 'sc-sg-toast', 'sc-sg-toast-text', 'sc-sg-toast-undo'
       ].forEach(function (id) { el[id.replace(/^sc-(sg-)?/, '')] = document.getElementById(id); });
       el.root = root;
-      kindHome = kind.parentNode && kind.nextSibling ? { parent: kind.parentNode, next: kind.nextSibling } : null;
       wire();
     }
 
     function on_(node, type, fn) { if (node && node.addEventListener) node.addEventListener(type, fn); }
     function wire() {
-      var kindBtns = el.kind.querySelectorAll ? el.kind.querySelectorAll('[data-kind]') : [];
-      Array.prototype.forEach.call(kindBtns, function (b) {
-        on_(b, 'click', function () { pickKind(b.getAttribute('data-kind')); });
-      });
       on_(el['cam-on'], 'click', function () { startCamera(); });
       on_(el['cam-stop'], 'click', function () { stopCamera(); camMsg = ''; render(); });
       on_(el.shutter, 'click', function (ev) { if (ev && ev.stopPropagation) ev.stopPropagation(); shutter(); });
@@ -15358,8 +15608,12 @@ window.SinglesPrice = {
       on_(el.video, 'loadedmetadata', placeGuide);
     }
 
-    // ── which screen: the switch, the remote off switch, owners only ───────────────────────────────
+    // ── which screen: the tab bar, the remote off switch, owners only ───────────────────────────────
     function allowed() { try { return !!(host && host.allowed()); } catch (e) { return false; } }
+    /** May the Singles tab show right now: an owner, outside lock mode, while singles-live says on. */
+    function available() { return !!host && allowed() && liveState === true; }
+    /** The tab bar redraws (who may see Singles, or whether it is on, may have changed). */
+    function changed() { try { if (host && typeof host.changed === 'function') host.changed(); } catch (e) { /* the bar redraws next time */ } }
 
     /** singles-live's GET /status: { enabled }. Anything but enabled:true (or no answer) keeps Singles hidden. */
     function askStatus() {
@@ -15392,15 +15646,15 @@ window.SinglesPrice = {
     function refresh() {
       if (!host) return;
       if (!allowed()) {
-        el.kind.hidden = true;
         if (on) leave(false);
+        changed();
         return;
       }
       if (statusDue()) askStatus();
-      el.kind.hidden = liveState !== true;
-      if (liveState !== true) { if (on) leave(false); return; }
+      if (liveState !== true) { if (on) leave(false); changed(); return; }
       if (!on && active && mayAutoEnter && getKey(KIND_KEY) === 'singles') { mayAutoEnter = false; enter(false); }
       if (on && ratesDue()) ensureData();
+      changed();
     }
 
     /**
@@ -15413,28 +15667,7 @@ window.SinglesPrice = {
       return !!host && mayAutoEnter && liveState !== false && getKey(KIND_KEY) === 'singles' && allowed();
     }
 
-    /**
-     * The switch sits directly under the camera in both modes (Penguin, 11/23: "the same place as it is on slabs, on the bottom pull
-     * tab"). Its home in page.html is under the slab camera (in the apps, the top of the sheet under the camera panel); on Singles it
-     * moves under Singles' own camera, between the camera and WE PAY, and goes home again on the way back to Slabs. Same node, same
-     * id and buttons: only where it sits changes.
-     */
-    var kindHome = null; // { parent, next }: where page.html put the switch
-    function placeSwitch(singles) {
-      var k = el.kind;
-      if (!k || !kindHome || !el.root || typeof el.root.insertBefore !== 'function') return;
-      try {
-        if (singles) { if (k.parentNode !== el.root || k.previousSibling !== el.cam) el.root.insertBefore(k, el.cam.nextSibling); }
-        else if (k.parentNode !== kindHome.parent) kindHome.parent.insertBefore(k, kindHome.next.parentNode === kindHome.parent ? kindHome.next : null);
-      } catch (e) { /* stays where it is: still one switch, still working */ }
-    }
-
-    function setSwitch(kind) {
-      el.kind.setAttribute('data-kind', kind);
-      var btns = el.kind.querySelectorAll ? el.kind.querySelectorAll('[data-kind]') : [];
-      Array.prototype.forEach.call(btns, function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-kind') === kind ? 'true' : 'false'); });
-    }
-
+    /** The tab bar's Singles / Slabs (and "That's a slab: switch to Slabs?"). Remembered under iopKind. */
     function pickKind(kind) {
       if (kind === 'singles') {
         if (on || !allowed() || liveState !== true) return;
@@ -15454,19 +15687,18 @@ window.SinglesPrice = {
       host.layout.classList.add('sc-singles-mode');
       el.root.hidden = false;
       el.slab.hidden = true;
-      setSwitch('singles');
-      placeSwitch(true);
       host.slabCamerasOff();
       ensureEngine();
       ensureData();
       render();
       placeGuide();
-      // In the apps the page's own camera is allowed and the panel was just sent away; in a browser, a tap on the switch is the
+      // In the apps the page's own camera is allowed and the panel was just sent away; in a browser, a tap on the tab is the
       // person asking (the browser may ask for permission). Opened by itself (the last choice kept) it waits for a tap,
       // unless the browser already allows the camera.
       if (byTap || host.inApp()) startCamera();
       else cameraAllowedAlready().then(function (ok) { if (ok && on && active) startCamera(); });
       if (liveState === true && pile) refreshStaleLive();
+      changed();
     }
 
     function leave(byTap) {
@@ -15476,10 +15708,9 @@ window.SinglesPrice = {
       host.layout.classList.remove('sc-singles-mode');
       el.root.hidden = true;
       el.slab.hidden = true;
-      setSwitch('slabs');
-      placeSwitch(false);
       hideToast();
       host.slabCamerasBack(!!byTap);
+      changed();
     }
 
     function paneActivate() {
@@ -16413,10 +16644,882 @@ window.SinglesPrice = {
 
     return {
       attach: attach, activate: paneActivate, deactivate: paneDeactivate, refresh: refresh, isOn: isOn, claimsCamera: claimsCamera,
-      slabScanned: slabScanned, cardRead: cardRead,
+      slabScanned: slabScanned, cardRead: cardRead, available: available, pick: pickKind,
     };
   })();
 /* SINGLES-PANE-JS:END */
+</script>
+
+<script>
+/* SHEET-CORE:START - generated from scanner/sheetBook.js + scanner/sheetFiles.js by build-portal.js, do not edit by hand */
+(function () {
+'use strict';
+// The Sheet tab's cert lists (Penguin, 11/24: "to the sheet it should ONLY be the cert, nothing else"). Several named sheets
+// kept on this phone under ONE storage key (iopSheets, JSON with a version), each an ordered list of slab certs. What a sheet
+// holds per row: the cert as read (text, so a leading zero is never lost), its zero-stripped key (certs.js certKey: what dedupes),
+// the grader the reader named, and when it went on. Nothing else: no card name, no grade, never a price, a market value, a
+// percentage or anything else with money in it.
+//
+// NO LOOKUP (Penguin, 11/24): a cert on a sheet is never sent anywhere. The lookup the Sheet used to have (triumph-sourcer,
+// for the card's name and grade on screen) put every cert on Josh's Triumph member draft, which Triumph counts as pool used.
+// A row saved by that older version still loads: its `look` field is simply dropped (the cert is kept).
+//
+// The rules:
+//   - NO CERTS THAT START WITH 0 (Penguin, 11/24: "we cant accept 0 certs"): `add` answers { zero: true }.
+//   - NO DUPLICATES ANYWHERE: a cert already on any sheet on this phone is refused (`add` answers { dup: <that sheet> }).
+//     Removing it (or deleting its sheet) frees it.
+//   - Rows keep the order they were scanned in (oldest first). The screen shows them newest on top; exports go in this order.
+//   - "Not exported yet": a sheet with certs that was never exported, or that changed since it last was (a cert added, taken
+//     off, or put back with Undo: the file it made no longer matches the sheet).
+//   - There is always at least one sheet: deleting the last one starts a fresh, empty "Sheet <date>".
+//
+// Pure, like every scanner/ sibling (embedded whole into the page by rates-portal/build-portal.js as window.SheetBook): the
+// storage and the clock come in. Tested in scanner/sheetPage.test.js.
+'use strict';
+
+var SHEETS_KEY = 'iopSheets';
+var SHEETS_VERSION = 1;
+var MAX_NAME = 60;
+
+function cleanName(name) {
+  return String(name == null ? '' : name).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, MAX_NAME).trim();
+}
+
+/** "Sheet 11/24" for the day `ms` falls on (the phone's own clock and time zone). */
+function defaultName(ms) {
+  var d = new Date(ms);
+  return 'Sheet ' + (d.getMonth() + 1) + '/' + d.getDate();
+}
+
+/** One saved row read back: { cert, key, grader, at }. Anything else on it (an older version's `look`) is dropped. */
+function rowOf(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  var cert = String(raw.cert == null ? '' : raw.cert);
+  if (!/^\d{1,20}$/.test(cert)) return null;
+  var key = cert.replace(/^0+(?=\d)/, '');
+  var grader = typeof raw.grader === 'string' && /^[a-z]{2,8}$/.test(raw.grader) ? raw.grader : null;
+  var at = Number(raw.at);
+  return { cert: cert, key: key, grader: grader, at: isFinite(at) && at > 0 ? at : 0 };
+}
+
+function emptyState() { return { v: SHEETS_VERSION, open: null, sheets: [] }; }
+
+/** A saved value (text or object) read back defensively: bad rows dropped, a cert on two sheets kept only on the first. */
+function parseState(raw) {
+  var j = raw;
+  if (typeof raw === 'string') { try { j = JSON.parse(raw); } catch (e) { j = null; } }
+  var st = emptyState();
+  if (!j || typeof j !== 'object' || !Array.isArray(j.sheets)) return st;
+  var seen = {}, ids = {};
+  j.sheets.forEach(function (s) {
+    if (!s || typeof s !== 'object') return;
+    var id = typeof s.id === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(s.id) && !ids[s.id] ? s.id : null;
+    if (!id) return;
+    ids[id] = true;
+    var rows = [];
+    (Array.isArray(s.rows) ? s.rows : []).forEach(function (r) {
+      var row = rowOf(r);
+      if (!row || seen[row.key]) return;
+      seen[row.key] = true;
+      rows.push(row);
+    });
+    var created = Number(s.created);
+    var exportedAt = Number(s.exportedAt);
+    st.sheets.push({
+      id: id, name: cleanName(s.name) || 'Sheet', created: isFinite(created) && created > 0 ? created : 0, rows: rows,
+      exportedAt: isFinite(exportedAt) && exportedAt > 0 ? exportedAt : null, dirty: s.dirty === true,
+    });
+  });
+  st.open = typeof j.open === 'string' && ids[j.open] ? j.open : (st.sheets[0] ? st.sheets[0].id : null);
+  return st;
+}
+
+/**
+ * createSheetBook({ storage, now }) -> the sheets on this phone. `storage` is a localStorage-like object (or null: this visit
+ * only), `now()` the clock in ms. Every change is saved at once (save() answers false when the phone's storage refused it).
+ */
+function createSheetBook(opts) {
+  var storage = opts && opts.storage ? opts.storage : null;
+  var now = opts && typeof opts.now === 'function' ? opts.now : function () { return Date.now(); };
+  var seq = 0;
+  var state = emptyState();
+  try { state = parseState(storage ? storage.getItem(SHEETS_KEY) : null); } catch (e) { state = emptyState(); }
+
+  function save() {
+    if (!storage) return false;
+    try { storage.setItem(SHEETS_KEY, JSON.stringify(state)); return true; } catch (e) { return false; }
+  }
+  function byId(id) { for (var i = 0; i < state.sheets.length; i++) if (state.sheets[i].id === id) return state.sheets[i]; return null; }
+  function uniqueName(name, exceptId) {
+    var base = cleanName(name) || defaultName(now());
+    var taken = function (n) { return state.sheets.some(function (s) { return s.id !== exceptId && s.name.toLowerCase() === n.toLowerCase(); }); };
+    if (!taken(base)) return base;
+    for (var i = 2; i < 1000; i++) { var n = base.slice(0, MAX_NAME - 6) + ' (' + i + ')'; if (!taken(n)) return n; }
+    return base;
+  }
+  function newId() { seq++; return 's' + now().toString(36) + seq.toString(36); }
+  function create(name, keepOpen) {
+    var s = { id: newId(), name: uniqueName(name), created: now(), rows: [], exportedAt: null, dirty: false };
+    while (byId(s.id)) s.id = newId();
+    state.sheets.unshift(s); // the newest sheet first in the picker
+    if (!keepOpen || !state.open) state.open = s.id;
+    save();
+    return s;
+  }
+  function ensureOne() {
+    if (!state.sheets.length) create(defaultName(now()));
+    if (!byId(state.open)) { state.open = state.sheets[0].id; save(); }
+  }
+  ensureOne();
+
+  function whereIs(key) {
+    for (var i = 0; i < state.sheets.length; i++) {
+      var rows = state.sheets[i].rows;
+      for (var j = 0; j < rows.length; j++) if (rows[j].key === key) return { sheet: state.sheets[i], index: j, row: rows[j] };
+    }
+    return null;
+  }
+
+  return {
+    KEY: SHEETS_KEY,
+    save: save,
+    state: function () { return state; },
+    sheets: function () { return state.sheets.slice(); },
+    get: byId,
+    open: function () { ensureOne(); return byId(state.open); },
+    select: function (id) { if (!byId(id)) return false; state.open = id; save(); return true; },
+    create: function (name) { return create(name); },
+    rename: function (id, name) {
+      var s = byId(id);
+      var n = cleanName(name);
+      if (!s || !n) return false;
+      s.name = uniqueName(n, id);
+      save();
+      return true;
+    },
+    /** Deletes a sheet and frees its certs. The open one goes to the next sheet; the last one is replaced by a fresh empty one. */
+    remove: function (id) {
+      var at = -1;
+      state.sheets.forEach(function (s, i) { if (s.id === id) at = i; });
+      if (at < 0) return false;
+      state.sheets.splice(at, 1);
+      if (state.open === id) state.open = state.sheets.length ? state.sheets[Math.min(at, state.sheets.length - 1)].id : null;
+      ensureOne();
+      save();
+      return true;
+    },
+    whereIs: whereIs,
+    /** `parsed` = certs.js parseOneCert's { cert, certKey, grader }. -> { ok: true, row } | { ok: false, dup: sheet } | { ok: false, zero: true } */
+    add: function (sheetId, parsed) {
+      var s = byId(sheetId);
+      var cert = String(parsed && parsed.cert != null ? parsed.cert : '');
+      if (!s || !/^\d{1,20}$/.test(cert)) return { ok: false, bad: true };
+      if (cert.charAt(0) === '0') return { ok: false, zero: true }; // old certs that start with 0: we can't take them (Penguin, 11/22, 11/24)
+      var key = cert.replace(/^0+(?=\d)/, '');
+      var there = whereIs(key);
+      if (there) return { ok: false, dup: there.sheet, row: there.row };
+      var row = rowOf({ cert: cert, grader: parsed.grader || null, at: now() });
+      s.rows.push(row);
+      s.dirty = true;
+      save();
+      return { ok: true, row: row, sheet: s };
+    },
+    /** Takes a cert off a sheet. -> { row, index } (for Undo) or null. */
+    removeRow: function (sheetId, key) {
+      var s = byId(sheetId);
+      if (!s) return null;
+      for (var i = 0; i < s.rows.length; i++) {
+        if (s.rows[i].key === key) {
+          var row = s.rows.splice(i, 1)[0];
+          if (s.exportedAt != null) s.dirty = true; // the last file still holds it
+          save();
+          return { row: row, index: i };
+        }
+      }
+      return null;
+    },
+    /** Undo of removeRow: back where it was, unless the cert went on a sheet meanwhile (then { ok: false, dup }). */
+    restore: function (sheetId, row, index) {
+      var s = byId(sheetId);
+      if (!s || !row) return { ok: false };
+      var there = whereIs(row.key);
+      if (there) return { ok: false, dup: there.sheet };
+      s.rows.splice(Math.max(0, Math.min(index, s.rows.length)), 0, row);
+      s.dirty = true;
+      save();
+      return { ok: true };
+    },
+    certsOf: function (sheet) { return (sheet ? sheet.rows : []).map(function (r) { return r.cert; }); },
+    needsExport: function (sheet) { return !!sheet && sheet.rows.length > 0 && (sheet.exportedAt == null || sheet.dirty); },
+    markExported: function (id) {
+      var s = byId(id);
+      if (!s) return false;
+      s.exportedAt = now();
+      s.dirty = false;
+      save();
+      return true;
+    },
+  };
+}
+
+window.SheetBook = {
+  SHEETS_KEY: SHEETS_KEY,
+  SHEETS_VERSION: SHEETS_VERSION,
+  MAX_NAME: MAX_NAME,
+  defaultName: defaultName,
+  cleanName: cleanName,
+  parseState: parseState,
+  createSheetBook: createSheetBook,
+};
+})();
+
+(function () {
+'use strict';
+// The Sheet tab's exports: CERTS ONLY, nothing else (Penguin, 11/24), in the sheet's order (the order they were scanned).
+//   - copyText: one cert per line, plain text (what goes in a ticket).
+//   - csvText: one column, the header "Cert", one cert per row, each written as just its digits (no quotes, no ="..." formula):
+//     Penguin, 11/24, "ONLY the cert, nothing else", so a script, Trader's import or a paste reads exactly the cert. The catch:
+//     Excel opening a CSV turns a 13-digit CGC cert into 1.40101E+12. That is what the .xlsx is for (its cells are text), and
+//     the Export sheet says so ("Long certs stay whole"). Certs that start with 0 never get on a sheet (we can't take them).
+//   - xlsxBytes: a real .xlsx (a zip of a handful of XML parts, written here: no library, no CDN), one sheet "Certs", one column,
+//     "Cert" then one cert per row, every cell a TEXT cell (an inline string, in a Text-formatted column), so nothing is ever
+//     read as a number.
+//   - fileBase: a sheet's name made safe as a file name ("Sheet 11/24" -> "Sheet 11-24").
+// A cert here is digits only (certs.js parseOneCert's `cert`); anything else is left out, so no other text can reach a file.
+//
+// Pure (embedded whole into the page by rates-portal/build-portal.js as window.SheetFiles). Tested in scanner/sheetPage.test.js,
+// which opens the .xlsx with exceljs as well as reading its XML.
+'use strict';
+
+var CSV_HEADER = 'Cert';
+var XLSX_TAB = 'Certs';
+var XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+var CSV_MIME = 'text/csv';
+
+function onlyCerts(certs) {
+  return (Array.isArray(certs) ? certs : []).map(function (c) { return String(c == null ? '' : c); }).filter(function (c) { return /^\d{1,20}$/.test(c); });
+}
+
+function copyText(certs) { return onlyCerts(certs).join('\n'); }
+
+function csvText(certs) {
+  return [CSV_HEADER].concat(onlyCerts(certs)).join('\r\n') + '\r\n';
+}
+
+function fileBase(name) {
+  var n = String(name == null ? '' : name).replace(/[\\/:*?"<>|\u0000-\u001f\u007f]+/g, '-').replace(/\s+/g, ' ').replace(/^[\s.-]+|[\s.]+$/g, '');
+  return n.slice(0, 80).trim() || 'Sheet';
+}
+
+/** UTF-8 bytes of a string (no TextEncoder needed). */
+function utf8(s) {
+  var out = [];
+  for (var i = 0; i < s.length; i++) {
+    var c = s.charCodeAt(i);
+    if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length) {
+      var d = s.charCodeAt(i + 1);
+      if (d >= 0xdc00 && d <= 0xdfff) { c = 0x10000 + ((c - 0xd800) << 10) + (d - 0xdc00); i++; }
+    }
+    if (c < 0x80) out.push(c);
+    else if (c < 0x800) out.push(0xc0 | (c >> 6), 0x80 | (c & 63));
+    else if (c < 0x10000) out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+    else out.push(0xf0 | (c >> 18), 0x80 | ((c >> 12) & 63), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+  }
+  return out;
+}
+
+var CRC_TABLE = null;
+function crc32(bytes) {
+  if (!CRC_TABLE) {
+    CRC_TABLE = [];
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      CRC_TABLE.push(c >>> 0);
+    }
+  }
+  var crc = 0xffffffff;
+  for (var i = 0; i < bytes.length; i++) crc = CRC_TABLE[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+/** A zip of `files` ([{ name, text }]), every entry stored (no compression: tiny files, and nothing to get wrong). A fixed date,
+    so the same certs always make the same bytes. -> Uint8Array */
+function zipStored(files) {
+  var out = [], central = [];
+  var u16 = function (a, v) { a.push(v & 255, (v >>> 8) & 255); };
+  var u32 = function (a, v) { a.push(v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255); };
+  var DOS_TIME = 0, DOS_DATE = ((2026 - 1980) << 9) | (1 << 5) | 1; // 2026-01-01 00:00
+  files.forEach(function (f) {
+    var name = utf8(f.name), data = utf8(f.text), crc = crc32(data), offset = out.length;
+    u32(out, 0x04034b50); u16(out, 20); u16(out, 0); u16(out, 0); u16(out, DOS_TIME); u16(out, DOS_DATE);
+    u32(out, crc); u32(out, data.length); u32(out, data.length); u16(out, name.length); u16(out, 0);
+    Array.prototype.push.apply(out, name);
+    for (var i = 0; i < data.length; i++) out.push(data[i]);
+    u32(central, 0x02014b50); u16(central, 20); u16(central, 20); u16(central, 0); u16(central, 0); u16(central, DOS_TIME); u16(central, DOS_DATE);
+    u32(central, crc); u32(central, data.length); u32(central, data.length); u16(central, name.length); u16(central, 0); u16(central, 0);
+    u16(central, 0); u16(central, 0); u32(central, 0); u32(central, offset);
+    Array.prototype.push.apply(central, name);
+  });
+  var cdAt = out.length;
+  for (var j = 0; j < central.length; j++) out.push(central[j]);
+  u32(out, 0x06054b50); u16(out, 0); u16(out, 0); u16(out, files.length); u16(out, files.length);
+  u32(out, central.length); u32(out, cdAt); u16(out, 0);
+  return new Uint8Array(out);
+}
+
+var XML_HEAD = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+var NS_MAIN = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+var NS_REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+var NS_PKG = 'http://schemas.openxmlformats.org/package/2006/relationships';
+
+/** The worksheet XML: "Cert" in A1, then one TEXT cell per cert (inline strings, style 1 = the Text number format "@"). */
+function sheetXml(certs) {
+  var rows = ['<row r="1"><c r="A1" t="inlineStr"><is><t>' + CSV_HEADER + '</t></is></c></row>'];
+  onlyCerts(certs).forEach(function (c, i) {
+    var r = i + 2;
+    rows.push('<row r="' + r + '"><c r="A' + r + '" s="1" t="inlineStr"><is><t>' + c + '</t></is></c></row>');
+  });
+  return XML_HEAD + '<worksheet xmlns="' + NS_MAIN + '"><cols><col min="1" max="1" width="20" style="1" customWidth="1"/></cols><sheetData>' +
+    rows.join('') + '</sheetData></worksheet>';
+}
+
+function xlsxParts(certs) {
+  return [
+    { name: '[Content_Types].xml', text: XML_HEAD + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+      '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+      '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>' },
+    { name: '_rels/.rels', text: XML_HEAD + '<Relationships xmlns="' + NS_PKG + '">' +
+      '<Relationship Id="rId1" Type="' + NS_REL + '/officeDocument" Target="xl/workbook.xml"/></Relationships>' },
+    { name: 'xl/workbook.xml', text: XML_HEAD + '<workbook xmlns="' + NS_MAIN + '" xmlns:r="' + NS_REL + '"><sheets>' +
+      '<sheet name="' + XLSX_TAB + '" sheetId="1" r:id="rId1"/></sheets></workbook>' },
+    { name: 'xl/_rels/workbook.xml.rels', text: XML_HEAD + '<Relationships xmlns="' + NS_PKG + '">' +
+      '<Relationship Id="rId1" Type="' + NS_REL + '/worksheet" Target="worksheets/sheet1.xml"/>' +
+      '<Relationship Id="rId2" Type="' + NS_REL + '/styles" Target="styles.xml"/></Relationships>' },
+    { name: 'xl/styles.xml', text: XML_HEAD + '<styleSheet xmlns="' + NS_MAIN + '">' +
+      '<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>' +
+      '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' +
+      '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+      '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+      '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+      '<xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>' +
+      '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>' },
+    { name: 'xl/worksheets/sheet1.xml', text: sheetXml(certs) },
+  ];
+}
+
+function xlsxBytes(certs) { return zipStored(xlsxParts(certs)); }
+
+window.SheetFiles = {
+  CSV_HEADER: CSV_HEADER,
+  XLSX_TAB: XLSX_TAB,
+  XLSX_MIME: XLSX_MIME,
+  CSV_MIME: CSV_MIME,
+  onlyCerts: onlyCerts,
+  copyText: copyText,
+  csvText: csvText,
+  fileBase: fileBase,
+  crc32: crc32,
+  zipStored: zipStored,
+  sheetXml: sheetXml,
+  xlsxBytes: xlsxBytes,
+};
+})();
+/* SHEET-CORE:END */
+</script>
+
+<script>
+/* SHEET-PANE-JS:START - generated from rates-portal/sheet-pane.html's <script> by build-portal.js, do not edit by hand */
+  // The Sheet pane. ScannerTab attaches it (SheetPane.attach) with what it needs from the slab screen, and calls activate /
+  // deactivate with the Scanner, refresh when who is signed in may have changed, enter / leave from the tab bar, isOn, and scanned for
+  // every barcode that arrives while the Sheet is on. The data (which certs are on which sheet, no duplicates) is window.SheetBook,
+  // the files are window.SheetFiles; this is only the screen around them. It makes no network call (no lookup: Penguin, 11/24).
+  var SheetPane = (function () {
+    'use strict';
+    var REREAD_MS = 4000;      // the same slab still in front of the camera: read again within this, nothing happens
+    var TOAST_MS = 5000;
+
+    var host = null;
+    var el = {};
+    var book = null;
+    var on = false;
+    var lastRead = { key: '', at: 0 };
+    var toastTimer = null, toastFn = null, flashTimer = null;
+    var swipe = null, swipeEatUntil = 0, touchAt = null, renderLater = false;
+    var nameMode = 'new';
+
+    function now() { return Date.now(); }
+    function escHtml(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+    }
+    function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+    function reduceMotion() {
+      try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }
+    }
+    function on_(node, type, fn, opts) { if (node && node.addEventListener) node.addEventListener(type, fn, opts); }
+
+    // ── wiring ───────────────────────────────────────────────────────────────────────────────────
+    function attach(h) {
+      if (host) return;
+      var root = document.getElementById('sc-sh');
+      if (!h || !root || !window.SheetBook || !window.SheetFiles) return; // not this page, or a page without the Sheet core: inert
+      host = h;
+      ['sc-sh', 'sc-sh-head', 'sc-sh-pick', 'sc-sh-name', 'sc-sh-export-open', 'sc-sh-num', 'sc-sh-unit', 'sc-sh-unexported', 'sc-sh-peek-name', 'sc-sh-last',
+        'sc-sh-rows', 'sc-sh-empty', 'sc-sh-type', 'sc-sh-input', 'sc-sh-add', 'sc-sh-toast', 'sc-sh-toast-text', 'sc-sh-toast-act',
+        'sc-sh-sheets', 'sc-sh-sheets-done', 'sc-sh-sheet-list', 'sc-sh-tools', 'sc-sh-new', 'sc-sh-rename', 'sc-sh-delete', 'sc-sh-name-form',
+        'sc-sh-name-label', 'sc-sh-name-input', 'sc-sh-name-save', 'sc-sh-name-cancel', 'sc-sh-delete-confirm', 'sc-sh-delete-text',
+        'sc-sh-delete-yes', 'sc-sh-delete-no', 'sc-sh-export', 'sc-sh-export-done', 'sc-sh-export-sub',
+        'sc-sh-export-btns', 'sc-sh-export-note'
+      ].forEach(function (id) { el[id.replace(/^sc-sh-?/, '') || 'root'] = document.getElementById(id); });
+      el.root = root;
+      wire();
+    }
+    function ensureBook() {
+      if (!book) book = window.SheetBook.createSheetBook({ storage: host.storage ? host.storage() : null, now: now });
+      return book;
+    }
+
+    function wire() {
+      on_(el.type, 'submit', function (ev) { if (ev && ev.preventDefault) ev.preventDefault(); typed(); });
+      on_(el['toast-act'], 'click', function () { var f = toastFn; hideToast(); if (f) f(); });
+      on_(el.pick, 'click', openPicker);
+      on_(el['export-open'], 'click', openExport);
+      on_(el['sheets-done'], 'click', function () { closeDialog(el.sheets); });
+      on_(el['export-done'], 'click', function () { closeDialog(el.export); });
+      [el.sheets, el.export].forEach(function (d) {
+        // a tap on the dimmed backdrop closes it (the dialog itself is the target only there)
+        on_(d, 'click', function (ev) { if (ev && ev.target === d) closeDialog(d); });
+      });
+      on_(el['sheet-list'], 'click', function (ev) {
+        var t = ev.target && ev.target.closest ? ev.target.closest('[data-open]') : null;
+        if (!t) return;
+        openSheet(t.getAttribute('data-open'));
+        closeDialog(el.sheets);
+      });
+      on_(el.new, 'click', function () { showNameForm('new'); });
+      on_(el.rename, 'click', function () { showNameForm('rename'); });
+      on_(el['name-cancel'], 'click', hideForms);
+      on_(el['name-form'], 'submit', function (ev) { if (ev && ev.preventDefault) ev.preventDefault(); saveName(); });
+      on_(el.delete, 'click', askDelete);
+      on_(el['delete-no'], 'click', hideForms);
+      on_(el['delete-yes'], 'click', deleteOpenSheet);
+      on_(el['export-btns'], 'click', function (ev) {
+        var t = ev.target && ev.target.closest ? ev.target.closest('[data-export]') : null;
+        if (t) doExport(t.getAttribute('data-export'));
+      });
+      on_(el.rows, 'click', rowClick);
+      on_(el.rows, 'pointerdown', swipeDown);
+      on_(el.rows, 'pointermove', swipeMove);
+      on_(el.rows, 'pointerup', swipeUp);
+      on_(el.rows, 'pointercancel', swipeCancel);
+      on_(el.rows, 'lostpointercapture', function (ev) { if (swipe && ev.pointerId === swipe.id && ev.target === swipe.row) swipeReset(); });
+      on_(el.rows, 'touchstart', function (ev) { var t = ev.touches && ev.touches.length === 1 ? ev.touches[0] : null; touchAt = t ? { x: t.clientX, y: t.clientY } : null; }, { passive: true });
+      // the page holds still under a swipe (the slab pile's own rule: SwipeRow.holdsPage, never on a scroll's first wobble)
+      on_(el.rows, 'touchmove', function (ev) {
+        var s = swipe, t = ev.touches && ev.touches.length === 1 ? ev.touches[0] : null;
+        if (!s || !t || !touchAt || ev.cancelable === false) return;
+        var early = s.swipe.state() === 'pending' && window.SwipeRow.holdsPage(t.clientX - touchAt.x, t.clientY - touchAt.y);
+        if (s.swipe.holding() || early) ev.preventDefault();
+      }, { passive: false });
+    }
+
+    // ── on / off (the tab bar) ─────────────────────────────────────────────────────────────────────
+    function allowed() { try { return !!(host && host.allowed()); } catch (e) { return false; } }
+    function changed() { try { if (host && typeof host.changed === 'function') host.changed(); } catch (e) { /* the bar redraws next time */ } }
+
+    function enter() {
+      if (!host || on || !allowed()) return false;
+      ensureBook();
+      on = true;
+      host.layout.classList.add('sc-sheet-mode');
+      el.root.hidden = false;
+      render();
+      changed();
+      return true;
+    }
+    function leave() {
+      if (!on) return;
+      on = false;
+      host.layout.classList.remove('sc-sheet-mode');
+      el.root.hidden = true;
+      hideToast();
+      closeDialog(el.sheets);
+      closeDialog(el.export);
+      swipeReset();
+      changed();
+    }
+    function refresh() { if (on && !allowed()) leave(); }
+    function paneActivate() { if (on) render(); }
+    function paneDeactivate() { hideToast(); }
+    function isOn() { return on; }
+
+    // ── feedback ────────────────────────────────────────────────────────────────────────────────
+    function good(viaApp) {
+      try { host.feedback.play('ok'); } catch (e) { /* sound off or blocked */ }
+      try { if (viaApp || host.inApp()) host.bridge.haptic('success'); } catch (e) { /* no buzz */ }
+    }
+    function bad() {
+      try { host.feedback.play('bad'); } catch (e) { /* sound off or blocked */ }
+      try { if (navigator.vibrate) navigator.vibrate(30); else if (host.inApp()) host.bridge.haptic('warning'); } catch (e) { /* no buzz */ }
+    }
+    function say(text, tone) {
+      el.last.textContent = text;
+      el.last.className = 'sc-sh-last' + (tone === 'bad' ? ' sc-sh-bad' : tone === 'good' ? ' sc-sh-good' : '');
+      try { if (host.say) host.say(text); } catch (e) { /* the camera's own status line is optional */ }
+    }
+    function toast(text, act, fn) {
+      clearTimeout(toastTimer);
+      el['toast-text'].textContent = text;
+      el['toast-act'].hidden = !act;
+      el['toast-act'].textContent = act || '';
+      toastFn = act ? fn : null;
+      el.toast.hidden = false;
+      toastTimer = setTimeout(hideToast, TOAST_MS);
+    }
+    function hideToast() { clearTimeout(toastTimer); toastFn = null; if (el.toast) el.toast.hidden = true; }
+
+    // ── a cert in ───────────────────────────────────────────────────────────────────────────────
+    /** A barcode or QR code from the slab camera (the app's panel, or the page's camera). Never priced, never locked. */
+    function scanned(raw, viaApp, format) {
+      if (!on) return;
+      var p = host.parse(String(raw == null ? '' : raw), true, format);
+      var key = p && p.cert ? String(p.cert).replace(/^0+(?=\d)/, '') : '';
+      // the same slab still in front of the camera, read again a moment later: nothing to say about it twice
+      if (key && key === lastRead.key && now() - lastRead.at < REREAD_MS) { lastRead.at = now(); return; }
+      lastRead = { key: key, at: now() };
+      take(p, viaApp);
+    }
+    function typed() {
+      var v = el.input.value;
+      if (!String(v).trim()) { try { el.input.focus(); } catch (e) { /* no focus */ } return; }
+      if (take(host.parse(v, false, ''), false)) el.input.value = '';
+    }
+    function take(p, viaApp) {
+      if (!p) return false;
+      if (!p.ok && p.cert && p.needsGrader && !p.checkLabel) p = { ok: true, cert: p.cert, grader: null }; // a BGS-style serial: the cert is the cert
+      if (!p.ok && p.checkLabel && p.cert) {
+        var cert = p.cert;
+        bad();
+        say('Old label? Check the slab reads ' + cert + '.', 'bad');
+        toast('Old label? Check it reads ' + cert, 'Add it', function () { add({ cert: cert, grader: 'psa' }, false); });
+        return false;
+      }
+      if (!p.ok) { bad(); say(p.why || "That's not a cert.", 'bad'); return false; }
+      return add(p, viaApp);
+    }
+    function add(p, viaApp) {
+      var s = book.open();
+      var r = book.add(s.id, p);
+      if (!r.ok) {
+        bad();
+        if (r.dup) {
+          var where = r.dup, key = r.row ? r.row.key : '', here = where.id === s.id;
+          var said = here ? 'Already on this sheet' : 'Already on sheet ' + where.name;
+          say(said + ': ' + p.cert, 'bad');
+          toast(said, here ? 'Show' : 'Open', function () { openSheet(where.id); flashRow(key); });
+          if (where.id === s.id) flashRow(key);
+        } else if (r.zero) say("Certs that start with 0 can't be taken: " + p.cert, 'bad');
+        else say("That's not a cert.", 'bad');
+        return false;
+      }
+      good(viaApp);
+      say('Added ' + r.row.cert, 'good');
+      render();
+      changed();
+      return true;
+    }
+
+    // ── the screen ───────────────────────────────────────────────────────────────────────────────
+    /** The grader the barcode or the typed word named ("PSA", "CGC"), as a small pill on the cert's line; none when it named none. */
+    function graderPill(grader) {
+      return grader ? '<span class="sc-sh-grader">' + escHtml(String(grader).toUpperCase()) + '</span>' : '';
+    }
+    function render() {
+      if (!on || !book) return;
+      if (swipe) { renderLater = true; return; } // a row under a finger is not redrawn away; it catches up on release
+      var s = book.open();
+      var n = s.rows.length;
+      el.name.textContent = s.name;
+      el['peek-name'].textContent = s.name; // the peek shows which sheet the scans are going on
+      el.num.textContent = String(n);
+      el.unit.textContent = n === 1 ? 'slab' : 'slabs';
+      el.unexported.hidden = !book.needsExport(s);
+      el['export-open'].disabled = n === 0;
+      if (!n && !el.last.textContent) say("Scan a slab's barcode to add it");
+      var h = '';
+      for (var i = n - 1; i >= 0; i--) {
+        var r = s.rows[i];
+        h += '<div class="sc-sh-row" data-key="' + escHtml(r.key) + '">' +
+          '<div class="sc-sh-del" aria-hidden="true"><span>Remove</span></div>' +
+          '<div class="sc-sh-slide"><span class="sc-sh-n" aria-hidden="true">' + (i + 1) + '</span>' +
+          '<div class="sc-sh-words"><div class="sc-sh-certline"><div class="sc-sh-cert">' + escHtml(r.cert) + '</div>' + graderPill(r.grader) + '</div></div>' +
+          '<button type="button" class="sc-sh-x" data-remove="' + escHtml(r.key) + '" aria-label="Remove ' + escHtml(r.cert) + '" title="Remove"></button></div></div>';
+      }
+      el.rows.innerHTML = h;
+      el.empty.hidden = n > 0;
+    }
+    function flashRow(key) {
+      if (!key || !el.rows.querySelector) return;
+      clearTimeout(flashTimer);
+      var row = null;
+      try { row = el.rows.querySelector('.sc-sh-row[data-key="' + key.replace(/[^0-9]/g, '') + '"]'); } catch (e) { row = null; }
+      if (!row) return;
+      row.classList.add('sc-sh-flash');
+      try { row.scrollIntoView({ block: 'nearest', behavior: reduceMotion() ? 'auto' : 'smooth' }); } catch (e) { /* old browser */ }
+      flashTimer = setTimeout(function () { row.classList.remove('sc-sh-flash'); }, 1600);
+    }
+    function openSheet(id) {
+      if (!book.select(id)) return;
+      hideForms();
+      say(book.open().rows.length ? 'Sheet ' + book.open().name : "Scan a slab's barcode to add it");
+      render();
+      changed();
+    }
+
+    // ── take one off (the x, or a swipe left), with Undo ─────────────────────────────────────────
+    function removeKey(key) {
+      var s = book.open();
+      var gone = book.removeRow(s.id, key);
+      if (!gone) return;
+      lastRead = { key: '', at: 0 }; // took it off: scanning it again puts it straight back on
+      render();
+      toast('Removed ' + gone.row.cert, 'Undo', function () {
+        var back = book.restore(s.id, gone.row, gone.index);
+        lastRead = { key: '', at: 0 };
+        if (back.ok) { if (book.open().id !== s.id) book.select(s.id); say('Put back ' + gone.row.cert, 'good'); }
+        else if (back.dup) say((back.dup.id === s.id ? 'Already on this sheet' : 'Already on sheet ' + back.dup.name) + ': ' + gone.row.cert, 'bad');
+        render();
+      });
+      changed();
+    }
+    function rowClick(ev) {
+      if (Date.now() < swipeEatUntil) return; // the click a swipe leaves behind
+      var t = ev.target && ev.target.closest ? ev.target.closest('[data-remove]') : null;
+      var key = t ? t.getAttribute('data-remove') : null;
+      if (key) removeKey(key);
+    }
+    function swipeShow(s, x) {
+      s.slide.style.transform = x ? 'translateX(' + x + 'px)' : '';
+      s.del.style.width = x < 0 ? (-x) + 'px' : '';
+    }
+    function swipeReset() {
+      var s = swipe;
+      swipe = null;
+      if (!s) return;
+      s.swipe.cancel();
+      s.row.classList.remove('sc-swiping');
+      swipeShow(s, 0);
+      if (renderLater) { renderLater = false; render(); }
+    }
+    function swipeDown(ev) {
+      swipeEatUntil = 0;
+      if (swipe) swipeReset();
+      if (ev.isPrimary === false || ev.button > 0 || !window.SwipeRow) return;
+      var row = ev.target && ev.target.closest ? ev.target.closest('.sc-sh-row') : null;
+      if (!row) return;
+      var slide = row.querySelector('.sc-sh-slide'), del = row.querySelector('.sc-sh-del');
+      if (!slide || !del) return;
+      var width = row.getBoundingClientRect().width;
+      swipe = { row: row, slide: slide, del: del, id: ev.pointerId, width: width, key: row.getAttribute('data-key'), swipe: window.SwipeRow.createSwipe(width) };
+      swipe.swipe.start(ev.clientX, ev.clientY, ev.timeStamp);
+    }
+    function swipeMove(ev) {
+      var s = swipe;
+      if (!s || ev.pointerId !== s.id) return;
+      var r = s.swipe.move(ev.clientX, ev.clientY, ev.timeStamp);
+      if (r.state === 'pass') { swipeReset(); return; } // a scroll (or a right swipe): the browser's
+      if (r.state !== 'swipe') return;
+      if (!s.row.classList.contains('sc-swiping')) {
+        s.row.classList.add('sc-swiping');
+        try { s.row.setPointerCapture(s.id); } catch (e) { /* the moves still bubble here */ }
+      }
+      swipeShow(s, r.offset);
+    }
+    function swipeUp(ev) {
+      var s = swipe;
+      if (!s || ev.pointerId !== s.id) return;
+      swipe = null;
+      var r = s.swipe.end(ev.clientX, ev.clientY, ev.timeStamp);
+      s.row.classList.remove('sc-swiping');
+      try { s.row.releasePointerCapture(s.id); } catch (e) { /* not held */ }
+      if (r.outcome === 'tap' || r.outcome === 'pass') { if (renderLater) { renderLater = false; render(); } return; }
+      swipeEatUntil = Date.now() + 350;
+      if (r.outcome !== 'delete') { swipeShow(s, 0); if (renderLater) { renderLater = false; render(); } return; }
+      renderLater = false;
+      if (reduceMotion()) { removeKey(s.key); return; }
+      swipeShow(s, -s.width);
+      setTimeout(function () { removeKey(s.key); }, 200);
+    }
+    function swipeCancel(ev) { if (swipe && ev.pointerId === swipe.id) swipeReset(); }
+
+    // ── the sheet picker: switch, New sheet, Rename, Delete (asks first) ─────────────────────────────
+    function openDialog(d) {
+      if (!d) return;
+      try { if (typeof d.showModal === 'function') { if (!d.open) d.showModal(); return; } } catch (e) { /* below */ }
+      d.setAttribute('open', '');
+    }
+    function closeDialog(d) {
+      if (!d) return;
+      try { if (typeof d.close === 'function' && d.open) { d.close(); return; } } catch (e) { /* below */ }
+      d.removeAttribute('open');
+    }
+    function renderPicker() {
+      var open = book.open();
+      el['sheet-list'].innerHTML = book.sheets().map(function (s) {
+        return '<button type="button" class="sc-sh-sheet-opt" data-open="' + escHtml(s.id) + '" aria-current="' + (s.id === open.id ? 'true' : 'false') + '">' +
+          '<span class="sc-sh-sheet-opt-name">' + escHtml(s.name) + '</span>' +
+          (book.needsExport(s) ? '<span class="sc-sh-sheet-opt-flag">Not exported</span>' : '') +
+          '<span class="sc-sh-sheet-opt-n">' + plural(s.rows.length, 'slab', 'slabs') + '</span></button>';
+      }).join('');
+    }
+    function openPicker() {
+      hideForms();
+      renderPicker();
+      openDialog(el.sheets);
+    }
+    function hideForms() {
+      el['name-form'].hidden = true;
+      el['delete-confirm'].hidden = true;
+      el.tools.hidden = false;
+    }
+    function showNameForm(mode) {
+      nameMode = mode;
+      el.tools.hidden = true;
+      el['delete-confirm'].hidden = true;
+      el['name-form'].hidden = false;
+      el['name-label'].textContent = mode === 'new' ? 'Name the new sheet' : 'Rename this sheet';
+      el['name-save'].textContent = mode === 'new' ? 'Create' : 'Save';
+      el['name-input'].value = mode === 'new' ? window.SheetBook.defaultName(now()) : book.open().name;
+      try { el['name-input'].focus(); el['name-input'].select(); } catch (e) { /* no focus */ }
+    }
+    function saveName() {
+      var name = el['name-input'].value;
+      if (nameMode === 'new') {
+        var s = book.create(name);
+        say('New sheet ' + s.name);
+        closeDialog(el.sheets);
+      } else if (!book.rename(book.open().id, name)) { try { el['name-input'].focus(); } catch (e) { /* no focus */ } return; }
+      else { hideToast(); say('Renamed to ' + book.open().name); }
+      hideForms();
+      renderPicker();
+      render();
+      changed();
+    }
+    function askDelete() {
+      var s = book.open();
+      el.tools.hidden = true;
+      el['name-form'].hidden = true;
+      el['delete-confirm'].hidden = false;
+      el['delete-text'].textContent = 'Delete "' + s.name + '"' + (s.rows.length ? ' and its ' + plural(s.rows.length, 'cert', 'certs') : '') + "? This can't be undone.";
+    }
+    function deleteOpenSheet() {
+      var s = book.open();
+      book.remove(s.id);
+      lastRead = { key: '', at: 0 };
+      hideToast();
+      say('Deleted ' + s.name);
+      hideForms();
+      renderPicker();
+      render();
+      changed();
+    }
+
+    // ── export: certs only ───────────────────────────────────────────────────────────────────────
+    function openExport() {
+      var s = book.open();
+      if (!s.rows.length) return;
+      el['export-note'].textContent = '';
+      el['export-sub'].textContent = plural(s.rows.length, 'cert', 'certs') + ' from ' + s.name + '. Certs only, in the order you scanned them.';
+      openDialog(el.export);
+    }
+    function clipboard(text) {
+      function legacy() {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+          document.body.appendChild(ta); ta.select();
+          var ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          return !!ok;
+        } catch (e) { return false; }
+      }
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text).then(function () { return true; }, function () { return legacy(); });
+        }
+      } catch (e) { /* the old way below */ }
+      return Promise.resolve(legacy());
+    }
+    function isIos() {
+      try { return /iP(hone|ad|od)/.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); } catch (e) { return false; }
+    }
+    /** A file to the person: the phone's share sheet when it takes files (the iPhone app's web view, a phone's browser), else a
+        download (a computer; the Android app, whose bridge turns a download link into saveFile). An iPhone with no share sheet for
+        files gets 'failed', NOT a download: its web view does nothing with a blob link (lkCsv's note), and the page could not tell,
+        so it would say "Saved" with no file anywhere. 'failed' makes the caller copy the certs instead and say so.
+        -> 'saved' | 'cancelled' | 'failed' */
+    function deliver(data, name, mime) {
+      function download() {
+        try {
+          var blob = new Blob([data], { type: mime });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url; a.download = name; a.style.display = 'none';
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          setTimeout(function () { try { URL.revokeObjectURL(url); } catch (e) { /* gone with the page */ } }, 4000);
+          return 'saved';
+        } catch (e) { return 'failed'; }
+      }
+      try {
+        var touch = host.inApp() || (navigator.maxTouchPoints || 0) > 0;
+        var file = typeof File === 'function' ? new File([data], name, { type: mime }) : null;
+        if (touch && file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          return navigator.share({ files: [file], title: name }).then(function () { return 'saved'; },
+            function (e) { return e && e.name === 'AbortError' ? 'cancelled' : isIos() ? 'failed' : download(); });
+        }
+      } catch (e) { /* the download below */ }
+      if (isIos()) return Promise.resolve('failed');
+      return Promise.resolve(download());
+    }
+    function exportNote(text) { el['export-note'].textContent = text; say(text, 'good'); }
+    function doExport(kind) {
+      var s = book.open();
+      var certs = book.certsOf(s);
+      if (!certs.length) return;
+      var F = window.SheetFiles;
+      var count = plural(certs.length, 'cert', 'certs');
+      var copyInstead = function (why) {
+        return clipboard(F.copyText(certs)).then(function (ok) {
+          if (ok) { book.markExported(s.id); exportNote(why + ' ' + (certs.length === 1 ? 'The cert was' : 'The ' + count + ' were') + ' copied instead. Paste them anywhere.'); }
+          else exportNote("Couldn't save or copy here. Try again.");
+        });
+      };
+      var done = function () { render(); renderPicker(); };
+      if (kind === 'copy') {
+        clipboard(F.copyText(certs)).then(function (ok) {
+          if (ok) { book.markExported(s.id); exportNote('Copied ' + count + '. Paste them anywhere.'); }
+          else exportNote("Couldn't copy. Try CSV or Excel.");
+        }).then(done);
+        return;
+      }
+      var name = F.fileBase(s.name) + (kind === 'csv' ? '.csv' : '.xlsx');
+      var data = kind === 'csv' ? F.csvText(certs) : F.xlsxBytes(certs);
+      deliver(data, name, kind === 'csv' ? F.CSV_MIME : F.XLSX_MIME).then(function (res) {
+        if (res === 'saved') { book.markExported(s.id); exportNote('Saved ' + name); return null; }
+        if (res === 'cancelled') { exportNote('Not saved.'); return null; }
+        return copyInstead("This phone can't save the file here.");
+      }).then(done, done);
+    }
+
+    return {
+      attach: attach, activate: paneActivate, deactivate: paneDeactivate, refresh: refresh, isOn: isOn,
+      enter: enter, leave: leave, scanned: scanned,
+    };
+  })();
+/* SHEET-PANE-JS:END */
 </script>
 
 <script>
@@ -16462,8 +17565,24 @@ window.SinglesPrice = {
     return {
       attach: call('attach'), activate: call('activate'), deactivate: call('deactivate'), refresh: call('refresh'),
       isOn: call('isOn', false), claimsCamera: call('claimsCamera', false), slabScanned: call('slabScanned'), cardRead: call('cardRead'),
+      available: call('available', false), pick: call('pick'),
     };
   })(window.SinglesPane);
+  // The Sheet tab (rates-portal/sheet-pane.html, its own <script> after the Sheet core): reached the same way, through a guard that
+  // catches every call. With no pane (or one that failed to load) the Sheet is simply off: isOn false, enter does nothing, and the
+  // tab bar never offers it (an owner then sees Slabs | Singles, or no bar at all).
+  var SheetPane = (function (pane) {
+    function call(name, fallback) {
+      return function () {
+        try { return pane && typeof pane[name] === 'function' ? pane[name].apply(pane, arguments) : fallback; } catch (e) { return fallback; }
+      };
+    }
+    return {
+      attach: call('attach'), activate: call('activate'), deactivate: call('deactivate'), refresh: call('refresh'),
+      isOn: call('isOn', false), enter: call('enter', false), leave: call('leave'), scanned: call('scanned'),
+      present: function () { return !!(pane && typeof pane.enter === 'function' && document.getElementById('sc-sh')); },
+    };
+  })(window.SheetPane);
   var ScannerTab = (function () {
     function isActive() { return activeTab === 'scanner'; }
 
@@ -16549,6 +17668,7 @@ window.SinglesPrice = {
       clearYes: document.getElementById('sc-clear-yes'),
       clearNo: document.getElementById('sc-clear-no'),
       layout: document.getElementById('sc-layout'),
+      tabbar: document.getElementById('sc-tabbar'),
       graderPick: document.getElementById('sc-grader-pick'),
       graderPickText: document.getElementById('sc-grader-pick-text'),
       seller: document.getElementById('sc-seller'),
@@ -19398,6 +20518,8 @@ window.SinglesPrice = {
 
     function applyLockMode() {
       SinglesPane.refresh(); // who may see Singles (owners only, never in lock mode) may have changed with this
+      SheetPane.refresh();   // ...and the Sheet (owners; sourcers only once SHEET_FOR_SOURCERS is on)
+      renderTabs();
       var mode = lkMode();
       if (mode === lk.mode) return;
       // whatever it was, it ends here: another login on this phone never sees this one's locks
@@ -20591,6 +21713,7 @@ window.SinglesPrice = {
         ("ITF", "itf", "code_128"...), or '' from an app build that doesn't send one. */
     function handleScanned(raw, viaApp, format) {
       if (singlesOn()) { SinglesPane.slabScanned(raw); return; } // Singles on: "That's a slab: switch to Slabs?", nothing priced
+      if (sheetOn()) { SheetPane.scanned(raw, !!viaApp, format || ''); return; } // the Sheet: the cert goes on the open sheet, never priced or locked
       var parsed = Certs.parseOneCert(raw, { scan: true, format: format || '', buyGraders: scanBuyGraders() });
       var say = function (text) { if (cam) dom.vfStatus.textContent = text; else dom.vfOffText.textContent = text; };
       if (!parsed.ok) {
@@ -21488,6 +22611,7 @@ window.SinglesPrice = {
       layout: dom.layout, bridge: bridge, feedback: feedback,
       allowed: function () { return !!session && roleState() === 'owner' && !lkOn(); },
       inApp: function () { return bridge.isAvailable(); },
+      changed: function () { renderTabs(); },
       slabCamerasOff: function () {
         closeCamera();
         if (nativeScannerOpen) { bridge.closeScanner(); setNativeCamera(false); }
@@ -21502,6 +22626,116 @@ window.SinglesPrice = {
       }
     });
 
+    // ── The bottom tab bar (Penguin, 11/24: "slabs, singles, sheet and whatever we wanna add in the future"). It replaced the
+    // Slabs | Singles switch: one bar at the very bottom, an icon and a word per tab (the CSS draws it: .sc-tabbar). The tabs are
+    // the TABS list below, in order; a new screen is one more entry (an id, its word, who may see it) plus its pane. Who sees what:
+    //   - an owner: Slabs | Singles | Sheet (Singles only while SinglesPane says it may show today: singles-live's /status), else
+    //     Slabs | Sheet;
+    //   - a sourcer (lock mode): Slabs | Sheet, ONLY once SHEET_FOR_SOURCERS is true. While it is false a sourcer sees no bar at all,
+    //     and the lock screens are exactly what they were (no class, no request, nothing in storage changes for them);
+    //   - signed out, or a login the server has not answered for yet ('Checking your account'): no bar.
+    // A bar with one tab is no bar. The last tab is kept under iopKind ('slabs' | 'singles' | 'sheet'); one that is no longer
+    // allowed falls back to Slabs. The camera hand-offs stay where they were: Singles sends the slab cameras away and brings them
+    // back (SinglesPane), and the Sheet uses the slab camera itself (the app's panel, or this page's camera in a browser).
+    var SHEET_FOR_SOURCERS = false; // Penguin's go for the Sheet on sourcers' phones: true gives them Slabs | Sheet. This line only.
+    var KIND_KEY = 'iopKind';
+    var TABS = [
+      { id: 'slabs', label: 'Slabs', allowed: function () { return true; } },
+      { id: 'singles', label: 'Singles', allowed: function (role) { return role === 'owner' && SinglesPane.available(); } },
+      { id: 'sheet', label: 'Sheet', allowed: function (role) { return SheetPane.present() && (role === 'owner' || (role === 'sourcer' && SHEET_FOR_SOURCERS)); } },
+    ];
+    /** Whose bar this is: 'owner', 'sourcer' (lock mode, the server said so) or 'none' (signed out, or not answered for yet). */
+    function barRole() {
+      if (!session) return 'none';
+      var m = lkMode();
+      return m === 'off' ? 'owner' : m === 'lock' ? 'sourcer' : 'none';
+    }
+    /** The tabs on show right now, in order: [] means no bar. */
+    function tabsNow() {
+      if (!TABS) return [];
+      var role = barRole();
+      if (role === 'none') return [];
+      var list = TABS.filter(function (t) { try { return !!t.allowed(role); } catch (e) { return false; } });
+      return list.length > 1 ? list : [];
+    }
+    function sheetOn() { return SheetPane.isOn(); }
+    function tabOn() { return singlesOn() ? 'singles' : sheetOn() ? 'sheet' : 'slabs'; }
+    function savedKind() { try { var s = safeLocalStorage(); return s ? s.getItem(KIND_KEY) : null; } catch (e) { return null; } }
+    function saveKind(kind) { try { var s = safeLocalStorage(); if (s) s.setItem(KIND_KEY, kind); } catch (e) { /* this visit only */ } }
+    var sheetMayAuto = true; // opening the Scanner goes back to the Sheet when it was the last tab (until the first tap)
+    var tabsDrawn = null;
+    function renderTabs() {
+      if (!dom.tabbar || !TABS) return; // (applyLockMode can run before this part of the module has)
+      var list = tabsNow();
+      var ids = list.map(function (t) { return t.id; });
+      if (sheetOn() && ids.indexOf('sheet') < 0) SheetPane.leave(); // no longer allowed: back to Slabs (iopKind kept)
+      if (sheetMayAuto && scannerActive && ids.indexOf('sheet') >= 0 && !sheetOn() && !singlesOn() && savedKind() === 'sheet') {
+        sheetMayAuto = false;
+        SheetPane.enter();
+      }
+      var cur = tabOn();
+      var html = list.map(function (t) {
+        return '<button type="button" class="sc-tab" data-tab="' + t.id + '"' + (t.id === cur ? ' aria-current="page"' : '') + '>' + esc(t.label) + '</button>';
+      }).join('');
+      if (!list.length && tabsDrawn === null) return; // never shown: nothing to take away (a sourcer's screen stays exactly as it was)
+      // the header's word under the logo says which screen this is: "Sheet" on the Sheet (it is not pricing anything)
+      try {
+        var sub = document.querySelector('#tab-scanner .sc-brand-sub');
+        var word = cur === 'sheet' ? 'Sheet' : 'Pricing';
+        if (sub && sub.textContent !== word) sub.textContent = word;
+      } catch (e) { /* the header keeps its word */ }
+      if (html === tabsDrawn) return;
+      tabsDrawn = html;
+      dom.tabbar.innerHTML = html;
+      dom.tabbar.hidden = !list.length;
+      // the class is on #tab-scanner, not on the layout: the layout's own classes (the app's sheet, lock mode) stay exactly as they were
+      var root = document.getElementById('tab-scanner') || dom.layout;
+      if (list.length) root.classList.add('sc-has-tabbar'); else root.classList.remove('sc-has-tabbar');
+    }
+    function buzzTab() {
+      try { if (navigator.vibrate) navigator.vibrate(8); else if (bridge.isAvailable()) bridge.haptic('success'); } catch (e) { /* no buzz */ }
+    }
+    function pickTab(id) {
+      sheetMayAuto = false;
+      if (!tabsNow().some(function (t) { return t.id === id; })) return;
+      var cur = tabOn();
+      if (id === cur) { try { window.scrollTo(0, 0); } catch (e) { /* stays */ } return; }
+      if (cur === 'singles') SinglesPane.pick('slabs'); // Singles' camera stops and the slab camera comes back (it buzzes)
+      if (cur === 'sheet') SheetPane.leave();
+      if (id === 'singles') SinglesPane.pick('singles'); // sends the slab cameras away, starts its own (it buzzes, saves iopKind)
+      else {
+        if (id === 'sheet') SheetPane.enter();
+        saveKind(id);
+        if (cur !== 'singles') buzzTab();
+      }
+      renderTabs();
+    }
+    if (dom.tabbar) {
+      dom.tabbar.addEventListener('click', function (ev) {
+        var b = ev.target && ev.target.closest ? ev.target.closest('[data-tab]') : null;
+        if (b) pickTab(b.getAttribute('data-tab'));
+      });
+    }
+
+    // ── The Sheet's ties to the slab screen: the slab camera's reads come in through handleScanned (above), and the cert reader is
+    // the page's own (certs.js parseOneCert: PSA/CGC links, leading zeros, a typed grader word). NO LOOKUP (Penguin, 11/24): the
+    // Sheet makes no network call for a cert. Its old lookup (triumph-sourcer's lookup, for the card's name and grade)
+    // put every cert on Josh's Triumph member draft, which Triumph counts as pool used, so the page hands the pane none.
+    var SHEET_GRADERS = (function () {
+      var out = [];
+      Object.keys(Certs.GRADER_WORDS).forEach(function (w) { var g = Certs.GRADER_WORDS[w]; if (out.indexOf(g) < 0) out.push(g); });
+      return out;
+    })();
+    SheetPane.attach({
+      layout: dom.layout, bridge: bridge, feedback: feedback,
+      storage: safeLocalStorage,
+      allowed: function () { return tabsNow().some(function (t) { return t.id === 'sheet'; }); },
+      inApp: function () { return bridge.isAvailable(); },
+      parse: function (raw, scan, format) { return Certs.parseOneCert(raw, { scan: !!scan, format: format || '', buyGraders: SHEET_GRADERS }); },
+      say: function (text) { if (cam) dom.vfStatus.textContent = text; else dom.vfOffText.textContent = text; },
+      changed: function () { renderTabs(); },
+    });
+
     var resumed = false;
     function activate() {
       wireOnce();
@@ -21511,8 +22745,11 @@ window.SinglesPrice = {
       if (bridge.cameraPanelSupported() && !session && !panelShown) bridge.hideScanner();
       if (bridge.cameraPanelSupported()) showPanelIfReady(); else autoCamera();
       applyPageHiding();
+      sheetMayAuto = true;
       applyLockMode();
       SinglesPane.activate();
+      SheetPane.activate();
+      renderTabs();
       if (lk.on) { // back on this tab: the status ticks again, and so does the Allocation tab if it is the one showing (with a fresh read if its numbers went stale)
         lkStartTimer(); lkStatus();
         if (lk.tab === 'alloc') { if (lk.alloc && Date.now() - lk.allocAt >= LK_ALLOC_EVERY_MS - 1000) lkLoadAlloc(true); lkAllocStart(); }
@@ -21527,6 +22764,7 @@ window.SinglesPrice = {
     function deactivate() {
       scannerActive = false;
       SinglesPane.deactivate();
+      SheetPane.deactivate();
       closeCamera();
       stopAllAveragePolls();
       lkStopTimer();
