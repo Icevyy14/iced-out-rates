@@ -542,6 +542,121 @@ code{font-family:var(--font-mono);font-size:.92em;}
     #scr-card .scr-empty{padding:14px;font-size:13px;color:var(--dim);}
   </style>
 
+  <!-- App accounts: who can sign in to the Iced Out Pricing app. Add, change and remove them here instead of with /sourcer in Discord.
+       Hidden, and never fetched, until this page is unlocked with the edit key (AppAccounts in MODULE:consignors); the sourcer-accounts
+       function takes the same edit key on its /admin routes. Folded to its title and a one-line count, like Scanner rates. -->
+  <section class="card aa-card" id="aa-card" hidden>
+    <div class="sec-head">
+      <div>
+        <div class="sec-title">&#128100; App accounts</div>
+        <div class="sec-sub">Who can sign in to the Iced Out Pricing app, what they see, and the points they get under the portal %. Private: shown only after the edit key.</div>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" id="aa-toggle" aria-expanded="false" aria-controls="aa-body">Show accounts</button>
+    </div>
+    <div class="aa-status" id="aa-status" role="status" aria-live="polite"></div>
+    <div id="aa-body" hidden>
+      <div class="aa-code" id="aa-code" hidden tabindex="-1" aria-labelledby="aa-code-title">
+        <div class="aa-code-head">
+          <div class="aa-code-title" id="aa-code-title"></div>
+          <div class="aa-code-note">Shown once. Copy it now: it is gone when you press Done or leave this page.</div>
+        </div>
+        <div class="aa-code-value" id="aa-code-value"></div>
+        <dl class="aa-code-facts">
+          <div><dt>Username</dt><dd id="aa-code-user"></dd></div>
+          <div><dt>Sign in at</dt><dd id="aa-code-link"></dd></div>
+          <div><dt>Code works until</dt><dd id="aa-code-expiry"></dd></div>
+        </dl>
+        <div class="aa-actions">
+          <button type="button" class="btn btn-sm btn-save" id="aa-code-copy">Copy message for them</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="aa-code-copycode">Copy code only</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="aa-code-done">Done</button>
+        </div>
+      </div>
+      <div class="aa-list" id="aa-list"></div>
+      <div class="aa-removed-bar"><button type="button" class="btn btn-ghost btn-sm" id="aa-removed-toggle" aria-expanded="false" aria-controls="aa-removed" hidden>Show removed</button></div>
+      <div class="aa-list aa-removed" id="aa-removed" hidden></div>
+      <div class="aa-add" id="aa-add">
+        <div class="sub-head">Add an account</div>
+        <div class="aa-add-grid">
+          <div class="form-group">
+            <label class="form-label" for="aa-name">Name</label>
+            <input class="form-input" id="aa-name" type="text" maxlength="80" placeholder="Their name" autocapitalize="off" autocorrect="off" spellcheck="false">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="aa-discord">Discord member id (optional)</label>
+            <input class="form-input" id="aa-discord" type="text" inputmode="numeric" maxlength="25" placeholder="Digits only" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="aa-mode">App mode</label>
+            <select class="form-select" id="aa-mode"><option value="lock">Lock only</option><option value="price_lock">Price + lock</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="aa-cut">Cut (points under the portal %)</label>
+            <input class="form-input" id="aa-cut" type="number" inputmode="decimal" min="0" max="30" step="0.25" value="2">
+          </div>
+        </div>
+        <label class="aa-check"><input type="checkbox" id="aa-avg"> <span>Averages on (prices on Card Ladder&#39;s average of 3)</span></label>
+        <div class="aa-actions">
+          <button type="button" class="btn btn-sm btn-save" id="aa-add-btn">Add account and get setup code</button>
+        </div>
+      </div>
+    </div>
+  </section>
+  <style>
+    #aa-card{margin:0 0 18px;}
+    #aa-card .sec-head{align-items:center;}
+    #aa-card #aa-toggle{flex:none;}
+    #aa-card .aa-status{font-size:12px;color:var(--dim);margin:6px 0 10px;}
+    #aa-card .aa-status.err{color:var(--red);}
+    #aa-card .aa-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px;margin:0 0 14px;}
+    #aa-card .aa-list[hidden]{display:none;}
+    #aa-card .aa-empty{padding:14px 4px;font-size:13px;color:var(--dim);grid-column:1 / -1;}
+    #aa-card .aa-row{background:var(--s1);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px;display:grid;gap:12px;align-content:start;}
+    #aa-card .aa-row.is-frozen .aa-name{color:var(--dim);}
+    #aa-card .aa-row.is-busy{opacity:.6;}
+    #aa-card .aa-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+    #aa-card .aa-who{min-width:0;}
+    #aa-card .aa-name{font-size:15px;font-weight:800;overflow-wrap:anywhere;}
+    #aa-card .aa-handle{font-size:11px;color:var(--dim);font-family:var(--font-mono);overflow-wrap:anywhere;margin-top:2px;}
+    #aa-card .aa-meta{font-size:11px;color:var(--dim);line-height:1.5;}
+    #aa-card .aa-controls{display:grid;grid-template-columns:1.3fr .8fr .9fr;gap:10px;align-items:end;}
+    #aa-card .aa-controls .form-label{margin-bottom:5px;}
+    #aa-card .aa-controls .form-select,#aa-card .aa-controls .form-input{padding:8px 10px;}
+    #aa-card .aa-switch{width:100%;padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);background:var(--s2);color:var(--dim);font-family:var(--font-ui);font-size:13px;font-weight:700;cursor:pointer;text-align:left;}
+    #aa-card .aa-switch[aria-checked="true"]{border-color:var(--buy);color:var(--text);background:color-mix(in srgb, var(--buy) 18%, var(--s2));}
+    #aa-card .aa-read{display:grid;grid-template-columns:1.3fr .8fr .9fr;gap:10px;font-size:13px;}
+    #aa-card .aa-read .form-label{margin-bottom:3px;}
+    #aa-card .aa-note{font-size:11px;color:var(--dim);}
+    #aa-card .aa-actions{display:flex;flex-wrap:wrap;gap:8px;}
+    #aa-card .aa-removed-bar{margin:-4px 0 14px;}
+    #aa-card .aa-removed .aa-row{opacity:.85;}
+    #aa-card .aa-add{border-top:1px solid var(--border);padding-top:14px;}
+    #aa-card .aa-add-grid{display:grid;grid-template-columns:1.2fr 1.2fr 1fr 1fr;gap:12px;}
+    #aa-card .aa-check{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text);margin:0 0 14px;cursor:pointer;}
+    #aa-card .aa-check input{width:20px;height:20px;accent-color:var(--buy);flex:none;}
+    #aa-card .aa-code{background:linear-gradient(165deg, var(--s2), var(--s1));border:1.5px solid var(--buy);border-radius:var(--r-lg);padding:16px;margin:0 0 14px;box-shadow:0 0 18px rgba(63,169,255,.25), inset 0 1px 0 rgba(63,169,255,.08);}
+    #aa-card .aa-code[hidden]{display:none;}
+    #aa-card .aa-code-title{font-size:15px;font-weight:800;}
+    #aa-card .aa-code-note{font-size:11px;color:var(--dim);margin-top:2px;}
+    #aa-card .aa-code-value{font-family:var(--font-mono);font-size:30px;font-weight:700;letter-spacing:3px;margin:12px 0;user-select:all;-webkit-user-select:all;overflow-wrap:anywhere;color:var(--text);}
+    #aa-card .aa-code-facts{display:grid;gap:6px;margin:0 0 14px;font-size:13px;}
+    #aa-card .aa-code-facts div{display:flex;flex-wrap:wrap;gap:4px 10px;}
+    #aa-card .aa-code-facts dt{font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);min-width:120px;align-self:center;}
+    #aa-card .aa-code-facts dd{margin:0;font-weight:700;overflow-wrap:anywhere;user-select:all;-webkit-user-select:all;}
+    #aa-card button:focus-visible,#aa-card input:focus-visible,#aa-card select:focus-visible{outline:2px solid var(--buy);outline-offset:2px;}
+    @media (max-width:768px){
+      #aa-card{padding:16px 14px;}
+      #aa-card .aa-list{grid-template-columns:1fr;}
+      #aa-card .aa-controls,#aa-card .aa-read{grid-template-columns:1fr 1fr;}
+      #aa-card .aa-controls > :first-child,#aa-card .aa-read > :first-child{grid-column:1 / -1;}
+      #aa-card .aa-add-grid{grid-template-columns:1fr;gap:0;}
+      #aa-card .aa-actions .btn,#aa-card #aa-toggle,#aa-card #aa-removed-toggle{min-height:44px;}
+      #aa-card .aa-actions .btn{flex:1 1 auto;}
+      #aa-card .aa-controls .form-select,#aa-card .aa-controls .form-input,#aa-card .aa-switch,#aa-card .aa-add .form-input,#aa-card .aa-add .form-select{min-height:44px;font-size:16px;}
+      #aa-card .aa-code-value{font-size:26px;letter-spacing:2px;}
+    }
+  </style>
+
   <section class="week-bar" id="week-bar" aria-label="Which week to show">
     <div class="filter-group" id="week-switch" role="group" aria-label="Week">
       <button type="button" class="filter-chip active" data-week="this" aria-pressed="true" title="Lots quoted since Friday 8 PM Eastern">This week</button>
@@ -3484,6 +3599,433 @@ window.LedgerView = {
         base = null; rows = [];
         dom.rows.innerHTML = '';
         showErrors(null);
+        loadWhenUnlocked();
+      };
+    })();
+
+    return { load: load };
+  })();
+
+  // ── App accounts: who can sign in to the Iced Out Pricing app, managed here instead of with /sourcer in Discord.
+  // The sourcer-accounts function's /admin routes take THIS page's edit key (x-edit-key). Nothing is fetched or shown until the page is
+  // unlocked (whenUnlocked), and a relock hides, blanks and forgets everything, a setup code included. A setup code is held in memory
+  // only, shown once, and gone on Done, on the next add or reset, on a relock or on leaving the page: it is never written to storage.
+  // Remove = freeze and hide (the function keeps the account, its Discord link and every ticket); Restore = unfreeze. Owner accounts
+  // come back from the function marked `protected` and are shown read only (the function refuses to change them too). ───────────────
+  var AppAccounts = (function () {
+    var dom = {
+      card: document.getElementById('aa-card'),
+      status: document.getElementById('aa-status'),
+      toggle: document.getElementById('aa-toggle'),
+      body: document.getElementById('aa-body'),
+      list: document.getElementById('aa-list'),
+      removed: document.getElementById('aa-removed'),
+      removedToggle: document.getElementById('aa-removed-toggle'),
+      code: document.getElementById('aa-code'),
+      codeTitle: document.getElementById('aa-code-title'),
+      codeValue: document.getElementById('aa-code-value'),
+      codeUser: document.getElementById('aa-code-user'),
+      codeLink: document.getElementById('aa-code-link'),
+      codeExpiry: document.getElementById('aa-code-expiry'),
+      codeCopy: document.getElementById('aa-code-copy'),
+      codeCopyCode: document.getElementById('aa-code-copycode'),
+      codeDone: document.getElementById('aa-code-done'),
+      add: document.getElementById('aa-add'),
+      addBtn: document.getElementById('aa-add-btn'),
+      name: document.getElementById('aa-name'),
+      discord: document.getElementById('aa-discord'),
+      mode: document.getElementById('aa-mode'),
+      cut: document.getElementById('aa-cut'),
+      avg: document.getElementById('aa-avg')
+    };
+    if (!dom.card || !dom.list || !dom.add) return null;
+
+    var LOGIN_URL = 'https://icedoutpenguin.app';
+    var DEFAULT_CUT = 2;
+    var OPEN_KEY = 'iopAaOpen';
+    var MODE_LABEL = { lock: 'Lock only', price_lock: 'Price + lock' };
+    var STATUS_LABEL = { active: 'Active', frozen: 'Frozen', setup: 'Setup pending' };
+    var STATUS_PILL = { active: 'st-paid', frozen: 'st-cancelled', setup: 'st-shipped' };
+
+    var accounts = [];      // the function's list (viewOf + protected + hidden), as last read
+    var loaded = false;
+    var showRemoved = false;
+    var busy = {};          // user id -> true while one of its requests is in flight
+    var adding = false;
+    var reveal = null;      // { title, username, code, expiresAt }: the one-time setup code on screen, in memory only
+
+    function setOpen(open) {
+      dom.body.hidden = !open;
+      dom.toggle.textContent = open ? 'Hide' : 'Show accounts';
+      dom.toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      try { localStorage.setItem(OPEN_KEY, open ? '1' : '0'); } catch (e) {}
+    }
+    var wasOpen = false;
+    try { wasOpen = localStorage.getItem(OPEN_KEY) === '1'; } catch (e) {}
+    setOpen(wasOpen);
+    dom.toggle.addEventListener('click', function () { setOpen(dom.body.hidden); });
+
+    function setStatus(text, isErr) {
+      dom.status.textContent = text || '';
+      dom.status.className = 'aa-status' + (isErr ? ' err' : '');
+    }
+
+    // ── the function ──
+    function base() {
+      var meta = document.querySelector('meta[name="sourcer-api"]');
+      return meta && meta.content ? String(meta.content).replace(new RegExp('[/]+$'), '') : '';
+    }
+    /** One call to /admin/<action> with the edit key. { status, body } ({} when the answer is not JSON); a network failure rejects. */
+    function call(action, payload) {
+      var key = getStoredKey();
+      if (!key) { showLock('Enter the edit key.'); return Promise.resolve({ status: 0, body: {} }); }
+      var headers = { accept: 'application/json', 'x-edit-key': key };
+      var init = { method: payload ? 'POST' : 'GET', headers: headers };
+      if (payload) { headers['content-type'] = 'application/json'; init.body = JSON.stringify(payload); }
+      return fetch(base() + '/admin/' + action, init).then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (body) { return { status: res.status, body: body || {} }; });
+      });
+    }
+
+    var ERROR_TEXT = {
+      'protected': 'Owner accounts cannot be changed here.',
+      'username-taken': 'That username is taken. If a removed account has it, restore that one instead.',
+      'exists': 'That Discord member already has an account.',
+      'email-login': 'An older email login already has that name. Pick a different name.',
+      'bad-username': 'Enter a name with at least 2 letters or numbers.',
+      'bad-discord-id': 'That is not a Discord member id. Use the digits only, or leave it empty.',
+      'bad-points': 'The cut must be a number from 0 to 30.',
+      'bad-mode': 'Pick Lock only or Price + lock.',
+      'bad-avg': 'Averages must be on or off.',
+      'mode-unavailable': 'The database update for App mode is not applied yet.',
+      'avg-unavailable': 'The database update for Averages is not applied yet.',
+      'frozen': 'That account is frozen. Unfreeze it first.',
+      'no-username': 'An email login has no setup code.',
+      'not-found': 'That account is not there any more. The list was reloaded.',
+      'code-failed': 'The account was made, but its setup code was not saved. Press New setup code on it.',
+      'hide-failed': 'It was frozen but could not be hidden. Press Remove again.'
+    };
+    /** Words for a failed answer. A 401 never wipes the stored key (an older function that does not know the edit key also says 401). */
+    function failText(out) {
+      if (out.status === 401) return 'The accounts server did not accept the edit key. If the key works on the other cards, the sourcer-accounts function needs its update.';
+      var code = out.body && out.body.error;
+      if (code && ERROR_TEXT[code]) return ERROR_TEXT[code];
+      if (out.status === 403) return 'The accounts server refused that.';
+      return 'Something went wrong (' + out.status + '). Try again in a minute.';
+    }
+    var NETWORK_TEXT = 'Could not reach the accounts server.';
+
+    // ── what is shown ──
+    function isOwner(a) { return a.protected === true; }
+    function stateOf(a) { return isOwner(a) ? 'owner' : (a.status === 'frozen' ? 'frozen' : a.status === 'setup' ? 'setup' : 'active'); }
+    function nameOf(a) { return a.displayName || a.username || 'Unnamed account'; }
+    function cutText(n) { return String(Number(n)) + (Number(n) === 1 ? ' point' : ' points'); }
+    function metaText(a) {
+      var parts = [];
+      if (a.status === 'frozen') parts.push(a.frozenAt && fmtTime(a.frozenAt) ? 'Frozen ' + fmtTime(a.frozenAt) : 'Frozen');
+      else if (a.status === 'setup') parts.push(a.codeExpiresAt ? 'Waiting for them to set a password (code works until ' + fmtTime(a.codeExpiresAt) + ')' : 'Waiting for them to set a password (the code was used up or expired, press New setup code)');
+      else parts.push(a.setupAt && fmtTime(a.setupAt) ? 'Set up ' + fmtTime(a.setupAt) : (a.emailLogin ? 'Signs in with an email' : 'Active'));
+      if (a.createdAt && fmtTime(a.createdAt)) parts.push('Added ' + fmtTime(a.createdAt));
+      return parts.join(' · ');
+    }
+    function handleText(a) {
+      var parts = [];
+      parts.push(a.username ? '@' + a.username : 'email login');
+      if (a.discordId) parts.push('Discord ' + a.discordId);
+      return parts.join(' · ');
+    }
+    function btn(label, act, uid, title, extra) {
+      return '<button type="button"' + (busy[uid] ? ' disabled' : '') + ' class="btn btn-sm ' + (extra || 'btn-ghost') + '" data-act="' + act + '" data-uid="' + esc(uid) + '" title="' + esc(title) + '">' + esc(label) + '</button>';
+    }
+    function rowHtml(a, inRemoved) {
+      var uid = a.userId;
+      var st = stateOf(a);
+      var h = '<div class="aa-row is-' + st + (busy[uid] ? ' is-busy' : '') + '" data-uid="' + esc(uid) + '">';
+      h += '<div class="aa-head"><div class="aa-who"><div class="aa-name">' + esc(nameOf(a)) + '</div><div class="aa-handle">' + esc(handleText(a)) + '</div></div>';
+      h += isOwner(a)
+        ? '<span class="status-pill st-locked">Owner</span>'
+        : '<span class="status-pill ' + (STATUS_PILL[a.status] || 'st-unknown') + '">' + esc(STATUS_LABEL[a.status] || a.status) + '</span>';
+      h += '</div>';
+      h += '<div class="aa-meta">' + esc(metaText(a)) + '</div>';
+      if (isOwner(a)) {
+        h += '<div class="aa-read"><div><span class="form-label">App mode</span>Owner</div><div><span class="form-label">Averages</span>On</div><div><span class="form-label">Cut</span>None</div></div>';
+        h += '<div class="aa-note">Owner account, read only here.</div></div>';
+        return h;
+      }
+      var off = busy[uid] ? ' disabled' : '';
+      if (!inRemoved) {
+        var m = a.mode === 'price_lock' ? 'price_lock' : 'lock';
+        var avgOn = a.avg === true;
+        h += '<div class="aa-controls">';
+        h += '<div><label class="form-label" for="aa-mode-' + esc(uid) + '">App mode</label><select class="form-select" id="aa-mode-' + esc(uid) + '" data-k="mode" data-uid="' + esc(uid) + '"' + off + '>' +
+          '<option value="lock"' + (m === 'lock' ? ' selected' : '') + '>Lock only</option><option value="price_lock"' + (m === 'price_lock' ? ' selected' : '') + '>Price + lock</option></select></div>';
+        h += '<div><span class="form-label" id="aa-avg-l-' + esc(uid) + '">Averages</span><button type="button" class="aa-switch" role="switch" aria-checked="' + (avgOn ? 'true' : 'false') + '" aria-labelledby="aa-avg-l-' + esc(uid) + '" data-act="avg" data-uid="' + esc(uid) + '"' + off + '>' + (avgOn ? 'On' : 'Off') + '</button></div>';
+        h += '<div><label class="form-label" for="aa-cut-' + esc(uid) + '">Cut (points)</label><input class="form-input" id="aa-cut-' + esc(uid) + '" type="number" inputmode="decimal" min="0" max="30" step="0.25" data-k="cut" data-uid="' + esc(uid) + '" value="' + esc(String(a.cutPoints == null ? DEFAULT_CUT : Number(a.cutPoints))) + '"' + off + '></div>';
+        h += '</div>';
+        h += '<div class="aa-actions">';
+        if (a.status === 'frozen') h += btn('Unfreeze', 'unfreeze', uid, 'Let them sign in again');
+        else h += btn('Freeze', 'freeze', uid, 'Sign them out and stop them signing in until you unfreeze');
+        if (a.username && a.status !== 'frozen') h += btn('New setup code', 'reset', uid, 'Make a fresh one-time setup code (the old one stops working)');
+        h += btn('Remove', 'remove', uid, 'Freeze and hide this account. Their tickets and history stay.', 'btn-danger');
+        h += '</div>';
+      } else {
+        h += '<div class="aa-actions">' + btn('Restore', 'restore', uid, 'Unfreeze and show this account again') + '</div>';
+      }
+      h += '</div>';
+      return h;
+    }
+    var ORDER = { setup: 0, active: 1, frozen: 2, owner: 3 };
+    function sorted(list) {
+      return list.slice().sort(function (a, b) {
+        var d = ORDER[stateOf(a)] - ORDER[stateOf(b)];
+        return d !== 0 ? d : nameOf(a).toLowerCase().localeCompare(nameOf(b).toLowerCase());
+      });
+    }
+    function render() {
+      var shown = sorted(accounts.filter(function (a) { return a.hidden !== true; }));
+      var gone = sorted(accounts.filter(function (a) { return a.hidden === true; }));
+      dom.list.innerHTML = shown.length
+        ? shown.map(function (a) { return rowHtml(a, false); }).join('')
+        : '<div class="aa-empty">' + (loaded ? 'No app accounts yet. Add the first one below.' : 'Loading…') + '</div>';
+      dom.removed.innerHTML = gone.map(function (a) { return rowHtml(a, true); }).join('');
+      dom.removedToggle.hidden = gone.length === 0;
+      dom.removed.hidden = gone.length === 0 || !showRemoved;
+      dom.removedToggle.textContent = (showRemoved ? 'Hide removed' : 'Show removed') + ' (' + gone.length + ')';
+      dom.removedToggle.setAttribute('aria-expanded', showRemoved ? 'true' : 'false');
+      dom.addBtn.disabled = adding;
+      dom.addBtn.textContent = adding ? 'Adding…' : 'Add account and get setup code';
+    }
+    function summary() {
+      var vis = accounts.filter(function (a) { return a.hidden !== true && !isOwner(a); });
+      var active = vis.filter(function (a) { return a.status === 'active'; }).length;
+      var setup = vis.filter(function (a) { return a.status === 'setup'; }).length;
+      var frozen = vis.filter(function (a) { return a.status === 'frozen'; }).length;
+      if (!vis.length) return 'No app accounts yet.';
+      var bits = [active + ' active'];
+      if (setup) bits.push(setup + ' waiting for setup');
+      if (frozen) bits.push(frozen + ' frozen');
+      return bits.join(', ') + '.';
+    }
+
+    // ── the one-time setup code ──
+    function showCode(r) {
+      reveal = r;
+      dom.codeTitle.textContent = r.title;
+      dom.codeValue.textContent = r.code;
+      dom.codeUser.textContent = r.username;
+      dom.codeLink.textContent = LOGIN_URL;
+      dom.codeExpiry.textContent = fmtTime(r.expiresAt) || 'in 7 days';
+      dom.code.hidden = false;
+      try { dom.code.focus(); } catch (e) {}
+      try { if (dom.code.scrollIntoView) dom.code.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+    }
+    function hideCode() {
+      reveal = null;
+      dom.code.hidden = true;
+      dom.codeTitle.textContent = '';
+      dom.codeValue.textContent = '';
+      dom.codeUser.textContent = '';
+      dom.codeLink.textContent = '';
+      dom.codeExpiry.textContent = '';
+    }
+    function messageFor(r) {
+      return 'Iced Out Pricing app\nSign in at ' + LOGIN_URL + '\nUsername: ' + r.username + '\nSetup code: ' + r.code + '\nThe code works once and expires ' + (fmtTime(r.expiresAt) || 'in 7 days') + '. Choose your own password when you use it.';
+    }
+    function copyText(text, okMsg) {
+      var done = function (ok) { setStatus(ok ? okMsg : 'Could not copy. Press and hold the code to select it.', !ok); };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); }); return; }
+      } catch (e) {}
+      done(false);
+    }
+    dom.codeCopy.addEventListener('click', function () { if (reveal) copyText(messageFor(reveal), 'Copied. Paste it to ' + reveal.username + '.'); });
+    dom.codeCopyCode.addEventListener('click', function () { if (reveal) copyText(reveal.code, 'Copied the code.'); });
+    dom.codeDone.addEventListener('click', function () { hideCode(); setStatus(summary()); });
+
+    // ── actions ──
+    function find(uid) { for (var i = 0; i < accounts.length; i++) if (accounts[i].userId === uid) return accounts[i]; return null; }
+    /** Folds the function's fresh view of an account into the list (it keeps the protected and hidden marks the list carries). */
+    function merge(view, extra) {
+      var cur = view && find(view.userId);
+      if (!view) return;
+      if (cur) {
+        for (var k in view) if (Object.prototype.hasOwnProperty.call(view, k)) cur[k] = view[k];
+        if (extra) for (var e in extra) cur[e] = extra[e];
+      } else {
+        var copy = {};
+        for (var k2 in view) if (Object.prototype.hasOwnProperty.call(view, k2)) copy[k2] = view[k2];
+        copy.protected = copy.protected === true; copy.hidden = false;
+        if (extra) for (var e2 in extra) copy[e2] = extra[e2];
+        accounts.push(copy);
+      }
+    }
+    function setBusy(uid, on) { if (on) busy[uid] = true; else delete busy[uid]; render(); }
+
+    /** Runs one account action; `after` folds the answer in. Always un-busies the row and says what happened. */
+    function act(uid, action, payload, okText, after) {
+      if (busy[uid]) return Promise.resolve();
+      setBusy(uid, true);
+      payload.userId = uid;
+      return call(action, payload).then(function (out) {
+        if (out.status === 0) { setBusy(uid, false); return; }
+        if (out.status >= 200 && out.status < 300 && out.body && out.body.ok !== false) {
+          if (after) after(out.body);
+          setBusy(uid, false);
+          setStatus(typeof okText === 'function' ? okText(out.body) : okText);
+          return;
+        }
+        if (out.status === 404) { setBusy(uid, false); setStatus(failText(out), true); return load(); }
+        setBusy(uid, false);
+        // a 502 from freeze/remove still carries the account as it now stands: show it
+        if (out.body && out.body.sourcer) { merge(out.body.sourcer); render(); }
+        setStatus(failText(out), true);
+      }, function () { setBusy(uid, false); setStatus(NETWORK_TEXT, true); });
+    }
+
+    function onChange(ev) {
+      var t = ev.target;
+      var k = t && t.getAttribute && t.getAttribute('data-k');
+      var uid = t && t.getAttribute && t.getAttribute('data-uid');
+      var a = uid && find(uid);
+      if (!k || !a || isOwner(a)) return;
+      if (k === 'mode') {
+        var mode = t.value === 'price_lock' ? 'price_lock' : 'lock';
+        if (mode === (a.mode === 'price_lock' ? 'price_lock' : 'lock')) return;
+        act(uid, 'mode', { mode: mode }, 'Saved. ' + nameOf(a) + ' is on ' + MODE_LABEL[mode] + '.', function (b) { merge(b.sourcer); });
+        // a failed save re-renders the row with the old value
+      } else if (k === 'cut') {
+        var raw = String(t.value).trim();
+        var n = Number(raw);
+        if (raw === '' || !isFinite(n) || n < 0 || n > 30) { setStatus('The cut must be a number from 0 to 30.', true); render(); return; }
+        if (n === Number(a.cutPoints == null ? DEFAULT_CUT : a.cutPoints)) return;
+        act(uid, 'cut', { points: n }, 'Saved. ' + nameOf(a) + ' gets ' + cutText(n) + ' under the portal %.', function (b) { merge(b.sourcer); });
+      }
+    }
+    dom.list.addEventListener('change', onChange);
+
+    function onClick(ev) {
+      var b = ev.target && ev.target.closest ? ev.target.closest('[data-act]') : null;
+      var action = b && b.getAttribute('data-act');
+      var uid = b && b.getAttribute('data-uid');
+      var a = uid && find(uid);
+      if (!action || !a || isOwner(a)) return;
+      var who = nameOf(a);
+      if (action === 'avg') {
+        var next = a.avg !== true;
+        act(uid, 'avg', { avg: next }, 'Saved. Averages are ' + (next ? 'on' : 'off') + ' for ' + who + '.', function (r) { merge(r.sourcer); });
+      } else if (action === 'freeze') {
+        act(uid, 'freeze', {}, who + ' is frozen: signed out and cannot sign in.', function (r) { merge(r.sourcer); });
+      } else if (action === 'unfreeze') {
+        act(uid, 'unfreeze', {}, who + ' can sign in again.', function (r) { merge(r.sourcer); });
+      } else if (action === 'restore') {
+        act(uid, 'unfreeze', {}, who + ' is back in the list and can sign in.', function (r) { merge(r.sourcer, { hidden: false }); });
+      } else if (action === 'reset') {
+        act(uid, 'reset', {}, function () { return 'New setup code for ' + who + '. Copy it now.'; }, function (r) {
+          merge(r.sourcer);
+          showCode({ title: 'New setup code for ' + who, username: r.username, code: r.code, expiresAt: r.expiresAt });
+        });
+      } else if (action === 'remove') {
+        if (!window.confirm('Remove ' + who + '? They are signed out and hidden from this list. Their tickets and history stay, and you can restore them.')) return;
+        act(uid, 'remove', {}, who + ' was removed. You can restore them under Show removed.', function (r) { merge(r.sourcer, { hidden: true }); });
+      }
+    }
+    dom.list.addEventListener('click', onClick);
+    dom.removed.addEventListener('click', onClick);
+    dom.removedToggle.addEventListener('click', function () { showRemoved = !showRemoved; render(); });
+
+    function addAccount() {
+      if (adding) return;
+      var name = String(dom.name.value || '').trim();
+      var discord = String(dom.discord.value || '').trim();
+      var mode = dom.mode.value === 'price_lock' ? 'price_lock' : 'lock';
+      var avg = dom.avg.checked === true;
+      var cutRaw = String(dom.cut.value).trim();
+      var cut = cutRaw === '' ? DEFAULT_CUT : Number(cutRaw);
+      if (name.length < 2) { setStatus('Enter a name with at least 2 letters or numbers.', true); return; }
+      if (discord && !/^\d{5,25}$/.test(discord)) { setStatus(ERROR_TEXT['bad-discord-id'], true); return; }
+      if (!isFinite(cut) || cut < 0 || cut > 30) { setStatus(ERROR_TEXT['bad-points'], true); return; }
+      adding = true;
+      render();
+      setStatus('Adding ' + name + '…');
+      var payload = { name: name };
+      if (discord) payload.discordId = discord;
+      call('add', payload).then(function (out) {
+        if (out.status === 0) { adding = false; render(); return; }
+        if (!(out.status >= 200 && out.status < 300 && out.body && out.body.ok)) {
+          adding = false;
+          if (out.body && out.body.error === 'code-failed') load(); // the account exists: show it
+          render();
+          setStatus(failText(out), true);
+          return;
+        }
+        var made = out.body;
+        var uid = made.sourcer.userId;
+        merge(made.sourcer);
+        showCode({ title: 'Setup code for ' + (made.sourcer.displayName || made.username), username: made.username, code: made.code, expiresAt: made.expiresAt });
+        dom.name.value = ''; dom.discord.value = '';
+        // what differs from a new account's defaults is set right after, one call each, on the account just made
+        var steps = [];
+        if (mode !== 'lock') steps.push(['mode', { userId: uid, mode: mode }]);
+        if (avg) steps.push(['avg', { userId: uid, avg: true }]);
+        if (cut !== DEFAULT_CUT) steps.push(['cut', { userId: uid, points: cut }]);
+        var problems = [];
+        var chain = steps.reduce(function (p, s) {
+          return p.then(function () {
+            return call(s[0], s[1]).then(function (o) {
+              if (o.status >= 200 && o.status < 300 && o.body && o.body.ok !== false) merge(o.body.sourcer);
+              else problems.push(s[0] === 'mode' ? 'App mode' : s[0] === 'avg' ? 'Averages' : 'The cut');
+            }, function () { problems.push(s[0]); });
+          });
+        }, Promise.resolve());
+        return chain.then(function () {
+          adding = false;
+          render();
+          if (problems.length) setStatus('Account made and the code is below, but ' + problems.join(' and ') + ' did not save. Set it on the account.', true);
+          else setStatus('Account made. Copy the setup code below and send it to ' + (made.sourcer.displayName || made.username) + '.');
+        });
+      }, function () { adding = false; render(); setStatus(NETWORK_TEXT, true); });
+    }
+    dom.addBtn.addEventListener('click', addAccount);
+    dom.add.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter' && ev.target && ev.target.tagName === 'INPUT' && ev.target.type !== 'checkbox') { if (ev.preventDefault) ev.preventDefault(); addAccount(); }
+    });
+
+    // ── loading, and the lock ──
+    function load() {
+      if (!getStoredKey()) return Promise.resolve();
+      dom.card.hidden = false;
+      setStatus('Loading the app accounts…');
+      return call('list').then(function (out) {
+        if (out.status === 0) return;
+        if (out.status === 200 && out.body && Array.isArray(out.body.sourcers)) {
+          accounts = out.body.sourcers.filter(function (s) { return s.status !== 'deleted' && s.userId; });
+          loaded = true;
+          render();
+          setStatus(summary());
+          return;
+        }
+        loaded = false; accounts = [];
+        render();
+        setStatus(failText(out), true);
+      }, function () { loaded = false; render(); setStatus(NETWORK_TEXT, true); });
+    }
+
+    // Never fetched or shown before the edit key is verified; a relock hides it, blanks it and forgets any setup code on screen.
+    var waiting = false;
+    function loadWhenUnlocked() {
+      if (waiting) return; // one load per unlock, however many times the lock card was shown
+      waiting = true;
+      whenUnlocked(function () { waiting = false; load(); });
+    }
+    loadWhenUnlocked();
+    (function hookLock() {
+      var baseShowLock = showLock;
+      showLock = function (message) {
+        baseShowLock(message);
+        dom.card.hidden = true;
+        accounts = []; loaded = false; busy = {}; adding = false; showRemoved = false;
+        hideCode();
+        dom.list.innerHTML = ''; dom.removed.innerHTML = '';
         loadWhenUnlocked();
       };
     })();
