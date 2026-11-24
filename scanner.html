@@ -1503,7 +1503,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
      camera button has nothing to do here, and it is one swipe away. Fits the app's 156px peek at 360px wide. */
   body:has(.sc-native-cam.sc-sheet-down) .main{padding-bottom:0;}
   #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down{gap:4px;padding-bottom:0;}
-  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down > :not(.sc-score):not(.sc-seller):not(.sc-sheet-cue){display:none !important;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down > :not(.sc-score):not(.sc-seller):not(.sc-sheet-cue):not(.sc-kind){display:none !important;}
   #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down .sc-sheet-cue{
     --sc-i:var(--i-chevron-up);
     display:flex;align-items:center;justify-content:center;gap:5px;width:100%;min-height:44px;padding:0 16px;
@@ -2143,10 +2143,22 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-lk-alert-card{margin-bottom:10px;}
   /* The app's peek (sheet down) keeps the scan card, compact: what it is, what you get, whether it can lock. */
   #tab-scanner .scanner-layout.sc-lock-mode.sc-native-cam.sc-sheet-down > #sc-lock{display:flex !important;}
-  /* Slabs | Singles (owners only, rates-portal/singles-pane.html). The switch sits at the top of the sheet in the app, and is
-     never shown in lock mode. Singles mode hides every slab part (their ids and code are untouched) and shows the pane. */
+  /* Slabs | Singles (owners only, rates-portal/singles-pane.html). The switch sits directly under the camera in both modes
+     (Penguin, 11/23): in a browser under the slab camera, above the WE PAY tiles; in the app at the top of the sheet under the
+     camera panel at the mid and up stops, and on the peek ('down') on the pull tab itself, beside "Swipe up to review";
+     on Singles under its own camera (the pane moves it there). Never shown in lock mode. Singles mode hides every slab part
+     (their ids and code are untouched) and shows the pane. */
   #tab-scanner .sc-kind{align-self:center;width:min(100%, 320px);}
   #tab-scanner .scanner-layout.sc-native-cam .sc-kind{order:-4;}
+  /* On the peek ('down') the switch shares the bottom row, the pull tab, with "Swipe up to review" (switch on the left, the way up
+     on the right, both 44px tall), so the peek is exactly as tall as it was before the switch: 22 + 60 + 4 + 44 = 130px, well
+     inside the app's 156px. A grid only while the switch shows; sourcers, lock mode and the signed out keep the old column. */
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down:has(> .sc-kind:not([hidden])){display:grid;grid-template-columns:auto minmax(0, 1fr);gap:4px 8px;align-items:center;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down:has(> .sc-kind:not([hidden])) > *{grid-column:1 / -1;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down:has(> .sc-kind:not([hidden])) > .sc-kind{order:8;grid-column:1;width:auto;min-width:156px;padding:3px;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down:has(> .sc-kind:not([hidden])) > .sc-sheet-cue{order:9;grid-column:2;justify-content:flex-end;padding:0 4px;}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down .sc-kind .sc-seg-btn{min-height:38px;padding-left:10px;padding-right:10px;font-size:var(--sc-fs-label);}
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down .sc-kind::before{top:3px;bottom:3px;left:3px;width:calc(50% - 4px);}
   #tab-scanner .sc-kind .sc-seg-btn{flex:1 1 0;justify-content:center;}
   #tab-scanner .scanner-layout.sc-lock-mode .sc-kind{display:none !important;}
   #tab-scanner .scanner-layout:not(.sc-singles-mode) .sc-singles-only{display:none !important;}
@@ -2383,13 +2395,6 @@ code{font-family:var(--font-mono);font-size:.92em;}
     <button type="button" class="sc-brand-gear sc-staff-only" id="sc-settings-open" aria-label="Settings" title="Settings" aria-haspopup="dialog" aria-controls="sc-settings"></button>
   </header>
 
-  <!-- Slabs | Singles (Penguin's side, rates-portal/singles-pane.html): hidden for everyone until the script shows it, only to an
-       owner, signed in, outside lock mode, while singles-live says it is on. Sourcers and the signed out never see it. -->
-  <div class="sc-seg sc-kind" id="sc-kind" role="group" aria-label="What you are scanning" hidden>
-    <button type="button" class="sc-seg-btn" data-kind="slabs" aria-pressed="true">Slabs</button>
-    <button type="button" class="sc-seg-btn" data-kind="singles" aria-pressed="false">Singles</button>
-  </div>
-
   <section class="sc-card sc-signin sc-staff-only" id="sc-signin" hidden>
     <div class="sc-signin-head">
       <span class="sc-badge" aria-hidden="true"></span>
@@ -2452,6 +2457,16 @@ code{font-family:var(--font-mono);font-size:.92em;}
       <button type="button" class="sc-btn sc-btn-primary sc-allow" id="sc-allow" hidden>Allow camera</button>
     </div>
   </section>
+
+  <!-- Slabs | Singles (Penguin's side, rates-portal/singles-pane.html): hidden for everyone until the script shows it, only to an
+       owner, signed in, outside lock mode, while singles-live says it is on. Sourcers and the signed out never see it.
+       It sits directly under the camera in both modes (Penguin, 11/23: "the same place as it is on slabs, on the bottom pull
+       tab"): here, under the slab camera and above the WE PAY tiles; in the apps, at the top of the sheet under the camera
+       panel, the pull tab, at every stop; on Singles the pane moves it under its own camera (SinglesPane's placeSwitch). -->
+  <div class="sc-seg sc-kind" id="sc-kind" role="group" aria-label="What you are scanning" hidden>
+    <button type="button" class="sc-seg-btn" data-kind="slabs" aria-pressed="true">Slabs</button>
+    <button type="button" class="sc-seg-btn" data-kind="singles" aria-pressed="false">Singles</button>
+  </div>
 
   <!-- The scoreboard: the two numbers said out loud, directly under the camera. What we pay for the card on
        screen (with the rule's math), and what this visit's pile comes to. In the Android app it is the top
@@ -2684,9 +2699,12 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-sg[hidden]{display:none;}
   #tab-scanner .sc-sg-info{margin:-2px 4px 0;font-size:var(--sc-fs-label);line-height:1.35;color:var(--sc-muted);}
 
-  /* the camera, with the card outline */
+  /* the camera, with the card outline. About as big as the slab camera panel in the apps (Penguin, 11/23: "make the area of the
+     camera bigger"): 60% of the screen's height (506px on a 390x844 phone), never under 280px, and at most 560px on a tall or desktop
+     screen. On a short phone it leaves 330px under it for the switch and WE PAY above the dock (a 375x667 phone: 337px, not 400px).
+     svh where the browser has it, so the iPhone's sliding toolbar never resizes it; the card outline is placed to fit it. */
   #tab-scanner .sc-sg-cam{
-    position:relative;min-width:0;height:clamp(250px, 44vh, 460px);overflow:hidden;isolation:isolate;
+    position:relative;min-width:0;height:clamp(280px, min(60vh, 100vh - 330px), 560px);height:clamp(280px, min(60svh, 100svh - 330px), 560px);overflow:hidden;isolation:isolate;
     border-radius:var(--sc-r-card);background:var(--sc-cam);box-shadow:inset 0 0 0 1px var(--sc-line);
     touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
   }
@@ -2706,12 +2724,10 @@ code{font-family:var(--font-mono);font-size:.92em;}
     from{box-shadow:0 0 0 2px var(--sc-danger-ink), 0 0 0 9999px color-mix(in srgb, var(--sc-cam) 42%, transparent);}
     to{box-shadow:0 0 0 3px var(--sc-steel-ink), 0 0 22px 2px var(--sc-focus-soft), 0 0 0 9999px color-mix(in srgb, var(--sc-cam) 42%, transparent);}
   }
-  #tab-scanner .sc-sg-cam-off{
-    position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;text-align:center;
-    background:radial-gradient(120% 90% at 50% 0%, var(--sc-off-1) 0%, var(--sc-off-2) 100%);color:var(--sc-off-ink);
-  }
+  /* Camera off, the same as the slab camera (Penguin, 11/23): no big panel, the frame shrinks to one slim row with the
+     round camera button and a short line (the slab's own .sc-vf-off / .sc-start / .sc-vf-off-text look). Tap it, it's on. */
+  #tab-scanner .sc-sg-cam.sc-sg-cam-is-off{height:auto;background:var(--sc-fill-card-bg);}
   #tab-scanner .sc-sg-cam-off[hidden]{display:none;}
-  #tab-scanner .sc-sg-cam-off p{margin:0;max-width:30ch;font-size:var(--sc-fs-row);line-height:1.4;}
   #tab-scanner .sc-sg-bottom{position:absolute;left:12px;right:12px;bottom:12px;display:flex;align-items:center;gap:10px;}
   #tab-scanner .sc-sg-bottom[hidden],#tab-scanner .sc-sg-guide[hidden]{display:none;}
   /* The look (white on a dark see-through backing) is the slab viewfinder's .sc-vf-hint; this only lays it out: up to two lines,
@@ -2799,6 +2815,7 @@ code{font-family:var(--font-mono);font-size:.92em;}
   #tab-scanner .sc-sg-step:active{background:var(--sc-fill);}
   #tab-scanner .sc-sg-qty-n{min-width:2ch;text-align:center;font-size:var(--sc-fs-body);font-weight:800;font-variant-numeric:tabular-nums;color:var(--sc-ink);}
   #tab-scanner .sc-sg-alts{display:flex;flex-direction:column;gap:6px;}
+  #tab-scanner .sc-sg-others{display:block;margin:4px auto 0;} /* the look is .sc-signin-link's: a quiet underlined link */
   #tab-scanner .sc-sg-alt{
     display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:6px 10px 6px 6px;border:0;border-radius:12px;cursor:pointer;text-align:left;
     background:var(--sc-fill-card-bg);box-shadow:inset 0 0 0 1px var(--sc-chip-edge);color:var(--sc-ink);
@@ -2907,9 +2924,9 @@ code{font-family:var(--font-mono);font-size:.92em;}
   <div class="sc-sg-cam" id="sc-sg-cam">
     <video class="sc-sg-video" id="sc-sg-video" autoplay playsinline muted hidden></video>
     <div class="sc-sg-guide" id="sc-sg-guide" aria-hidden="true"></div>
-    <div class="sc-sg-cam-off" id="sc-sg-cam-off">
-      <p id="sc-sg-cam-text">Hold one card inside the frame and tap to take it.</p>
-      <button type="button" class="sc-btn sc-btn-primary" id="sc-sg-cam-on">Turn camera on</button>
+    <div class="sc-vf-off sc-sg-cam-off" id="sc-sg-cam-off">
+      <div class="sc-start-row"><button type="button" class="sc-start" id="sc-sg-cam-on" aria-label="Turn camera on" title="Turn camera on">Turn camera on</button></div>
+      <p class="sc-vf-off-text" id="sc-sg-cam-text">Camera off. Tap the camera to scan cards.</p>
     </div>
     <button type="button" class="sc-vf-round" id="sc-sg-cam-stop" aria-label="Turn camera off" title="Turn camera off" hidden></button>
     <span class="sc-vf-hint sc-sg-matching" id="sc-sg-matching" role="status" hidden></span>
@@ -9116,6 +9133,12 @@ window.CardView = {
 //   - Nothing is decided until the finger has moved LOCK_PX. Before that it is still a tap.
 //   - Only a clearly horizontal LEFT move is ours ('swipe'). Anything else ('pass': up, down, right, or a
 //     diagonal) is left to the browser, so a vertical drag keeps scrolling the page or the sheet.
+//   - The page is held still (holdsPage) once the finger has gone HOLD_PX and clearly heads left (|dx| at least
+//     HOLD_RATIO times |dy|) (owner, 11/23: "very sensitive to up and down ... it flicks my screen up and down"). iOS
+//     starts its scroll before LOCK_PX, so the page can't wait for LOCK_PX to decide; but a hold on the first tiny wobble
+//     would cancel the start of a real scroll (iOS then won't scroll that gesture at all), so a move under HOLD_PX never
+//     holds, and a pending move that turns more up or down than left lets go again. A gesture held at LOCK_PX is a swipe
+//     as long as it still heads clearly left (a slightly diagonal left swipe deletes instead of doing nothing).
 //   - The row follows the finger to the left only: it never moves right of 0, and never past its own width.
 //   - Letting go deletes when the row is past DELETE_FRACTION of its width, or on a quick leftward flick
 //     (FLICK_PX_PER_MS, over at least FLICK_MIN_PX). A flick back to the right always springs back.
@@ -9125,6 +9148,8 @@ window.CardView = {
 'use strict';
 
 var LOCK_PX = 10;            // movement before a direction is picked (a tap wobbles a few px)
+var HOLD_PX = 5;             // movement before the page may be held (the start of a scroll wobbles a few px sideways)
+var HOLD_RATIO = 1.2;        // to hold, |dx| must be at least this many times |dy|: about 40 degrees off horizontal at most
 var HORIZONTAL_RATIO = 1.5;  // |dx| must be this many times |dy|: about 34 degrees off horizontal at most
 var DELETE_FRACTION = 0.4;   // past 40% of the row's width, letting go deletes
 var FLICK_PX_PER_MS = 0.5;   // 500 px a second to the left is a flick...
@@ -9140,6 +9165,14 @@ function lockDirection(dx, dy, lockPx) {
   if (ax < lock && ay < lock) return 'pending';
   if (dx < 0 && ax > ay * HORIZONTAL_RATIO) return 'swipe';
   return 'pass';
+}
+
+/** -> true when a move of (dx, dy) from the touch's start should keep the page still before a direction is picked:
+    at least HOLD_PX of movement, heading clearly left (|dx| >= HOLD_RATIO * |dy|). The page calls preventDefault on that
+    touchmove (a non-passive listener). */
+function holdsPage(dx, dy) {
+  var ax = Math.abs(dx), ay = Math.abs(dy);
+  return dx < 0 && Math.max(ax, ay) >= HOLD_PX && ax >= ay * HOLD_RATIO;
 }
 
 /** -> how far the row sits, in px: 0 or less (left only), never past -width. */
@@ -9175,22 +9208,31 @@ function releaseDecision(offset, width, velocity) {
  * One finger on one row. move() answers { state, offset }: state is 'pending', 'swipe' or 'pass' (once
  * 'pass', the gesture is the browser's for good and the row stays at 0). end() answers { outcome, offset }:
  * outcome 'tap' (never moved enough: the click goes on as usual), 'pass' (it was a scroll), 'delete' or 'back'.
+ * move() also answers `hold`: true while the page must stay still for this finger (holding() says the same): from the
+ * first move that holdsPage until a direction is picked (unless it turns up or down first), and for the whole of a swipe.
  */
 function createSwipe(width) {
-  var x0 = 0, y0 = 0, st = 'idle', off = 0, samples = [];
+  var x0 = 0, y0 = 0, st = 'idle', off = 0, samples = [], held = false;
   function track(x, t) {
     samples.push({ x: x, t: t });
     while (samples.length > 2 && t - samples[1].t > VELOCITY_WINDOW_MS) samples.shift();
   }
   function move(x, y, t) {
-    if (st === 'idle' || st === 'done') return { state: st, offset: off };
+    if (st === 'idle' || st === 'done') return { state: st, offset: off, hold: false };
     var dx = x - x0, dy = y - y0;
-    if (st === 'pending') st = lockDirection(dx, dy);
+    if (st === 'pending') {
+      if (holdsPage(dx, dy)) held = true;
+      else if (Math.abs(dy) >= Math.abs(dx)) held = false; // turned up or down before a direction was picked: the page's again
+      st = lockDirection(dx, dy);
+      // The page was already held for this finger (it can't scroll now): still heading clearly left, it's a swipe.
+      if (st === 'pass' && held && holdsPage(dx, dy)) st = 'swipe';
+    }
     if (st === 'swipe') { off = clampOffset(dx, width); track(x, t); }
-    return { state: st, offset: off };
+    return { state: st, offset: off, hold: holding() };
   }
+  function holding() { return st === 'swipe' || (st === 'pending' && held); }
   return {
-    start: function (x, y, t) { x0 = x; y0 = y; st = 'pending'; off = 0; samples = [{ x: x, t: t }]; },
+    start: function (x, y, t) { x0 = x; y0 = y; st = 'pending'; off = 0; held = false; samples = [{ x: x, t: t }]; },
     move: move,
     end: function (x, y, t) {
       if (st === 'idle' || st === 'done') return { outcome: 'tap', offset: 0 };
@@ -9205,7 +9247,8 @@ function createSwipe(width) {
       var outcome = releaseDecision(off, width, paused ? 0 : velocityOf(samples));
       return { outcome: outcome, offset: outcome === 'delete' ? off : 0 };
     },
-    cancel: function () { st = 'done'; off = 0; samples = []; },
+    cancel: function () { st = 'done'; off = 0; held = false; samples = []; },
+    holding: holding,
     state: function () { return st; },
     offset: function () { return off; },
   };
@@ -9213,6 +9256,8 @@ function createSwipe(width) {
 
 window.SwipeRow = {
   LOCK_PX: LOCK_PX,
+  HOLD_PX: HOLD_PX,
+  HOLD_RATIO: HOLD_RATIO,
   HORIZONTAL_RATIO: HORIZONTAL_RATIO,
   DELETE_FRACTION: DELETE_FRACTION,
   FLICK_PX_PER_MS: FLICK_PX_PER_MS,
@@ -9220,6 +9265,7 @@ window.SwipeRow = {
   VELOCITY_WINDOW_MS: VELOCITY_WINDOW_MS,
   PAUSE_MS: PAUSE_MS,
   lockDirection: lockDirection,
+  holdsPage: holdsPage,
   clampOffset: clampOffset,
   velocityOf: velocityOf,
   releaseDecision: releaseDecision,
@@ -13766,6 +13812,8 @@ function cameraGuide(guideRect, width, height, safeTop) {
 // ── layout.ts: swipe left to delete a pile row (scanner/swipeRow.js's rules) ─────────────────────
 
 var LOCK_PX = 10;
+var HOLD_PX = 5;
+var HOLD_RATIO = 1.2;
 var HORIZONTAL_RATIO = 1.5;
 var DELETE_FRACTION = 0.4;
 var FLICK_PX_PER_MS = 0.5;
@@ -13780,6 +13828,13 @@ function lockDirection(dx, dy, lockPx) {
   if (ax < lock && ay < lock) return 'pending';
   if (dx < 0 && ax > ay * HORIZONTAL_RATIO) return 'swipe';
   return 'pass';
+}
+
+/** Whether a move of (dx, dy) keeps the page still before a direction is picked: at least HOLD_PX, heading clearly left
+    (scanner/swipeRow.js's holdsPage: iOS starts scrolling before LOCK_PX, but a hold on a tiny first wobble would kill a real scroll). */
+function holdsPage(dx, dy) {
+  var ax = Math.abs(dx), ay = Math.abs(dy);
+  return dx < 0 && Math.max(ax, ay) >= HOLD_PX && ax >= ay * HOLD_RATIO;
 }
 
 /** How far the row sits: 0 or less (left only), never past its own width. */
@@ -13812,19 +13867,27 @@ function createSwipe(width) {
   var x0 = 0, y0 = 0, off = 0;
   var st = 'idle';
   var samples = [];
+  var held = false; // the page has been held still for this finger (holdsPage)
   function track(x, t) {
     samples.push({ x: x, t: t });
     while (samples.length > 2 && t - samples[1].t > VELOCITY_WINDOW_MS) samples.shift();
   }
   function move(x, y, t) {
-    if (st === 'idle' || st === 'done') return { state: st, offset: off };
+    if (st === 'idle' || st === 'done') return { state: st, offset: off, hold: false };
     var dx = x - x0, dy = y - y0;
-    if (st === 'pending') st = lockDirection(dx, dy);
+    if (st === 'pending') {
+      if (holdsPage(dx, dy)) held = true;
+      else if (Math.abs(dy) >= Math.abs(dx)) held = false; // turned up or down before a direction was picked: the page's again
+      st = lockDirection(dx, dy);
+      // The page was already held (it can't scroll now): still heading clearly left, it's a swipe.
+      if (st === 'pass' && held && holdsPage(dx, dy)) st = 'swipe';
+    }
     if (st === 'swipe') { off = clampOffset(dx, width); track(x, t); }
-    return { state: st, offset: off };
+    return { state: st, offset: off, hold: holding() };
   }
+  function holding() { return st === 'swipe' || (st === 'pending' && held); }
   return {
-    start: function (x, y, t) { x0 = x; y0 = y; st = 'pending'; off = 0; samples = [{ x: x, t: t }]; },
+    start: function (x, y, t) { x0 = x; y0 = y; st = 'pending'; off = 0; held = false; samples = [{ x: x, t: t }]; },
     move: move,
     end: function (x, y, t) {
       if (st === 'idle' || st === 'done') return { outcome: 'tap', offset: 0 };
@@ -13839,7 +13902,9 @@ function createSwipe(width) {
       var outcome = releaseDecision(off, width, paused ? 0 : velocityOf(samples));
       return { outcome: outcome, offset: outcome === 'delete' ? off : 0 };
     },
-    cancel: function () { st = 'done'; off = 0; samples = []; },
+    cancel: function () { st = 'done'; off = 0; held = false; samples = []; },
+    holding: holding,
+    state: function () { return st; },
   };
 }
 
@@ -13892,9 +13957,9 @@ function createSinglesMotion(flow) {
     SHEET_OVERLAP: SHEET_OVERLAP, HANDLE_ZONE: HANDLE_ZONE, FLING_SPEED: FLING_SPEED, stopHeights: stopHeights,
     settleStop: settleStop, sheetMoves: sheetMoves, clampCamera: clampCamera, GUIDE_TOP: GUIDE_TOP, GUIDE_BOTTOM: GUIDE_BOTTOM,
     cameraGuide: function (width, height, safeTop) { return cameraGuide(flow.guideRect, width, height, safeTop); },
-    LOCK_PX: LOCK_PX, HORIZONTAL_RATIO: HORIZONTAL_RATIO, DELETE_FRACTION: DELETE_FRACTION, FLICK_PX_PER_MS: FLICK_PX_PER_MS,
+    LOCK_PX: LOCK_PX, HOLD_PX: HOLD_PX, HOLD_RATIO: HOLD_RATIO, HORIZONTAL_RATIO: HORIZONTAL_RATIO, DELETE_FRACTION: DELETE_FRACTION, FLICK_PX_PER_MS: FLICK_PX_PER_MS,
     FLICK_MIN_PX: FLICK_MIN_PX, VELOCITY_WINDOW_MS: VELOCITY_WINDOW_MS, PAUSE_MS: PAUSE_MS, lockDirection: lockDirection,
-    clampOffset: clampOffset, velocityOf: velocityOf, releaseDecision: releaseDecision, createSwipe: createSwipe,
+    holdsPage: holdsPage, clampOffset: clampOffset, velocityOf: velocityOf, releaseDecision: releaseDecision, createSwipe: createSwipe,
     visitView: function (priced, lines) { return visitView(flow.plural, priced, lines); },
     rowSet: rowSet,
     rowMeta: function (line) { return rowMeta(flow.printingLabel, line); },
@@ -13921,6 +13986,8 @@ window.SinglesMotion = {
   GUIDE_BOTTOM: GUIDE_BOTTOM,
   cameraGuide: cameraGuide,
   LOCK_PX: LOCK_PX,
+  HOLD_PX: HOLD_PX,
+  HOLD_RATIO: HOLD_RATIO,
   HORIZONTAL_RATIO: HORIZONTAL_RATIO,
   DELETE_FRACTION: DELETE_FRACTION,
   FLICK_PX_PER_MS: FLICK_PX_PER_MS,
@@ -13928,6 +13995,7 @@ window.SinglesMotion = {
   VELOCITY_WINDOW_MS: VELOCITY_WINDOW_MS,
   PAUSE_MS: PAUSE_MS,
   lockDirection: lockDirection,
+  holdsPage: holdsPage,
   clampOffset: clampOffset,
   velocityOf: velocityOf,
   releaseDecision: releaseDecision,
@@ -14640,6 +14708,9 @@ window.SinglesPrice = {
     var mayAutoEnter = true;
     var on = false, active = false;
     var pile = null, queue = [], checking = null, results = null, pick = null, noMatch = null;
+    // The match list whose "Not this one?" was answered (a look-alike tapped): that list folds away, so the same options don't stay
+    // open under the card now on screen (Penguin, 11/23). "Show the other matches" opens it again; any other card resets it.
+    var altsAnswered = null;
     var liveMap = {};
     var lastAdded = null, lastAddedFrom = null; // the last add (for Undo), and the To check item it used up (Undo puts it back)
     var flyPending = false;
@@ -14709,6 +14780,7 @@ window.SinglesPrice = {
         'sc-sg-skip', 'sc-sg-find', 'sc-sg-search', 'sc-sg-toast', 'sc-sg-toast-text', 'sc-sg-toast-undo'
       ].forEach(function (id) { el[id.replace(/^sc-(sg-)?/, '')] = document.getElementById(id); });
       el.root = root;
+      kindHome = kind.parentNode && kind.nextSibling ? { parent: kind.parentNode, next: kind.nextSibling } : null;
       wire();
     }
 
@@ -14719,7 +14791,7 @@ window.SinglesPrice = {
         on_(b, 'click', function () { pickKind(b.getAttribute('data-kind')); });
       });
       on_(el['cam-on'], 'click', function () { startCamera(); });
-      on_(el['cam-stop'], 'click', function () { stopCamera(); camMsg = 'Camera off. Turn it on to scan, or type the card below.'; render(); });
+      on_(el['cam-stop'], 'click', function () { stopCamera(); camMsg = ''; render(); });
       on_(el.shutter, 'click', function (ev) { if (ev && ev.stopPropagation) ev.stopPropagation(); shutter(); });
       var down = null;
       on_(el.cam, 'pointerdown', function (ev) { down = { x: ev.clientX, y: ev.clientY, t: now() }; });
@@ -14747,6 +14819,10 @@ window.SinglesPrice = {
       });
       on_(el.rows, 'click', rowClick);
       on_(el.rows, 'pointerdown', rowDown);
+      if (el.rows && el.rows.addEventListener) {
+        el.rows.addEventListener('touchstart', rowTouchStart, { passive: true });
+        el.rows.addEventListener('touchmove', rowTouchMove, { passive: false });
+      }
       on_(window, 'resize', placeGuide);
       on_(el.video, 'loadedmetadata', placeGuide);
     }
@@ -14806,6 +14882,22 @@ window.SinglesPrice = {
       return !!host && mayAutoEnter && liveState !== false && getKey(KIND_KEY) === 'singles' && allowed();
     }
 
+    /**
+     * The switch sits directly under the camera in both modes (Penguin, 11/23: "the same place as it is on slabs, on the bottom pull
+     * tab"). Its home in page.html is under the slab camera (in the apps, the top of the sheet under the camera panel); on Singles it
+     * moves under Singles' own camera, between the camera and WE PAY, and goes home again on the way back to Slabs. Same node, same
+     * id and buttons: only where it sits changes.
+     */
+    var kindHome = null; // { parent, next }: where page.html put the switch
+    function placeSwitch(singles) {
+      var k = el.kind;
+      if (!k || !kindHome || !el.root || typeof el.root.insertBefore !== 'function') return;
+      try {
+        if (singles) { if (k.parentNode !== el.root || k.previousSibling !== el.cam) el.root.insertBefore(k, el.cam.nextSibling); }
+        else if (k.parentNode !== kindHome.parent) kindHome.parent.insertBefore(k, kindHome.next.parentNode === kindHome.parent ? kindHome.next : null);
+      } catch (e) { /* stays where it is: still one switch, still working */ }
+    }
+
     function setSwitch(kind) {
       el.kind.setAttribute('data-kind', kind);
       var btns = el.kind.querySelectorAll ? el.kind.querySelectorAll('[data-kind]') : [];
@@ -14832,6 +14924,7 @@ window.SinglesPrice = {
       el.root.hidden = false;
       el.slab.hidden = true;
       setSwitch('singles');
+      placeSwitch(true);
       host.slabCamerasOff();
       ensureEngine();
       ensureData();
@@ -14853,6 +14946,7 @@ window.SinglesPrice = {
       el.root.hidden = true;
       el.slab.hidden = true;
       setSwitch('slabs');
+      placeSwitch(false);
       hideToast();
       host.slabCamerasBack(!!byTap);
     }
@@ -15191,6 +15285,7 @@ window.SinglesPrice = {
     // ── the card on screen ────────────────────────────────────────────────────────────────────────
     function showPick(p) {
       pick = p;
+      altsAnswered = null;
       shownAt = now();
       flippedAt = shownAt;
     }
@@ -15352,6 +15447,7 @@ window.SinglesPrice = {
       else if (act === 'print' && pick) { pick = flow.editPick(pile, pick, { printing: v }, liveMap); afterEdit(was); }
       else if (act === 'qty' && pick) { pick = flow.setPickQuantity(pile, pick, pick.quantity + Number(v)); afterEdit(was); }
       else if (act === 'alt' && results) { pickAlternative(Number(v)); }
+      else if (act === 'others') { altsAnswered = null; render(); }
       else if (act === 'retry' && checking && checking.kind === 'failed' && checking.photo) {
         var item = checking; checking = null; saveQueue(); matchPhoto(item.photo, seller); render();
       } else if (act === 'remove') { skip(); }
@@ -15372,6 +15468,7 @@ window.SinglesPrice = {
       if (wasOn) pick = flow.undoPick(pile, pick);
       var p = flow.newPick(hit.card, pick ? { condition: pick.condition, quantity: pick.quantity } : null);
       showPick(p);
+      altsAnswered = results; // answered: the list folds away
       if (wasOn) {
         var added = flow.addPick(pile, p, flow.priceFor(p.card, p.printing, liveMap), now());
         if (added.lineKey) { pick = added; lastAdded = added; lastAddedFrom = null; }
@@ -15386,6 +15483,7 @@ window.SinglesPrice = {
     function rowClick(ev) {
       var t = ev.target && ev.target.closest ? ev.target.closest('[data-step]') : null;
       if (!t) return;
+      if (now() < rowNoClickUntil) return; // the end of a swipe or a scroll that started on + / -, not a tap
       var key = t.getAttribute('data-key');
       var line = pile.get(key);
       if (!line) return;
@@ -15420,13 +15518,34 @@ window.SinglesPrice = {
       }, true);
       render();
     }
+    // The page stays still under a swipe (Penguin, 11/23: "very sensitive to up and down ... it flicks my screen up and down"). The row's
+    // touch-action:pan-y alone lets a slightly diagonal swipe scroll the page too, and iOS starts that scroll in the first few px, before
+    // the swipe has picked a direction. So a non-passive touchmove holds the page once the finger has gone a few px clearly left
+    // (motion.holdsPage: HOLD_PX, never on the first tiny wobble of a scroll) and for the whole swipe; a drag that starts up or down is
+    // never held, and the page scrolls as before. A swipe may start on the + / - buttons too (they fill the row's right side, where a
+    // thumb starts a left swipe): only a tap there is a tap, and a swipe that started on one never clicks it (rowNoClickUntil).
+    var rowSwipe = null;   // the swipe of the finger on a pile row, while it is down
+    var rowTouchAt = null; // where that finger went down (touchstart), in the touchmoves' own px
+    function rowTouchStart(ev) {
+      var t = ev.touches && ev.touches.length === 1 ? ev.touches[0] : null;
+      rowTouchAt = t ? { x: t.clientX, y: t.clientY } : null;
+    }
+    function rowTouchMove(ev) {
+      var t = ev.touches && ev.touches.length === 1 ? ev.touches[0] : null;
+      if (!rowSwipe || !t || !rowTouchAt || ev.cancelable === false) return;
+      var early = rowSwipe.state() === 'pending' && motion.holdsPage(t.clientX - rowTouchAt.x, t.clientY - rowTouchAt.y);
+      if (rowSwipe.holding() || early) ev.preventDefault();
+    }
+    var rowNoClickUntil = 0; // after a swipe or a scroll on a row, the click that may follow it is not a tap on + / -
     function rowDown(ev) {
       var row = ev.target && ev.target.closest ? ev.target.closest('.sc-sg-row') : null;
-      if (!row || (ev.target.closest && ev.target.closest('button'))) return;
+      if (!row) return;
+      if (ev.target.closest && ev.target.closest('button') && !ev.target.closest('[data-step]')) return;
       var inner = row.querySelector('.sc-sg-row-in');
       var width = row.getBoundingClientRect().width;
       var swipe = motion.createSwipe(width);
       swipe.start(ev.clientX, ev.clientY, ev.timeStamp || now());
+      rowSwipe = swipe;
       function move(e) {
         var st = swipe.move(e.clientX, e.clientY, e.timeStamp || now());
         if (st.state === 'swipe') { inner.classList.add('sc-sg-drag'); inner.style.transform = 'translateX(' + st.offset + 'px)'; }
@@ -15435,7 +15554,9 @@ window.SinglesPrice = {
         window.removeEventListener('pointermove', move);
         window.removeEventListener('pointerup', end);
         window.removeEventListener('pointercancel', end);
+        if (rowSwipe === swipe) rowSwipe = null;
         var out = e.type === 'pointercancel' ? (swipe.cancel(), { outcome: 'back' }) : swipe.end(e.clientX, e.clientY, e.timeStamp || now());
+        if (out.outcome !== 'tap') rowNoClickUntil = now() + 500;
         inner.classList.remove('sc-sg-drag');
         if (out.outcome === 'delete') {
           inner.style.transform = 'translateX(-' + width + 'px)';
@@ -15582,11 +15703,12 @@ window.SinglesPrice = {
       var ready = !!stream;
       el.video.hidden = !ready;
       el['cam-off'].hidden = ready;
+      el.cam.classList.toggle('sc-sg-cam-is-off', !ready);
       el['cam-stop'].hidden = !ready;
       el.bottom.hidden = !ready;
       el.guide.hidden = !ready;
-      el['cam-on'].hidden = camStarting;
-      el['cam-text'].textContent = camMsg || 'Hold one card inside the frame and tap to take it.';
+      el['cam-on'].disabled = camStarting;
+      el['cam-text'].textContent = camMsg || (camStarting ? 'Starting camera…' : 'Camera off. Tap the camera to scan cards.');
       el.shutter.disabled = !ready || capturing;
       el.hint.textContent = flow.cameraHint({ capturing: capturing, note: note, matching: matching, ready: ready });
       el.matching.hidden = !matching;
@@ -15642,8 +15764,15 @@ window.SinglesPrice = {
       var card = pick.card;
       var price = flow.priceFor(card, pick.printing, liveMap);
       var printings = flow.printingsOf(card);
-      var hint = checking && checking.kind === 'match' ? (checking.hint || 'Check it: is this the card?') : '';
-      var alts = results && results.candidates ? results.candidates.filter(function (h) { return h.card.productId !== card.productId; }).slice(0, 4) : [];
+      var onPileNow = !!(pick.lineKey && pile.get(pick.lineKey));
+      var altsCount = results && results.candidates ? results.candidates.filter(function (h) { return h.card.productId !== card.productId; }).length : 0;
+      // A look-alike was tapped: it is the card now, and the list it came from folds away (one quiet link brings it back).
+      var altsShut = !!results && altsAnswered === results && altsCount > 0;
+      // Penguin, 11/23: "how do you even confirm". Say what to tap, not just ask: Yes, add it / the right one below / Skip.
+      var hint = checking && checking.kind === 'match' && !onPileNow ? (altsShut ? 'You picked this one. If it\'s right, tap Yes, add it. If not, tap Skip.' :
+        (checking.hint ? checking.hint + ' ' : 'Is this your card? ') +
+        'If yes, tap Yes, add it.' + (altsCount ? ' If not, tap the right one under Not this one, or Skip.' : ' If not, tap Skip.')) : '';
+      var alts = altsShut ? [] : results && results.candidates ? results.candidates.filter(function (h) { return h.card.productId !== card.productId; }).slice(0, 4) : [];
       var onPile = !!(pick.lineKey && pile.get(pick.lineKey));
       var html =
         '<div class="sc-sg-head">' +
@@ -15677,7 +15806,8 @@ window.SinglesPrice = {
               '<span class="sc-sg-alt-words"><span class="sc-sg-alt-name">' + escHtml(motion.displayName(h.card.name, h.card.num)) + '</span>' +
               '<span class="sc-sg-alt-meta">' + escHtml(flow.matchMeta(h.card)) + '</span></span></button>';
           }).join('') +
-        '</div></div>';
+        '</div></div>' +
+        (altsShut ? '<button type="button" class="sc-signin-link sc-sg-others" data-act="others">Wrong one? Show the other matches</button>' : '');
       c.hidden = false;
       c.innerHTML = html;
     }
@@ -15744,7 +15874,7 @@ window.SinglesPrice = {
     function renderDock() {
       var onPile = !!(pick && pick.lineKey && pile.get(pick.lineKey));
       el.add.disabled = !pick || onPile || !pick.printing;
-      el.add.textContent = onPile ? 'Added' : 'Add';
+      el.add.textContent = onPile ? 'Added' : (checking && checking.kind === 'match' ? 'Yes, add it' : 'Add');
       el.add.classList.toggle('sc-sg-done', onPile);
       el.undo.disabled = !(lastAdded && lastAdded.lineKey && pile.get(lastAdded.lineKey));
       el.skip.disabled = !pick && !checking && !noMatch && !queue.length;
@@ -18460,6 +18590,22 @@ window.SinglesPrice = {
       // Only the row losing ITS capture: taking it fires this on the button that held the touch's implicit capture.
       if (pileSwipe && ev.pointerId === pileSwipe.id && ev.target === pileSwipe.row) pileSwipeReset();
     }
+    // The page stays still under a swipe (owner, 11/23: "very sensitive to up and down ... it flicks my screen up and down").
+    // touch-action:pan-y alone lets a slightly diagonal swipe scroll the page as well, and iOS starts that scroll in the first
+    // few px, before the swipe has picked a direction. So a non-passive touchmove holds the page once the finger has gone a few px
+    // clearly left (SwipeRow.holdsPage: HOLD_PX, never on the first tiny wobble of a scroll) and through the whole swipe; a drag
+    // that starts up or down is never held.
+    var pileTouchAt = null; // where the one finger on the pile went down (touchstart), in the same px as the touchmoves
+    function pileSwipeTouchStart(ev) {
+      var t = ev.touches && ev.touches.length === 1 ? ev.touches[0] : null;
+      pileTouchAt = t ? { x: t.clientX, y: t.clientY } : null;
+    }
+    function pileSwipeTouchMove(ev) {
+      var s = pileSwipe, t = ev.touches && ev.touches.length === 1 ? ev.touches[0] : null;
+      if (!s || !t || !pileTouchAt || ev.cancelable === false) return;
+      var early = s.swipe.state() === 'pending' && SwipeRow.holdsPage(t.clientX - pileTouchAt.x, t.clientY - pileTouchAt.y);
+      if (s.swipe.holding() || early) ev.preventDefault();
+    }
 
     // ── scans that arrive while a lookup is running wait their turn instead of being dropped (the
     // beep/haptic already told Josh it was read). One Triumph LOOKUP at a time. A lookup that gets no
@@ -20263,6 +20409,8 @@ window.SinglesPrice = {
       dom.earlierList.addEventListener('pointerup', pileSwipeUp);
       dom.earlierList.addEventListener('pointercancel', pileSwipeCancel);
       dom.earlierList.addEventListener('lostpointercapture', pileSwipeLost);
+      dom.earlierList.addEventListener('touchstart', pileSwipeTouchStart, { passive: true });
+      dom.earlierList.addEventListener('touchmove', pileSwipeTouchMove, { passive: false });
       // Starting a new seller must never be a single accidental tap - a 40-card pile lost mid-
       // negotiation is the worst thing this tool can do - so "New seller" only opens a confirm row;
       // nothing is cleared until that second, deliberate tap on "Yes, clear it".
