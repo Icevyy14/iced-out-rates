@@ -1877,6 +1877,8 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .scanner-layout.sc-seller-mode .sc-staff-only{display:none !important;}
   /* Price with (Normal / Consignor / Flat %) is the owner's: no other login sees it (see syncRuleToRole). */
   #tab-scanner .scanner-layout.sc-no-rules #sc-rule-card{display:none !important;}
+  /* ...and so is the Normal / Lower market switch: Lower prices on the lower of CL value and avg of 3, an owner's tool for a seller. */
+  #tab-scanner .scanner-layout.sc-no-rules .sc-mode{display:none !important;}
   #tab-scanner .scanner-layout:not(.sc-seller-mode) .sc-seller-only{display:none !important;}
   /* ...and nothing OUTSIDE the scanner either: the header's links to the rate sheets and its status line. */
   body.sc-hiding .nav-tabs,body.sc-hiding .nav-right,body.sc-hiding .logo-sub{display:none !important;}
@@ -18901,16 +18903,16 @@ window.SheetFiles = {
     var prefs = ViewPrefs.loadPrefs(safeLocalStorage(), OfferRules.normalizeChoice);
     var choice = prefs.choice;
     var sellerMode = prefs.hidden;
-    // The owner's own Price-with choice (Normal / Consignor / Flat %). Only an owner may price on anything but Normal: Consignor rates are the
+    // The owner's own Price-with choice (Normal / Consignor / Flat %). Only an owner may price on anything but Normal (and on the Lower market): Consignor rates are the
     // buyer's rate minus a fixed cut, so showing them to a sourcer would let them work the buyer's rates out. A non-owner login is priced on
     // Normal whatever this phone has stored, and the owner's stored choice is left alone for when an owner is back on it.
-    var ownerRule = { rule: choice.rule, flatPct: choice.flatPct, flatBasis: choice.flatBasis };
+    var ownerRule = { rule: choice.rule, flatPct: choice.flatPct, flatBasis: choice.flatBasis, mode: choice.mode };
     function isOwnerView() { return roleState() === 'owner'; }
     /** Make `choice` agree with who is signed in: an owner has their stored rule, anyone else Normal. True when it changed. */
     function syncRuleToRole() {
-      var want = isOwnerView() ? ownerRule : { rule: 'normal', flatPct: ownerRule.flatPct, flatBasis: ownerRule.flatBasis };
+      var want = isOwnerView() ? ownerRule : { rule: 'normal', flatPct: ownerRule.flatPct, flatBasis: ownerRule.flatBasis, mode: 'normal' };
       var next = OfferRules.normalizeChoice(Object.assign({}, choice, want));
-      var moved = next.rule !== choice.rule || next.flatPct !== choice.flatPct || next.flatBasis !== choice.flatBasis;
+      var moved = next.rule !== choice.rule || next.mode !== choice.mode || next.flatPct !== choice.flatPct || next.flatBasis !== choice.flatBasis;
       choice = next;
       if (dom && dom.layout) dom.layout.classList.toggle('sc-no-rules', !isOwnerView());
       return moved;
@@ -20379,7 +20381,7 @@ window.SheetFiles = {
 
     function setChoice(next) {
       choice = OfferRules.normalizeChoice(next);
-      if (isOwnerView()) ownerRule = { rule: choice.rule, flatPct: choice.flatPct, flatBasis: choice.flatBasis };
+      if (isOwnerView()) ownerRule = { rule: choice.rule, flatPct: choice.flatPct, flatBasis: choice.flatBasis, mode: choice.mode };
       else syncRuleToRole();
       savePrefsNow();
       // A rule that prices on a sheet that is not in (its read failed or never answered: a lost signal at a show) asks for
