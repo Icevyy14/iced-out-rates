@@ -344,7 +344,13 @@ body>*{position:relative;z-index:1;}
 code{font-family:var(--font-mono);font-size:.92em;}
 
 /* global buy-language row */
-#wtb-buylang{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:2px 4px 14px;}
+#wtb-buylang,#sg-buylang{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:2px 4px 14px;}
+/* the Singles tab's Buy languages toggle: a choice held back (Japanese pricing not live yet) shows, greyed, and can't be picked */
+.lang-chip:disabled{opacity:.45;cursor:not-allowed;}
+.lang-chip:disabled:hover{color:var(--dim);}
+/* the Japanese % box while only English is bought: still editable (set it ahead of time), greyed */
+.sg-jp-idle .form-input{opacity:.6;}
+.sg-jp-hint{font-size:11px;color:var(--dim);margin-top:4px;}
 .buylang-label{font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);}
 .buylang-hint{font-size:11px;color:var(--dim);}
 
@@ -541,7 +547,7 @@ html:not([data-iop-theme]) .wtb-tier .tgl.on,html:not([data-iop-theme]) .tgl.on{
 html:not([data-iop-theme]) .filter-group{background:var(--s1);border:1px solid var(--border);border-radius:10px;}
 html:not([data-iop-theme]) .filter-chip{border:none;padding:6px 12px;}
 html:not([data-iop-theme]) .filter-chip.active{background:var(--soft-blue);color:#fff;box-shadow:inset 0 0 0 1px rgba(47,124,246,.45);}
-html:not([data-iop-theme]) #wtb-buylang{margin:0 2px 16px;gap:10px;}
+html:not([data-iop-theme]) #wtb-buylang,html:not([data-iop-theme]) #sg-buylang{margin:0 2px 16px;gap:10px;}
 html:not([data-iop-theme]) .buylang-label{margin:0;}
 html:not([data-iop-theme]) .buylang-hint{font-size:12px;color:var(--muted);}
 html:not([data-iop-theme]) .wtb-add-tier{border:1px dashed var(--line-strong);border-radius:10px;color:var(--dim);font-family:var(--font-ui);font-weight:600;font-size:13px;margin-top:12px;justify-content:center;}
@@ -751,7 +757,18 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
         <label class="form-label" for="sg-cond-DMG">DMG %</label>
         <input class="form-input" id="sg-cond-DMG" type="number" inputmode="decimal" min="0" max="100" step="0.01" placeholder="blank = not bought" title="Percent of the NM price paid for Damaged. Blank = goes to staff.">
       </div>
+      <div class="form-group" id="sg-japaneseWrap">
+        <label class="form-label" for="sg-japanesePct">Japanese %</label>
+        <input class="form-input" id="sg-japanesePct" type="number" inputmode="numeric" min="1" max="100" step="1" placeholder="not set" title="Percent of a Japanese card's own TCGplayer market price we pay (whole number, 1-100), times the condition %. Lot tiers don't change it.">
+        <div class="sg-jp-hint" id="sg-japaneseHint" hidden>used when Japanese is on</div>
+      </div>
+      <div class="form-group" id="sg-japaneseMaxWrap">
+        <label class="form-label" for="sg-japaneseMaxMarket">Japanese max market $</label>
+        <input class="form-input" id="sg-japaneseMaxMarket" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="not set" title="The highest TCGplayer market price we buy a Japanese card at. A Japanese card over it is not bought. Needed before buying Japanese.">
+        <div class="sg-jp-hint" id="sg-japaneseMaxHint" hidden>used when Japanese is on</div>
+      </div>
     </div>
+    <div id="sg-buylang"></div>
     <div class="pause-row">
       <label class="check" for="sg-paused">
         <input type="checkbox" id="sg-paused" title="Stop the bot quoting any singles at all">
@@ -936,6 +953,27 @@ const LIMITS = {
   maxBannedProductIds: 2000,
   // lotTiers: the lot-size pricing bands (see SinglesLotTier below)
   maxLotTiers: 20,
+  // japanesePct: what % of a Japanese card's TCGplayer market price we pay (a whole number)
+  minJapanesePct: 1,
+  maxJapanesePct: 100,
+  // japaneseMaxMarketCents: the highest Japanese market price we buy at, in whole cents. Its top is a
+  // row's own To $ top (maxMoney), in cents.
+  minJapaneseMaxMarketCents: 1,
+  maxJapaneseMaxMarketCents: 1000000 * 100,
+};
+
+/**
+ * Which card languages the sheet buys, sheet-wide (`SinglesSettings.buyLanguages`). Missing means
+ * 'english', exactly what every sheet saved before this field existed bought. The rate ROWS stay the
+ * English price bands (a row's own `language` is still always 'english'); a Japanese card is paid a
+ * flat `japanesePct` of its own market price instead of a band - see singles/rules.js priceCard.
+ */
+const BUY_LANGUAGES = ['english', 'japanese', 'both'];
+const DEFAULT_BUY_LANGUAGES = 'english';
+const BUY_LANGUAGE_LABEL                         = {
+  english: 'English only',
+  japanese: 'Japanese only',
+  both: 'English and Japanese',
 };
 
 const DEFAULT_MIN_MARKET_CENTS = 100;
@@ -1070,6 +1108,9 @@ function defaults()                  {
     excludeGroups: [],
     bannedProductIds: [],
     lotTiers: [],
+    buyLanguages: 'english',
+    japanesePct: null,
+    japaneseMaxMarketCents: null,
   };
 }
 
@@ -1104,6 +1145,11 @@ function normalize(raw         )          {
     excludeGroups: Array.isArray(src.excludeGroups) ? src.excludeGroups.map(normalizeExcludeGroup) : src.excludeGroups,
     bannedProductIds: normIntList(src.bannedProductIds) || [],
     lotTiers: Array.isArray(src.lotTiers) ? src.lotTiers.map(normalizeLotTier) : src.lotTiers,
+    // Missing (every sheet saved before these fields existed) = English only, no Japanese % set.
+    buyLanguages: src.buyLanguages == null || src.buyLanguages === '' ? DEFAULT_BUY_LANGUAGES : normKey(src.buyLanguages),
+    japanesePct: src.japanesePct === '' || src.japanesePct == null ? null : normMoney(src.japanesePct, src.japanesePct),
+    japaneseMaxMarketCents: src.japaneseMaxMarketCents === '' || src.japaneseMaxMarketCents == null
+      ? null : normNumber(src.japaneseMaxMarketCents, src.japaneseMaxMarketCents),
   };
 }
 
@@ -1395,6 +1441,44 @@ function validateSettings(raw         )                        {
   // lotTiers — lot-size pricing bands; empty/absent = legacy per-row pct mode
   const lotTiers = validateLotTiers(s.lotTiers, errors);
 
+  // buyLanguages / japanesePct — which card languages we buy, and the flat % a Japanese card is paid
+  let buyLanguages                      = DEFAULT_BUY_LANGUAGES                       ;
+  if (s.buyLanguages != null && s.buyLanguages !== '') {
+    if (typeof s.buyLanguages !== 'string' || BUY_LANGUAGES.indexOf(s.buyLanguages) < 0) {
+      errors.push('Buy languages must be English, Japanese or Both.');
+    } else {
+      buyLanguages = s.buyLanguages                       ;
+    }
+  }
+  let japanesePct                = null;
+  if (s.japanesePct != null && s.japanesePct !== '') {
+    const p = num(s.japanesePct);
+    if (p === null || !Number.isInteger(p) || p < LIMITS.minJapanesePct || p > LIMITS.maxJapanesePct) {
+      errors.push(
+        'Japanese % must be a whole number between ' + LIMITS.minJapanesePct + ' and ' + LIMITS.maxJapanesePct + '.',
+      );
+    } else {
+      japanesePct = p;
+    }
+  } else if (buyLanguages === 'japanese' || buyLanguages === 'both') {
+    errors.push('Set the Japanese % before buying Japanese.');
+  }
+  // japaneseMaxMarketCents — the top of the Japanese market range we buy (whole cents)
+  let japaneseMaxMarketCents                = null;
+  if (s.japaneseMaxMarketCents != null && s.japaneseMaxMarketCents !== '') {
+    const m = num(s.japaneseMaxMarketCents);
+    if (m === null || !Number.isInteger(m) || m < LIMITS.minJapaneseMaxMarketCents || m > LIMITS.maxJapaneseMaxMarketCents) {
+      errors.push(
+        'Japanese max market must be more than $0 and no more than ' + money(LIMITS.maxJapaneseMaxMarketCents / 100) +
+          ', in whole cents.',
+      );
+    } else {
+      japaneseMaxMarketCents = m;
+    }
+  } else if (buyLanguages === 'japanese' || buyLanguages === 'both') {
+    errors.push('Set the Japanese max market before buying Japanese.');
+  }
+
   if (errors.length) return { ok: false, errors };
 
   return {
@@ -1411,6 +1495,9 @@ function validateSettings(raw         )                        {
       excludeGroups,
       bannedProductIds,
       lotTiers,
+      buyLanguages,
+      japanesePct,
+      japaneseMaxMarketCents,
     },
   };
 }
@@ -2129,6 +2216,9 @@ window.SinglesValidate = {
   BASIS_KEYS: BASIS_KEYS,
   BASIS_LABEL: BASIS_LABEL,
   LIMITS: LIMITS,
+  BUY_LANGUAGES: BUY_LANGUAGES,
+  DEFAULT_BUY_LANGUAGES: DEFAULT_BUY_LANGUAGES,
+  BUY_LANGUAGE_LABEL: BUY_LANGUAGE_LABEL,
   DEFAULT_MIN_MARKET_CENTS: DEFAULT_MIN_MARKET_CENTS,
   DEFAULT_MAX_CARDS_PER_COMP: DEFAULT_MAX_CARDS_PER_COMP,
   DEFAULT_MIN_LOT_MARKET: DEFAULT_MIN_LOT_MARKET,
@@ -2318,6 +2408,11 @@ window.SinglesValidate = {
 
   var SinglesTab = (function () {
     var SV = window.SinglesValidate || {};
+    // Held back until Japanese pricing is live (the Japanese card list on the page, live Japanese prices checked): while false the
+    // Buy languages toggle shows Japanese and Both greyed ("Japanese pricing not live yet") and only English can be picked. Turning
+    // Japanese on later is this one line.
+    var SINGLES_JAPANESE_LIVE = false;
+    var SG_BUY_LANGS = [['english', 'English'], ['japanese', 'Japanese'], ['both', 'Both']];
 
     var state = null, baseline = null, savedAt = null, apiUp = true, busy = false, justSaved = false, uidSeq = 0;
     var msgCache = { text: '', kind: '' };
@@ -2339,6 +2434,13 @@ window.SinglesValidate = {
       condMP: document.getElementById('sg-cond-MP'),
       condHP: document.getElementById('sg-cond-HP'),
       condDMG: document.getElementById('sg-cond-DMG'),
+      buyLang: document.getElementById('sg-buylang'),
+      japanesePct: document.getElementById('sg-japanesePct'),
+      japaneseWrap: document.getElementById('sg-japaneseWrap'),
+      japaneseHint: document.getElementById('sg-japaneseHint'),
+      japaneseMaxMarket: document.getElementById('sg-japaneseMaxMarket'),
+      japaneseMaxWrap: document.getElementById('sg-japaneseMaxWrap'),
+      japaneseMaxHint: document.getElementById('sg-japaneseMaxHint'),
       foot: document.getElementById('sg-foot'),
       groupsList: document.getElementById('xg-list'),
       bannedIds: document.getElementById('sg-banned-ids'),
@@ -2432,6 +2534,11 @@ window.SinglesValidate = {
         minLotMarket: settings.minLotMarket == null ? '' : str(settings.minLotMarket),
         paused: !!settings.paused,
         pausedMessage: str(settings.pausedMessage),
+        // which card languages are bought (missing on an old save = English only) and the Japanese % ('' = not set)
+        buyLanguages: settings.buyLanguages === 'japanese' || settings.buyLanguages === 'both' ? settings.buyLanguages : 'english',
+        japanesePct: settings.japanesePct == null ? '' : str(settings.japanesePct),
+        // the Japanese max market: saved in cents, shown in dollars ('' = not set)
+        japaneseMaxMarket: settings.japaneseMaxMarketCents == null ? '' : centsToDollars(settings.japaneseMaxMarketCents),
         rates: (settings.rates || []).map(toFormRow),
         excludeGroups: (settings.excludeGroups || []).map(toFormGroup),
         bannedProductIdsText: Array.isArray(settings.bannedProductIds) ? settings.bannedProductIds.join(', ') : ''
@@ -2479,6 +2586,9 @@ window.SinglesValidate = {
         minLotMarket: state.minLotMarket,
         paused: state.paused,
         pausedMessage: state.paused ? state.pausedMessage : '',
+        buyLanguages: state.buyLanguages,
+        japanesePct: state.japanesePct === '' ? null : state.japanesePct,
+        japaneseMaxMarketCents: dollarsToCents(state.japaneseMaxMarket),
         excludeGroups: state.excludeGroups.map(plainGroup),
         bannedProductIds: state.bannedProductIdsText
       };
@@ -2525,7 +2635,10 @@ window.SinglesValidate = {
           pausedMessage: state.pausedMessage,
           paused: !!state.paused,
           cond: JSON.stringify(state.buyConditions),
-          bannedProductIdsText: state.bannedProductIdsText
+          bannedProductIdsText: state.bannedProductIdsText,
+          buyLanguages: state.buyLanguages,
+          japanesePct: state.japanesePct,
+          japaneseMaxMarket: state.japaneseMaxMarket
         }
       };
     }
@@ -2533,7 +2646,7 @@ window.SinglesValidate = {
     function countChanges() {
       if (!baseline || !state) return 0;
       var n = 0;
-      ['minMarketCents', 'maxCardsPerComp', 'minLotMarket', 'pausedMessage', 'bannedProductIdsText'].forEach(function (k) {
+      ['minMarketCents', 'maxCardsPerComp', 'minLotMarket', 'pausedMessage', 'bannedProductIdsText', 'buyLanguages', 'japanesePct', 'japaneseMaxMarket'].forEach(function (k) {
         if (str(state[k]) !== str(baseline.top[k])) n++;
       });
       if (!!state.paused !== !!baseline.top.paused) n++;
@@ -2819,6 +2932,42 @@ window.SinglesValidate = {
       dom.paused.checked = !!state.paused;
       dom.pausedWrap.hidden = !state.paused;
       dom.pausedMessage.value = state.pausedMessage;
+      dom.japanesePct.value = state.japanesePct;
+      dom.japaneseMaxMarket.value = state.japaneseMaxMarket;
+      renderBuyLang();
+    }
+
+    /** "Buying: English only" / "Buying: English + Japanese at N%, market up to $X" / "Buying: Japanese only at N%, ..." (just the settings). */
+    function buyingLine() {
+      var pct = str(state.japanesePct).trim();
+      var max = str(state.japaneseMaxMarket).trim();
+      var maxN = Number(max);
+      var top = max === '' ? ' (Japanese max market not set)'
+        : ', market up to $' + (Number.isFinite(maxN) ? maxN.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : max);
+      var at = (pct === '' ? ' (Japanese % not set)' : ' at ' + pct + '%') + top;
+      if (state.buyLanguages === 'both') return 'Buying: English + Japanese' + at;
+      if (state.buyLanguages === 'japanese') return 'Buying: Japanese only' + at;
+      return 'Buying: English only';
+    }
+
+    // ── Buy languages: English / Japanese / Both (the slab tab's buy-language toggle, one choice) ─────────
+    function renderBuyLang() {
+      var chips = SG_BUY_LANGS.map(function (pair) {
+        var key = pair[0], on = state.buyLanguages === key;
+        var held = key !== 'english' && !SINGLES_JAPANESE_LIVE;
+        return '<button type="button" class="lang-chip' + (on ? ' on' : '') + '" data-act="sgbuylang" data-lang="' + esc(key) + '"' +
+          ' aria-pressed="' + on + '"' + (held ? ' disabled title="Japanese pricing not live yet"' : ' title="' + esc(pair[1]) + ' cards"') + '>' +
+          esc(pair[1]) + '</button>';
+      }).join('');
+      dom.buyLang.innerHTML =
+        '<span class="buylang-label" id="sg-buylang-label">Buy languages:</span>' +
+        '<div class="lang-toggle" role="group" aria-labelledby="sg-buylang-label">' + chips + '</div>' +
+        '<span class="buylang-hint">· ' + esc(buyingLine()) + (SINGLES_JAPANESE_LIVE ? '' : ' · Japanese pricing not live yet') + '</span>';
+      var idle = state.buyLanguages === 'english';
+      dom.japaneseWrap.classList.toggle('sg-jp-idle', idle);
+      dom.japaneseHint.hidden = !idle;
+      dom.japaneseMaxWrap.classList.toggle('sg-jp-idle', idle);
+      dom.japaneseMaxHint.hidden = !idle;
     }
 
     // ── exclude GROUPS (sheet-level, named + toggleable library) ────────────────
@@ -3222,6 +3371,21 @@ window.SinglesValidate = {
       state.paused = dom.paused.checked;
       dom.pausedWrap.hidden = !state.paused;
       markDirty();
+    });
+    dom.buyLang.addEventListener('click', function (ev) {
+      var btn = ev.target && ev.target.closest ? ev.target.closest('[data-act="sgbuylang"]') : null;
+      if (!btn || btn.disabled) return;
+      var key = btn.getAttribute('data-lang');
+      if (key !== 'english' && !SINGLES_JAPANESE_LIVE) return; // held back: Japanese pricing not live yet
+      if (key !== 'english' && key !== 'japanese' && key !== 'both') return;
+      if (state.buyLanguages === key) return;
+      state.buyLanguages = key;
+      markDirty();
+      renderBuyLang();
+    });
+    ['input', 'change'].forEach(function (type) {
+      dom.japanesePct.addEventListener(type, function () { state.japanesePct = dom.japanesePct.value; markDirty(); renderBuyLang(); });
+      dom.japaneseMaxMarket.addEventListener(type, function () { state.japaneseMaxMarket = dom.japaneseMaxMarket.value; markDirty(); renderBuyLang(); });
     });
 
     // ── load ───────────────────────────────────────────────────────────────

@@ -850,7 +850,13 @@ body>*{position:relative;z-index:1;}
 code{font-family:var(--font-mono);font-size:.92em;}
 
 /* global buy-language row */
-#wtb-buylang{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:2px 4px 14px;}
+#wtb-buylang,#sg-buylang{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:2px 4px 14px;}
+/* the Singles tab's Buy languages toggle: a choice held back (Japanese pricing not live yet) shows, greyed, and can't be picked */
+.lang-chip:disabled{opacity:.45;cursor:not-allowed;}
+.lang-chip:disabled:hover{color:var(--dim);}
+/* the Japanese % box while only English is bought: still editable (set it ahead of time), greyed */
+.sg-jp-idle .form-input{opacity:.6;}
+.sg-jp-hint{font-size:11px;color:var(--dim);margin-top:4px;}
 .buylang-label{font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);}
 .buylang-hint{font-size:11px;color:var(--dim);}
 
@@ -1047,7 +1053,7 @@ html:not([data-iop-theme]) .wtb-tier .tgl.on,html:not([data-iop-theme]) .tgl.on{
 html:not([data-iop-theme]) .filter-group{background:var(--s1);border:1px solid var(--border);border-radius:10px;}
 html:not([data-iop-theme]) .filter-chip{border:none;padding:6px 12px;}
 html:not([data-iop-theme]) .filter-chip.active{background:var(--soft-blue);color:#fff;box-shadow:inset 0 0 0 1px rgba(47,124,246,.45);}
-html:not([data-iop-theme]) #wtb-buylang{margin:0 2px 16px;gap:10px;}
+html:not([data-iop-theme]) #wtb-buylang,html:not([data-iop-theme]) #sg-buylang{margin:0 2px 16px;gap:10px;}
 html:not([data-iop-theme]) .buylang-label{margin:0;}
 html:not([data-iop-theme]) .buylang-hint{font-size:12px;color:var(--muted);}
 html:not([data-iop-theme]) .wtb-add-tier{border:1px dashed var(--line-strong);border-radius:10px;color:var(--dim);font-family:var(--font-ui);font-weight:600;font-size:13px;margin-top:12px;justify-content:center;}
@@ -12716,10 +12722,13 @@ const pushTo = (map, key, value) => {
  * Reads a scan book (scanner/singlesScanBook.js's shape) into lookup tables. Throws on anything that is not
  * one - a page must say "the price list didn't load", never scan against half a book.
  */
-function indexBook(book) {
+function indexBook(book, opts) {
   if (!book || book.schema !== SCAN_BOOK_SCHEMA || !Array.isArray(book.cards) || !Array.isArray(book.sets)) {
     throw new Error('not a scan book');
   }
+  // opts.lang 'ja': the Japanese scan book (singles-book-ja.json). Each of its cards says lang 'ja', so pricing and the
+  // language rules never take one for English. The English book's cards stay exactly as they were (no lang = English).
+  const jaBook = !!(opts && opts.lang === 'ja');
   const printings = Array.isArray(book.printings) ? book.printings : [];
   const rarities = Array.isArray(book.rarities) ? book.rarities : [];
   const kinds = Array.isArray(book.kinds) ? book.kinds : ['pokemon', 'trainer', 'energy'];
@@ -12752,6 +12761,7 @@ function indexBook(book) {
       plainPrint: isPlainPrint(name),
       nameWords: nameKey(name).split(' ').filter(w => w && !/^\d+$/.test(w)),
     };
+    if (jaBook) card.lang = 'ja';
     cards.push(card);
     byId.set(String(card.productId), card);
     if (num) {
@@ -12870,6 +12880,98 @@ function identify(idx, reading, opts) {
   return { candidates, sure };
 }
 
+// ── card languages (the Singles sheet's buyLanguages: 'english' / 'japanese' / 'both') ─────────────
+//
+// Mirrors singles/rules.js (buysLanguage): a missing or unknown setting buys English only, as today. A card is Japanese only
+// when it says lang 'ja' (the Japanese scan book's cards, or the card matcher's Japanese candidates); anything else is English.
+
+const LANGS_BOUGHT = { english: ['en'], japanese: ['ja'], both: ['en', 'ja'] };
+const LANG_NAME = { en: 'English', ja: 'Japanese' };
+
+/** 'ja' for a Japanese card, else 'en'. */
+const cardLang = card => (card && card.lang === 'ja' ? 'ja' : 'en');
+
+/** Whether a sheet with this buyLanguages buys cards in `lang` ('en' / 'ja'). */
+function buysLang(buyLanguages, lang) {
+  const bought = Object.prototype.hasOwnProperty.call(LANGS_BOUGHT, buyLanguages) ? LANGS_BOUGHT[buyLanguages] : LANGS_BOUGHT.english;
+  return bought.includes(lang === 'ja' ? 'ja' : 'en');
+}
+
+/** The other language than the one we buy alone ('english' -> 'ja', 'japanese' -> 'en'); null for 'both'. */
+function unboughtLang(buyLanguages) {
+  if (!buysLang(buyLanguages, 'ja')) return 'ja';
+  if (!buysLang(buyLanguages, 'en')) return 'en';
+  return null;
+}
+
+const textOr = (v, d) => (typeof v === 'string' && v.trim() ? v.trim() : d);
+
+/**
+ * A card the page's scan book doesn't hold, built from what the card matcher said about it (a Japanese candidate's name,
+ * number and set: the English scan book has no Japanese cards). No prices, so it can be shown and picked but never added.
+ * null without a language or a name.
+ */
+function matcherCard(p) {
+  if (!p || (p.lang !== 'ja' && p.lang !== 'en') || !textOr(p.name, '')) return null;
+  const name = textOr(p.name, '');
+  return {
+    productId: Number(p.productId), name, num: textOr(p.number, ''), rarity: null, kind: null,
+    groupId: null, setName: textOr(p.setName, ''), setAbbr: '', setIndex: -1, year: null, era: null,
+    prices: {}, plainPrint: isPlainPrint(name), nameWords: nameKey(name).split(' ').filter(w => w && !/^\d+$/.test(w)),
+    lang: p.lang,
+  };
+}
+
+/**
+ * One photo candidate as a card: from the English book, else the Japanese book (when the page loaded it), else (a Japanese
+ * candidate the card matcher named) a card built from its own words. A candidate the card matcher said is Japanese is looked
+ * for in the Japanese book first. null when none of them has it.
+ */
+function photoCard(idx, p, jaIdx) {
+  if (!p) return null;
+  const id = String(p.productId);
+  const ja = jaIdx && jaIdx.byId ? jaIdx.byId.get(id) || null : null;
+  if (p.lang === 'ja') return ja || matcherCard(p);
+  return idx.byId.get(id) || ja || null;
+}
+
+/**
+ * The card on screen when the photo is of a language the sheet doesn't buy: the card's own fields (picture, name, number,
+ * set) with NO prices (so it can't be added or quoted) and `off: true`. productId is null when only the card matcher's flag
+ * said so (it named no card).
+ */
+function offCard(card, lang) {
+  const c = card || {};
+  const name = textOr(c.name, '');
+  return {
+    productId: Number.isSafeInteger(Number(c.productId)) && Number(c.productId) > 0 ? Number(c.productId) : null,
+    name, num: textOr(c.num, textOr(c.number, '')), setName: textOr(c.setName, ''), setAbbr: textOr(c.setAbbr, ''),
+    rarity: c.rarity || null, kind: c.kind || null, groupId: c.groupId == null ? null : c.groupId, year: c.year == null ? null : c.year,
+    era: c.era || null, prices: {}, lang: lang === 'ja' || lang === 'en' ? lang : cardLang(c), off: true,
+  };
+}
+
+/**
+ * Is the card in the photo in a language the sheet doesn't buy? -> offCard(...) or null. In order: the photo's own top card
+ * is in a language not bought; the card matcher's second call named the card in a language not bought (`answer.other`);
+ * the card matcher only flagged it (looksJapanese under English only, looksEnglish under Japanese only).
+ * `answer` = the live client's recognizeMatch answer (its language fields are all optional; an answer without them, a
+ * TCGAPIs one, says nothing about the language).
+ */
+function photoOffLanguage(idx, photoCandidates, answer, buyLanguages, jaIdx) {
+  const first = Array.isArray(photoCandidates) && photoCandidates[0] ? photoCard(idx, photoCandidates[0], jaIdx) : null;
+  if (first && !buysLang(buyLanguages, cardLang(first))) return offCard(first);
+  const a = answer && typeof answer === 'object' ? answer : {};
+  const other = a.other && (a.other.lang === 'ja' || a.other.lang === 'en') ? a.other : null;
+  if (other && !buysLang(buyLanguages, other.lang)) {
+    const known = other.lang === 'ja' ? (jaIdx && jaIdx.byId ? jaIdx.byId.get(String(other.productId)) : null) : idx.byId.get(String(other.productId));
+    return offCard(known || other, other.lang);
+  }
+  if (a.looksJapanese === true && !buysLang(buyLanguages, 'ja')) return offCard(null, 'ja');
+  if (a.looksEnglish === true && !buysLang(buyLanguages, 'en')) return offCard(null, 'en');
+  return null;
+}
+
 /**
  * Puts a PHOTO match (TCGAPIs card recognition through the singles-live function: [{ productId, ... }],
  * best first) together with what the text reader made of the same card (identify()'s answer, or null).
@@ -12881,27 +12983,39 @@ function identify(idx, reading, opts) {
  *   - the photo found nothing in our book and the text reading is sure on its own.
  */
 function mergePhotoMatch(idx, photoCandidates, textResult, opts) {
-  const limit = (opts && opts.limit) || 10;
+  const o = opts || {};
+  const limit = o.limit || 10;
+  const buy = o.buyLanguages;
+  const jaIdx = o.jaIdx || null;
+  const answer = o.answer || null;
   const photoTopRaw = Array.isArray(photoCandidates) && photoCandidates[0];
-  const photoTop = photoTopRaw ? idx.byId.get(String(photoTopRaw.productId)) || null : null;
-  const text = textResult && Array.isArray(textResult.candidates) ? textResult : { candidates: [], sure: false };
+  const photoTop = photoTopRaw ? photoCard(idx, photoTopRaw, jaIdx) : null;
+  const rawText = textResult && Array.isArray(textResult.candidates) ? textResult : { candidates: [], sure: false };
+  // Only cards in a language the sheet buys are offered (English only, the default: every card of the English book, as today).
+  const bought = card => buysLang(buy, cardLang(card));
+  const text = { candidates: rawText.candidates.filter(h => h && bought(h.card)), sure: !!rawText.sure };
+  // The card is in a language we don't buy: never sure (never added on its own), whatever else agrees.
+  const offLanguage = photoOffLanguage(idx, photoCandidates, answer, buy, jaIdx);
+  // Japanese or Both, and the answer can't say the card's language (TCGAPIs, or no photo answer): never sure either.
+  const langUnknown = buy != null && unboughtLang(buy) !== 'ja' && !(answer && answer.languageKnown === true);
+  const withOff = res => (offLanguage ? Object.assign(res, { sure: false, offLanguage }) : langUnknown ? Object.assign(res, { sure: false }) : res);
   const seen = new Set();
   const candidates = [];
   for (const p of Array.isArray(photoCandidates) ? photoCandidates : []) {
-    const card = p && idx.byId.get(String(p.productId));
-    if (!card || seen.has(card)) continue;
-    seen.add(card);
+    const card = p && photoCard(idx, p, jaIdx);
+    if (!card || seen.has(String(card.productId)) || !bought(card)) continue;
+    seen.add(String(card.productId));
     const fromText = text.candidates.find(h => h.card === card);
     candidates.push({ card, score: fromText ? fromText.score : 0, why: ['photo match'].concat(fromText ? fromText.why : []) });
   }
-  if (!candidates.length) return { candidates: text.candidates.slice(0, limit), sure: !!text.sure };
+  if (!candidates.length) return withOff({ candidates: text.candidates.slice(0, limit), sure: !!text.sure });
   const textTop = text.candidates[0] ? text.candidates[0].card : null;
   for (const h of text.candidates) {
-    if (!seen.has(h.card)) { seen.add(h.card); candidates.push(h); }
+    if (!seen.has(String(h.card.productId))) { seen.add(String(h.card.productId)); candidates.push(h); }
   }
   const agree = !!textTop && textTop === candidates[0].card;
-  const confident = !!(opts && opts.photoConfident) && !!photoTop && photoTop === candidates[0].card;
-  return { candidates: candidates.slice(0, limit), sure: agree || confident };
+  const confident = !!o.photoConfident && !!photoTop && photoTop === candidates[0].card;
+  return withOff({ candidates: candidates.slice(0, limit), sure: agree || confident });
 }
 
 /** A person typed it: "charizard 4/102", "025/165", "umbreon ex pre", "pikachu 25". */
@@ -12951,6 +13065,14 @@ window.SinglesMatch = {
   printingsOf: printingsOf,
   defaultPrinting: defaultPrinting,
   priceOf: priceOf,
+  LANG_NAME: LANG_NAME,
+  cardLang: cardLang,
+  buysLang: buysLang,
+  unboughtLang: unboughtLang,
+  matcherCard: matcherCard,
+  photoCard: photoCard,
+  offCard: offCard,
+  photoOffLanguage: photoOffLanguage,
 };
 })();
 
@@ -12975,6 +13097,9 @@ window.SinglesMatch = {
 //   }
 //
 // Only SINGLES go in (pokemon/trainer/energy): sealed product and "other" rows are never scanned.
+// Only ONE LANGUAGE goes in: English unless `{ lang: 'ja' }` is asked for. The price book holds both
+// TCGplayer categories (3 English, 85 Japanese, each card tagged `lang`; untagged = English), and the
+// English scan book must never carry a Japanese print an English scan could land on and price.
 // Pure - no fs, no network, nothing required in; the file-writing wrapper that runs it on the bot's pricebook.json
 // comes in a later step. Brought over unchanged from the singles-scanner branch's singles/scanBook.js;
 // kept under scanner/ with the other Singles files so this step adds new files only.
@@ -12990,14 +13115,20 @@ const centsOrNull = v => (Number.isInteger(v) ? v : null);
 
 /**
  * book = the parsed pricebook.json ({ build, syncedAt, groups, products, prices }).
+ * opts.lang = 'en' (default) or 'ja': which language's cards go in.
  * Returns the scan book described above. Cards are ordered by set (oldest first) then productId, so
  * the output is stable for a given book.
  */
-function buildScanBook(book) {
+function buildScanBook(book, opts) {
   if (!book || typeof book !== 'object' || !book.products || !book.groups) {
     throw new Error('buildScanBook: not a price book (no products/groups)');
   }
   const groups = book.groups || {};
+  const lang = opts && opts.lang === 'ja' ? 'ja' : 'en';
+  const langOf = p => {
+    const l = p.lang || (groups[p.g] && groups[p.g].lang);
+    return l === 'ja' ? 'ja' : 'en';
+  };
   const prices = book.prices || {};
 
   const printings = [];
@@ -13011,7 +13142,7 @@ function buildScanBook(book) {
 
   const singles = Object.entries(book.products)
     .map(([id, p]) => ({ id: Number(id), p }))
-    .filter(({ id, p }) => Number.isInteger(id) && p && SCAN_KINDS.includes(p.kind) && groups[p.g]);
+    .filter(({ id, p }) => Number.isInteger(id) && p && SCAN_KINDS.includes(p.kind) && groups[p.g] && langOf(p) === lang);
 
   // Only the sets that actually hold a single, oldest first (by release year, then groupId).
   const usedGroupIds = [...new Set(singles.map(({ p }) => Number(p.g)))]
@@ -13087,7 +13218,7 @@ const clampQty = n => Math.max(0, Math.min(MAX_QUANTITY, Math.floor(Number(n) ||
 
 /** The fields a line keeps about its card (everything rules.priceCard reads, plus what the page shows). */
 function cardFields(card) {
-  return {
+  const fields = {
     productId: Number(card.productId),
     name: String(card.name || ''),
     num: String(card.num || ''),
@@ -13099,6 +13230,10 @@ function cardFields(card) {
     kind: card.kind || null,
     rarity: card.rarity || null,
   };
+  // A Japanese card keeps its language on the pile (and through a reload): it is priced at the sheet's Japanese %, never
+  // off an English band. An English card has no `lang` (exactly the line it always was).
+  if (card.lang === 'ja') fields.lang = 'ja';
+  return fields;
 }
 
 /** A line read back from storage, or null when it is not one. */
@@ -13277,21 +13412,23 @@ function priceLines(lines, settings, price, money) {
       printing: line.printing, condition: line.condition, quantity,
       marketCents: line.marketCents, lowCents: line.lowCents, salesAvgCents: null,
     };
+    if (line.lang === 'ja') card.lang = 'ja'; // singles/comp.js finishRow's lang: the card's own language decides its price
     const priced = price.priceCard(card, settings);
     const row = {
       key: line.key, quantity, outcome: null, why: null, marketCents: line.marketCents, lowCents: line.lowCents,
       basis: null, basisCents: null, pct: null, condPct: null, payoutCents: null, lineCents: null, rateName: null,
       flags: Array.isArray(priced.flags) ? priced.flags.slice() : [],
     };
-    if (line.marketCents != null) marketLines.push(line.marketCents * quantity);
+    if (typeof line.marketCents === 'number' && isFinite(line.marketCents)) marketLines.push(line.marketCents * quantity);
     if (priced.rejected) { rejected++; row.outcome = 'rejected'; row.why = priced.why; }
     else if (priced.staffPrice) { staff++; row.outcome = 'staff'; row.why = priced.why; }
     else {
       row.outcome = 'priced';
       row.basis = priced.basis; row.basisCents = priced.basisCents; row.pct = priced.pct; row.condPct = priced.condPct;
       row.payoutCents = priced.payoutCents; row.lineCents = priced.payoutCents * quantity; row.rateName = priced.rateName;
+      if (priced.fixedPct) row.fixedPct = true; // a Japanese card: its own flat percent, which lot tiers leave alone
       payoutLines.push(row.lineCents);
-      if (line.marketCents != null) acceptedMarketLines.push(line.marketCents * quantity);
+      if (typeof line.marketCents === 'number' && isFinite(line.marketCents)) acceptedMarketLines.push(line.marketCents * quantity);
     }
     rows.push(row);
   }
@@ -13308,7 +13445,14 @@ function priceLines(lines, settings, price, money) {
 
   // Lot-size tiers: singles/comp.js's applyLotTiers, step for step (same pct, same rounding, same words).
   const tiers = price.readLotTiers ? price.readLotTiers(settings && settings.lotTiers) : null;
-  const picked = tiers ? price.tierForTotal(tiers, totals.acceptedMarketCents) : null;
+  // singles/comp.js tierMarketOf: the tier is picked off the cards it prices. A Japanese row (fixedPct) keeps its own flat %, so
+  // its market never lifts the English cards into a higher tier; it still counts toward the minimum lot below.
+  const fixedMarket = [];
+  for (const row of rows) {
+    if (row.outcome === 'priced' && row.fixedPct && typeof row.marketCents === 'number' && isFinite(row.marketCents)) fixedMarket.push(row.marketCents * (row.quantity || 0));
+  }
+  const tierMarketCents = fixedMarket.length ? Math.max(0, totals.acceptedMarketCents - money.sumCents(fixedMarket)) : totals.acceptedMarketCents;
+  const picked = tiers ? price.tierForTotal(tiers, tierMarketCents) : null;
   if (picked) {
     const tier = picked.tier;
     const bigLot = !!picked.bigLot;
@@ -13319,6 +13463,9 @@ function priceLines(lines, settings, price, money) {
     const payouts = [];
     for (const row of rows) {
       if (row.outcome !== 'priced') continue;
+      // singles/comp.js applyLotTiers: a Japanese card keeps its own flat percent (the tier never moves it), but its line
+      // still counts in the resummed total (and its market value in the lot's total above).
+      if (row.fixedPct) { payouts.push(row.lineCents); continue; }
       const condPct = row.condPct == null ? 100 : row.condPct;
       const payoutCents = payoutOf(row.basisCents, tier.pct, condPct);
       row.pct = tier.pct;
@@ -13332,7 +13479,7 @@ function priceLines(lines, settings, price, money) {
     totals.lotTierLabel = rangeLabel;
     totals.bigLot = bigLot;
     if (bigLot) {
-      totals.bigLotNote = "This lot's total is " + wholeDollars(totals.acceptedMarketCents) + ' - over our '
+      totals.bigLotNote = "This lot's total is " + wholeDollars(tierMarketCents) + ' - over our '
         + rangeLabel.replace('+', '') + ' tier. We\'ll price it at ' + tier.pct + '% for now and have someone '
         + 'reach out to finalize a lot this size directly.';
     }
@@ -13429,13 +13576,34 @@ function readCandidate(raw) {
   var id = normalizeProductId(raw.productId);
   if (!id) return null;
   var text = function (v) { return typeof v === 'string' && v.trim() ? v.trim() : typeof v === 'number' && isFinite(v) ? String(v) : null; };
-  return {
+  var out = {
     productId: Number(id),
     name: text(raw.name),
     number: text(raw.number),
     setName: text(raw.setName),
     confidence: typeof raw.confidence === 'number' && isFinite(raw.confidence) ? raw.confidence : null,
   };
+  // The card's language, only when the card matcher (Mac mini) said it: 'en' or 'ja'. Not said (TCGAPIs, or an older
+  // function) = no `lang`, which the page reads as English, as it always has.
+  if (raw.lang === 'en' || raw.lang === 'ja') out.lang = raw.lang;
+  return out;
+}
+
+/** The Singles sheet's buyLanguages as the page sends it: 'japanese' / 'both', else null (English only: nothing is sent). */
+function sendableBuyLanguages(v) {
+  return v === 'japanese' || v === 'both' ? v : null;
+}
+
+/**
+ * The card the matcher's SECOND call named in the other language (singles-live v7 `other`): { productId, lang, name, number,
+ * setName }, or null. Only a card with a language counts: without one the page can't say which language isn't bought.
+ */
+function readOther(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  var id = normalizeProductId(raw.productId);
+  if (!id || (raw.lang !== 'en' && raw.lang !== 'ja')) return null;
+  var text = function (v) { return typeof v === 'string' && v.trim() ? v.trim() : typeof v === 'number' && isFinite(v) ? String(v) : null; };
+  return { productId: Number(id), lang: raw.lang, name: text(raw.name), number: text(raw.number), setName: text(raw.setName) };
 }
 
 /** retryAt (epoch ms or an ISO date) -> a time to stop until, kept within reason. */
@@ -13643,11 +13811,19 @@ function createSinglesLive(opts) {
    * (offline: true), "photo matching is off" (no function URL, or signed out) or "no photo".
    * A 403/429/503 stops photo matching until stoppedUntil (epoch ms); until then nothing is sent and
    * each call says the same words again (else "photo matching is paused"). Never throws or rejects.
+   *
+   * Languages (the Singles sheet's buyLanguages, opts.buyLanguages): 'japanese' or 'both' is sent with the photo, so the
+   * card matcher looks in the right card list; English only (or no setting) sends exactly today's body. The answer also
+   * carries what the card matcher said about the language, each field only when it said so: looksJapanese / looksEnglish
+   * (true), other (the card its second call named in the language not bought), languageKnown (true only when the card
+   * matcher answered: a TCGAPIs answer never knows the language) and each candidate's lang ('en' / 'ja'). A Japanese / Both setting the card matcher can't
+   * serve (langUnavailable) is "japanese scanning is off": never quietly a TCGAPIs answer.
    */
-  function recognizeMatch(base64Jpeg) {
+  function recognizeMatch(base64Jpeg, opts) {
     function miss(error, stoppedUntil, offline) {
       return { candidates: [], confident: false, error: error, stoppedUntil: stoppedUntil, offline: offline };
     }
+    var buy = sendableBuyLanguages(opts && opts.buyLanguages);
     try {
       if (!fetchFn || !base || signedOut()) return Promise.resolve(miss('photo matching is off', null, false));
       if (now() < recognizeStopUntil) {
@@ -13657,18 +13833,28 @@ function createSinglesLive(opts) {
     } catch (e) {
       return Promise.resolve(miss('photo matching is off', null, false));
     }
-    return post('/recognize', { image: base64Jpeg })
+    return post('/recognize', buy ? { image: base64Jpeg, buyLanguages: buy } : { image: base64Jpeg })
       .then(function (res) {
         var status = Number(res && res.status);
         return readJson(res).then(function (body) {
+          if (status >= 200 && status < 300 && body && body.langUnavailable === true) {
+            return miss('japanese scanning is off', null, false);
+          }
           if (status >= 200 && status < 300 && body && Array.isArray(body.candidates)) {
-            return {
+            var answer = {
               candidates: body.candidates.map(readCandidate).filter(Boolean),
               confident: body.confident === true,
               error: null,
               stoppedUntil: null,
               offline: false,
             };
+            // What the card matcher said about the language: each only when it said so (an answer without them reads as today's).
+            if (body.looksJapanese === true) answer.looksJapanese = true;
+            if (body.looksEnglish === true) answer.looksEnglish = true;
+            var other = readOther(body.other);
+            if (other) answer.other = other;
+            if (body.languageKnown === true) answer.languageKnown = true;
+            return answer;
           }
           noteTrouble(status, body, 'recognize');
           if (status >= 200 && status < 300) return miss('photo matching sent an answer we could not read', null, false);
@@ -13687,8 +13873,8 @@ function createSinglesLive(opts) {
   }
 
   /** Ranked candidates for a card photo (base64 JPEG), best first; [] when off, stopped or failing. Never rejects. */
-  function recognize(base64Jpeg) {
-    return recognizeMatch(base64Jpeg).then(function (r) { return r.candidates; });
+  function recognize(base64Jpeg, opts) {
+    return recognizeMatch(base64Jpeg, opts).then(function (r) { return r.candidates; });
   }
 
   function status() {
@@ -13732,6 +13918,8 @@ window.SinglesLive = {
   liveOrBook: liveOrBook,
   normalizeProductId: normalizeProductId,
   readLivePrice: readLivePrice,
+  readOther: readOther,
+  sendableBuyLanguages: sendableBuyLanguages,
   BATCH_SIZE: BATCH_SIZE,
   CACHE_MS: CACHE_MS,
   DEFAULT_STOP_MS: DEFAULT_STOP_MS,
@@ -14573,12 +14761,14 @@ var PICK_KEY = '__pick__';
 /** The pick as a pile line, for pricing it before it is added. */
 function pickLine(pick, price) {
   var c = pick.card;
-  return {
+  var line = {
     key: PICK_KEY, productId: c.productId, name: c.name, num: c.num, setName: c.setName, setAbbr: c.setAbbr,
     groupId: c.groupId, year: c.year, era: c.era, kind: c.kind, rarity: c.rarity,
     printing: orElse(pick.printing, ''), condition: pick.condition, quantity: pick.quantity,
     marketCents: price.market, lowCents: price.low, priceSource: price.source, priceAsOf: price.asOf, addedAt: 0,
   };
+  if (c.lang === 'ja') line.lang = 'ja'; // priced at the sheet's Japanese %, never off an English band
+  return line;
 }
 
 /** Puts the pick on the pile (or, when it is already there, brings its line up to date). Returns the pick with its line. */
@@ -14735,6 +14925,51 @@ function pileStep(quantity, now, movedAt) {
   return quantity < 1 ? 'ask' : 'set';
 }
 
+// ── a card in a language the sheet doesn't buy (the Singles sheet's buyLanguages) ─────────────────
+
+var LANG_WORD = { ja: 'Japanese', en: 'English' };
+function langWord(lang) { return LANG_WORD[lang === 'ja' ? 'ja' : 'en']; }
+function otherLang(lang) { return lang === 'ja' ? 'en' : 'ja'; }
+
+/** The card a match puts on screen: the card in a language we don't buy when there is one, else the best candidate (or null). */
+function shownCard(res) {
+  if (!res) return null;
+  if (res.offLanguage) return res.offLanguage;
+  return res.candidates && res.candidates[0] ? res.candidates[0].card : null;
+}
+
+/** Whether the card on screen is that card (no price, never added: Add stays off while it shows). */
+function isOffCard(card) { return !!(card && card.off === true); }
+
+/** Why it isn't bought, in words: "Japanese card: we're not buying Japanese right now." (or the English mirror). */
+function offNote(lang) { var w = langWord(lang); return w + " card: we're not buying " + w + ' right now.'; }
+
+/** The hint over a card in a language we don't buy, with or without look-alikes in the language we do buy. */
+function offHint(lang, hasAlts) {
+  var w = langWord(lang), o = langWord(otherLang(lang));
+  return 'This looks ' + w + '. ' + (hasAlts ? "If it's actually " + o + ', tap the right card below.' : "We're not buying " + w + ' right now. If it\'s actually ' + o + ', type it. Otherwise tap Skip.');
+}
+
+/** The look-alike list's label under it ("English version?"). */
+function offAltsLabel(lang) { return langWord(otherLang(lang)) + ' version?'; }
+
+/** A To check tile's line for it ("Japanese - not buying"). */
+function offTile(lang) { return langWord(lang) + ' - not buying'; }
+
+/** An off-language card read back, or null when it isn't one. */
+function readOffCard(raw) {
+  var c = raw && typeof raw === 'object' ? raw : null;
+  if (!c || c.off !== true || (c.lang !== 'ja' && c.lang !== 'en')) return null;
+  var id = c.productId === null ? null : Number.isSafeInteger(c.productId) && c.productId > 0 ? c.productId : undefined;
+  if (id === undefined) return null;
+  var t = function (v) { return typeof v === 'string' ? v : ''; };
+  return {
+    productId: id, name: t(c.name), num: t(c.num), setName: t(c.setName), setAbbr: t(c.setAbbr),
+    rarity: c.rarity || null, kind: c.kind || null, groupId: c.groupId == null ? null : c.groupId, year: c.year == null ? null : c.year,
+    era: c.era || null, prices: {}, lang: c.lang, off: true,
+  };
+}
+
 // ── To check and its failed tiles ───────────────────────────────────────────────────────────────
 
 /** A match waiting for a look in "To check", with the card reader's hint when it gave one. */
@@ -14749,6 +14984,7 @@ var NO_ANSWER = "Photo matching didn't answer. Try again, or type the card.";
 var NOT_SENT = "Couldn't send this photo. Scan the card again or type it.";
 var OFF = "Photo matching is off right now. Type the card's name or number instead.";
 var REFUSED = "Photo matching isn't working on this phone right now. Type the card's name or number instead.";
+var JAPANESE_OFF = "Japanese scanning is off on the matcher right now. Type the card's name or number instead.";
 
 /** Short codes from the live client and the singles-live function, in words for a card show. Retry only helps a pause or a hiccup. */
 var PHOTO_TROUBLE = {
@@ -14769,6 +15005,8 @@ var PHOTO_TROUBLE = {
   'bad request': { reason: REFUSED, retryable: false },
   'not-found': { reason: REFUSED, retryable: false },
   'invalid': { reason: NOT_SENT, retryable: false },
+  // singles-live v7: Japanese or Both is on but the card matcher has no Japanese cards (never quietly a TCGAPIs answer)
+  'japanese scanning is off': { reason: JAPANESE_OFF, retryable: false },
 };
 
 /**
@@ -14807,6 +15045,7 @@ SHORT_REASON[NO_ANSWER] = 'No answer. Try again.';
 SHORT_REASON[NOT_SENT] = "Couldn't send. Scan again.";
 SHORT_REASON[OFF] = 'Matching off. Type it.';
 SHORT_REASON[REFUSED] = 'Matching off. Type it.';
+SHORT_REASON[JAPANESE_OFF] = 'Japanese scanning off. Type it.';
 SHORT_REASON['Photo matching is busy. Try again in a minute, or type the card.'] = 'Matching busy. Try again.';
 SHORT_REASON["That's all the photo matches for this month. Type the card's name or number instead."] = 'Month used up. Type it.';
 function shortReason(reason) {
@@ -14829,8 +15068,11 @@ var NO_PHOTO_HINT = 'No photo match: check it';
  * answer: no signal, a pause or a limit (stoppedUntil), or any trouble (error). An answer with no cards is an answer.
  */
 function photoAnswer(found) {
-  return found.offline || found.stoppedUntil != null || String(orElse(found.error, '')).trim()
-    ? null : { candidates: found.candidates, confident: found.confident };
+  if (found.offline || found.stoppedUntil != null || String(orElse(found.error, '')).trim()) return null;
+  var out = { candidates: found.candidates, confident: found.confident };
+  // What the card matcher said about the card's language (singlesLive recognizeMatch), each only when it said it.
+  ['looksJapanese', 'looksEnglish', 'other', 'languageKnown'].forEach(function (k) { if (found[k]) out[k] = found[k]; });
+  return out;
 }
 
 // ── "To check" kept on the device (a reload or a closed tab can end the page) ────────────────────
@@ -14904,7 +15146,10 @@ function restoreToCheck(json, photos) {
         var card = readCard(hit.card);
         if (card) candidates.push({ card: card, score: typeof hit.score === 'number' ? hit.score : 0, why: Array.isArray(hit.why) ? hit.why.filter(isText) : [] });
       });
-      if (candidates.length) out.push(matchItem(id, { candidates: candidates, sure: result.sure === true }, isText(r.hint) ? r.hint : null));
+      // A card in a language we don't buy stays that (and never sure) through a reload, with or without look-alikes.
+      var off = readOffCard(result.offLanguage);
+      var kept = off ? { candidates: candidates, sure: false, offLanguage: off } : { candidates: candidates, sure: result.sure === true };
+      if (candidates.length || off) out.push(matchItem(id, kept, isText(r.hint) ? r.hint : null));
     } else if (r.kind === 'failed' && isText(r.reason) && r.reason) {
       var photo = photos && photos.has(id) ? photos.get(id) : null;
       var item = { id: id, kind: 'failed', photo: photo || null, reason: r.reason, retryable: r.retryable === true };
@@ -14953,9 +15198,18 @@ function createSinglesFlow(deps) {
 
   function search(idx, text) { return SinglesMatch.searchCards(idx, text); }
   /** The photo match's candidates as cards in our list; a confident top pick is sure (it goes straight onto the pile). */
-  function photoResult(idx, candidates, confident) {
-    return SinglesMatch.mergePhotoMatch(idx, candidates, null, { photoConfident: !!confident });
+  // `more` (optional): { answer: the live client's whole recognizeMatch answer (its language fields), buyLanguages: the sheet's
+  // setting, jaIdx: the Japanese scan book's index when the page loaded it }. Without it: exactly today's English match.
+  function photoResult(idx, candidates, confident, more) {
+    var m = more || {};
+    var opts = { photoConfident: !!confident };
+    if (m.answer) opts.answer = m.answer;
+    if (m.buyLanguages != null) opts.buyLanguages = m.buyLanguages;
+    if (m.jaIdx) opts.jaIdx = m.jaIdx;
+    return SinglesMatch.mergePhotoMatch(idx, candidates, null, opts);
   }
+  /** Whether a sheet with this buyLanguages buys this card (its own language: a card with no `lang` is English). */
+  function buysCard(buyLanguages, card) { return !!card && !isOffCard(card) && SinglesMatch.buysLang(buyLanguages, SinglesMatch.cardLang(card)); }
   function cardById(idx, productId) { var c = idx.byId.get(String(productId)); return c == null ? null : c; }
   function imageUrl(productId) { return SinglesMatch.imageUrl(productId); }
   function printingsOf(card) { return SinglesMatch.printingsOf(card); }
@@ -15063,11 +15317,22 @@ function createSinglesFlow(deps) {
       'outside our current ranges': 'Outside what the rate sheet buys right now (set era, card type or price range).',
     };
     if (why && hasOwn(words, why)) return words[why];
+    // singles/rules.js's language reasons (LANGUAGE_REJECT_TEXT, JAPANESE_RATE_NOT_SET_TEXT, JAPANESE_OVER_MAX_TEXT), in the scanner's words.
+    var langText = SinglesPrice.LANGUAGE_REJECT_TEXT || {};
+    if (why && why === langText.ja) return offNote('ja');
+    if (why && why === langText.en) return offNote('en');
+    if (why && why === SinglesPrice.JAPANESE_RATE_NOT_SET_TEXT) return "The rate sheet's Japanese rate isn't fully set yet, so we can't price Japanese cards.";
+    if (why && why === SinglesPrice.JAPANESE_OVER_MAX_TEXT) {
+      var jpMax = settings ? settings.japaneseMaxMarketCents : null;
+      return jpMax != null ? 'Over our ' + Money.fmt(jpMax) + ' market max for Japanese cards.' : 'Over our market max for Japanese cards.';
+    }
     return why ? sentence(why) : '';
   }
 
   /** What the We pay tile says, and the line under it. */
   function payView(row, pick, settings, ratesLoading, price) {
+    // A card in a language the sheet doesn't buy: never priced, whatever the rest of the sheet says.
+    if (pick && isOffCard(pick.card)) return { pay: 'Not buying', buying: false, note: offNote(pick.card.lang) };
     if (!settings) {
       return { pay: '—', buying: true, note: ratesLoading ? 'Getting the rate sheet…' : 'The rate sheet did not load, so there is no buy price.' };
     }
@@ -15125,8 +15390,13 @@ function createSinglesFlow(deps) {
     return out.concat(tail).join('\n');
   }
 
-  /** A photo match that came back: 'add' only when sure AND the card has a printing to add it in; else 'check', or 'none'. */
+  /**
+   * A photo match that came back: 'notBuying' when the card is in a language the sheet doesn't buy (never added: it waits on
+   * screen or in To check with its look-alikes); 'add' only when sure AND the card has a printing to add it in; else 'check',
+   * or 'none'.
+   */
   function photoOutcome(res) {
+    if (res.offLanguage) return 'notBuying';
     var top = res.candidates[0];
     if (!top) return 'none';
     return res.sure && defaultPrinting(top.card) ? 'add' : 'check';
@@ -15143,7 +15413,40 @@ function createSinglesFlow(deps) {
    * { step: 'failed', reason, retryable }.
    * ("step" is the app's "action", renamed for scanner/noLock.test.js; see singlesText.js shutterOutcome.)
    */
-  function afterRead(out, found, pinned) {
+  function afterRead(out, found, pinned, opts) {
+    return languageGate(decideRead(out, found, pinned), found, opts);
+  }
+
+  /**
+   * The language rule on a read's decision (opts: { buyLanguages, idx, jaIdx }; without it the decision is as it was). A card
+   * in a language the sheet doesn't buy - the photo's own card, the card the card matcher named in the other language, its
+   * looks-other flag, or the text's own card - is { step: 'notBuying' } with the look-alikes we do buy: never 'add', so the
+   * text-only add (singlesText, under $50) can't add the English twin of a Japanese card. Japanese or Both: an add also needs
+   * the card matcher to have known the language (TCGAPIs can't), else it waits in To check.
+   */
+  function languageGate(next, found, opts) {
+    if (!opts || !opts.idx || !next || (next.step !== 'add' && next.step !== 'check')) return next;
+    var M = SinglesMatch, buy = opts.buyLanguages, idx = opts.idx, jaIdx = opts.jaIdx || null;
+    var answer = found ? photoAnswer(found) : null;
+    var res = next.result;
+    var bought = function (h) { return M.buysLang(buy, M.cardLang(h.card)); };
+    var top = res.candidates[0] || null;
+    var off = answer ? M.photoOffLanguage(idx, answer.candidates, answer, buy, jaIdx) : null;
+    if (!off && top && !bought(top)) off = M.offCard(top.card);
+    var englishOnly = M.unboughtLang(buy) === 'ja';
+    if (!off && englishOnly) return next; // English only, nothing foreign seen: exactly today's decision
+    var cands = res.candidates.filter(bought);
+    if (!englishOnly && answer) {
+      // The text only knows the English card list: the card matcher's own (Japanese) cards come from its answer.
+      cands = M.mergePhotoMatch(idx, answer.candidates, { candidates: cands, sure: false }, { buyLanguages: buy, answer: answer, jaIdx: jaIdx }).candidates;
+    }
+    if (off) return { step: 'notBuying', result: { candidates: cands, sure: false, offLanguage: off }, hint: next.hint };
+    if (!cands.length) return { step: 'failed', reason: NOT_TOLD, retryable: false };
+    var sure = next.step === 'add' && !!(answer && answer.languageKnown === true) && !!top && cands[0].card === top.card;
+    return { step: sure ? 'add' : 'check', result: { candidates: cands, sure: sure }, hint: next.hint };
+  }
+
+  function decideRead(out, found, pinned) {
     var HINT = needText('afterRead').HINT;
     var unanswered = found && !photoAnswer(found) ? found : null;
     // The rules needed the photo match and it didn't answer: unless the text pinned the card itself, the photo is kept as
@@ -15165,7 +15468,7 @@ function createSinglesFlow(deps) {
    * send after all) is called only when the text's rules say the photo could still add the card. Resolves to
    * { out, found, next }.
    */
-  function textFirst(idx, read, ask) {
+  function textFirst(idx, read, ask, opts) {
     var T, out;
     return Promise.resolve().then(function () {
       T = needText('textFirst');
@@ -15174,7 +15477,8 @@ function createSinglesFlow(deps) {
     }).then(function (answer) {
       var found = out.needsPhoto && answer ? answer : null;
       if (found) out = T.shutterOutcome(idx, read, photoAnswer(found));
-      return { out: out, found: found, next: afterRead(out, found, read.verdict.pinned) };
+      var gate = opts ? { buyLanguages: opts.buyLanguages, idx: idx, jaIdx: opts.jaIdx || null } : null;
+      return { out: out, found: found, next: afterRead(out, found, read.verdict.pinned, gate) };
     });
   }
 
@@ -15239,7 +15543,7 @@ function createSinglesFlow(deps) {
     cardById: cardById, imageUrl: imageUrl, printingsOf: printingsOf, defaultPrinting: defaultPrinting, priceFor: priceFor,
     applyLive: applyLive, newPick: newPick, pickQuote: pickQuote, editPick: editPick, setPickQuantity: setPickQuantity,
     fmt: fmt, excludedBy: excludedBy, whyText: whyText, payView: payView, linePay: linePay, totalsView: totalsView,
-    shareText: shareText, photoOutcome: photoOutcome, afterRead: afterRead, textFirst: textFirst,
+    shareText: shareText, photoOutcome: photoOutcome, afterRead: afterRead, languageGate: languageGate, textFirst: textFirst,
     loadPile: loadPile, savePile: savePile, loadToCheck: loadToCheck, saveToCheck: saveToCheck,
     // engine-free
     printingLabel: printingLabel, plural: plural, matchMeta: matchMeta, lineMeta: lineMeta, shortName: shortName,
@@ -15254,6 +15558,8 @@ function createSinglesFlow(deps) {
     queueTake: queueTake, NO_PHOTO_HINT: NO_PHOTO_HINT, photoAnswer: photoAnswer, KEEP_PHOTO_CHARS: KEEP_PHOTO_CHARS,
     PHOTO_NOT_KEPT: PHOTO_NOT_KEPT, queueToKeep: queueToKeep, savedToCheck: savedToCheck, restoreToCheck: restoreToCheck,
     PILE_KEY: PILE_KEY, TO_CHECK_KEY: TO_CHECK_KEY, PHOTO_KEY: PHOTO_KEY,
+    buysCard: buysCard, shownCard: shownCard, isOffCard: isOffCard, offNote: offNote, offHint: offHint, offAltsLabel: offAltsLabel, offTile: offTile,
+    langWord: langWord, readOffCard: readOffCard, JAPANESE_OFF: JAPANESE_OFF,
   };
 }
 
@@ -15312,6 +15618,15 @@ window.SinglesFlow = {
   PILE_KEY: PILE_KEY,
   TO_CHECK_KEY: TO_CHECK_KEY,
   PHOTO_KEY: PHOTO_KEY,
+  shownCard: shownCard,
+  isOffCard: isOffCard,
+  offNote: offNote,
+  offHint: offHint,
+  offAltsLabel: offAltsLabel,
+  offTile: offTile,
+  langWord: langWord,
+  readOffCard: readOffCard,
+  JAPANESE_OFF: JAPANESE_OFF,
 };
 })();
 
@@ -15748,6 +16063,53 @@ const DEFAULT_MIN_LOT_MARKET = 2000;
  */
 const REJECT_TEXT = "We're not buying this right now";
 
+/** Why a card with no usable TCGplayer market price (missing or not a real number) is turned down. */
+const NO_MARKET_PRICE_TEXT = 'no TCGplayer market price found for this card';
+
+// ── card languages (sheet-wide `buyLanguages` + `japanesePct`; mirrors validate-singles.ts) ──────
+//
+// The rate ROWS are the English price bands (a row's own `language` is always 'english'). Which card
+// languages are bought at all is one sheet-wide setting, and a Japanese card is never priced off an
+// English band: it is paid a flat `japanesePct` of its own (Japanese) market price, times the usual
+// condition %. A sheet saved before these fields existed reads as 'english' / null, i.e. today.
+/** 'english' | 'japanese' | 'both' - the strict validator's BUY_LANGUAGES, kept in step by hand. */
+const BUY_LANGUAGES = Object.freeze(['english', 'japanese', 'both']);
+const DEFAULT_BUY_LANGUAGES = 'english';
+/** What a card's own `lang` ('en'/'ja') needs `buyLanguages` to include. */
+const LANG_BOUGHT = Object.freeze({ en: ['english', 'both'], ja: ['japanese', 'both'] });
+/** The reason a card in a language we do not buy is turned down (priceCard's `why`, reason 'language'). */
+const LANGUAGE_REJECT_TEXT = Object.freeze({
+  ja: 'Japanese card: not buying Japanese right now',
+  en: 'English card: not buying English right now',
+});
+/** A Japanese card when Japanese is bought but no Japanese % has been set (the strict validator never saves this). */
+const JAPANESE_RATE_NOT_SET_TEXT = 'Japanese rate not set';
+/**
+ * A Japanese card whose market price is over the sheet's `japaneseMaxMarketCents` (reason 'japaneseMax').
+ * Japanese is paid a flat % with no rate band, so this cap is its top: over it we never pay.
+ */
+const JAPANESE_OVER_MAX_TEXT = 'Japanese card over our max';
+/** Highest japaneseMaxMarketCents the bot reads (same top as validate-singles.ts LIMITS). */
+const MAX_JAPANESE_MAX_MARKET_CENTS = 1000000 * 100;
+
+/** A card's language as pricing reads it: 'ja' for Japanese, else 'en' (missing = English, as today). */
+function cardLang(card) {
+  return card && card.lang === 'ja' ? 'ja' : 'en';
+}
+
+/** Whether a sheet buys cards in `lang` ('en'/'ja'). A sheet with no buyLanguages buys English only. */
+function buysLanguage(settings, lang) {
+  const bought = (settings && BUY_LANGUAGES.includes(settings.buyLanguages)) ? settings.buyLanguages : DEFAULT_BUY_LANGUAGES;
+  return (LANG_BOUGHT[lang === 'ja' ? 'ja' : 'en']).includes(bought);
+}
+
+/** The rejection for a card whose language the sheet does not buy, or null when it is bought. */
+function languageRejection(lang, settings) {
+  const l = lang === 'ja' ? 'ja' : 'en';
+  if (buysLanguage(settings, l)) return null;
+  return { rejected: true, reason: 'language', why: LANGUAGE_REJECT_TEXT[l], flags: [] };
+}
+
 let cache = { settings: null, at: 0 };
 let portalGood = null;       // the last settings the portal itself answered with: what a later portal blip keeps quoting
 let source = null;           // which place the cached settings came from (settingsSource())
@@ -15931,10 +16293,13 @@ function isBannedProductId(list, productId) {
  * it just can't be evaluated for that card (the row is skipped, like the slab engine skips a row
  * whose basis has no value).
  */
+/** A price as cents, or null when it is not a real (finite) number: NaN/Infinity/text never reach a payout. */
+const finiteOrNull = v => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+
 function resolveBasisCents(basis, card) {
-  const market = card.marketCents ?? null;
-  const low = card.lowCents ?? null;
-  const sales = card.salesAvgCents ?? null;
+  const market = finiteOrNull(card.marketCents);
+  const low = finiteOrNull(card.lowCents);
+  const sales = finiteOrNull(card.salesAvgCents);
   switch (basis) {
     case 'market': return { cents: market, flags: [] };
     case 'low': return { cents: low, flags: [] };
@@ -16025,8 +16390,21 @@ function priceCard(card, settings, opts = {}) {
   if (settings && settings.paused) {
     return { staffPrice: true, why: settings.pausedMessage || 'Pricing is paused right now', flags: [] };
   }
-  if (card.marketCents == null) {
-    return { rejected: true, why: 'no TCGplayer market price found for this card', flags: [] };
+  // A language we do not buy is turned down before anything else is looked at (it wins over "no
+  // market price"): a Japanese card is never priced off an English band, and the reverse.
+  const lang = cardLang(card);
+  const langRejected = languageRejection(lang, settings);
+  if (langRejected) return langRejected;
+  const japanesePct = lang === 'ja' ? readJapanesePct(settings && settings.japanesePct) : null;
+  const japaneseMax = lang === 'ja' ? readJapaneseMaxMarketCents(settings && settings.japaneseMaxMarketCents) : null;
+  // No % or no max = no Japanese rate: never pay a Japanese card with no top.
+  if (lang === 'ja' && (japanesePct == null || japaneseMax == null)) {
+    return { rejected: true, reason: 'japaneseRate', why: JAPANESE_RATE_NOT_SET_TEXT, flags: [] };
+  }
+  // Not a real number (missing, NaN, Infinity, text) = no market price: turned down, never priced
+  // with a NaN payout (owner: never overpay). English and Japanese alike.
+  if (typeof card.marketCents !== 'number' || !Number.isFinite(card.marketCents)) {
+    return { rejected: true, why: NO_MARKET_PRICE_TEXT, flags: [] };
   }
   if (!CONDITION_KEYS.includes(card.condition)) {
     return { rejected: true, why: 'condition could not be read', flags: [] };
@@ -16041,6 +16419,27 @@ function priceCard(card, settings, opts = {}) {
     return { rejected: true, why: 'condition not bought', flags: [] };
   }
 
+  if (lang === 'ja') {
+    // Japanese: no rate row is read. The sheet's flat ban list and enabled exclude groups still
+    // apply (a card a row could never take is "outside our current ranges", the same as English),
+    // then the payout is market x japanesePct x condition %. `fixedPct` keeps lot tiers off it.
+    if (isBannedProductId(settings && settings.bannedProductIds, card.productId)
+      || excludeGroupsExclude(settings && settings.excludeGroups, card)) {
+      return { rejected: true, why: 'outside our current ranges', flags: [] };
+    }
+    // The Japanese top: a market price over the sheet's max is turned down, never paid.
+    if (card.marketCents > japaneseMax) {
+      return { rejected: true, reason: 'japaneseMax', why: JAPANESE_OVER_MAX_TEXT, flags: [] };
+    }
+    const basisCents = card.marketCents;
+    const jaPayoutCents = payoutOf(basisCents, japanesePct, condPct);
+    if (!Number.isFinite(jaPayoutCents)) return { rejected: true, why: NO_MARKET_PRICE_TEXT, flags: [] };
+    return {
+      row: null, rateName: `Japanese (${japanesePct}%)`, pct: japanesePct, basis: 'market', basisCents,
+      condPct, payoutCents: jaPayoutCents, flags: [], lang: 'ja', fixedPct: true,
+    };
+  }
+
   const override = isBasis(opts && opts.basis) ? opts.basis : null;
 
   for (const row of orderedRates(settings.rates)) {
@@ -16048,9 +16447,10 @@ function priceCard(card, settings, opts = {}) {
     // one (see the file header), so row.basis alone decides for every real rate sheet.
     const basis = override || row.basis || settings.defaultBasis;
     const { cents: basisCents, flags: basisFlags } = resolveBasisCents(basis, card);
-    if (basisCents == null) continue; // this row's basis has no value for this card
+    if (basisCents == null) continue; // this row's basis has no value for this card (resolveBasisCents: never NaN)
     if (!rowMatches(row, card, basisCents, settings)) continue;
     const payoutCents = payoutOf(basisCents, row.pct, condPct);
+    if (!Number.isFinite(payoutCents)) return { rejected: true, why: NO_MARKET_PRICE_TEXT, flags: [] };
     return {
       row, rateName: row.label, pct: row.pct, basis, basisCents,
       condPct, payoutCents, flags: basisFlags,
@@ -16060,6 +16460,32 @@ function priceCard(card, settings, opts = {}) {
 }
 
 // ── settings: load / validate (lenient) / cache ───────────────────────────────────────────────
+
+/** japanesePct as the bot reads it: a whole number 1-100, else null (not set). Same bounds as validate-singles.ts. */
+function readJapanesePct(raw) {
+  if (raw == null || raw === '') return null;
+  const n = typeof raw === 'number' ? raw : Number(String(raw).trim().replace(/%$/, ''));
+  return Number.isInteger(n) && n >= 1 && n <= 100 ? n : null;
+}
+
+/** japaneseMaxMarketCents as the bot reads it: whole cents above 0 (up to the validator's top), else null (not set). */
+function readJapaneseMaxMarketCents(raw) {
+  if (raw == null || raw === '') return null;
+  const n = typeof raw === 'number' ? raw : Number(String(raw).trim());
+  return Number.isInteger(n) && n >= 1 && n <= MAX_JAPANESE_MAX_MARKET_CENTS ? n : null;
+}
+
+/**
+ * buyLanguages as the bot reads it. An unknown value, or Japanese/Both with no usable Japanese % or
+ * no usable Japanese max market (which the strict validator refuses to save), reads as English only -
+ * never as buying Japanese.
+ */
+function readBuyLanguages(raw, japanesePct, japaneseMaxMarketCents) {
+  const key = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
+  if (!BUY_LANGUAGES.includes(key)) return DEFAULT_BUY_LANGUAGES;
+  if (key !== 'english' && (japanesePct == null || japaneseMaxMarketCents == null)) return DEFAULT_BUY_LANGUAGES;
+  return key;
+}
 
 /** A language/era/kind list as lower-case keys, or null when nothing was picked. */
 function readKeyList(raw, knownKeys) {
@@ -16267,6 +16693,12 @@ function validateSettings(raw) {
     // null = legacy mode, every row keeps its own pct; a real (non-empty) list turns on lot-size
     // pricing - see tierForTotal and singles/comp.js's applyLotTiers.
     lotTiers: readLotTiers(src.lotTiers),
+    // Missing on every sheet saved before these existed: English only, no Japanese % (today).
+    // Japanese on with no max market reads as English only too (like a missing %).
+    buyLanguages: readBuyLanguages(src.buyLanguages, readJapanesePct(src.japanesePct),
+      readJapaneseMaxMarketCents(src.japaneseMaxMarketCents)),
+    japanesePct: readJapanesePct(src.japanesePct),
+    japaneseMaxMarketCents: readJapaneseMaxMarketCents(src.japaneseMaxMarketCents),
   };
 }
 
@@ -16294,6 +16726,17 @@ window.SinglesPrice = {
   rowMatches: rowMatches,
   resolveBasisCents: resolveBasisCents,
   orderedRates: orderedRates,
+  BUY_LANGUAGES: BUY_LANGUAGES,
+  DEFAULT_BUY_LANGUAGES: DEFAULT_BUY_LANGUAGES,
+  LANGUAGE_REJECT_TEXT: LANGUAGE_REJECT_TEXT,
+  JAPANESE_RATE_NOT_SET_TEXT: JAPANESE_RATE_NOT_SET_TEXT,
+  JAPANESE_OVER_MAX_TEXT: JAPANESE_OVER_MAX_TEXT,
+  cardLang: cardLang,
+  buysLanguage: buysLanguage,
+  languageRejection: languageRejection,
+  readJapanesePct: readJapanesePct,
+  readJapaneseMaxMarketCents: readJapaneseMaxMarketCents,
+  readBuyLanguages: readBuyLanguages,
 };
 })();
 /* SINGLES-SCAN-CORE:END */
@@ -16330,6 +16773,10 @@ window.SinglesPrice = {
     var el = {};
     var flow = null, motion = null, live = null, text = null;
     var idx = null, bookInfo = null, bookFailed = false, bookLoading = null;
+    // The Japanese card list (singles-book-ja.json): fetched only when the singles sheet buys Japanese (buyLanguages 'japanese' or
+    // 'both'), so an English-only sheet downloads nothing extra. Without it a Japanese card can still be shown (the card matcher
+    // names it) but has no list price.
+    var jaIdx = null, jaLoading = null, jaTriedAt = 0;
     var settings = null, ratesState = 'loading', ratesAsking = false, ratesAt = 0;
     // singles-live's /status: null not asked yet, true on, false off (or never answered). Asked again every STATUS_EVERY_MS: an
     // answer of off hides Singles at once; a read that fails keeps an earlier "on" (a blip at a show) and is tried again soon.
@@ -16705,8 +17152,19 @@ window.SinglesPrice = {
           if (next) { settings = next; ratesState = 'live'; } else if (!settings) ratesState = 'failed';
         }, function () {
           if (!settings) ratesState = 'failed'; // a failed re-read keeps the sheet in use; tried again in a minute
-        }).then(function () { ratesAsking = false; ratesAt = now(); render(); });
+        }).then(function () { ratesAsking = false; ratesAt = now(); ensureJaBook(); render(); });
       }
+      ensureJaBook();
+    }
+    /** The singles sheet's buyLanguages: 'english' (also when the sheet hasn't loaded or doesn't say), 'japanese' or 'both'. */
+    function buyLanguages() { return settings && settings.buyLanguages ? settings.buyLanguages : 'english'; }
+    function ensureJaBook() {
+      if (buyLanguages() === 'english' || jaIdx || jaLoading) return;
+      if (jaTriedAt && now() - jaTriedAt < RETRY_MS) return; // a missing or failed list is asked again a minute later, not every tap
+      jaTriedAt = now();
+      jaLoading = getJson('singles-book-ja.json', 60000).then(function (raw) {
+        jaIdx = window.SinglesMatch.indexBook(raw, { lang: 'ja' });
+      }).catch(function () { jaIdx = null; }).then(function () { jaLoading = null; render(); });
     }
     function ratesDue() {
       if (ratesAsking) return false;
@@ -16935,9 +17393,11 @@ window.SinglesPrice = {
       var found = null;
       Promise.resolve().then(function () {
         if (fromLast(forSeller)) return null;
-        return live.recognizeMatch(photo).then(function (f) {
+        var buy = buyLanguages();
+        return live.recognizeMatch(photo, { buyLanguages: buy }).then(function (f) {
           found = f;
-          return idx ? flow.photoResult(idx, f.candidates, f.confident) : null;
+          // The card's language (what the card matcher said) against the sheet's: a card we don't buy is never added.
+          return idx ? flow.photoResult(idx, f.candidates, f.confident, { answer: f, buyLanguages: buy, jaIdx: jaIdx }) : null;
         });
       }).catch(function () { return null; }).then(function (res) {
         matching = Math.max(0, matching - 1);
@@ -16960,7 +17420,10 @@ window.SinglesPrice = {
       renderCam();
       Promise.resolve().then(function () {
         var read = text.readText(idx, ocr, { live: liveMap });
-        return flow.textFirst(idx, read, function () { return fromLast(forSeller) ? Promise.resolve(null) : live.recognizeMatch(photo); });
+        var buy = buyLanguages();
+        return flow.textFirst(idx, read, function () {
+          return fromLast(forSeller) ? Promise.resolve(null) : live.recognizeMatch(photo, { buyLanguages: buy });
+        }, { buyLanguages: buy, jaIdx: jaIdx });
       }).then(function (decided) { return decided.next; }, function () {
         return Object.assign({ step: 'failed' }, flow.failedReason({ error: 'internal' }));
       }).then(function (next) {
@@ -16983,9 +17446,29 @@ window.SinglesPrice = {
 
     /** A match came back: sure goes straight onto the pile; otherwise it needs a look (on screen if free, else To check). */
     function photoBack(res, id, hint) {
-      var top = res.candidates[0].card;
+      var outcome = flow.photoOutcome(res);
+      var top = flow.shownCard(res);
       var free = cardFree();
-      if (flow.photoOutcome(res) === 'add') {
+      if (outcome === 'notBuying') {
+        // A card in a language the sheet doesn't buy: never added, no "Added" toast, no add sound. It waits like a card that
+        // needs a look, with the look-alikes we do buy under it ("English version?"), so staff can pick the right one if it is.
+        bad();
+        flash('look');
+        if (isFull) say(flow.offTile(top.lang) + ': tap Review');
+        var offItem = flow.matchItem(id, res, hint);
+        if (free) {
+          parkChecking();
+          checking = offItem;
+          results = res;
+          noMatch = null;
+          showPick(flow.newPick(top));
+        } else {
+          queue = queue.concat([offItem]);
+        }
+        saveQueue();
+        return;
+      }
+      if (outcome === 'add' && flow.buysCard(buyLanguages(), top)) {
         var p0 = flow.newPick(top);
         var p = flow.addPick(pile, p0, flow.priceFor(top, p0.printing, liveMap), now());
         if (p.lineKey) {
@@ -17058,9 +17541,9 @@ window.SinglesPrice = {
       noMatch = null;
       if (checking.kind === 'match') {
         results = checking.result;
-        var top = results.candidates[0].card;
+        var top = flow.shownCard(results);
         showPick(flow.newPick(top));
-        askLive([top.productId]);
+        if (!flow.isOffCard(top)) askLive([top.productId]);
       } else {
         results = null;
         pick = null;
@@ -17170,7 +17653,8 @@ window.SinglesPrice = {
       var p = flow.newPick(top.card);
       showPick(p);
       var wentOn = false;
-      if (res.sure) {
+      // Typed search looks in the English card list: under a Japanese-only sheet that card isn't bought, so it is never added by itself.
+      if (res.sure && flow.buysCard(buyLanguages(), p.card)) {
         var added = flow.addPick(pile, p, flow.priceFor(p.card, p.printing, liveMap), now());
         if (added.lineKey) {
           pick = added; lastAdded = added; lastAddedFrom = null; wentOn = true;
@@ -17537,6 +18021,9 @@ window.SinglesPrice = {
         return;
       }
       var card = pick.card;
+      // A card in a language the sheet doesn't buy (flow.isOffCard): shown with its picture, name and language, never priced or
+      // added; the look-alikes we do buy are listed under it as "English version?" (or "Japanese version?").
+      var off = flow.isOffCard(card);
       var price = flow.priceFor(card, pick.printing, liveMap);
       var printings = flow.printingsOf(card);
       var onPileNow = !!(pick.lineKey && pile.get(pick.lineKey));
@@ -17544,38 +18031,42 @@ window.SinglesPrice = {
       // A look-alike was tapped: it is the card now, and the list it came from folds away (one quiet link brings it back).
       var altsShut = !!results && altsAnswered === results && altsCount > 0;
       // Penguin, 11/23: "how do you even confirm". Say what to tap, not just ask: Yes, add it / the right one below / Skip.
-      var hint = checking && checking.kind === 'match' && !onPileNow ? (altsShut ? 'You picked this one. If it\'s right, tap Yes, add it. If not, tap Skip.' :
+      var hint = off ? flow.offHint(card.lang, altsCount > 0) :
+        checking && checking.kind === 'match' && !onPileNow ? (altsShut ? 'You picked this one. If it\'s right, tap Yes, add it. If not, tap Skip.' :
         (checking.hint ? checking.hint + ' ' : 'Is this your card? ') +
         'If yes, tap Yes, add it.' + (altsCount ? ' If not, tap the right one under Not this one, or Skip.' : ' If not, tap Skip.')) : '';
-      var alts = altsShut ? [] : results && results.candidates ? results.candidates.filter(function (h) { return h.card.productId !== card.productId; }).slice(0, 4) : [];
+      var alts = altsShut ? [] : results && results.candidates ? results.candidates.filter(function (h) { return h.card.productId !== card.productId; }).slice(0, off ? 6 : 4) : [];
       var onPile = !!(pick.lineKey && pile.get(pick.lineKey));
+      var offName = off ? (card.name ? motion.displayName(card.name, card.num) : flow.langWord(card.lang) + ' card') : '';
       var html =
         '<div class="sc-sg-head">' +
-          '<div class="sc-sg-pic">' + pic(card.productId, '', card.name) + '</div>' +
+          '<div class="sc-sg-pic">' + (card.productId ? pic(card.productId, '', card.name) : '') + '</div>' +
           '<div class="sc-sg-words">' +
             '<span class="sc-sg-next"' + (checking ? '' : ' hidden') + '>To check</span>' +
-            '<div class="sc-sg-name">' + escHtml(motion.displayName(card.name, card.num)) + '</div>' +
+            '<div class="sc-sg-name">' + escHtml(off ? offName : motion.displayName(card.name, card.num)) + '</div>' +
             '<div class="sc-sg-set">' + escHtml([card.setName, card.num ? '#' + card.num : ''].filter(Boolean).join(' · ')) + '</div>' +
-            (card.rarity ? '<div class="sc-sg-rarity">' + escHtml(card.rarity) + '</div>' : '') +
-            '<div class="sc-sg-price"><span class="sc-sg-dot' + (price.source === 'live' ? ' sc-sg-live' : '') + '"></span>' +
-              '<span>' + escHtml(price.source === 'live' ? agoText(price.asOf) : 'List price') + '</span>' +
-              '<b>' + escHtml(price.market == null ? 'no price' : flow.fmt(price.market)) + '</b></div>' +
+            (off ? '<div class="sc-sg-rarity">' + escHtml(flow.langWord(card.lang)) + '</div>' :
+              (card.rarity ? '<div class="sc-sg-rarity">' + escHtml(card.rarity) + '</div>' : '') +
+              (card.lang === 'ja' ? '<div class="sc-sg-rarity">Japanese</div>' : '') +
+              '<div class="sc-sg-price"><span class="sc-sg-dot' + (price.source === 'live' ? ' sc-sg-live' : '') + '"></span>' +
+                '<span>' + escHtml(price.source === 'live' ? agoText(price.asOf) : 'List price') + '</span>' +
+                '<b>' + escHtml(price.market == null ? 'no price' : flow.fmt(price.market)) + '</b></div>') +
             (onPile ? '<div class="sc-sg-price"><span class="sc-sg-dot sc-sg-live"></span><span>On the pile</span></div>' : '') +
           '</div>' +
         '</div>' +
         '<div class="sc-sg-hint-line"' + (hint ? '' : ' hidden') + '>' + escHtml(hint) + '</div>' +
-        '<div class="sc-sg-group"><div class="sc-sg-label">Condition</div><div class="sc-sg-chips">' +
+        '<div class="sc-sg-group"' + (off ? ' hidden' : '') + '><div class="sc-sg-label">Condition</div><div class="sc-sg-chips">' +
           flow.CONDITIONS.map(function (k) { return chip('cond', k, k, pick.condition === k); }).join('') +
         '</div></div>' +
         '<div class="sc-sg-group"' + (printings.length > 1 ? '' : ' hidden') + '><div class="sc-sg-label">Printing</div><div class="sc-sg-chips">' +
           printings.map(function (p) { return chip('print', p, flow.printingLabel(p), pick.printing === p); }).join('') +
         '</div></div>' +
-        '<div class="sc-sg-group"><div class="sc-sg-label">How many</div><div class="sc-sg-qty">' +
+        '<div class="sc-sg-group"' + (off ? ' hidden' : '') + '><div class="sc-sg-label">How many</div><div class="sc-sg-qty">' +
           '<button type="button" class="sc-sg-step" data-act="qty" data-v="-1" aria-label="One fewer">−</button>' +
           '<span class="sc-sg-qty-n">' + pick.quantity + '</span>' +
           '<button type="button" class="sc-sg-step" data-act="qty" data-v="1" aria-label="One more">+</button>' +
         '</div></div>' +
-        '<div class="sc-sg-group"' + (alts.length ? '' : ' hidden') + '><div class="sc-sg-label">Not this one?</div><div class="sc-sg-alts">' +
+        '<div class="sc-sg-group"' + (alts.length ? '' : ' hidden') + '><div class="sc-sg-label">' + escHtml(off ? flow.offAltsLabel(card.lang) : 'Not this one?') + '</div><div class="sc-sg-alts">' +
           alts.map(function (h) {
             return '<button type="button" class="sc-sg-alt" data-act="alt" data-v="' + h.card.productId + '">' + pic(h.card.productId, '', '') +
               '<span class="sc-sg-alt-words"><span class="sc-sg-alt-name">' + escHtml(motion.displayName(h.card.name, h.card.num)) + '</span>' +
@@ -17596,10 +18087,12 @@ window.SinglesPrice = {
             (q.photo ? '<img class="sc-sg-tile-pic" src="data:image/jpeg;base64,' + escHtml(q.photo) + '" alt="">' : '<span class="sc-sg-tile-pic"></span>') +
             '<span class="sc-sg-tile-name">No match</span><span class="sc-sg-tile-why">' + escHtml(flow.shortReason(q.reason)) + '</span></button>';
         }
-        var top = q.result.candidates[0].card;
-        return '<button type="button" class="sc-sg-tile" data-open="' + q.id + '">' + pic(top.productId, 'sc-sg-tile-pic', '') +
-          '<span class="sc-sg-tile-name">' + escHtml(motion.displayName(top.name, top.num)) + '</span>' +
-          '<span class="sc-sg-tile-why">' + escHtml(q.hint || 'Check it: tap to confirm') + '</span></button>';
+        var top = flow.shownCard(q.result);
+        var offTop = flow.isOffCard(top);
+        return '<button type="button" class="sc-sg-tile' + (offTop ? ' sc-sg-out' : '') + '" data-open="' + q.id + '">' +
+          (top.productId ? pic(top.productId, 'sc-sg-tile-pic', '') : '<span class="sc-sg-tile-pic"></span>') +
+          '<span class="sc-sg-tile-name">' + escHtml(top.name ? motion.displayName(top.name, top.num) : flow.langWord(top.lang) + ' card') + '</span>' +
+          '<span class="sc-sg-tile-why">' + escHtml(offTop ? flow.offTile(top.lang) : (q.hint || 'Check it: tap to confirm')) + '</span></button>';
       }).join('');
     }
 
@@ -17647,7 +18140,8 @@ window.SinglesPrice = {
 
     function renderDock() {
       var onPile = !!(pick && pick.lineKey && pile.get(pick.lineKey));
-      el.add.disabled = !pick || onPile || !pick.printing;
+      // A card in a language the sheet doesn't buy can't be added (it has no printing either): only a look-alike picked under it can.
+      el.add.disabled = !pick || onPile || !pick.printing || flow.isOffCard(pick.card);
       el.add.textContent = onPile ? 'Added' : (checking && checking.kind === 'match' ? 'Yes, add it' : 'Add');
       el.add.classList.toggle('sc-sg-done', onPile);
       el.undo.disabled = !(lastAdded && lastAdded.lineKey && pile.get(lastAdded.lineKey));

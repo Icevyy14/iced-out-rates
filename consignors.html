@@ -344,7 +344,13 @@ body>*{position:relative;z-index:1;}
 code{font-family:var(--font-mono);font-size:.92em;}
 
 /* global buy-language row */
-#wtb-buylang{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:2px 4px 14px;}
+#wtb-buylang,#sg-buylang{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:2px 4px 14px;}
+/* the Singles tab's Buy languages toggle: a choice held back (Japanese pricing not live yet) shows, greyed, and can't be picked */
+.lang-chip:disabled{opacity:.45;cursor:not-allowed;}
+.lang-chip:disabled:hover{color:var(--dim);}
+/* the Japanese % box while only English is bought: still editable (set it ahead of time), greyed */
+.sg-jp-idle .form-input{opacity:.6;}
+.sg-jp-hint{font-size:11px;color:var(--dim);margin-top:4px;}
 .buylang-label{font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);}
 .buylang-hint{font-size:11px;color:var(--dim);}
 
@@ -541,7 +547,7 @@ html:not([data-iop-theme]) .wtb-tier .tgl.on,html:not([data-iop-theme]) .tgl.on{
 html:not([data-iop-theme]) .filter-group{background:var(--s1);border:1px solid var(--border);border-radius:10px;}
 html:not([data-iop-theme]) .filter-chip{border:none;padding:6px 12px;}
 html:not([data-iop-theme]) .filter-chip.active{background:var(--soft-blue);color:#fff;box-shadow:inset 0 0 0 1px rgba(47,124,246,.45);}
-html:not([data-iop-theme]) #wtb-buylang{margin:0 2px 16px;gap:10px;}
+html:not([data-iop-theme]) #wtb-buylang,html:not([data-iop-theme]) #sg-buylang{margin:0 2px 16px;gap:10px;}
 html:not([data-iop-theme]) .buylang-label{margin:0;}
 html:not([data-iop-theme]) .buylang-hint{font-size:12px;color:var(--muted);}
 html:not([data-iop-theme]) .wtb-add-tier{border:1px dashed var(--line-strong);border-radius:10px;color:var(--dim);font-family:var(--font-ui);font-weight:600;font-size:13px;margin-top:12px;justify-content:center;}
