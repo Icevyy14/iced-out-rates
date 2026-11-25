@@ -3528,6 +3528,34 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
   }
   #tab-scanner #sc-sg-cam-stop{--sc-i:var(--i-camera-off);position:absolute;top:12px;left:12px;} /* the look is .sc-vf-round's */
+  /* Full screen (Josh, 11/24: "the same as the slab camera, not just a small box"): while the camera is running the box covers the whole
+     screen (the bar, the dock and the pile are under it), with Done, the flashlight (only where the phone's browser reports one), the camera
+     switch, the shutter and a count of the pile. Done (or the count) drops it back to the box; the expand button brings it back. A spacer
+     keeps the page where it was, so nothing jumps either way. The page, the card on screen and the pile are not touched. */
+  #tab-scanner .sc-sg-slot{display:block;width:100%;}
+  #tab-scanner .sc-sg-slot[hidden]{display:none;}
+  #tab-scanner .sc-sg-cam.sc-sg-full{
+    position:fixed;inset:0;z-index:45;width:auto;height:auto;border-radius:0;box-shadow:none;touch-action:none;overscroll-behavior:none;
+  }
+  #tab-scanner #sc-sg-done{position:absolute;top:12px;left:12px;min-height:44px;padding:0 18px;border:0;cursor:pointer;font:inherit;font-weight:800;}
+  #tab-scanner #sc-sg-done[hidden],#tab-scanner #sc-sg-expand[hidden],#tab-scanner #sc-sg-torch[hidden],#tab-scanner #sc-sg-review[hidden]{display:none;}
+  #tab-scanner #sc-sg-torch{--sc-i:var(--i-torch);position:absolute;top:12px;left:64px;}
+  #tab-scanner #sc-sg-expand{position:absolute;top:12px;right:12px;} /* its icon is an inline SVG (the page has no expand icon): currentColor, no mask */
+  #tab-scanner #sc-sg-expand::before,#tab-scanner #sc-sg-done::before{display:none;}
+  #tab-scanner #sc-sg-expand svg{width:20px;height:20px;display:block;}
+  /* In the box the camera switch sits top left (as before) and the expand button top right, so the Matching count moves left of it.
+     Full screen: Done, then the camera switch, then the flashlight, along the top (below the notch); Matching top right. */
+  #tab-scanner .sc-sg-cam .sc-sg-matching{right:64px;}
+  #tab-scanner .sc-sg-cam.sc-sg-full #sc-sg-done,
+  #tab-scanner .sc-sg-cam.sc-sg-full #sc-sg-cam-stop,
+  #tab-scanner .sc-sg-cam.sc-sg-full #sc-sg-torch,
+  #tab-scanner .sc-sg-cam.sc-sg-full .sc-sg-matching{top:calc(12px + env(safe-area-inset-top));}
+  #tab-scanner .sc-sg-cam.sc-sg-full #sc-sg-cam-stop{left:106px;}
+  #tab-scanner .sc-sg-cam.sc-sg-full #sc-sg-torch{left:158px;}
+  #tab-scanner .sc-sg-cam.sc-sg-full .sc-sg-matching{right:12px;}
+  #tab-scanner .sc-sg-cam.sc-sg-full .sc-sg-bottom{bottom:calc(14px + env(safe-area-inset-bottom));flex-wrap:wrap;}
+  #tab-scanner #sc-sg-review{order:-1;flex:0 0 auto;margin:0 0 2px;border:0;cursor:pointer;font:inherit;font-weight:800;--sc-i:var(--i-scan);}
+  #tab-scanner #sc-sg-review.sc-sg-check-more{background:var(--sc-steel-ink);color:var(--sc-cam);}
   #tab-scanner #sc-sg-shutter{flex:none;} /* the look and the press are .sc-vf-shutter's */
   #tab-scanner #sc-sg-shutter:disabled{opacity:.5;cursor:default;}
   #tab-scanner .sc-sg-matching{position:absolute;top:12px;right:12px;max-width:none;font-weight:800;} /* the look is .sc-vf-hint's */
@@ -3716,6 +3744,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   }
 </style>
 <section class="sc-sg sc-singles-only" id="sc-sg" aria-label="Raw cards" hidden>
+  <div class="sc-sg-slot" id="sc-sg-slot" hidden></div>
   <div class="sc-sg-cam" id="sc-sg-cam">
     <video class="sc-sg-video" id="sc-sg-video" autoplay playsinline muted hidden></video>
     <div class="sc-sg-cam-wait" id="sc-sg-cam-wait" role="status" hidden><span class="sc-sg-spin" aria-hidden="true"></span><span>Starting the camera…</span></div>
@@ -3725,8 +3754,12 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
       <p class="sc-vf-off-text" id="sc-sg-cam-text">Camera off. Tap the camera to scan cards.</p>
     </div>
     <button type="button" class="sc-vf-round" id="sc-sg-cam-stop" aria-label="Turn camera off" title="Turn camera off" hidden></button>
+    <button type="button" class="sc-vf-pill" id="sc-sg-done" aria-label="Done: back to the pile" title="Done: back to the pile" hidden>Done</button>
+    <button type="button" class="sc-vf-round" id="sc-sg-torch" aria-label="Flashlight" title="Flashlight" aria-pressed="false" hidden></button>
+    <button type="button" class="sc-vf-round" id="sc-sg-expand" aria-label="Full screen camera" title="Full screen camera" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
     <span class="sc-vf-hint sc-sg-matching" id="sc-sg-matching" role="status" hidden></span>
     <div class="sc-sg-bottom" id="sc-sg-bottom" hidden>
+      <button type="button" class="sc-vf-pill" id="sc-sg-review" aria-label="Review the pile" hidden></button>
       <div class="sc-vf-hint sc-sg-hint" id="sc-sg-hint" role="status">Hold the card inside the frame</div>
       <button type="button" class="sc-vf-shutter" id="sc-sg-shutter" aria-label="Take the card" title="Take the card"><span></span></button>
     </div>
@@ -16332,6 +16365,10 @@ window.SinglesPrice = {
     // camHeld: opened from the bar's memory before singles-live's first answer; no camera until it says on (camHeldTap: by a tap).
     var camHeld = false, camHeldTap = false;
     var camAsking = false, camLive = false, liveTimer = null, LIVE_FALLBACK_MS = 1500;
+    // fullPref: the camera covers the screen while it runs (the default; Done drops it to the box, the expand button brings it back,
+    // for this visit only). isFull: it does right now. camTrack/torchCap/torchOn: the flashlight, only where the browser reports one.
+    var fullPref = true, isFull = false;
+    var camTrack = null, torchCap = false, torchOn = false;
     // camPerm: what the browser last said about the camera ('granted' / 'prompt' / 'denied'), null while not known yet. The full
     // waiting box is shown only when it will start; a browser that is going to wait for a tap goes straight to the slim off row.
     var camPerm = null;
@@ -16389,6 +16426,7 @@ window.SinglesPrice = {
       if (!h || !root || !window.SinglesFlow || !window.SinglesPrice) return; // not this page, or a page without the engine: inert
       host = h;
       ['sc-sg', 'sc-sg-cam', 'sc-sg-video', 'sc-sg-guide', 'sc-sg-cam-wait', 'sc-sg-cam-off', 'sc-sg-cam-text', 'sc-sg-cam-on', 'sc-sg-cam-stop',
+        'sc-sg-slot', 'sc-sg-done', 'sc-sg-torch', 'sc-sg-expand', 'sc-sg-review',
         'sc-sg-matching', 'sc-sg-bottom', 'sc-sg-hint', 'sc-sg-shutter', 'sc-sg-slab', 'sc-sg-slab-text', 'sc-sg-slab-yes', 'sc-sg-slab-no',
         'sc-sg-pay', 'sc-sg-pay-note', 'sc-sg-visit', 'sc-sg-visit-sub', 'sc-sg-card', 'sc-sg-check', 'sc-sg-check-count', 'sc-sg-strip',
         'sc-sg-pile', 'sc-sg-pile-count', 'sc-sg-rows', 'sc-sg-pile-empty', 'sc-sg-totals', 'sc-sg-confirm', 'sc-sg-confirm-text',
@@ -16405,6 +16443,10 @@ window.SinglesPrice = {
     function wire() {
       on_(el['cam-on'], 'click', function () { startCamera(); });
       on_(el['cam-stop'], 'click', function () { stopCamera(); camMsg = ''; render(); });
+      on_(el.done, 'click', function (ev) { if (ev && ev.stopPropagation) ev.stopPropagation(); setFull(false); });
+      on_(el.review, 'click', function (ev) { if (ev && ev.stopPropagation) ev.stopPropagation(); setFull(false); });
+      on_(el.expand, 'click', function (ev) { if (ev && ev.stopPropagation) ev.stopPropagation(); setFull(true); });
+      on_(el.torch, 'click', function (ev) { if (ev && ev.stopPropagation) ev.stopPropagation(); toggleTorch(); });
       on_(el.shutter, 'click', function (ev) { if (ev && ev.stopPropagation) ev.stopPropagation(); shutter(); });
       on_(el.video, 'playing', videoLive);
       on_(el.video, 'loadeddata', videoLive);
@@ -16730,6 +16772,7 @@ window.SinglesPrice = {
         camStarting = false;
         if (gen !== camGen || !on || !active) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
         stream = s;
+        setupTrack(s);
         camPerm = 'granted';
         camMsg = '';
         camLive = false;
@@ -16767,8 +16810,57 @@ window.SinglesPrice = {
       liveTimer = null;
       if (stream) { try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { /* already stopped */ } }
       stream = null;
+      camTrack = null; torchCap = false; torchOn = false;
       if (el.video) { try { el.video.srcObject = null; } catch (e) { /* fake video */ } }
-      if (on) render();
+      if (on) render(); else applyFull();
+    }
+
+    // ── full screen and the flashlight ────────────────────────────────────────────────────────────
+    /** The camera's own track: the flashlight only where the browser reports one (Chrome on Android does; iPhone's web view says none),
+        and the camera asked to keep focusing by itself where it can be. Nothing here can stop the camera: every call is guarded. */
+    function setupTrack(s) {
+      camTrack = null; torchCap = false; torchOn = false;
+      try {
+        var t = s && typeof s.getVideoTracks === 'function' ? s.getVideoTracks()[0] : null;
+        if (!t) return;
+        camTrack = t;
+        var caps = typeof t.getCapabilities === 'function' ? (t.getCapabilities() || {}) : {};
+        torchCap = !!caps.torch;
+        if (caps.focusMode && caps.focusMode.indexOf && caps.focusMode.indexOf('continuous') >= 0 && typeof t.applyConstraints === 'function') {
+          var p = t.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+          if (p && p.catch) p.catch(function () { /* it keeps its own focus */ });
+        }
+      } catch (e) { camTrack = null; torchCap = false; }
+    }
+    function toggleTorch() {
+      if (!camTrack || !torchCap || typeof camTrack.applyConstraints !== 'function') return;
+      var want = !torchOn;
+      var t = camTrack;
+      try {
+        Promise.resolve(t.applyConstraints({ advanced: [{ torch: want }] })).then(function () {
+          if (t !== camTrack) return;
+          torchOn = want;
+          renderCam();
+        }, function () { /* this phone said no: the button stays as it was */ });
+      } catch (e) { /* no flashlight */ }
+    }
+    function setFull(want) {
+      fullPref = !!want;
+      renderCam();
+    }
+    /** The box covers the screen while the camera runs and fullPref allows it. The spacer takes the box's place first (page stays put). */
+    function applyFull() {
+      // Full from the moment the camera is asked for (starting), not only once it runs: the box never grows under the person's eyes.
+      var want = !!(on && fullPref && (stream || camStarting || camAsking));
+      if (want === isFull) return;
+      if (want) {
+        var h = 0;
+        try { h = el.cam.getBoundingClientRect().height || 0; } catch (e) { h = 0; }
+        if (el.slot) { el.slot.style.height = h ? h + 'px' : ''; el.slot.hidden = false; }
+      } else if (el.slot) { el.slot.hidden = true; el.slot.style.height = ''; }
+      isFull = want;
+      el.cam.classList.toggle('sc-sg-full', want);
+      try { placeGuide(); } catch (e) { /* placed again on the next draw */ }
     }
 
     var guide = null;
@@ -16912,6 +17004,7 @@ window.SinglesPrice = {
           flash('ok');
           lastAdded = p;
           showToast(flow.addedNote(top), undoLast, false);
+          if (isFull) say(flow.addedNote(top)); // the toast is under the full screen camera: the line over the shutter says it
           lastAddedFrom = null;
           if (free) { parkChecking(); checking = null; results = res; noMatch = null; showPick(p); flyPending = true; }
           askLive([top.productId]);
@@ -16920,6 +17013,7 @@ window.SinglesPrice = {
       }
       bad();
       flash('look');
+      if (isFull) say('Needs a look: tap Review');
       var item = flow.matchItem(id, res, hint);
       if (free) {
         parkChecking();
@@ -17375,8 +17469,15 @@ window.SinglesPrice = {
       el.cam.classList.toggle('sc-sg-cam-is-off', view.off);
       el.cam.classList.toggle('sc-sg-cam-starting', view.starting);
       el.cam.classList.toggle('sc-sg-cam-live', view.live);
+      applyFull();
       el['cam-stop'].hidden = !ready;
+      el.done.hidden = !isFull; // always a way out of the full screen, even while the camera is still starting
+      el.expand.hidden = !(ready && !isFull);
+      el.torch.hidden = !(ready && torchCap);
+      el.torch.classList.toggle('on', torchOn);
+      el.torch.setAttribute('aria-pressed', torchOn ? 'true' : 'false');
       el.bottom.hidden = !ready;
+      renderReview(ready);
       el.guide.hidden = !ready;
       el['cam-on'].disabled = camStarting;
       el['cam-text'].textContent = camMsg || (camStarting ? 'Starting camera…' : 'Camera off. Tap the camera to scan cards.');
@@ -17384,6 +17485,19 @@ window.SinglesPrice = {
       el.hint.textContent = flow.cameraHint({ capturing: capturing, note: note, matching: matching, ready: ready });
       el.matching.hidden = !matching;
       el.matching.textContent = matching ? 'Matching ' + matching + '…' : '';
+    }
+
+    /** Full screen shows the pile at a glance (and more when something waits in To check); tapping it drops back to the box. */
+    function renderReview(ready) {
+      if (!el.review) return;
+      var show = !!(ready && isFull && pile && flow);
+      el.review.hidden = !show;
+      if (!show) return;
+      var count = 0;
+      try { count = pile.lines().reduce(function (a, l) { return a + l.quantity; }, 0); } catch (e) { count = 0; }
+      var waiting = queue.length;
+      el.review.textContent = flow.plural(count, 'card') + (waiting ? ' · ' + waiting + ' to check' : '') + ' · Review';
+      el.review.classList.toggle('sc-sg-check-more', waiting > 0);
     }
 
     function renderScore(lines, priced) {
