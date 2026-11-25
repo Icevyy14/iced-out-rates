@@ -1733,6 +1733,8 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   /* the app's camera dock has a fixed height: the box stays one line there (a list pasted into it still reads whole) */
   #tab-scanner .scanner-layout.sc-native-cam .sc-cert-input{height:var(--sc-field-h) !important;max-height:var(--sc-field-h);border-radius:calc(var(--sc-field-h) / 2);}
   #tab-scanner .sc-batch{margin:0;font-size:var(--sc-fs-label);font-weight:700;line-height:1.45;color:var(--sc-muted);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+  /* the placeholder is one line: a 375px phone wrapped "list" onto a second line the one-line box cut in half */
+  #tab-scanner .sc-cert-input::placeholder{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   #tab-scanner .sc-cert-input:focus{background:var(--sc-fill-focus);box-shadow:inset 0 0 0 1px var(--sc-steel-ink), 0 0 0 3px var(--sc-focus-soft);}
   #tab-scanner .sc-cert-input:focus-visible{outline:none;}
   #tab-scanner .sc-cert-input::placeholder{color:var(--sc-ph);opacity:1;}
@@ -1863,6 +1865,15 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   }
   #tab-scanner .sc-earlier-tosheet::before{width:18px;height:18px;}
   #tab-scanner .sc-earlier-tosheet:hover,#tab-scanner .sc-earlier-tosheet:active{color:var(--sc-steel-ink);background:var(--sc-fill-card-bg);}
+  /* With the Add to sheet button the two buttons stack in one 44px column (remove on top) instead of standing side by side, so the card name
+     keeps the 40px the new button would have taken (a 375px phone cut "2020 Panini Prizm Silver..." to "Prizm Silver..."). */
+  #tab-scanner .sc-earlier-slide:has(.sc-earlier-tosheet){display:grid;grid-template-columns:minmax(0,1fr) auto auto;grid-template-rows:auto 1fr;align-items:start;}
+  #tab-scanner .sc-earlier-slide:has(.sc-earlier-tosheet) .sc-earlier-main{grid-column:1;grid-row:1 / span 2;}
+  #tab-scanner .sc-earlier-slide:has(.sc-earlier-tosheet) .sc-earlier-main + button{grid-column:2;grid-row:1 / span 2;}
+  #tab-scanner .sc-earlier-slide:has(.sc-earlier-tosheet) .sc-earlier-remove{grid-column:3;grid-row:1;}
+  #tab-scanner .sc-earlier-slide:has(.sc-earlier-tosheet) .sc-earlier-tosheet{grid-column:3;grid-row:2;width:44px;margin:0 2px 0 0;}
+  /* With Add all to sheet in the head, the count takes its own line (flex 1 1 0 squeezed "3 cards scanned" into three lines that ran under the buttons). */
+  #tab-scanner .sc-pile-head:has(#sc-sheet-all:not([hidden])) .sc-pile-count{flex-basis:100%;}
   #tab-scanner #sc-sheet-all{--sc-i:var(--i-sheet);flex:none;gap:7px;padding:0 15px 0 12px;color:var(--sc-steel-ink);font-size:var(--sc-fs-label);}
   #tab-scanner #sc-sheet-all::before{width:17px;height:17px;}
   #tab-scanner #sc-sheet-all[hidden]{display:none;}
