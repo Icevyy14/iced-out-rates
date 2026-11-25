@@ -264,9 +264,11 @@ html[data-iop-tabs]:not([data-iop-bar]) #tab-scanner{visibility:hidden;}
 //     taken from the email. A token that names no user gets no memory at all. Another identity's memory is ignored;
 //   - only a tab whose own answer is still on its way (Singles before /status) is taken from memory; a tab the page already knows
 //     is off is never shown, and one it knows is on is always shown;
-//   - the first-frame draw is for an owner only, and only when this phone's own record of the login's role (the server's answer,
-//     iopViewerRole, or the owners' own user ids) says owner, whatever the memory says: a sourcer, a login not answered for yet and
-//     the signed out (no session) get nothing drawn from memory, so never Singles.
+//   - the first-frame draw is for an owner, or for a sourcer account an owner turned Singles or Sheet on for, and only when this
+//     phone's own record of the login's role (the server's answer, iopViewerRole, or the owners' own user ids) says so, whatever the
+//     memory says: a sourcer's remembered tabs are cut to the flags that record holds NOW (a flag turned off since never shows for a
+//     frame). A sourcer with neither flag, a login not answered for yet and the signed out (no session) get nothing drawn from
+//     memory, so never Singles.
 // Pure: no DOM, no storage of its own (a localStorage-like object is passed in), unit-tested in scanner/tabCache.test.js and
 // embedded whole in the page (build-portal.js) as window.TabCache.
 
@@ -276,8 +278,16 @@ var CAP_MS = 1500;
 /** Every tab the bar knows, in order, with its word. The page's TABS list must name the same ids. */
 var TAB_IDS = ['slabs', 'singles', 'sheet'];
 var LABELS = { slabs: 'Slabs', singles: 'Singles', sheet: 'Sheet' };
-/** Tabs only an owner may ever see. */
-var OWNER_ONLY = ['singles'];
+/** Tabs a sourcer account sees only when the server's answer for it (GET /scanner viewer.singles / viewer.sheet) says so; an owner has
+ *  them all. Slabs is everyone's. */
+var FLAG_TABS = { singles: 'singles', sheet: 'sheet' };
+/** The tabs a sourcer's remembered bar may draw: Slabs, plus each flagged tab the role record (iopViewerRole's, parsed) says is on. */
+function flaggedTabs(known, tabs) {
+  var k = isObj(known) ? known : {};
+  return (Array.isArray(tabs) ? tabs : []).filter(function (id) {
+    return id === 'slabs' || (FLAG_TABS[id] !== undefined && k[FLAG_TABS[id]] === true);
+  });
+}
 
 function isObj(v) { return !!v && typeof v === 'object' && !Array.isArray(v); }
 
@@ -330,7 +340,6 @@ function readCache(storage) {
 function writeCache(storage, who, role, tabs) {
   if (!storage || typeof who !== 'string' || !who || (role !== 'owner' && role !== 'sourcer')) return false;
   var list = cleanTabs(tabs) || [];
-  if (role !== 'owner') list = list.filter(function (id) { return OWNER_ONLY.indexOf(id) < 0; });
   var text = JSON.stringify({ v: 1, who: who, role: role, tabs: list });
   try {
     if (storage.getItem(KEY) === text) return false;
@@ -398,8 +407,19 @@ function earlyTabs(o) {
   try { known = JSON.parse(o.roleRaw || 'null'); } catch (e) { known = null; }
   if (isObj(known) && known.uid === sub && typeof known.owner === 'boolean') role = known.owner ? 'owner' : 'sourcer';
   else role = Array.isArray(o.ownerIds) && o.ownerIds.indexOf(sub) >= 0 ? 'owner' : 'unknown';
-  // Only an owner's bar is drawn (or waited for) this early: a sourcer's bar (Slabs | Sheet, once SHEET_FOR_SOURCERS is on) has no
-  // answer to wait for, so the Scanner draws it right away anyway, and a flag turned off since must not show it for a frame.
+  if (role === 'sourcer') {
+    // A sourcer's bar is drawn this early only for an account with a flag on (the phone's own record of the login says so), from the
+    // memory of that same login's last bar, cut to the flags now: a flag turned off since must not show for a frame. Nothing
+    // remembered, or fewer than two tabs: nothing drawn (the Scanner draws the bar when it knows), and never an empty waiting bar.
+    var krec = parseCache(o.cacheRaw);
+    if (!krec || krec.who !== who || krec.role !== 'sourcer' || !isObj(known)) return null;
+    var kids = flaggedTabs(known, krec.tabs);
+    if (kids.length < 2) return null;
+    var kcur = kids.indexOf(o.kind) >= 0 ? o.kind : 'slabs';
+    if (kids.indexOf(kcur) < 0) kcur = kids[0];
+    return { ids: kids, cur: kcur };
+  }
+  // Any other login (not answered for yet, signed out) gets nothing from memory.
   if (role !== 'owner') return null;
   var rec = parseCache(o.cacheRaw);
   if (!rec || rec.who !== who || rec.role !== 'owner') return { ids: [], cur: null, wait: true };
@@ -449,7 +469,8 @@ window.TabCache = {
   CAP_MS: CAP_MS,
   TAB_IDS: TAB_IDS,
   LABELS: LABELS,
-  OWNER_ONLY: OWNER_ONLY,
+  FLAG_TABS: FLAG_TABS,
+  flaggedTabs: flaggedTabs,
   subOf: subOf,
   identityOf: identityOf,
   parseCache: parseCache,
@@ -2680,8 +2701,8 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   /* ── The bottom tab bar (Penguin, 11/24: "slabs, singles, sheet and whatever we wanna add in the future"). It replaced the
      old Slabs | Singles switch. A permanent bar at the very bottom of the screen, like an iPhone's: an icon and a word per tab,
      the one on show in the theme's own colour (--sc-blue: each theme's accent). The tabs come from one list in the Scanner
-     module (TABS); who sees which is decided there. Signed out, a login not answered for yet, and a sourcer while
-     SHEET_FOR_SOURCERS is off: no bar, and none of these rules applies (they all hang off #tab-scanner.sc-has-tabbar).
+     module (TABS); who sees which is decided there. Signed out, a login not answered for yet, and a sourcer account with
+     neither Singles nor Sheet turned on (GET /scanner viewer.singles / viewer.sheet): no bar, and none of these rules applies (they all hang off #tab-scanner.sc-has-tabbar).
      Every tab's own bottom controls (the slab dock Normal / Lower / Hide, the Singles dock, the Sheet's cert box) sit directly
      on top of the bar, never behind it, and the bar pads itself by the home bar's inset. While the keyboard is up the bar
      steps aside (the docks go back to the bottom, as they always did). */
@@ -2822,6 +2843,8 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .scanner-layout.sc-singles-mode #sc-dock,
   #tab-scanner .scanner-layout.sc-singles-mode #sc-rule-card,
   #tab-scanner .scanner-layout.sc-singles-mode #sc-earlier{display:none !important;}
+  /* (a sourcer account's peek keeps the lock card: not on Singles, which prices raw cards, never a lock) */
+  #tab-scanner .scanner-layout.sc-singles-mode.sc-lock-mode.sc-native-cam.sc-sheet-down > #sc-lock{display:none !important;}
   #tab-scanner .sc-sheet-down .sc-lk-tabs,#tab-scanner .sc-sheet-down .sc-lk-banner,
   #tab-scanner .sc-sheet-down .sc-lk-pane:not(#sc-lk-scan),#tab-scanner .sc-sheet-down .sc-lk-actions,
   #tab-scanner .sc-sheet-down .sc-lk-confirm,#tab-scanner .sc-sheet-down .sc-lk-note,
@@ -3977,7 +4000,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
 
 <!-- The bottom tab bar (Penguin, 11/24): Slabs | Singles | Sheet for an owner, drawn by the Scanner module from its TABS list
      (an icon and a word each). Hidden until the script shows it, and never shown signed out, before the server has said who a
-     login is, or to a sourcer while SHEET_FOR_SOURCERS is off. After #sc-layout on purpose: the keyboard rule
+     login is, or to a sourcer account with neither Singles nor Sheet turned on. After #sc-layout on purpose: the keyboard rule
      (.sc-kbd-open ~ .sc-tabbar) and the app's peek (which hides the layout's other children) both rely on it. -->
 <div class="sc-tabbar" id="sc-tabbar" role="group" aria-label="Screens" hidden></div>
 <!-- The bar's first frame (Penguin, 11/24: "for a split second i only see slabs and sheets tabs, and then i see the 3 tabs"). This runs
@@ -10982,6 +11005,10 @@ function roleRecord(uid, body) {
   if (r !== 'sourcer') return null;
   var rec = { uid: uid, owner: false, mode: sourcerModeOf(body.viewer.mode) };
   if (body.viewer.avg === true) rec.avg = true;
+  // The SINGLES and SHEET flags ride along the same way: only exactly true is on (absent = a slab-rates from before the flags, or an
+  // account an owner never turned them on for).
+  if (body.viewer.singles === true) rec.singles = true;
+  if (body.viewer.sheet === true) rec.sheet = true;
   return rec;
 }
 
@@ -10997,6 +11024,8 @@ function roleCacheOf(raw) {
   if (raw.owner) return { uid: raw.uid, owner: true };
   var rec = { uid: raw.uid, owner: false, mode: sourcerModeOf(raw.mode) };
   if (raw.avg === true) rec.avg = true;
+  if (raw.singles === true) rec.singles = true;
+  if (raw.sheet === true) rec.sheet = true;
   return rec;
 }
 
@@ -11004,7 +11033,8 @@ function roleCacheOf(raw) {
  *  is kept and acted on: an owner moving an account from lock only to price + lock reaches the phone this way. */
 function sameRole(a, b) {
   if (!isObj(a) || !isObj(b) || a.uid !== b.uid || a.owner !== b.owner) return false;
-  return a.owner === true || (sourcerModeOf(a.mode) === sourcerModeOf(b.mode) && (a.avg === true) === (b.avg === true));
+  return a.owner === true || (sourcerModeOf(a.mode) === sourcerModeOf(b.mode) && (a.avg === true) === (b.avg === true) &&
+    (a.singles === true) === (b.singles === true) && (a.sheet === true) === (b.sheet === true));
 }
 
 /** Does the login `id` get Card Ladder's AVERAGE OF 3 in its pricing? An owner always does (the screen it always had); a sourcer only when the
@@ -11014,6 +11044,21 @@ function avgOf(id, known) {
   var role = roleOf(id, known);
   if (role === 'owner') return true;
   return role === 'sourcer' && known.avg === true;
+}
+
+/** Does the login `id` get the SINGLES tab? An owner always; a sourcer only when the server said so for THAT login (roleRecord's: singles true);
+ *  anyone else (nobody answered yet, another login's answer, a malformed record) does not. */
+function singlesOf(id, known) {
+  var role = roleOf(id, known);
+  if (role === 'owner') return true;
+  return role === 'sourcer' && known.singles === true;
+}
+
+/** Does the login `id` get the SHEET tab? The same rule as singlesOf, for viewer.sheet. */
+function sheetOf(id, known) {
+  var role = roleOf(id, known);
+  if (role === 'owner') return true;
+  return role === 'sourcer' && known.sheet === true;
 }
 
 /** The MODE of the login `id` for a sourcer the phone knows (`known`, roleRecord's for THAT login): 'lock' or 'price_lock';
@@ -11491,6 +11536,8 @@ window.PileRates = {
   sameRole: sameRole,
   modeOf: modeOf,
   avgOf: avgOf,
+  singlesOf: singlesOf,
+  sheetOf: sheetOf,
   ownerOf: ownerOf,
   roleOf: roleOf,
   viewerOf: viewerOf,
@@ -16269,8 +16316,8 @@ window.SinglesPrice = {
         });
       };
     }
-    function getJson(url, ms) {
-      return fetchWithin(ms || FETCH_WAIT_MS)(url, { method: 'GET', headers: { accept: 'application/json' } }).then(function (r) {
+    function getJson(url, ms, extra) {
+      return fetchWithin(ms || FETCH_WAIT_MS)(url, { method: 'GET', headers: Object.assign({ accept: 'application/json' }, extra || {}) }).then(function (r) {
         if (!r || !r.ok) throw new Error('answered ' + (r && r.status));
         return r.json();
       });
@@ -16370,7 +16417,12 @@ window.SinglesPrice = {
       if (!api) { liveState = false; statusAt = now(); return; }
       statusAsking = true;
       var before = liveState;
-      getJson(api + '/status', STATUS_WAIT_MS).then(function (body) {
+      // singles-live's own function: the signed-in bearer rides along when the page has one (an auth gate there); the book and the rates
+      // (other hosts) never get it
+      var authed = null;
+      try { authed = host && host.getToken ? host.getToken() : null; } catch (e) { authed = null; }
+      var statusHeaders = authed ? { authorization: 'Bearer ' + authed, apikey: (host && host.anonKey) || '' } : null;
+      getJson(api + '/status', STATUS_WAIT_MS, statusHeaders).then(function (body) {
         liveState = !!(body && body.enabled === true);
         statusFailed = false;
       }, function () {
@@ -16532,7 +16584,12 @@ window.SinglesPrice = {
         SinglesPrice: window.SinglesPrice, Money: window.Money, SinglesText: text, storage: store(),
       });
       motion = window.SinglesMotion.createSinglesMotion(flow);
-      live = window.SinglesLive.createSinglesLive({ fetch: fetchWithin(FETCH_WAIT_MS), functionUrl: liveApi(), device: deviceId() });
+      live = window.SinglesLive.createSinglesLive({
+        fetch: fetchWithin(FETCH_WAIT_MS), functionUrl: liveApi(), device: deviceId(),
+        // singles-live is behind an auth gate: the signed-in bearer (the page's own session token, refreshed there) goes with every call.
+        // The phone app has no sign-in (device mode): no host.getToken, no token, nothing changes for it.
+        getToken: function () { return host && host.getToken ? host.getToken() : null; }, anonKey: (host && host.anonKey) || ''
+      });
       try { pile = flow.loadPile(); } catch (e) { pile = flow.newPile(); }
       try { var saved = flow.loadToCheck(); queue = flow.restoreToCheck(saved.json, saved.photos); } catch (e) { queue = []; }
       // A new photo's id never repeats one kept from the last visit (they started at 1 too): ids go on from the clock, as the phone
@@ -21357,8 +21414,8 @@ window.SheetFiles = {
 
     function applyLockMode() {
       if (syncRuleToRole()) { renderRuleControls(); repriceAll(); renderPile(); if (currentKey) renderCurrent(); }
-      SinglesPane.refresh(); // who may see Singles (owners only, never in lock mode) may have changed with this
-      SheetPane.refresh();   // ...and the Sheet (owners; sourcers only once SHEET_FOR_SOURCERS is on)
+      SinglesPane.refresh(); // who may see Singles (owners, and sourcer accounts an owner turned it on for) may have changed with this
+      SheetPane.refresh();   // ...and the Sheet (owners; sourcer accounts with the Sheet flag on)
       renderTabs();
       var mode = lkMode();
       if (mode === lk.mode) return;
@@ -23524,13 +23581,41 @@ window.SheetFiles = {
       if (moved) { repriceAll(); renderPile(); renderCurrent(); }
     }
 
-    // ── Singles (owners only; rates-portal/singles-pane.html, which draws and runs it). These are its only ties to the slab
-    // screen: who may see it, the bridge, the sound, and the slab cameras it sends away (and brings back) so that only one
-    // camera ever runs. With Singles off (always, for a sourcer or the signed out) none of this changes anything.
+    // ── Singles (owners, and sourcer accounts an owner turned Singles on for; rates-portal/singles-pane.html, which draws and runs
+    // it). These are its only ties to the slab screen: who may see it, the bridge, the sound, the signed-in token for singles-live, and
+    // the slab cameras it sends away (and brings back) so that only one camera ever runs. With Singles off (a sourcer without the
+    // flag, or the signed out) none of this changes anything.
     function singlesOn() { return SinglesPane.isOn(); }
+    /** Does this sourcer account have the SINGLES / SHEET tab? The server's answer for THIS login (GET /scanner viewer.singles /
+        viewer.sheet, kept on the phone with the role): exactly true is on, anything else (an older slab-rates, a login nobody has
+        answered for) is off. An owner has both; this is only asked for a sourcer. */
+    function acctSingles() { var v = viewer(); return !!v.id && PileRates.singlesOf(v.id, roleKnown); }
+    function acctSheet() { var v = viewer(); return !!v.id && PileRates.sheetOf(v.id, roleKnown); }
+    /** The signed-in bearer for singles-live (SinglesLive's getToken, sync). A token whose own expiry is near or past starts a
+        refresh through the page's one refreshSession (shared with every other call, so never a second refresh request), and the
+        token is returned as it stands: the call after the refresh carries the new one, and a 401 on the old one only parks THAT
+        token (SinglesLive's deadToken), never the new one. At most one nudge a minute. */
+    var singlesTokenNudge = 0;
+    function singlesToken() {
+      if (!session || !session.access_token) return null;
+      try {
+        var t = Date.now();
+        if (t - singlesTokenNudge > 60000 && Signal.signInLapsed({ getItem: function (k) { return localStorage.getItem(k); }, now: t })) {
+          singlesTokenNudge = t;
+          refreshSession().then(function () { /* session holds the new token; the next call reads it */ }, function () { /* no signal: the next call tries again */ });
+        }
+      } catch (e) { /* the token as it stands */ }
+      return session && session.access_token ? session.access_token : null;
+    }
     SinglesPane.attach({
       layout: dom.layout, bridge: bridge, feedback: feedback,
-      allowed: function () { return !!session && roleState() === 'owner' && !lkOn(); },
+      getToken: singlesToken,
+      anonKey: SB_ANON,
+      allowed: function () {
+        if (!session) return false;
+        var r = roleState();
+        return r === 'owner' || (r === 'sourcer' && acctSingles());
+      },
       // this login's bar had Singles last time (iopTabBar): before /status answers, Singles opens as it was left
       remembers: function () { return tabRemembers('singles'); },
       inApp: function () { return bridge.isAvailable(); },
@@ -23554,24 +23639,24 @@ window.SheetFiles = {
     // the TABS list below, in order; a new screen is one more entry (an id, its word, who may see it) plus its pane. Who sees what:
     //   - an owner: Slabs | Singles | Sheet (Singles only while SinglesPane says it may show today: singles-live's /status), else
     //     Slabs | Sheet;
-    //   - a sourcer (lock mode): Slabs | Sheet, ONLY once SHEET_FOR_SOURCERS is true. While it is false a sourcer sees no bar at all,
-    //     and the lock screens are exactly what they were (no class, no request, nothing in storage changes for them);
+    //   - a sourcer account (lock or price + lock): the tabs its owner turned on (viewer.singles, viewer.sheet), after Slabs. With
+    //     neither on it sees no bar at all, and the lock screens are exactly what they were (no class, no request, nothing in storage
+    //     changes for them). Its Slabs screen is the same either way;
     //   - signed out, or a login the server has not answered for yet ('Checking your account'): no bar.
     // A bar with one tab is no bar. The last tab is kept under iopKind ('slabs' | 'singles' | 'sheet'); one that is no longer
     // allowed falls back to Slabs. The camera hand-offs stay where they were: Singles sends the slab cameras away and brings them
     // back (SinglesPane), and the Sheet uses the slab camera itself (the app's panel, or this page's camera in a browser).
-    var SHEET_FOR_SOURCERS = false; // Penguin's go for the Sheet on sourcers' phones: true gives them Slabs | Sheet. This line only.
     var KIND_KEY = 'iopKind';
     var TABS = [
       { id: 'slabs', label: 'Slabs', allowed: function () { return true; } },
-      { id: 'singles', label: 'Singles', allowed: function (role) { return role === 'owner' && SinglesPane.available(); } },
-      { id: 'sheet', label: 'Sheet', allowed: function (role) { return SheetPane.present() && (role === 'owner' || (role === 'sourcer' && SHEET_FOR_SOURCERS)); } },
+      { id: 'singles', label: 'Singles', allowed: function (role) { return (role === 'owner' || (role === 'sourcer' && acctSingles())) && SinglesPane.available(); } },
+      { id: 'sheet', label: 'Sheet', allowed: function (role) { return SheetPane.present() && (role === 'owner' || (role === 'sourcer' && acctSheet())); } },
     ];
-    /** Whose bar this is: 'owner', 'sourcer' (lock mode, the server said so) or 'none' (signed out, or not answered for yet). */
+    /** Whose bar this is: 'owner', 'sourcer' (lock or price + lock mode, the server said so) or 'none' (signed out, or not answered for yet). */
     function barRole() {
       if (!session) return 'none';
       var m = lkMode();
-      return m === 'off' ? 'owner' : m === 'lock' ? 'sourcer' : 'none';
+      return m === 'off' ? 'owner' : (m === 'lock' || m === 'price_lock') ? 'sourcer' : 'none';
     }
     // ── The bar's first frame and its memory (Penguin, 11/24: "for a split second i only see slabs and sheets tabs, and then i see
     // the 3 tabs. fix that. looks unprofessional"). Singles' answer (singles-live's /status) comes a moment after the page opens, so
@@ -23589,18 +23674,19 @@ window.SheetFiles = {
       if (!tabMem || !session) return null;
       return tabMem.identityOf(session, typeof atob === 'function' ? function (x) { return atob(x); } : null);
     }
-    /** Did this login's remembered bar (as an owner) have tab `id`? */
+    /** Did this login's remembered bar (as an owner, or as a sourcer account with a flag on) have tab `id`? */
     function tabRemembers(id) {
-      if (!tabMem || barRole() !== 'owner') return false;
-      var c = tabMem.cachedFor(tabMem.readCache(safeLocalStorage()), tabWho(), 'owner');
+      var role = barRole();
+      if (!tabMem || role === 'none') return false;
+      var c = tabMem.cachedFor(tabMem.readCache(safeLocalStorage()), tabWho(), role);
       return !!c && c.indexOf(id) >= 0;
     }
-    /** Each tab's answer right now: 'yes', 'no', or 'pending' (Singles, an owner's, while /status is still out). */
+    /** Each tab's answer right now: 'yes', 'no', or 'pending' (Singles, for a login that may have it, while /status is still out). */
     function tabStates(role) {
       return TABS.map(function (t) {
         var ok = false;
         try { ok = !!t.allowed(role); } catch (e) { ok = false; }
-        if (!ok && t.id === 'singles' && role === 'owner' && SinglesPane.pending()) return { id: t.id, state: 'pending' };
+        if (!ok && t.id === 'singles' && SinglesPane.pending()) return { id: t.id, state: 'pending' };
         return { id: t.id, state: ok ? 'yes' : 'no' };
       });
     }
@@ -23612,7 +23698,7 @@ window.SheetFiles = {
       var states = tabStates(role);
       // every answer is in: nothing pending, and Singles' last /status read did not fail (a failure hides Singles, but it is not an
       // answer worth remembering)
-      var settled = !states.some(function (t) { return t.state === 'pending'; }) && !(role === 'owner' && SinglesPane.failed());
+      var settled = !states.some(function (t) { return t.state === 'pending'; }) && !SinglesPane.failed();
       if (!tabMem) {
         var plain = states.filter(function (t) { return t.state === 'yes'; }).map(function (t) { return t.id; });
         return { ids: plain.length > 1 ? plain : [], waiting: false, settled: settled };
@@ -23725,12 +23811,17 @@ window.SheetFiles = {
       }
       // The memory: an owner's bar, kept once every answer is in (a /status read that failed is not an answer: the last record stays,
       // so one network blip never teaches the next open a bar without Singles); dropped when nobody is signed in, or when the login it
-      // was kept for turns out not to be an owner (a sourcer's phone gets nothing new in storage: its bar never waits for an answer).
+      // was kept for turns out to be a sourcer without a flag (such a phone gets nothing new in storage: its bar never waits for an answer).
       if (tabMem) {
         var mem = safeLocalStorage();
         if (!session) tabMem.clearCache(mem);
         else if (plan.settled && plan.who && plan.role === 'owner') tabMem.writeCache(mem, plan.who, 'owner', ids);
-        else if (plan.who && plan.role === 'sourcer') { var had = tabMem.readCache(mem); if (had && had.who === plan.who) tabMem.clearCache(mem); }
+        else if (plan.who && plan.role === 'sourcer') {
+          // a sourcer account with a flag on keeps its bar the same way (ids only, never a token; kept while an answer is out, written
+          // once every answer is in); one with neither flag keeps nothing, and an old record of its own is dropped
+          if (acctSingles() || acctSheet()) { if (plan.settled) tabMem.writeCache(mem, plan.who, 'sourcer', ids); }
+          else { var had = tabMem.readCache(mem); if (had && had.who === plan.who) tabMem.clearCache(mem); }
+        }
         // a first-ever wait has a cap (counted from the Scanner asking, so a slow phone reading the page still gets its full wait):
         // then the bar shows what is known
         if (plan.waiting && !tabCapped && tabCapTimer === null) {
