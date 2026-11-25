@@ -1324,7 +1324,8 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .sc-chip-no::before,#tab-scanner .sc-chip-hand::before,#tab-scanner .sc-chip-err::before,
   #tab-scanner .sc-chip-out::after,#tab-scanner .sc-recent-shill::before,#tab-scanner .sc-brand-gear::before,
   #tab-scanner .sc-tool-rates::before,#tab-scanner .sc-rates-reset::before,#tab-scanner #sc-edit-reset::before,
-  #tab-scanner .sc-flag-edit::before,#tab-scanner .sc-account-entry::before,#tab-scanner .sc-adjust-sign::before,#tab-scanner .sc-flag-adjust::after{
+  #tab-scanner .sc-flag-edit::before,#tab-scanner .sc-account-entry::before,#tab-scanner .sc-adjust-sign::before,#tab-scanner .sc-flag-adjust::after,
+  #tab-scanner .sc-earlier-tosheet::before,#tab-scanner #sc-sheet-all::before{
     content:"";flex:none;width:20px;height:20px;background:currentColor;
     -webkit-mask:var(--sc-i) center / contain no-repeat;mask:var(--sc-i) center / contain no-repeat;
   }
@@ -1858,6 +1859,17 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     background:transparent;color:var(--sc-faint);font-size:0;line-height:0;transition:background-color 150ms ease-out, color 150ms ease-out;
   }
   #tab-scanner .sc-earlier-remove::before{width:16px;height:16px;}
+  /* "Add to sheet" on a row (only for an account that has the Sheet tab), beside the remove button */
+  #tab-scanner .sc-earlier-tosheet{
+    --sc-i:var(--i-sheet);
+    flex:none;display:flex;align-items:center;justify-content:center;width:40px;height:44px;margin:2px 0 0 0;padding:0;border:0;border-radius:50%;cursor:pointer;
+    background:transparent;color:var(--sc-faint);font-size:0;line-height:0;transition:background-color 150ms ease-out, color 150ms ease-out;
+  }
+  #tab-scanner .sc-earlier-tosheet::before{width:18px;height:18px;}
+  #tab-scanner .sc-earlier-tosheet:hover,#tab-scanner .sc-earlier-tosheet:active{color:var(--sc-steel-ink);background:var(--sc-fill-card-bg);}
+  #tab-scanner #sc-sheet-all{--sc-i:var(--i-sheet);flex:none;gap:7px;padding:0 15px 0 12px;color:var(--sc-steel-ink);font-size:var(--sc-fs-label);}
+  #tab-scanner #sc-sheet-all::before{width:17px;height:17px;}
+  #tab-scanner #sc-sheet-all[hidden]{display:none;}
   #tab-scanner .sc-earlier-remove:hover,#tab-scanner .sc-earlier-remove:active{color:var(--sc-err-ink);background:var(--sc-err-tint);}
 
   /* ── the dock: Normal / Lower and Hide, always on screen, at the bottom where the thumb is. In a phone's
@@ -3094,7 +3106,10 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .sc-pl-pane{display:flex;flex-direction:column;gap:10px;min-width:0;}
   #tab-scanner .sc-pl-pane:empty{display:none;}
   #tab-scanner .sc-pl-bar:empty{display:none;}
-  #tab-scanner .sc-pl-alloc-btn{min-height:46px;}
+  #tab-scanner .sc-pl-bar{display:flex;gap:8px;}
+  #tab-scanner .sc-pl-bar:empty{display:none;}
+  #tab-scanner .sc-pl-rates-btn{flex:0 0 auto;min-height:46px;}
+  #tab-scanner .sc-pl-alloc-btn{flex:1 1 auto;min-height:46px;}
   #tab-scanner .sc-pl-alloc-btn[aria-expanded="true"]{background:var(--sc-fill-card-bg);color:var(--sc-ink);}
   #tab-scanner .sc-pl-card[data-kind="full"] .sc-pl-solo .sc-lk-status{font-size:var(--sc-fs-row);font-weight:700;line-height:1.4;}
   #tab-scanner .sc-pl .sc-lk-alert-card{margin-bottom:0;}
@@ -3389,6 +3404,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
         <div class="sc-pile-count" id="sc-pile-count">0 cards</div>
         <div class="sc-pile-flags" id="sc-pile-flags" hidden></div>
       </div>
+      <button type="button" class="sc-btn sc-btn-quiet" id="sc-sheet-all" hidden>Add all to sheet</button>
       <button type="button" class="sc-btn sc-btn-quiet" id="sc-clear">New seller</button>
     </div>
 
@@ -3880,6 +3896,13 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .sc-sh-toast .sc-btn{flex:none;min-height:36px;padding:0 14px;}
   #tab-scanner .sc-sh-toast .sc-btn[hidden]{display:none;}
 
+  /* "Add to sheet" from the Slabs pile: its note (Added 5 to <list>) floats above the Slabs dock, outside the Sheet screen */
+  #tab-scanner .sc-sh-to-toast{bottom:calc(var(--sc-dock-h, 96px) + env(safe-area-inset-bottom) + 12px);}
+  #tab-scanner .sc-sh-to-sub{margin:0 0 10px;color:var(--sc-muted);font-size:var(--sc-fs-row);font-weight:700;line-height:1.4;}
+  #tab-scanner .sc-sh-to-form{display:flex;gap:8px;margin-top:14px;}
+  #tab-scanner .sc-sh-to-form .sc-input{flex:1 1 auto;min-width:0;}
+  #tab-scanner .sc-sh-to-form .sc-btn{flex:none;min-height:var(--sc-field-h);}
+
   /* the two sheets that slide up (the page's Settings look): the sheet picker, and Export */
   #tab-scanner .sc-sh-dialog .sc-settings-head{margin-bottom:4px;}
   #tab-scanner .sc-sh-sheet-list{display:flex;flex-direction:column;gap:2px;padding:4px;border-radius:var(--sc-r-tile);background:var(--sc-card-bg);box-shadow:var(--sc-sh-card);}
@@ -4004,6 +4027,24 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     <p class="sc-sh-export-note" id="sc-sh-export-note" role="status"></p>
   </dialog>
 </section>
+
+<!-- "Add to sheet" (the Slabs pile's per-card button and Add all to sheet): its note and its picker are OUTSIDE #sc-sh, which is hidden
+     unless the Sheet tab is on. Nothing here is drawn or shown unless the tab bar offers Sheet (SheetPane.canAdd). -->
+<div class="sc-sh-toast sc-sh-to-toast" id="sc-sh-to-toast" role="status" hidden>
+  <span class="sc-sh-toast-text" id="sc-sh-to-toast-text"></span>
+</div>
+<dialog class="sc-settings sc-sh-dialog" id="sc-sh-to" aria-labelledby="sc-sh-to-title">
+  <div class="sc-settings-head">
+    <h2 class="sc-settings-title" id="sc-sh-to-title">Add to sheet</h2>
+    <button type="button" class="sc-btn sc-btn-quiet" id="sc-sh-to-cancel">Cancel</button>
+  </div>
+  <p class="sc-sh-to-sub" id="sc-sh-to-sub"></p>
+  <div class="sc-sh-sheet-list" id="sc-sh-to-list"></div>
+  <form class="sc-sh-to-form" id="sc-sh-to-form" autocomplete="off">
+    <input class="sc-input" id="sc-sh-to-name" type="text" maxlength="60" enterkeyhint="done" autocomplete="off" aria-label="Name for a new sheet" placeholder="New sheet name">
+    <button type="submit" class="sc-btn sc-btn-primary" id="sc-sh-to-new">New sheet</button>
+  </form>
+</dialog>
 <!-- SHEET-PANE:END -->
 
 </div>
@@ -15030,12 +15071,11 @@ function createSinglesFlow(deps) {
 
   /** The totals' words. */
   function totalsView(t) {
-    if (!t || !t.cards) return { rate: 'Nothing scanned yet', cards: '0 cards', minLot: null, bigLot: null };
+    if (!t || !t.cards) return { rate: 'Nothing scanned yet', cards: '0 cards', bigLot: null };
     return {
       rate: t.lotTierPct != null ? t.lotTierPct + '% pile rate' : 'Per-card rates',
       cards: plural(t.cards, 'card') + (t.rejected ? ' · ' + t.rejected + ' not bought' : '') + (t.staff ? ' · ' + t.staff + ' staff price' : ''),
-      // Progress, not an error: how much more market value (in cards we buy) reaches the minimum lot.
-      minLot: t.underMinLot ? fmt(t.shortOfMinLotCents) + ' more to reach the ' + fmt(t.minLotCents) + ' minimum' : null,
+      // (No minimum-lot line: the minimum lot applies to shipping in Discord tickets only, never to the scanner.)
       bigLot: t.bigLot ? 'A big lot: priced at the top rate for now. Staff should follow up on this one directly.' : null,
     };
   }
@@ -15054,7 +15094,6 @@ function createSinglesFlow(deps) {
       var t = priced.totals;
       var v = totalsView(t);
       tail.push(v.cards + '. Market ' + fmt(t.marketCents) + '. We pay ' + fmt(t.payoutCents) + (t.lotTierPct != null ? ' at the ' + v.rate : '') + '.');
-      if (v.minLot) tail.push(v.minLot);
       if (v.bigLot) tail.push(v.bigLot);
     } else {
       tail.push(plural(lines.reduce(function (a, l) { return a + l.quantity; }, 0), 'card'));
@@ -17495,7 +17534,6 @@ window.SinglesPrice = {
         var tv = flow.totalsView(priced.totals);
         el.totals.hidden = false;
         el.totals.innerHTML = '<p>' + escHtml(tv.cards) + ' · ' + escHtml(tv.rate) + ' · market ' + escHtml(flow.fmt(priced.totals.marketCents)) + '</p>' +
-          (tv.minLot ? '<p class="sc-sg-progress">' + escHtml(tv.minLot) + '</p>' : '') +
           (tv.bigLot ? '<p class="sc-sg-warn">' + escHtml(tv.bigLot) + '</p>' : '');
       } else {
         el.totals.hidden = true;
@@ -17920,6 +17958,7 @@ window.SheetFiles = {
     var toastTimer = null, toastFn = null, flashTimer = null;
     var swipe = null, swipeEatUntil = 0, touchAt = null, renderLater = false;
     var nameMode = 'new';
+    var toPending = null, toToastTimer = null; // "Add to sheet" from the Slabs pile: the certs the picker is open for, and its note's timer
 
     function now() { return Date.now(); }
     function escHtml(s) {
@@ -17942,7 +17981,8 @@ window.SheetFiles = {
         'sc-sh-sheets', 'sc-sh-sheets-done', 'sc-sh-sheet-list', 'sc-sh-tools', 'sc-sh-new', 'sc-sh-rename', 'sc-sh-delete', 'sc-sh-name-form',
         'sc-sh-name-label', 'sc-sh-name-input', 'sc-sh-name-save', 'sc-sh-name-cancel', 'sc-sh-delete-confirm', 'sc-sh-delete-text',
         'sc-sh-delete-yes', 'sc-sh-delete-no', 'sc-sh-export', 'sc-sh-export-done', 'sc-sh-export-sub',
-        'sc-sh-export-btns', 'sc-sh-export-note'
+        'sc-sh-export-btns', 'sc-sh-export-note',
+        'sc-sh-to', 'sc-sh-to-cancel', 'sc-sh-to-sub', 'sc-sh-to-list', 'sc-sh-to-form', 'sc-sh-to-name', 'sc-sh-to-toast', 'sc-sh-to-toast-text'
       ].forEach(function (id) { el[id.replace(/^sc-sh-?/, '') || 'root'] = document.getElementById(id); });
       el.root = root;
       wire();
@@ -17979,6 +18019,16 @@ window.SheetFiles = {
       on_(el['export-btns'], 'click', function (ev) {
         var t = ev.target && ev.target.closest ? ev.target.closest('[data-export]') : null;
         if (t) doExport(t.getAttribute('data-export'));
+      });
+      on_(el['to-cancel'], 'click', function () { closeDialog(el.to); toPending = null; });
+      on_(el.to, 'click', function (ev) { if (ev && ev.target === el.to) { closeDialog(el.to); toPending = null; } });
+      on_(el['to-list'], 'click', function (ev) {
+        var t = ev.target && ev.target.closest ? ev.target.closest('[data-to]') : null;
+        if (t) toChosen({ id: t.getAttribute('data-to') });
+      });
+      on_(el['to-form'], 'submit', function (ev) {
+        if (ev && ev.preventDefault) ev.preventDefault();
+        toChosen({ name: el['to-name'].value });
       });
       on_(el.rows, 'click', rowClick);
       on_(el.rows, 'pointerdown', swipeDown);
@@ -18238,6 +18288,13 @@ window.SheetFiles = {
     }
     function renderPicker() {
       var open = book.open();
+      if (el['to-list']) {
+        el['to-list'].innerHTML = book.sheets().map(function (s) {
+          return '<button type="button" class="sc-sh-sheet-opt" data-to="' + escHtml(s.id) + '">' +
+            '<span class="sc-sh-sheet-opt-name">' + escHtml(s.name) + '</span>' +
+            '<span class="sc-sh-sheet-opt-n">' + plural(s.rows.length, 'slab', 'slabs') + '</span></button>';
+        }).join('');
+      }
       el['sheet-list'].innerHTML = book.sheets().map(function (s) {
         return '<button type="button" class="sc-sh-sheet-opt" data-open="' + escHtml(s.id) + '" aria-current="' + (s.id === open.id ? 'true' : 'false') + '">' +
           '<span class="sc-sh-sheet-opt-name">' + escHtml(s.name) + '</span>' +
@@ -18384,7 +18441,94 @@ window.SheetFiles = {
       }).then(done, done);
     }
 
+    // ── Add to sheet (from the Slabs pile) ────────────────────────────────────────────────────────────
+    // The pile's per-card button and its Add all to sheet button hand the certs here; this picks a list (an existing sheet, or a new
+    // one) and puts the certs on it through the SAME book the Sheet tab uses (window.SheetBook: one format, certs only, no lookup,
+    // no network, no duplicates anywhere, no certs that start with 0, order kept). It shows only for an account that has the Sheet
+    // tab: the tab bar's own gate (host.allowed).
+    /** May the Slabs pile offer Add to sheet? Exactly when the tab bar offers the Sheet tab. */
+    function canAdd() { return !!(host && el.to && allowed()); }
+    /** [{ id, name, count }] newest first, the sheets on this phone. */
+    function lists() {
+      if (!host) return [];
+      ensureBook();
+      return book.sheets().map(function (s) { return { id: s.id, name: s.name, count: s.rows.length }; });
+    }
+    /** Certs (strings, or { cert, grader }) -> the distinct ones, first seen first. */
+    function distinctCerts(input) {
+      var seen = {}, out = [];
+      (Array.isArray(input) ? input : []).forEach(function (c) {
+        var p = c && typeof c === 'object' ? { cert: String(c.cert == null ? '' : c.cert), grader: c.grader || null } : { cert: String(c == null ? '' : c), grader: null };
+        var key = p.cert.replace(/^0+(?=\d)/, '');
+        if (!key || seen[key]) return;
+        seen[key] = true;
+        out.push(p);
+      });
+      return out;
+    }
+    /** Puts the certs on a list: target { id } (an existing sheet) or { name } (a new one). In order; a cert already on ANY sheet, or that
+        starts with 0, is skipped and counted. -> { ok, added, dup, zero, bad, sheet } ({ ok: false } when the Sheet is not offered). */
+    function addCerts(input, target) {
+      var none = { ok: false, added: 0, dup: 0, zero: 0, bad: 0, sheet: null };
+      if (!canAdd()) return none;
+      ensureBook();
+      var certs = distinctCerts(input);
+      var s = target && target.id ? book.get(target.id) : null;
+      if (!s && target && target.name != null) s = book.create(target.name);
+      if (!s) return none;
+      var n = { ok: true, added: 0, dup: 0, zero: 0, bad: 0, sheet: s };
+      certs.forEach(function (p) {
+        var r = book.add(s.id, p);
+        if (r.ok) n.added++; else if (r.dup) n.dup++; else if (r.zero) n.zero++; else n.bad++;
+      });
+      if (on) render();
+      renderPicker();
+      changed();
+      return n;
+    }
+    function addNote(text) {
+      if (!el['to-toast']) return;
+      clearTimeout(toToastTimer);
+      el['to-toast-text'].textContent = text;
+      el['to-toast'].hidden = false;
+      toToastTimer = setTimeout(function () { el['to-toast'].hidden = true; }, TOAST_MS);
+    }
+    function addWords(n) {
+      var skipped = n.dup + n.zero + n.bad;
+      if (!n.added) {
+        if (n.dup) return 'Nothing added: ' + plural(n.dup, 'cert is', 'certs are') + ' already on a sheet';
+        if (n.zero) return "Nothing added: certs that start with 0 can't be taken";
+        return 'Nothing to add';
+      }
+      var why = n.dup ? n.dup + ' already on a sheet' : n.zero ? n.zero + ' start with 0' : skipped + ' not certs';
+      return 'Added ' + n.added + ' to ' + n.sheet.name + (skipped ? ' (' + why + ')' : '');
+    }
+    /** Opens the picker for these certs. Nothing is written until a list is chosen. */
+    function openAddPicker(input) {
+      if (!canAdd()) return false;
+      var certs = distinctCerts(input);
+      if (!certs.length) return false;
+      ensureBook();
+      toPending = certs;
+      el['to-sub'].textContent = plural(certs.length, 'cert', 'certs') + ' from this pile. Pick a list, or start a new one.';
+      el['to-name'].value = window.SheetBook.defaultName(now());
+      renderPicker();
+      openDialog(el.to);
+      return true;
+    }
+    function toChosen(target) {
+      var certs = toPending;
+      if (!certs) return;
+      var r = addCerts(certs, target);
+      toPending = null;
+      closeDialog(el.to);
+      if (!r.ok) { addNote('Could not add to a sheet'); return; }
+      addNote(addWords(r));
+      if (r.added) good(false); else bad();
+    }
+
     return {
+      canAdd: canAdd, lists: lists, addCerts: addCerts, openAddPicker: openAddPicker,
       attach: attach, activate: paneActivate, deactivate: paneDeactivate, refresh: refresh, isOn: isOn,
       enter: enter, leave: leave, scanned: scanned,
     };
@@ -18594,6 +18738,7 @@ window.SheetFiles = {
     return {
       attach: call('attach'), activate: call('activate'), deactivate: call('deactivate'), refresh: call('refresh'),
       isOn: call('isOn', false), enter: call('enter', false), leave: call('leave'), scanned: call('scanned'),
+      canAdd: call('canAdd', false), openAddPicker: call('openAddPicker', false), // "Add to sheet" on the Slabs pile
       present: function () { return !!(pane && typeof pane.enter === 'function' && document.getElementById('sc-sh')); },
     };
   })(window.SheetPane);
@@ -18677,6 +18822,7 @@ window.SheetFiles = {
       pileSub: document.getElementById('sc-pile-sub'),
       scoreAdjust: document.getElementById('sc-score-adjust'),
       clearBtn: document.getElementById('sc-clear'),
+      sheetAll: document.getElementById('sc-sheet-all'),
       clearConfirm: document.getElementById('sc-clear-confirm'),
       clearCount: document.getElementById('sc-clear-count'),
       clearYes: document.getElementById('sc-clear-yes'),
@@ -20472,6 +20618,7 @@ window.SheetFiles = {
         localStorage. Totals come straight from pile.totals(): see session.js's own header for why
         market value and pricing basis are kept as two separate numbers, and why "unknown" must never
         read as "$0". The payout total is whatever the CURRENT choice offers (repriceAll). */
+    var sheetAddShown = false; // did the last pile draw offer Add to sheet (the Sheet tab's gate)?
     function renderPile() {
       // A finger is on the list: a redraw now (an average arriving) would swallow the tap or snap a swipe back.
       // It waits, and runs the moment the finger lifts (pileTouchEnd).
@@ -20492,6 +20639,9 @@ window.SheetFiles = {
       dom.earlier.hidden = entries.length === 0 && (!session || lkOn());
       dom.earlier.classList.toggle('sc-pile-bare', entries.length === 0);
       renderPileTools(t);
+      // Add to sheet (the pile's per-card button and Add all): only for an account that has the Sheet tab (the tab bar's own gate).
+      sheetAddShown = !!SheetPane.canAdd();
+      if (dom.sheetAll) dom.sheetAll.hidden = !sheetAddShown || entries.length === 0;
       if (!entries.length) {
         dom.earlierList.innerHTML = '';
         // The You'd pay total sits in the scoreboard, outside the (now hidden) pile: it must not keep
@@ -20568,6 +20718,7 @@ window.SheetFiles = {
             '<span class="val"><span class="val-pay' + (payEdited ? ' sc-edited' : '') + '">' + valueText + '</span>' + weLine +
             '<span class="val-mkt' + (fig.marketEdited ? ' sc-edited' : '') + '">Mkt ' + marketText + '</span></span>' + confHtml +
           '</button>' +
+          (sheetAddShown ? '<button type="button" class="sc-earlier-tosheet" data-cert="' + esc(c.cert) + '" data-grader="' + esc(c.grader) + '" aria-label="Add ' + esc(c.cert) + ' to a sheet" title="Add to sheet">+</button>' : '') +
           '<button type="button" class="sc-earlier-remove" data-cert="' + esc(c.cert) + '" data-grader="' + esc(c.grader) + '" data-key="' + esc(key) + '" aria-label="Remove ' + esc(c.cert) + '">✕</button>' +
           '</div>' +
         '</div>';
@@ -21602,6 +21753,7 @@ window.SheetFiles = {
         lkUi.root.removeAttribute('data-checking');
         dom.certGo.textContent = LK_CERT_GO;
         lk.on = true;
+        renderPile(); // arriving from the neutral check or the lock screens: the pile section (Rates, Adjust %) was down there and comes up now
         renderLock();
         lkStartTimer();
         lkStatus();
@@ -22130,6 +22282,7 @@ window.SheetFiles = {
       if (act.indexOf('alloc-') === 0 && lkAllocAct(act)) return;
       if (act === 'role-retry') { lkRoleAsk(); return; }
       if (act === 'pl-alloc') { plToggleAlloc(); return; }
+      if (act === 'pl-rates') { if (plOn()) openRates(); return; }
       // each tap only means something in the state that drew its button (a late or doubled tap does nothing)
       if (act === 'lock') { if (lk.item && lk.phase === 'ready' && LockMode.cardPhase(lk.item, lk.ctx).act === 'lock') { lk.phase = 'confirm'; lk.note = ''; renderLock(); } return; }
       if (act === 'confirm-no') { if (lk.phase === 'confirm') { lk.phase = 'ready'; renderLock(); } return; }
@@ -22530,7 +22683,10 @@ window.SheetFiles = {
     function plRender() {
       if (!plOn()) { plUi.bar.innerHTML = ''; plUi.card.innerHTML = ''; plUi.locks.innerHTML = ''; plUi.alloc.innerHTML = ''; plUi.alloc.hidden = true; plUi.root.hidden = true; return; }
       var open = plAllocOpen();
-      plUi.bar.innerHTML = '<button type="button" class="sc-btn sc-btn-quiet sc-btn-block sc-pl-alloc-btn" data-lk-act="pl-alloc" aria-expanded="' + (open ? 'true' : 'false') + '">' +
+      // Rates (our weekend Scanner-sheet rates on Normal) sits next to Allocation, there with or without scanned cards: the pile's own Rates button
+      // lives in the pile section, which is easy to miss and is not up at all until the role answer has landed.
+      plUi.bar.innerHTML = '<button type="button" class="sc-btn sc-btn-quiet sc-pl-rates-btn" data-lk-act="pl-rates" aria-haspopup="dialog" aria-controls="sc-rates">Rates</button>' +
+        '<button type="button" class="sc-btn sc-btn-quiet sc-pl-alloc-btn" data-lk-act="pl-alloc" aria-expanded="' + (open ? 'true' : 'false') + '">' +
         (open ? 'Hide allocation' : 'Allocation: what is open') + '</button>';
       if (open) {
         plUi.card.innerHTML = ''; plUi.locks.innerHTML = '';
@@ -23566,10 +23722,15 @@ window.SheetFiles = {
         if (Date.now() < pileSwipeEatUntil) { pileSwipeEatUntil = 0; return; } // the click a swipe's own release makes
         var rm = ev.target.closest('.sc-earlier-remove');
         if (rm) { removePileRow(rm); return; }
+        var ts = ev.target.closest('.sc-earlier-tosheet');
+        if (ts) { SheetPane.openAddPicker([{ cert: ts.getAttribute('data-cert'), grader: ts.getAttribute('data-grader') }]); return; }
         var val = ev.target.closest('.sc-earlier-val');
         if (val) { openEditor(val.getAttribute('data-key')); return; }
         var main = ev.target.closest('.sc-earlier-main');
         if (main) priceCert(main.getAttribute('data-cert'), main.getAttribute('data-grader'));
+      });
+      if (dom.sheetAll) dom.sheetAll.addEventListener('click', function () {
+        SheetPane.openAddPicker(pile.list().map(function (c) { return { cert: c.cert, grader: c.grader }; })); // the whole pile, in the order it was scanned
       });
       dom.earlierList.addEventListener('pointerdown', pileSwipeDown);
       dom.earlierList.addEventListener('pointermove', pileSwipeMove);
@@ -23958,6 +24119,7 @@ window.SheetFiles = {
       if (!dom.tabbar || !TABS) return; // (applyLockMode can run before this part of the module has)
       var plan = tabsPlan();
       var ids = plan.ids;
+      if (!!SheetPane.canAdd() !== sheetAddShown) renderPile(); // the pile's Add to sheet follows the Sheet tab (whenever the bar's answer moves)
       if (sheetOn() && ids.indexOf('sheet') < 0) SheetPane.leave(); // no longer allowed: back to Slabs (iopKind kept)
       if (sheetMayAuto && scannerActive && ids.indexOf('sheet') >= 0 && !sheetOn() && !singlesOn() && savedKind() === 'sheet') {
         sheetMayAuto = false;
