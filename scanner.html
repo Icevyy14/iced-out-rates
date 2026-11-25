@@ -1432,7 +1432,9 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   /* ── the scoreboard: We pay for the card on screen, and what this visit comes to, side by side ── */
   #tab-scanner .sc-score{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:8px;container-type:inline-size;}
   /* In a phone's browser it shows once there is something to say (a card on screen, or a pile). */
-  #tab-scanner .scanner-layout:not(.sc-native-cam):has(#sc-result[hidden]):has(#sc-earlier[hidden]) .sc-score{display:none;}
+  #tab-scanner .scanner-layout:not(.sc-native-cam):has(#sc-result[hidden]):has(#sc-earlier:is([hidden],.sc-pile-bare)) .sc-score{display:none;}
+  /* An empty pile shows only its tools (Rates, Adjust %), never the header, totals or New seller. */
+  #tab-scanner .sc-pile.sc-pile-bare > :not(.sc-pile-tools){display:none !important;}
   #tab-scanner .sc-tile{position:relative;display:flex;flex-direction:column;min-width:0;min-height:92px;padding:10px 12px 10px 14px;border-radius:var(--sc-r-tile);}
   #tab-scanner .sc-tile .sc-key{font-size:var(--sc-fs-label);font-weight:800;line-height:1.3;letter-spacing:.09em;text-transform:uppercase;}
   #tab-scanner .sc-tile-pay{
@@ -20427,7 +20429,11 @@ window.SheetFiles = {
       // priced on Card Ladder or its average shows that number on its row but is counted "not valued yet", as before.
       var t = PileRates.pileTotals(entries, pileAdjust, pileKeyOf, weOf, PriceCore.money);
       var sourcer = isSourcer();
-      dom.earlier.hidden = entries.length === 0;
+      // The section holds the Rates button and the Adjust % box too, so a signed-in login keeps it up with an empty pile
+      // (.sc-pile-bare shows just those two): both are usable before the first scan. Signed out there is nothing to set.
+      // The lock screens (a lock-only login) have no pile and no Rates: the section stays down there.
+      dom.earlier.hidden = entries.length === 0 && (!session || lkOn());
+      dom.earlier.classList.toggle('sc-pile-bare', entries.length === 0);
       renderPileTools(t);
       if (!entries.length) {
         dom.earlierList.innerHTML = '';
@@ -20668,7 +20674,7 @@ window.SheetFiles = {
       }
       if (!src.sheet) {
         ratesView = { rule: src.rule, sheet: null, bands: [] };
-        ratesUi.list.innerHTML = '<div class="sc-rates-empty">' + (ratesLoading() ? 'Loading the weekend rates…' : 'The weekend rates are not loaded yet. Scan a card and they load with it.') + '</div>';
+        ratesUi.list.innerHTML = '<div class="sc-rates-empty">' + (ratesLoading() ? 'Loading the weekend rates…' : 'The weekend rates are not loaded yet. Tap Rates again in a moment.') + '</div>';
         return;
       }
       var bands = PileRates.bandsFor(src.sheet, pileAdjust, src.rule, points, pile.list().map(function (e) { return e.price; }));
@@ -20738,6 +20744,11 @@ window.SheetFiles = {
       ratesTyping = false;
       showSheet(ratesUi.sheet);
       renderRatesSheet(false);
+      // The rates load with the sign-in, but a slow or failed read must not wait for the first scan: ask again now.
+      var rs = ratesSource();
+      if (rs.rule !== 'flat' && !rs.sheet) {
+        ensureSettings(false).then(function () { if (ratesShown) renderRatesSheet(false); });
+      }
     }
     function closeRates() {
       if (!ratesShown) return;
@@ -21514,7 +21525,7 @@ window.SheetFiles = {
       var wasPl = lk.mode === 'price_lock';
       lk = lkFresh(mode);
       plForget(); // another login's lock answers are never on this one's pile
-      if (wasPl) renderPile(); // its rows carry no lock chips any more (plChipHtml reads the new mode)
+      if (wasPl || mode === 'lock' || mode === 'check' || mode === 'off') renderPile(); // its rows carry no lock chips any more (plChipHtml reads the new mode); the pile's tools show or go with the screen
       batch = null; renderBatch(); // another login's pasted list is never the summary on this one's screen
       if (mode === 'off') {
         dom.layout.classList.remove('sc-lock-mode');
