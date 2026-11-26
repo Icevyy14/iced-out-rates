@@ -1197,6 +1197,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     --sc-teal-ink:#5CC4C4; --sc-teal-top:#4BAAA8;
     --sc-clv:#4ADE80; /* the CL value: its number, its dot, its line on the trend (7:1 on the card) */
     --sc-wait-tint:rgba(91,151,255,.16);
+    --sc-check:#FFB020; --sc-check-ink:#1F1500; --sc-check-tint:rgba(255,176,32,.13); /* Singles "To check": amber, the one colour that means 'look at this' (all themes) */
     --sc-teal-tint:rgba(59,151,151,.22); --sc-teal-chip:#7FD6D6;
     --sc-err-tint:rgba(191,9,47,.24); --sc-err-ink:#FF9AA8;
     --sc-grey-tint:#252D3D;
@@ -3831,6 +3832,24 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   /* No shutter button (Penguin, 11/25: "get rid of the camera white button if we can tap anywhere on the screen"): a tap anywhere on
      the running camera takes the card (the pointerup rule in wire()); the hint line says so. */
   #tab-scanner #sc-sg-shutter{display:none;}
+  /* To check stands out (Penguin, 11/25: "make it more noticeable ... like when deck trader isnt sure, its pretty easy to spot"):
+     amber means "look at this" - the section is an amber panel with a warning sign, the count is a filled amber badge, every tile has
+     an amber ring, the card on screen being checked gets an amber ring and a filled amber "To check" tag, and the full-screen count
+     turns amber while anything waits. */
+  #tab-scanner .sc-sg-check{padding:10px 8px 6px;border-radius:var(--sc-r-card);background:var(--sc-check-tint);box-shadow:inset 0 0 0 1.5px var(--sc-check);}
+  #tab-scanner .sc-sg-check .sc-sg-h{display:inline-flex;align-items:center;gap:6px;color:var(--sc-check);}
+  #tab-scanner .sc-sg-check .sc-sg-h::before{content:"";width:18px;height:18px;background:var(--sc-check);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M10.3 3.9L1.8 18.5A2 2 0 0 0 3.5 21.5h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 8a1 1 0 0 1 1 1v5a1 1 0 0 1-2 0V9a1 1 0 0 1 1-1zm0 9.2a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M10.3 3.9L1.8 18.5A2 2 0 0 0 3.5 21.5h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 8a1 1 0 0 1 1 1v5a1 1 0 0 1-2 0V9a1 1 0 0 1 1-1zm0 9.2a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6z'/%3E%3C/svg%3E") center/contain no-repeat;}
+  #tab-scanner .sc-sg-check .sc-sg-count{background:var(--sc-check);color:var(--sc-check-ink);box-shadow:none;}
+  #tab-scanner .sc-sg-check .sc-sg-tile:not(.sc-sg-out){box-shadow:inset 0 0 0 2px var(--sc-check);}
+  #tab-scanner .sc-sg-check .sc-sg-tile:not(.sc-sg-out) .sc-sg-tile-why{color:var(--sc-check);}
+  #tab-scanner .sc-sg-next{background:var(--sc-check);color:var(--sc-check-ink);box-shadow:none;gap:5px;}
+  #tab-scanner .sc-sg-next::before{content:"";width:13px;height:13px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M10.3 3.9L1.8 18.5A2 2 0 0 0 3.5 21.5h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 8a1 1 0 0 1 1 1v5a1 1 0 0 1-2 0V9a1 1 0 0 1 1-1zm0 9.2a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M10.3 3.9L1.8 18.5A2 2 0 0 0 3.5 21.5h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 8a1 1 0 0 1 1 1v5a1 1 0 0 1-2 0V9a1 1 0 0 1 1-1zm0 9.2a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6z'/%3E%3C/svg%3E") center/contain no-repeat;}
+  #tab-scanner .sc-sg-card.sc-sg-card-check{box-shadow:inset 0 0 0 2px var(--sc-check);}
+  #tab-scanner #sc-sg-review.sc-sg-check-more{background:var(--sc-check);color:var(--sc-check-ink);}
+  #tab-scanner .sc-sg-check-cue{flex:none;display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 14px;border:0;border-radius:20px;cursor:pointer;
+    font:inherit;font-size:var(--sc-fs-label);font-weight:800;background:var(--sc-check);color:var(--sc-check-ink);}
+  #tab-scanner .sc-sg-check-cue[hidden]{display:none;}
+  #tab-scanner .sc-sg-check-cue::before{content:"";width:15px;height:15px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M10.3 3.9L1.8 18.5A2 2 0 0 0 3.5 21.5h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 8a1 1 0 0 1 1 1v5a1 1 0 0 1-2 0V9a1 1 0 0 1 1-1zm0 9.2a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M10.3 3.9L1.8 18.5A2 2 0 0 0 3.5 21.5h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 8a1 1 0 0 1 1 1v5a1 1 0 0 1-2 0V9a1 1 0 0 1 1-1zm0 9.2a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6z'/%3E%3C/svg%3E") center/contain no-repeat;}
 </style>
 <section class="sc-sg sc-singles-only" id="sc-sg" aria-label="Raw cards" hidden>
   <div class="sc-sg-slot" id="sc-sg-slot" hidden></div>
@@ -3848,6 +3867,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     <div class="sc-sg-bottom" id="sc-sg-bottom" hidden>
       <button type="button" class="sc-vf-pill" id="sc-sg-review" aria-label="Review the pile" hidden></button>
       <div class="sc-vf-hint sc-sg-hint" id="sc-sg-hint" role="status">Hold the card inside the frame</div>
+      <button type="button" class="sc-sg-check-cue" id="sc-sg-check-cue" hidden></button>
       <button type="button" class="sc-vf-shutter" id="sc-sg-shutter" aria-label="Take the card" title="Take the card"><span></span></button>
     </div>
   </div>
@@ -17102,7 +17122,7 @@ window.SinglesPrice = {
       host = h;
       ['sc-sg', 'sc-sg-cam', 'sc-sg-video', 'sc-sg-guide', 'sc-sg-cam-wait', 'sc-sg-cam-off', 'sc-sg-cam-text', 'sc-sg-cam-on', 'sc-sg-cam-stop',
         'sc-sg-slot', 'sc-sg-done', 'sc-sg-torch', 'sc-sg-expand', 'sc-sg-review',
-        'sc-sg-matching', 'sc-sg-bottom', 'sc-sg-hint', 'sc-sg-shutter', 'sc-sg-slab', 'sc-sg-slab-text', 'sc-sg-slab-yes', 'sc-sg-slab-no',
+        'sc-sg-matching', 'sc-sg-bottom', 'sc-sg-hint', 'sc-sg-check-cue', 'sc-sg-shutter', 'sc-sg-slab', 'sc-sg-slab-text', 'sc-sg-slab-yes', 'sc-sg-slab-no',
         'sc-sg-pay', 'sc-sg-pay-key', 'sc-sg-pay-note', 'sc-sg-visit', 'sc-sg-visit-sub', 'sc-sg-card', 'sc-sg-check', 'sc-sg-check-count', 'sc-sg-strip',
         'sc-sg-pile', 'sc-sg-pile-count', 'sc-sg-rows', 'sc-sg-pile-empty', 'sc-sg-totals', 'sc-sg-confirm', 'sc-sg-confirm-text',
         'sc-sg-clear-yes', 'sc-sg-clear-no', 'sc-sg-pile-btns', 'sc-sg-copy', 'sc-sg-clear', 'sc-sg-info', 'sc-sg-add', 'sc-sg-undo',
@@ -17122,6 +17142,7 @@ window.SinglesPrice = {
       on_(el.review, 'click', function (ev) { if (ev && ev.stopPropagation) ev.stopPropagation(); setFull(false); });
       on_(el.expand, 'click', function (ev) { if (ev && ev.stopPropagation) ev.stopPropagation(); setFull(true); });
       on_(el.torch, 'click', function (ev) { if (ev && ev.stopPropagation) ev.stopPropagation(); toggleTorch(); });
+      on_(el['check-cue'], 'click', function (ev) { if (ev && ev.stopPropagation) ev.stopPropagation(); if (isFull) setFull(false); try { el.check.scrollIntoView({ block: 'center', behavior: reduceMotion() ? 'auto' : 'smooth' }); } catch (e) { /* old browser */ } });
       on_(el.shutter, 'click', function (ev) { if (ev && ev.stopPropagation) ev.stopPropagation(); shutter(); });
       on_(el.video, 'playing', videoLive);
       on_(el.video, 'loadeddata', videoLive);
@@ -18227,6 +18248,9 @@ window.SinglesPrice = {
       el.expand.hidden = !(ready && !isFull);
       el.torch.hidden = !(ready && torchCap);
       el.torch.classList.toggle('on', torchOn);
+      // what's waiting in To check is said on the camera itself, in amber: one tap goes to it (it can sit below the fold)
+      el['check-cue'].hidden = !queue.length;
+      el['check-cue'].textContent = queue.length + ' to check';
       el.torch.setAttribute('aria-pressed', torchOn ? 'true' : 'false');
       el.bottom.hidden = false;
       renderReview(ready);
@@ -18306,6 +18330,7 @@ window.SinglesPrice = {
 
     function renderCard(lines) {
       var c = el.card;
+      if (c && c.classList) c.classList.toggle('sc-sg-card-check', !!checking);
       if (checking && checking.kind === 'failed') {
         c.hidden = false;
         c.innerHTML =
