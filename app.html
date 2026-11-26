@@ -3521,8 +3521,8 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   /* iPhone feedback 11/25: the Singles camera looks like the slab camera panel in the apps: edge to edge, no rounded inner box, no
      border, from the top of the page down to the scoreboard that sits above the Add / Undo / Skip dock (the header and the Rates /
      Allocation row are not on Singles). 100vw with the half-width margin takes the box out of the page's side padding. Its height is
-     what the screen has left over the dock, the tab bar and the two score tiles (140px with their gap), never under 300px. Only a camera that is OFF
-     is a slim rounded row (below). */
+     what the screen has left over the dock, the tab bar and the two score tiles (140px with their gap), never under 300px. On or off it is
+     the same box (Penguin, 11/25: "exactly like the slabs one where it's ready with the camera just turned off"): see the off look below. */
   #tab-scanner .sc-sg-cam{
     position:relative;min-width:0;box-sizing:border-box;width:100vw;margin-left:calc(50% - 50vw);
     height:clamp(300px, calc(100vh - var(--sc-dock-h) - var(--sc-tabbar-h) - env(safe-area-inset-bottom) - 140px), 760px);
@@ -3535,8 +3535,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .sc-sg-video[hidden]{display:none;}
   #tab-scanner .sc-sg-cam.sc-sg-cam-live .sc-sg-video{opacity:1;}
   /* Starting (Penguin, 11/24: "it goes from that to this for a second when I switch tabs"): the box is already its full size,
-     calm and dark, with a small spinner and "Starting the camera..." in the middle. Only a camera that is really OFF (turned off,
-     blocked, failed) shrinks to the slim row below. */
+     calm and dark, with a small spinner and "Starting the camera..." in the middle. A camera that is OFF keeps the same full box too. */
   #tab-scanner .sc-sg-cam-wait{
     position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;pointer-events:none;
     color:color-mix(in srgb, var(--sc-danger-ink) 78%, transparent);font-size:var(--sc-fs-label);font-weight:700;line-height:1.35;
@@ -3552,7 +3551,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   @keyframes sc-sg-appear{from{opacity:0;}to{opacity:1;}}
   @keyframes sc-sg-breathe{from{opacity:.35;}to{opacity:1;}}
   /* the camera's own controls come in softly with the picture */
-  #tab-scanner .sc-sg-bottom,#tab-scanner #sc-sg-cam-stop,#tab-scanner .sc-sg-guide{animation:sc-sg-appear 240ms var(--sc-ease) both;}
+  #tab-scanner .sc-sg-bottom,#tab-scanner #sc-sg-cam-stop,#tab-scanner #sc-sg-cam-on,#tab-scanner .sc-sg-guide{animation:sc-sg-appear 240ms var(--sc-ease) both;}
   #tab-scanner .sc-sg-guide{
     position:absolute;left:50%;top:50%;width:40%;aspect-ratio:63/88;transform:translate(-50%,-50%);border-radius:14px;pointer-events:none;
     /* the outline is the danger ink token, white in all nine themes, so it reads on the camera picture (dark in every theme) */
@@ -3568,9 +3567,23 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     from{box-shadow:0 0 0 2px var(--sc-danger-ink), 0 0 0 9999px color-mix(in srgb, var(--sc-cam) 42%, transparent);}
     to{box-shadow:0 0 0 3px var(--sc-steel-ink), 0 0 22px 2px var(--sc-focus-soft), 0 0 0 9999px color-mix(in srgb, var(--sc-cam) 42%, transparent);}
   }
-  /* Camera off, the same as the slab camera (Penguin, 11/23): no big panel, the frame shrinks to one slim row with the
-     round camera button and a short line (the slab's own .sc-vf-off / .sc-start / .sc-vf-off-text look). Tap it, it's on. */
-  #tab-scanner .sc-sg-cam.sc-sg-cam-is-off{width:auto;margin:calc(12px + env(safe-area-inset-top)) 0 0;height:auto;border-radius:var(--sc-r-card);background:var(--sc-fill-card-bg);box-shadow:inset 0 0 0 1px var(--sc-line);}
+  /* Camera off (Penguin, 11/25: "Should be exactly like the slabs one where it's ready with the camera just turned off"): the
+     SAME full-size box as with the camera on, like the slab camera panel in the apps when its camera is off (the native cover:
+     the panel keeps its size, dark, a small dim "Camera off" in it, its round switch where it always is, no flashlight, no hint).
+     Here: the dark camera box, the card outline where it always is with "Camera off" in it, the round camera button top left
+     where the camera-off button sits (tap it: the camera starts, nothing moves), the flashlight and expand hidden, and the
+     shutter row in place but greyed with a line saying to tap the camera. Turning it on or off only fades things in the box.
+     (The old slim row, 11/23, was the browser slab camera's off look; Penguin sees the app's panel, so Singles follows that.) */
+  #tab-scanner #sc-sg-cam-on{--sc-i:var(--i-camera);position:absolute;top:calc(12px + env(safe-area-inset-top));left:12px;} /* the look is .sc-vf-round's */
+  #tab-scanner #sc-sg-cam-on[hidden],#tab-scanner #sc-sg-cam-stop[hidden]{display:none;}
+  #tab-scanner .sc-sg-cam-off{
+    position:absolute;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:0 18px;box-sizing:border-box;
+    pointer-events:none;text-align:center;
+  }
+  #tab-scanner .sc-sg-cam-off-text{margin:0;max-width:100%;font-size:var(--sc-fs-label);font-weight:600;line-height:1.35;letter-spacing:.02em;color:color-mix(in srgb, var(--sc-danger-ink) 62%, transparent);}
+  #tab-scanner .sc-sg-cam.sc-sg-cam-is-off #sc-sg-shutter:disabled{opacity:.4;}
+  /* with no picture behind them the dark glass of the button and the hint would vanish into the dark box: a light glass instead */
+  #tab-scanner .sc-sg-cam.sc-sg-cam-is-off #sc-sg-cam-on,#tab-scanner .sc-sg-cam.sc-sg-cam-is-off .sc-sg-hint{background:color-mix(in srgb, var(--sc-danger-ink) 12%, transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--sc-danger-ink) 16%, transparent);}
   /* the off row fades in only when the camera goes off in place (turned off, refused, failed): on opening Singles the whole screen
      already fades in with the switch, and a second fade from nothing under it read as a blank flicker (Penguin, 11/25) */
   #tab-scanner .sc-sg-cam.sc-sg-cam-is-off.sc-sg-off-fade .sc-sg-cam-off{animation:sc-sg-appear 200ms var(--sc-ease) both;}
@@ -3796,6 +3809,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     #tab-scanner .sc-sg-tile:active,#tab-scanner .sc-sg-alt:active{transform:none;}
     #tab-scanner .sc-sg-guide,#tab-scanner .sc-sg-cam.sc-sg-reading .sc-sg-guide,#tab-scanner .sc-sg-tile,#tab-scanner .sc-sg-row.sc-sg-new .sc-sg-row-in{animation:none;}
     #tab-scanner .sc-sg-video{transition:opacity 120ms linear;}
+    #tab-scanner #sc-sg-cam-on,#tab-scanner #sc-sg-cam-stop,#tab-scanner .sc-sg-cam.sc-sg-cam-is-off.sc-sg-off-fade .sc-sg-cam-off{animation:none;}
     #tab-scanner .sc-sg-spin{animation:sc-sg-breathe 900ms ease-in-out infinite alternate;}
   }
 </style>
@@ -3805,10 +3819,8 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     <video class="sc-sg-video" id="sc-sg-video" autoplay playsinline muted hidden></video>
     <div class="sc-sg-cam-wait" id="sc-sg-cam-wait" role="status" hidden><span class="sc-sg-spin" aria-hidden="true"></span><span>Starting the camera…</span></div>
     <div class="sc-sg-guide" id="sc-sg-guide" aria-hidden="true"></div>
-    <div class="sc-vf-off sc-sg-cam-off" id="sc-sg-cam-off">
-      <div class="sc-start-row"><button type="button" class="sc-start" id="sc-sg-cam-on" aria-label="Turn camera on" title="Turn camera on">Turn camera on</button></div>
-      <p class="sc-vf-off-text" id="sc-sg-cam-text">Camera off. Tap the camera to scan cards.</p>
-    </div>
+    <div class="sc-sg-cam-off" id="sc-sg-cam-off"><p class="sc-sg-cam-off-text" id="sc-sg-cam-text">Camera off</p></div>
+    <button type="button" class="sc-vf-round" id="sc-sg-cam-on" aria-label="Turn camera on" title="Turn camera on"></button>
     <button type="button" class="sc-vf-round" id="sc-sg-cam-stop" aria-label="Turn camera off" title="Turn camera off" hidden></button>
     <button type="button" class="sc-vf-pill" id="sc-sg-done" aria-label="Done: back to the pile" title="Done: back to the pile" hidden>Done</button>
     <button type="button" class="sc-vf-round" id="sc-sg-torch" aria-label="Flashlight" title="Flashlight" aria-pressed="false" hidden></button>
@@ -14832,7 +14844,7 @@ function cameraHint(o) {
 /**
  * What the camera box shows (Penguin, 11/24: no jump when switching tabs). `stream`: the camera is running; `starting`: it was asked
  * for and is on its way; `live`: the picture has real frames. While starting (and while the picture has no frames yet) the box keeps
- * its FULL size with a calm "Starting the camera..." in it (wait); the slim off row (off) is only for a camera that is really off.
+ * its FULL size with a calm "Starting the camera..." in it (wait); off is the same full box with the camera off (Penguin, 11/25).
  */
 function cameraView(o) {
   var stream = !!(o && o.stream);
@@ -16982,9 +16994,11 @@ window.SinglesPrice = {
     var matching = 0, capturing = false, jobs = 0, seller = 0;
     var note = '', noteTimer = null, nextTimer = null, toastTimer = null, toastUndo = null, flashTimer = null;
     var stream = null, camStarting = false, camGen = 0, camMsg = '';
+    // why the camera is off when it isn't by choice: 'failed' (tapping again can help), 'blocked' or 'unsupported' (it can't), '' otherwise
+    var camWhy = '';
     var camSettledAt = -Infinity; // when the last camera start answered (a stream, or an error)
     // Singles always opens with its camera OFF (Penguin, 11/25: "have singles scanner have a turned off camera until they tap the
-    // camera button thing to turn it on and off"): the slim off row with the round camera button, as the slab camera when off. Only
+    // camera button thing to turn it on and off"): the full camera box with the camera off (the app slab panel's off look) and its round camera button. Only
     // that button starts it (the browser asks for permission then, never before); the camera-off button and leaving Singles stop it.
     // camAsking: the box keeps its full "starting" look (kept for cameraView; nothing sets it any more since Singles never starts its
     // own camera). camLive: the picture has real frames (it fades in over the dark box then). LIVE_FALLBACK_MS: a browser that never says so.
@@ -16994,7 +17008,7 @@ window.SinglesPrice = {
     var fullPref = false, isFull = false;
     var camTrack = null, torchCap = false, torchOn = false;
     // camPerm: what the browser last said about the camera ('granted' / 'prompt' / 'denied'), null while not known yet. The full
-    // waiting box is shown only when it will start; a browser that is going to wait for a tap goes straight to the slim off row.
+    // waiting box is shown only when it will start; a browser that is going to wait for a tap goes straight to the off box.
     var camPerm = null;
     var shownVisit = null, shownPay = null;
     var wentAway = false; // the page went to the background (and is not back yet)
@@ -17067,7 +17081,7 @@ window.SinglesPrice = {
     function on_(node, type, fn) { if (node && node.addEventListener) node.addEventListener(type, fn); }
     function wire() {
       on_(el['cam-on'], 'click', function () { startCamera(); });
-      on_(el['cam-stop'], 'click', function () { stopCamera(); camMsg = ''; render(); });
+      on_(el['cam-stop'], 'click', function () { stopCamera(); camMsg = ''; camWhy = ''; render(); });
       on_(el.done, 'click', function (ev) { if (ev && ev.stopPropagation) ev.stopPropagation(); setFull(false); });
       on_(el.review, 'click', function (ev) { if (ev && ev.stopPropagation) ev.stopPropagation(); setFull(false); });
       on_(el.expand, 'click', function (ev) { if (ev && ev.stopPropagation) ev.stopPropagation(); setFull(true); });
@@ -17236,7 +17250,7 @@ window.SinglesPrice = {
       host.slabCamerasOff();
       ensureEngine();
       ensureData();
-      // Every opening starts with the camera off (the slim off row and its round camera button): no camera, no permission prompt,
+      // Every opening starts with the camera off (the full off box and its round camera button): no camera, no permission prompt,
       // until that button is tapped (Penguin, 11/25).
       camAsking = false;
       try { render(); } finally { entering = false; }
@@ -17402,11 +17416,13 @@ window.SinglesPrice = {
       if (!on || !active || stream || camStarting) return;
       if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
         camMsg = "This browser can't use the camera here. Type the card's name or number below.";
+        camWhy = 'unsupported';
         render();
         return;
       }
       camStarting = true;
       camMsg = 'Starting the camera…';
+      camWhy = '';
       render();
       var gen = ++camGen;
       // In the apps the panel's camera is let go first (it slides away for about a third of a second): only what is left of that
@@ -17423,6 +17439,7 @@ window.SinglesPrice = {
         setupTrack(s);
         camPerm = 'granted';
         camMsg = '';
+        camWhy = '';
         camLive = false;
         clearTimeout(liveTimer);
         liveTimer = setTimeout(videoLive, LIVE_FALLBACK_MS);
@@ -17436,9 +17453,10 @@ window.SinglesPrice = {
         camStarting = false;
         camSettledAt = now();
         if (e && e.name === 'NotAllowedError') camPerm = 'denied';
+        camWhy = e && e.name === 'NotAllowedError' ? 'blocked' : 'failed';
         camMsg = e && e.name === 'NotAllowedError'
           ? "The camera is blocked for this page. Allow it in the browser's settings, or type the card below."
-          : "The camera didn't start. Tap Turn camera on to try again, or type the card below.";
+          : "The camera didn't start. Tap the camera to try again, or type the card below.";
         render();
       });
     }
@@ -17521,7 +17539,8 @@ window.SinglesPrice = {
       // notch, the wrapped full-screen row and any window size are all in it): the same rule inline and full screen, it grows with the window.
       var top = 60, bottom = 100;
       try {
-        var cs = el['cam-stop'] && el['cam-stop'].getClientRects().length ? el['cam-stop'].getBoundingClientRect() : null;
+        var btn = el['cam-stop'] && el['cam-stop'].getClientRects().length ? el['cam-stop'] : el['cam-on']; // the same place, on or off
+        var cs = btn && btn.getClientRects().length ? btn.getBoundingClientRect() : null;
         if (cs && cs.bottom > r.top) top = Math.round(cs.bottom - r.top) + 8;
         var bt = el.bottom && el.bottom.getClientRects().length ? el.bottom.getBoundingClientRect() : null;
         if (bt && bt.top < r.bottom) bottom = Math.round(r.bottom - bt.top) + 8;
@@ -17530,6 +17549,14 @@ window.SinglesPrice = {
       var s = el.guide.style;
       s.left = guide.x + 'px'; s.top = guide.y + 'px'; s.width = guide.width + 'px'; s.height = guide.height + 'px';
       el.guide.classList.add('sc-sg-placed');
+      // "Camera off" (or why it can't run) sits in the middle of the card outline
+      // (on a short box the outline is narrow: the text gets at least 260 px, or the whole width, centred on the outline, so a long
+      // message stays a few lines and never runs over the round button or the shutter row)
+      if (el['cam-off']) {
+        var o = el['cam-off'].style, ow = Math.min(r.width, Math.max(guide.width, 260));
+        var ol = Math.max(0, Math.min(r.width - ow, guide.x + guide.width / 2 - ow / 2));
+        o.left = Math.round(ol) + 'px'; o.top = guide.y + 'px'; o.width = Math.round(ow) + 'px'; o.height = guide.height + 'px';
+      }
     }
 
     /** The card inside the outline as a JPEG (about 640 px wide, base64, no prefix), or null. */
@@ -18156,19 +18183,24 @@ window.SinglesPrice = {
       el.cam.classList.toggle('sc-sg-cam-starting', view.starting);
       el.cam.classList.toggle('sc-sg-cam-live', view.live);
       applyFull();
-      el['cam-stop'].hidden = !ready;
+      // The round button top left is always there, in the same place: the camera button while off, the camera-off button while it
+      // starts or runs (so a start can be called off too). The card outline and the shutter row stay put either way (Penguin, 11/25).
+      el['cam-on'].hidden = !view.off;
+      el['cam-stop'].hidden = view.off;
       el.done.hidden = !isFull; // always a way out of the full screen, even while the camera is still starting
       el.expand.hidden = !(ready && !isFull);
       el.torch.hidden = !(ready && torchCap);
       el.torch.classList.toggle('on', torchOn);
       el.torch.setAttribute('aria-pressed', torchOn ? 'true' : 'false');
-      el.bottom.hidden = !ready;
+      el.bottom.hidden = false;
       renderReview(ready);
-      el.guide.hidden = !ready;
+      el.guide.hidden = false;
       el['cam-on'].disabled = camStarting;
-      el['cam-text'].textContent = camMsg || (camStarting ? 'Starting camera…' : 'Camera off. Tap the camera to scan cards.');
+      el['cam-text'].textContent = (view.off && camMsg) || 'Camera off';
       el.shutter.disabled = !ready || capturing;
-      el.hint.textContent = flow.cameraHint({ capturing: capturing, note: note, matching: matching, ready: ready });
+      // only "try again" when tapping can help: blocked or no camera support, the way in is typing the card
+      el.hint.textContent = view.off ? (camWhy === 'failed' ? 'Tap the camera to try again' : (camWhy && camMsg) ? 'Type the card below' : 'Tap the camera to scan cards')
+        : flow.cameraHint({ capturing: capturing, note: note, matching: matching, ready: ready });
       el.matching.hidden = !matching;
       el.matching.textContent = matching ? 'Matching ' + matching + '…' : '';
       try { placeGuide(); } catch (e) { /* placed again on the next draw */ } // measured from the controls just shown or hidden
