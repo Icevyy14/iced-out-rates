@@ -16904,8 +16904,8 @@ window.SinglesPrice = {
     // camHeld: opened from the bar's memory before singles-live's first answer; no camera until it says on (camHeldTap: by a tap).
     var camHeld = false, camHeldTap = false;
     var camAsking = false, camLive = false, liveTimer = null, LIVE_FALLBACK_MS = 1500;
-    // fullPref: the camera covers the screen while it runs (the default; Done drops it to the box, the expand button brings it back,
-    // for this visit only). isFull: it does right now. camTrack/torchCap/torchOn: the flashlight, only where the browser reports one.
+    // fullPref: the camera covers the screen while it runs (when Singles was opened by a tap; opened by itself it starts in the box;
+    // Done drops it to the box, the expand button brings it back, for this visit only). isFull: it does right now. camTrack/torchCap/torchOn: the flashlight, only where the browser reports one.
     var fullPref = true, isFull = false;
     var camTrack = null, torchCap = false, torchOn = false;
     // camPerm: what the browser last said about the camera ('granted' / 'prompt' / 'denied'), null while not known yet. The full
@@ -17122,6 +17122,9 @@ window.SinglesPrice = {
 
     function enter(byTap) {
       on = true;
+      // Full screen only when the person taps Singles (Penguin, 11/25: opening the app straight into a full screen camera read as a
+      // bug). Opened by itself (the bar's last choice, the app starting) the camera runs in the box; the expand button makes it full.
+      fullPref = !!byTap;
       host.layout.classList.add('sc-singles-mode');
       el.root.hidden = false;
       el.slab.hidden = true;
@@ -17185,6 +17188,7 @@ window.SinglesPrice = {
     function paneDeactivate() {
       active = false;
       mayAutoEnter = true; // back on the Scanner: Singles again, if it was the last choice
+      fullPref = false; // and back in the box, not full screen, until the person taps for it
       if (tickTimer !== null) { clearInterval(tickTimer); tickTimer = null; }
       stopCamera();
     }
