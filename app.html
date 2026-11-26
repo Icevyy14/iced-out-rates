@@ -3678,6 +3678,10 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .sc-sg-next[hidden]{display:none;}
   #tab-scanner .sc-sg-name{font-size:var(--sc-fs-body);font-weight:800;line-height:1.25;letter-spacing:-.005em;color:var(--sc-ink);overflow-wrap:anywhere;}
   #tab-scanner .sc-sg-set{margin-top:3px;font-size:var(--sc-fs-label);font-weight:700;line-height:1.3;color:var(--sc-steel-ink);overflow-wrap:anywhere;}
+  /* EN / JP next to a card's name (look only): JP gets a blue border so a Japanese card stands out. */
+  #tab-scanner .sc-sg-lang{display:inline-block;margin-right:6px;padding:0 5px;border-radius:4px;border:1px solid var(--sc-line);font-size:var(--sc-fs-label);font-weight:800;line-height:1.35;letter-spacing:.02em;vertical-align:1px;color:var(--sc-muted);}
+  #tab-scanner .sc-sg-lang.sc-sg-jp{color:var(--sc-ink);border-color:var(--sc-blue);}
+  #tab-scanner .sc-sg-tile-name .sc-sg-lang{margin-right:3px;padding:0 3px;font-size:11px;}
   #tab-scanner .sc-sg-rarity{margin-top:1px;font-size:var(--sc-fs-label);line-height:1.3;color:var(--sc-muted);}
   #tab-scanner .sc-sg-price{display:flex;align-items:center;gap:7px;margin-top:8px;font-size:var(--sc-fs-label);font-weight:700;line-height:1.3;color:var(--sc-muted);}
   #tab-scanner .sc-sg-price b{color:var(--sc-ink);font-size:var(--sc-fs-row);font-variant-numeric:tabular-nums;}
@@ -10152,10 +10156,12 @@ function createNativeBridge(win) {
       if (!sheetsSupported() || SHEET_STOPS.indexOf(stop) < 0) return false;
       return post('setSheet', { stop: stop });
     },
-    /** Shows the app's camera panel (camera off). Only to an app that has the panel. */
-    showScanner: function () { return cameraPanelSupported() ? post('showScanner') : false; },
-    /** Sends the app's camera panel away. Only to an app that has the panel. */
-    hideScanner: function () { return cameraPanelSupported() ? post('hideScanner') : false; },
+    /** Shows the app's camera panel (camera off). Only to an app that has the panel. `opts.animated === false` (a tab switch):
+        the app puts it there in one frame, no slide ({ animated: false }; an app before iOS 1.13 / Android 1.12 ignores the
+        field and slides, as always). */
+    showScanner: function (opts) { return cameraPanelSupported() ? post('showScanner', panelFields(opts)) : false; },
+    /** Sends the app's camera panel away. Only to an app that has the panel. `opts.animated === false`: gone in one frame. */
+    hideScanner: function (opts) { return cameraPanelSupported() ? post('hideScanner', panelFields(opts)) : false; },
     /** Turns the panel's camera on or off. `on` must be a real true or false; only to an app that has the panel. */
     setCamera: function (on) {
       if ((on !== true && on !== false) || !cameraPanelSupported()) return false;
@@ -10168,6 +10174,11 @@ function createNativeBridge(win) {
       return post('setTheme', wire);
     },
   };
+}
+
+/** The extra fields of a showScanner / hideScanner: { animated: false } only for a real false, nothing otherwise. */
+function panelFields(opts) {
+  return opts && opts.animated === false ? { animated: false } : undefined;
 }
 
 /**
@@ -10240,8 +10251,12 @@ function installScanReceiver(win, onScan) {
  *    they have stayed `settleMs` on the screen that wants it: taps a fifth of a second apart send one hide and then nothing until
  *    the last tap, so the panel never slides in only to be sent straight back out. A hide is never held, so a show and the hide
  *    after it can still be closer than `minGapMs` when the person stays just long enough for the show and then leaves;
- *  - `force` sends a hide even when the last word was hide (a panel the app put back by itself from memory).
- * `o`: { send(show) -> posts the message, now() ms, setTimeout, clearTimeout, frame(cb) (requestAnimationFrame), minGapMs, settleMs,
+ *  - `force` sends a hide even when the last word was hide (a panel the app put back by itself from memory);
+ *  - `instant` (a tab switch: Slabs <-> Singles; Penguin, 11/25: "the bottom tab stays ... the rest just moves") is sent at once
+ *    with no slide (send(show, false): the app's { animated: false }): the panel is there or gone in one frame, so none of the
+ *    waits above are needed (they are all about a slide): no gap, no settle, no paint first. Every tap sends its own wish, and a
+ *    wish still waiting is dropped. An instant hide slides nothing, so a slid show after it does not wait for the gap either.
+ * `o`: { send(show, animated) -> posts the message (animated false: no slide), now() ms, setTimeout, clearTimeout, frame(cb) (requestAnimationFrame), minGapMs, settleMs,
  * busyMs }.
  * Pure: no DOM; the page passes its own clock and timers.
  */
@@ -10260,18 +10275,20 @@ function createPanelGate(o) {
   var busy = typeof o.busyMs === 'number' ? o.busyMs : PANEL_BUSY_MS;
   var last = null; // true (show) / false (hide) / null (nothing sent yet)
   var lastAt = -Infinity;
+  var lastSlid = false; // the last send was a slide (not instant): only then does the next opposite one wait for the gap
   var slideAt = -Infinity; // when a shown panel was last sent away (a hide with nothing shown before it slides nothing: no gap)
   var wish = null; // a send waiting (true / false), or null
   var leftAt = -Infinity; // when a hide was last wished for (sent or not): the person left the panel's screen
   var timer = null;
   var gen = 0;
-  function fire(show) {
+  function fire(show, instant) {
     wish = null;
     timer = null;
-    if (!show && last === true) slideAt = now();
+    if (!show && last === true && !instant) slideAt = now();
     last = show;
     lastAt = now();
-    send(show);
+    lastSlid = !instant;
+    if (instant) send(show, false); else send(show);
   }
   function cancel() {
     gen++;
@@ -10282,13 +10299,14 @@ function createPanelGate(o) {
     show = !!show;
     opts = opts || {};
     if (!show) leftAt = now();
-    if (wish !== null && wish === show && !opts.force) return; // already on its way
+    if (wish !== null && wish === show && !opts.force && !opts.instant) return; // already on its way (an instant one goes now)
     cancel();
     if (show === last && !opts.force) return; // the app already has it (an opposite one that was waiting is dropped)
+    if (opts.instant) { fire(show, true); return; } // a tab switch: no slide, so nothing to wait for
     var wantedAt = now();
     // tapping back and forth: the panel only comes back once the person has stayed on its screen settleMs
     var settling = show && last === false && slideAt > -Infinity && wantedAt - leftAt < busy;
-    var wait = last !== null && last !== show ? Math.max(0, minGap - (now() - lastAt)) : 0;
+    var wait = last !== null && last !== show && lastSlid ? Math.max(0, minGap - (now() - lastAt)) : 0;
     if (!wait && !settling && !(show && opts.afterPaint)) { fire(show); return; }
     wish = show;
     var g = gen;
@@ -15100,6 +15118,8 @@ function pileStep(quantity, now, movedAt) {
 var LANG_WORD = { ja: 'Japanese', en: 'English' };
 function langWord(lang) { return LANG_WORD[lang === 'ja' ? 'ja' : 'en']; }
 function otherLang(lang) { return lang === 'ja' ? 'en' : 'ja'; }
+/** The short tag shown next to a card's name on the scanner: "JP" for a Japanese card, "EN" otherwise. */
+function langTag(lang) { return lang === 'ja' ? 'JP' : 'EN'; }
 
 /** The card a match puts on screen: the card in a language we don't buy when there is one, else the best candidate (or null). */
 function shownCard(res) {
@@ -15729,7 +15749,7 @@ function createSinglesFlow(deps) {
     PHOTO_NOT_KEPT: PHOTO_NOT_KEPT, queueToKeep: queueToKeep, savedToCheck: savedToCheck, restoreToCheck: restoreToCheck,
     PILE_KEY: PILE_KEY, TO_CHECK_KEY: TO_CHECK_KEY, PHOTO_KEY: PHOTO_KEY,
     buysCard: buysCard, shownCard: shownCard, isOffCard: isOffCard, offNote: offNote, offHint: offHint, offAltsLabel: offAltsLabel, offTile: offTile,
-    langWord: langWord, readOffCard: readOffCard, JAPANESE_OFF: JAPANESE_OFF,
+    langWord: langWord, langTag: langTag, readOffCard: readOffCard, JAPANESE_OFF: JAPANESE_OFF,
   };
 }
 
@@ -15795,6 +15815,7 @@ window.SinglesFlow = {
   offAltsLabel: offAltsLabel,
   offTile: offTile,
   langWord: langWord,
+  langTag: langTag,
   readOffCard: readOffCard,
   JAPANESE_OFF: JAPANESE_OFF,
 };
@@ -18249,6 +18270,11 @@ window.SinglesPrice = {
     function chip(act, value, label, pressed) {
       return '<button type="button" class="sc-sg-chip" data-act="' + act + '" data-v="' + escHtml(value) + '" aria-pressed="' + (pressed ? 'true' : 'false') + '">' + escHtml(label) + '</button>';
     }
+    // EN / JP in front of a card's name, so staff always see which list the card came from (look only).
+    function langTagHtml(card) {
+      var ja = !!card && card.lang === 'ja';
+      return '<span class="sc-sg-lang' + (ja ? ' sc-sg-jp' : '') + '">' + flow.langTag(ja ? 'ja' : 'en') + '</span>';
+    }
     function pic(productId, cls, alt) {
       return '<img class="' + (cls || '') + '" src="' + escHtml(flow.imageUrl(productId)) + '" alt="' + escHtml(alt || '') + '" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.visibility=\'hidden\'">';
     }
@@ -18307,7 +18333,7 @@ window.SinglesPrice = {
           '<div class="sc-sg-pic">' + (card.productId ? pic(card.productId, '', card.name) : '') + '</div>' +
           '<div class="sc-sg-words">' +
             '<span class="sc-sg-next"' + (checking ? '' : ' hidden') + '>To check</span>' +
-            '<div class="sc-sg-name">' + escHtml(off ? offName : motion.displayName(card.name, card.num)) + '</div>' +
+            '<div class="sc-sg-name">' + langTagHtml(card) + escHtml(off ? offName : motion.displayName(card.name, card.num)) + '</div>' +
             '<div class="sc-sg-set">' + escHtml([card.setName, card.num ? '#' + card.num : ''].filter(Boolean).join(' · ')) + '</div>' +
             (off ? '<div class="sc-sg-rarity">' + escHtml(flow.langWord(card.lang)) + '</div>' :
               (card.rarity ? '<div class="sc-sg-rarity">' + escHtml(card.rarity) + '</div>' : '') +
@@ -18334,7 +18360,7 @@ window.SinglesPrice = {
         '<div class="sc-sg-group"' + (alts.length ? '' : ' hidden') + '><div class="sc-sg-label">' + escHtml(off ? flow.offAltsLabel(card.lang) : 'Not this one?') + '</div><div class="sc-sg-alts">' +
           alts.map(function (h) {
             return '<button type="button" class="sc-sg-alt" data-act="alt" data-v="' + h.card.productId + '">' + pic(h.card.productId, '', '') +
-              '<span class="sc-sg-alt-words"><span class="sc-sg-alt-name">' + escHtml(motion.displayName(h.card.name, h.card.num)) + '</span>' +
+              '<span class="sc-sg-alt-words"><span class="sc-sg-alt-name">' + langTagHtml(h.card) + escHtml(motion.displayName(h.card.name, h.card.num)) + '</span>' +
               '<span class="sc-sg-alt-meta">' + escHtml(flow.matchMeta(h.card)) + '</span></span></button>';
           }).join('') +
         '</div></div>' +
@@ -18356,7 +18382,7 @@ window.SinglesPrice = {
         var offTop = flow.isOffCard(top);
         return '<button type="button" class="sc-sg-tile' + (offTop ? ' sc-sg-out' : '') + '" data-open="' + q.id + '">' +
           (top.productId ? pic(top.productId, 'sc-sg-tile-pic', '') : '<span class="sc-sg-tile-pic"></span>') +
-          '<span class="sc-sg-tile-name">' + escHtml(top.name ? motion.displayName(top.name, top.num) : flow.langWord(top.lang) + ' card') + '</span>' +
+          '<span class="sc-sg-tile-name">' + langTagHtml(top) + escHtml(top.name ? motion.displayName(top.name, top.num) : flow.langWord(top.lang) + ' card') + '</span>' +
           '<span class="sc-sg-tile-why">' + escHtml(offTop ? flow.offTile(top.lang) : (q.hint || 'Check it: tap to confirm')) + '</span></button>';
       }).join('');
     }
@@ -18377,7 +18403,7 @@ window.SinglesPrice = {
         return '<div class="sc-sg-row' + (lastKeys[l.key] ? '' : ' sc-sg-new') + '" data-key="' + escHtml(l.key) + '">' +
           '<div class="sc-sg-row-del" aria-hidden="true">Remove</div>' +
           '<div class="sc-sg-row-in">' + pic(l.productId, 'sc-sg-thumb', '') +
-            '<div class="sc-sg-row-words"><div class="sc-sg-row-name">' + escHtml(motion.displayName(l.name, l.num)) + '</div>' +
+            '<div class="sc-sg-row-words"><div class="sc-sg-row-name">' + langTagHtml(l) + escHtml(motion.displayName(l.name, l.num)) + '</div>' +
               '<div class="sc-sg-row-set">' + escHtml([rs.set, rs.num].filter(Boolean).join(' ')) + ' · ' + escHtml(l.condition) + '</div>' +
               '<div class="sc-sg-row-meta">' + escHtml(motion.rowMeta(l)) + '</div></div>' +
             '<div class="sc-sg-row-right"><div class="sc-sg-row-pay' + (lp.buying ? '' : ' sc-sg-no') + '">' + escHtml(lp.text) + '</div>' +
@@ -20035,9 +20061,13 @@ window.SheetFiles = {
     // Every showScanner / hideScanner goes through one gate (scanner/nativeBridge.js createPanelGate; Penguin, 11/25: switching
     // Slabs <-> Singles "its so buggy"): never a show and a hide less than 400 ms apart (quick taps send only the last wish, often
     // nothing at all), and a show is sent once the page has painted its sheet layout (two frames), so the app's slide never starts
-    // on the frame the page relays itself out.
+    // on the frame the page relays itself out. A tab switch (Slabs <-> Singles) is `instant`: { animated: false }, the panel is there or
+    // gone in one frame with no slide, sent at once (Penguin, 11/25: the bottom tab bar stays solid, only the screen changes).
     var panelGate = NativeBridge.createPanelGate({
-      send: function (show) { if (show) bridge.showScanner(); else bridge.hideScanner(); },
+      send: function (show, animated) {
+        var o = animated === false ? { animated: false } : undefined;
+        if (show) bridge.showScanner(o); else bridge.hideScanner(o);
+      },
       frame: function (cb) { try { return window.requestAnimationFrame(cb); } catch (e) { return setTimeout(cb, 16); } }
     });
     var panelChangedAt = -Infinity; // the keyboard check's baseline restarts while the app resizes the page for its panel
@@ -20053,12 +20083,15 @@ window.SheetFiles = {
         sheetStop = sheetStop || 'mid'; // the panel always arrives at 'mid'
         if (dom.certInput.value) setTypeOpen(true); // typed before: the box stays in view
         applySheet();
-        panelGate.want(true, { afterPaint: !!(opts && opts.afterPaint) }); // back from Singles: after the page has painted
+        // a tab switch (back from Singles): no slide, in the same go as the page's sheet layout; else after the page has painted
+        if (opts && opts.instant) panelGate.want(true, { instant: true });
+        else panelGate.want(true, { afterPaint: !!(opts && opts.afterPaint) });
       } else {
-        panelGate.want(false);
+        panelGate.want(false, { instant: !!(opts && opts.instant) });
         nativeCameraOn = false;
         sheetStop = null;
-        panelHideTimer = setTimeout(panelGone, PANEL_SLIDE_MS);
+        // no slide (a tab switch): the panel's layout comes off at once, with the panel
+        if (opts && opts.instant) panelGone(); else panelHideTimer = setTimeout(panelGone, PANEL_SLIDE_MS);
       }
     }
     /** The panel's layout comes off (after its slide, or at once for Singles, which takes the whole screen as the panel goes). */
@@ -24814,15 +24847,17 @@ window.SheetFiles = {
       slabCamerasOff: function () {
         closeCamera();
         if (nativeScannerOpen) { bridge.closeScanner(); setNativeCamera(false); }
-        // the panel's layout comes off with it, not a third of a second later (that would make the Singles screen jump down)
-        if (panelShown) { setPanel(false); panelGone(); }
+        // A tab switch: the panel goes in one frame with no slide ({ animated: false }) and its layout comes off with it, not a third
+        // of a second later (that would make the Singles screen jump down).
+        if (panelShown) setPanel(false, { instant: true });
         // a panel the app put back by itself (from memory) while the page held it for Singles: sent away too (no panel: nothing).
-        // Through the gate: a show still waiting (quick taps) is dropped instead, and nothing is sent inside the 400 ms gap.
-        else if (bridge.cameraPanelSupported()) panelGate.want(false, { force: panelGate.pending() === null });
+        // Through the gate: a show still waiting is dropped instead.
+        else if (bridge.cameraPanelSupported()) panelGate.want(false, { force: panelGate.pending() === null, instant: true });
       },
       slabCamerasBack: function () {
         if (!scannerActive) return;
-        if (bridge.cameraPanelSupported()) showPanelIfReady({ afterPaint: true }); else autoCamera();
+        // back from Singles (a tab switch): the panel is there in one frame, no slide, sent with the page's own sheet layout
+        if (bridge.cameraPanelSupported()) showPanelIfReady({ instant: true }); else autoCamera();
       }
     });
 
