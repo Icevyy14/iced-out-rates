@@ -3593,7 +3593,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .sc-sg-cam-off-text{margin:0;max-width:100%;font-size:var(--sc-fs-label);font-weight:600;line-height:1.35;letter-spacing:.02em;color:color-mix(in srgb, var(--sc-danger-ink) 62%, transparent);}
   #tab-scanner .sc-sg-cam.sc-sg-cam-is-off #sc-sg-shutter:disabled{opacity:.4;}
   /* with no picture behind them the dark glass of the button and the hint would vanish into the dark box: a light glass instead */
-  #tab-scanner .sc-sg-cam.sc-sg-cam-is-off #sc-sg-cam-on,#tab-scanner .sc-sg-cam.sc-sg-cam-is-off .sc-sg-hint{background:color-mix(in srgb, var(--sc-danger-ink) 12%, transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--sc-danger-ink) 16%, transparent);}
+  #tab-scanner .sc-sg-cam.sc-sg-cam-is-off .sc-sg-hint{background:color-mix(in srgb, var(--sc-danger-ink) 12%, transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--sc-danger-ink) 16%, transparent);}
   /* the off row fades in only when the camera goes off in place (turned off, refused, failed): on opening Singles the whole screen
      already fades in with the switch, and a second fade from nothing under it read as a blank flicker (Penguin, 11/25) */
   #tab-scanner .sc-sg-cam.sc-sg-cam-is-off.sc-sg-off-fade .sc-sg-cam-off{animation:sc-sg-appear 200ms var(--sc-ease) both;}
@@ -3826,6 +3826,21 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     #tab-scanner #sc-sg-cam-on,#tab-scanner #sc-sg-cam-stop,#tab-scanner .sc-sg-cam.sc-sg-cam-is-off.sc-sg-off-fade .sc-sg-cam-off{animation:none;}
     #tab-scanner .sc-sg-spin{animation:sc-sg-breathe 900ms ease-in-out infinite alternate;}
   }
+  /* The camera on/off button is the slab camera's own (Penguin, 11/25: "put it in the exact same spot along with the exact same logo"):
+     the app panel's camera switch, 44px glass circle, 8px under the notch and 14px from the right edge, the video camera with a slash
+     while off and filled while on. The flashlight takes the panel's left spot (14px), the expand button the gear's (66px). */
+  #tab-scanner #sc-sg-cam-on,#tab-scanner #sc-sg-cam-stop,
+  #tab-scanner .sc-sg-cam.sc-sg-full #sc-sg-cam-stop{top:calc(8px + env(safe-area-inset-top));right:14px;left:auto;}
+  #tab-scanner #sc-sg-cam-on,#tab-scanner #sc-sg-cam-stop,#tab-scanner #sc-sg-torch,#tab-scanner #sc-sg-expand{box-shadow:inset 0 0 0 1px var(--sc-line);}
+  #tab-scanner #sc-sg-cam-on{--sc-i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 6h3.5a2.5 2.5 0 0 1 2.5 2.5V12'/%3E%3Cpath d='M16 18H4.5A2.5 2.5 0 0 1 2 15.5v-7A2.5 2.5 0 0 1 4.5 6'/%3E%3Cpath d='M17 10.4l4.2-2.6c.4-.3.8 0 .8.4v7.6c0 .4-.4.7-.8.4L17 13.6'/%3E%3Cpath d='M2.5 3.5l17 17'/%3E%3C/svg%3E");}
+  #tab-scanner #sc-sg-cam-stop{--sc-i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='1.5' y='5.5' width='14' height='13' rx='3' fill='black'/%3E%3Cpath d='M17 10.2l4.6-2.9c.6-.4 1.4 0 1.4.8v7.8c0 .8-.8 1.2-1.4.8L17 13.8z' fill='black'/%3E%3C/svg%3E");}
+  #tab-scanner #sc-sg-torch{top:calc(8px + env(safe-area-inset-top));left:14px;}
+  #tab-scanner #sc-sg-expand{top:calc(8px + env(safe-area-inset-top));right:auto;left:66px;}
+  #tab-scanner .sc-sg-cam .sc-sg-matching,#tab-scanner .sc-sg-cam.sc-sg-full .sc-sg-matching{right:70px;}
+  #tab-scanner .sc-sg-cam.sc-sg-full #sc-sg-torch{left:106px;}
+  /* No shutter button (Penguin, 11/25: "get rid of the camera white button if we can tap anywhere on the screen"): a tap anywhere on
+     the running camera takes the card (the pointerup rule in wire()); the hint line says so. */
+  #tab-scanner #sc-sg-shutter{display:none;}
 </style>
 <section class="sc-sg sc-singles-only" id="sc-sg" aria-label="Raw cards" hidden>
   <div class="sc-sg-slot" id="sc-sg-slot" hidden></div>
