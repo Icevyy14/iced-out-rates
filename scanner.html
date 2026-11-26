@@ -25268,13 +25268,11 @@ window.SheetFiles = {
     var TAB_IN_MS = 220;
     var tabInTimer = null, tabAnimTimer = null;
     function animateTabIn(dir, fade) {
+      // Penguin, 11/25: "i want it to stay solid. the bottom tab stays ... and the rest just moves". The new screen is simply there,
+      // in the same frame as the tap (no slide, no fade: the way DeckTradr / Collectr switch tabs); only the bar's pill glides.
       var L = dom.layout;
-      if (!L || !L.classList) return;
-      L.classList.remove('sc-tab-in', 'sc-tab-in-r', 'sc-tab-in-l', 'sc-tab-in-fade');
-      try { void L.offsetWidth; } catch (e) { /* restarts anyway */ }
-      L.classList.add('sc-tab-in', fade ? 'sc-tab-in-fade' : dir < 0 ? 'sc-tab-in-l' : 'sc-tab-in-r');
+      if (L && L.classList) L.classList.remove('sc-tab-in', 'sc-tab-in-r', 'sc-tab-in-l', 'sc-tab-in-fade');
       clearTimeout(tabInTimer);
-      tabInTimer = setTimeout(function () { L.classList.remove('sc-tab-in', 'sc-tab-in-r', 'sc-tab-in-l', 'sc-tab-in-fade'); }, TAB_IN_MS + 80);
       if (dom.tabbar && dom.tabbar.classList) {
         dom.tabbar.classList.add('sc-tab-anim');
         clearTimeout(tabAnimTimer);
