@@ -1523,6 +1523,33 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
      so the ellipsis cuts the count and never the box. The header flag's own colours (steel on its tint); the padding sits
      inside the line, so the scoreboard never grows. */
   #tab-scanner .sc-sub-adjust{margin-right:6px;padding:0 6px;border-radius:999px;background:var(--sc-wait-tint);color:var(--sc-steel-ink);font-weight:800;font-variant-numeric:tabular-nums;}
+  /* The chip is a button (iPhone feedback 11/25): "Adjust 0%" is there with an empty pile too, and one tap opens the Adjust sheet
+     (#sc-adjust-dlg: minus, the value, plus), so the figure can be set before the first scan, when the pile section is out of reach.
+     The tap area grows past the pill (the pill itself stays slim so the scoreboard never grows). */
+  #tab-scanner button.sc-sub-adjust{position:relative;display:inline-block;border:0;font:inherit;font-weight:800;line-height:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  #tab-scanner button.sc-sub-adjust::before{content:"";position:absolute;inset:-12px -6px;}
+  #tab-scanner button.sc-sub-adjust:active{filter:brightness(1.25);}
+  #tab-scanner button.sc-sub-adjust:focus-visible{outline:2px solid var(--sc-focus);outline-offset:2px;}
+  #tab-scanner button.sc-sub-adjust[hidden]{display:none;}
+  #tab-scanner .sc-adjust-dlg .sc-adjust-note{margin:2px 4px 14px;font-size:var(--sc-fs-label);line-height:1.4;color:var(--sc-muted);}
+  #tab-scanner .sc-adjust-stepper{display:flex;align-items:center;justify-content:center;gap:14px;margin:6px 0 4px;}
+  #tab-scanner .sc-adjust-step{
+    flex:none;width:56px;height:56px;padding:0;border:0;border-radius:50%;cursor:pointer;background:var(--sc-fill-card-bg);
+    box-shadow:inset 0 0 0 1px var(--sc-chip-edge), inset 0 1px 0 var(--sc-chip-hi);color:var(--sc-ink);font-size:30px;font-weight:700;line-height:1;
+  }
+  #tab-scanner .sc-adjust-step:active{background:var(--sc-fill);}
+  #tab-scanner .sc-adjust-step:disabled{opacity:.4;cursor:default;}
+  #tab-scanner .sc-adjust-step:focus-visible{outline:2px solid var(--sc-focus);outline-offset:2px;}
+  #tab-scanner .sc-adjust-valbox{display:flex;align-items:baseline;justify-content:center;gap:2px;min-width:112px;}
+  #tab-scanner .sc-adjust-val{
+    width:88px;min-width:0;padding:0;border:0;background:none;text-align:right;color:var(--sc-ink);font:inherit;font-size:34px;font-weight:800;
+    letter-spacing:-.02em;font-variant-numeric:tabular-nums;
+  }
+  #tab-scanner .sc-adjust-val:focus{outline:none;}
+  #tab-scanner .sc-adjust-valbox:focus-within{box-shadow:0 2px 0 var(--sc-steel-ink);}
+  #tab-scanner .sc-adjust-pct{font-size:22px;font-weight:700;color:var(--sc-muted);}
+  #tab-scanner .sc-adjust-dlg .sc-adjust-err,#tab-scanner .sc-adjust-dlg .sc-adjust-status{margin:6px 4px 0;text-align:center;}
+  #tab-scanner .sc-adjust-dlg .sc-adjust-zero{margin-top:12px;}
 
   /* The Android app's peek ('down') has one way up; nowhere else shows it. */
   #tab-scanner .sc-sheet-cue{display:none;}
@@ -2869,6 +2896,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .scanner-layout.sc-sheet-mode #sc-lock,
   #tab-scanner .scanner-layout.sc-sheet-mode #sc-dock,
   #tab-scanner .scanner-layout.sc-sheet-mode #sc-rule-card,
+  #tab-scanner .scanner-layout.sc-sheet-mode #sc-pl,
   #tab-scanner .scanner-layout.sc-sheet-mode #sc-earlier{display:none !important;}
   /* (a sourcer's peek keeps the lock card: not on the Sheet, which is a sheet of certs, never a lock) */
   #tab-scanner .scanner-layout.sc-sheet-mode.sc-lock-mode.sc-native-cam.sc-sheet-down > #sc-lock{display:none !important;}
@@ -2881,7 +2909,12 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .scanner-layout.sc-singles-mode #sc-lock,
   #tab-scanner .scanner-layout.sc-singles-mode #sc-dock,
   #tab-scanner .scanner-layout.sc-singles-mode #sc-rule-card,
+  #tab-scanner .scanner-layout.sc-singles-mode #sc-pl,
+  #tab-scanner .scanner-layout.sc-singles-mode .sc-brand,
   #tab-scanner .scanner-layout.sc-singles-mode #sc-earlier{display:none !important;}
+  /* Rates and "Allocation: what is open" (#sc-pl) are slab things (Triumph allocation, the pile's bands): not on Singles or the Sheet.
+     Singles' camera starts at the very top of the page (no header above it): the page's own top padding goes. */
+  body:has(#tab-scanner .scanner-layout.sc-singles-mode) .main{padding-top:0;}
   /* (a sourcer account's peek keeps the lock card: not on Singles, which prices raw cards, never a lock) */
   #tab-scanner .scanner-layout.sc-singles-mode.sc-lock-mode.sc-native-cam.sc-sheet-down > #sc-lock{display:none !important;}
   #tab-scanner .sc-sheet-down .sc-lk-tabs,#tab-scanner .sc-sheet-down .sc-lk-banner,
@@ -3264,7 +3297,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
       <div class="sc-key" id="sc-pile-pay-label">You'd pay</div>
       <div class="sc-total-val" id="sc-pile-payout">-</div>
       <!-- The Adjust % box while it is not 0 (the one place it shows at every stop: the app's peek hides the pile), then the count. -->
-      <div class="sc-pile-sub" id="sc-pile-sub" hidden><span class="sc-sub-adjust" id="sc-score-adjust" hidden></span><span id="sc-pile-buy-count"></span></div>
+      <div class="sc-pile-sub" id="sc-pile-sub" hidden><button type="button" class="sc-sub-adjust" id="sc-score-adjust" aria-haspopup="dialog" aria-controls="sc-adjust-dlg" hidden></button><span id="sc-pile-buy-count"></span></div>
     </div>
   </section>
   <!-- Android app 1.4 with its sheet swiped down: the peek's one way up (asks the app for the 'up' stop). -->
@@ -3488,9 +3521,16 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
      camera bigger"): 60% of the screen's height (506px on a 390x844 phone), never under 280px, and at most 560px on a tall or desktop
      screen. On a short phone it leaves 330px under it for WE PAY above the dock (a 375x667 phone: 337px, not 400px).
      svh where the browser has it, so the iPhone's sliding toolbar never resizes it; the card outline is placed to fit it. */
+  /* iPhone feedback 11/25: the Singles camera looks like the slab camera panel in the apps: edge to edge, no rounded inner box, no
+     border, from the top of the page down to the scoreboard that sits above the Add / Undo / Skip dock (the header and the Rates /
+     Allocation row are not on Singles). 100vw with the half-width margin takes the box out of the page's side padding. Its height is
+     what the screen has left over the dock, the tab bar and the two score tiles (140px with their gap), never under 300px. Only a camera that is OFF
+     is a slim rounded row (below). */
   #tab-scanner .sc-sg-cam{
-    position:relative;min-width:0;height:clamp(280px, min(60vh, 100vh - 330px), 560px);height:clamp(280px, min(60svh, 100svh - 330px), 560px);overflow:hidden;isolation:isolate;
-    border-radius:var(--sc-r-card);background:var(--sc-cam);box-shadow:inset 0 0 0 1px var(--sc-line);
+    position:relative;min-width:0;box-sizing:border-box;width:100vw;margin-left:calc(50% - 50vw);
+    height:clamp(300px, calc(100vh - var(--sc-dock-h) - var(--sc-tabbar-h) - env(safe-area-inset-bottom) - 140px), 760px);
+    height:clamp(300px, calc(100svh - var(--sc-dock-h) - var(--sc-tabbar-h) - env(safe-area-inset-bottom) - 140px), 760px);
+    overflow:hidden;isolation:isolate;border-radius:0;background:var(--sc-cam);box-shadow:none;
     touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
   }
   /* The picture fades in once it really has frames (sc-sg-cam-live), over the dark box: never a jump, never a flash. */
@@ -3533,7 +3573,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   }
   /* Camera off, the same as the slab camera (Penguin, 11/23): no big panel, the frame shrinks to one slim row with the
      round camera button and a short line (the slab's own .sc-vf-off / .sc-start / .sc-vf-off-text look). Tap it, it's on. */
-  #tab-scanner .sc-sg-cam.sc-sg-cam-is-off{height:auto;background:var(--sc-fill-card-bg);}
+  #tab-scanner .sc-sg-cam.sc-sg-cam-is-off{width:auto;margin:calc(12px + env(safe-area-inset-top)) 0 0;height:auto;border-radius:var(--sc-r-card);background:var(--sc-fill-card-bg);box-shadow:inset 0 0 0 1px var(--sc-line);}
   #tab-scanner .sc-sg-cam.sc-sg-cam-is-off .sc-sg-cam-off{animation:sc-sg-appear 200ms var(--sc-ease) both;}
   #tab-scanner .sc-sg-cam-off[hidden]{display:none;}
   #tab-scanner .sc-sg-bottom{position:absolute;left:12px;right:12px;bottom:12px;display:flex;align-items:center;gap:10px;}
@@ -3544,7 +3584,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     flex:1 1 auto;min-width:0;max-width:none;padding:8px 14px;border-radius:16px;text-align:left;white-space:normal;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
   }
-  #tab-scanner #sc-sg-cam-stop{--sc-i:var(--i-camera-off);position:absolute;top:12px;left:12px;} /* the look is .sc-vf-round's */
+  #tab-scanner #sc-sg-cam-stop{--sc-i:var(--i-camera-off);position:absolute;top:calc(12px + env(safe-area-inset-top));left:12px;} /* the look is .sc-vf-round's */
   /* Full screen (Josh, 11/24: "the same as the slab camera, not just a small box"): while the camera is running the box covers the whole
      screen (the bar, the dock and the pile are under it), with Done, the flashlight (only where the phone's browser reports one), the camera
      switch, the shutter and a count of the pile. Done (or the count) drops it back to the box; the expand button brings it back. A spacer
@@ -3552,12 +3592,12 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .sc-sg-slot{display:block;width:100%;}
   #tab-scanner .sc-sg-slot[hidden]{display:none;}
   #tab-scanner .sc-sg-cam.sc-sg-full{
-    position:fixed;inset:0;z-index:45;width:auto;height:auto;border-radius:0;box-shadow:none;touch-action:none;overscroll-behavior:none;
+    position:fixed;inset:0;z-index:45;width:auto;height:auto;margin-left:0;border-radius:0;box-shadow:none;touch-action:none;overscroll-behavior:none;
   }
   #tab-scanner #sc-sg-done{position:absolute;top:12px;left:12px;min-height:44px;padding:0 18px;border:0;cursor:pointer;font:inherit;font-weight:800;}
   #tab-scanner #sc-sg-done[hidden],#tab-scanner #sc-sg-expand[hidden],#tab-scanner #sc-sg-torch[hidden],#tab-scanner #sc-sg-review[hidden]{display:none;}
-  #tab-scanner #sc-sg-torch{--sc-i:var(--i-torch);position:absolute;top:12px;left:64px;}
-  #tab-scanner #sc-sg-expand{position:absolute;top:12px;right:12px;} /* its icon is an inline SVG (the page has no expand icon): currentColor, no mask */
+  #tab-scanner #sc-sg-torch{--sc-i:var(--i-torch);position:absolute;top:calc(12px + env(safe-area-inset-top));left:64px;}
+  #tab-scanner #sc-sg-expand{position:absolute;top:calc(12px + env(safe-area-inset-top));right:12px;} /* its icon is an inline SVG (the page has no expand icon): currentColor, no mask */
   #tab-scanner #sc-sg-expand::before,#tab-scanner #sc-sg-done::before{display:none;}
   #tab-scanner #sc-sg-expand svg{width:20px;height:20px;display:block;}
   /* In the box the camera switch sits top left (as before) and the expand button top right, so the Matching count moves left of it.
@@ -3575,7 +3615,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner #sc-sg-review.sc-sg-check-more{background:var(--sc-steel-ink);color:var(--sc-cam);}
   #tab-scanner #sc-sg-shutter{flex:none;} /* the look and the press are .sc-vf-shutter's */
   #tab-scanner #sc-sg-shutter:disabled{opacity:.5;cursor:default;}
-  #tab-scanner .sc-sg-matching{position:absolute;top:12px;right:12px;max-width:none;font-weight:800;} /* the look is .sc-vf-hint's */
+  #tab-scanner .sc-sg-matching{position:absolute;top:calc(12px + env(safe-area-inset-top));right:12px;max-width:none;font-weight:800;} /* the look is .sc-vf-hint's */
   #tab-scanner .sc-sg-matching[hidden]{display:none;}
 
   /* "That's a slab" and the one-line notes (Added, Removed) */
@@ -3790,7 +3830,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
 
   <div class="sc-sg-score">
     <div class="sc-tile sc-tile-pay">
-      <div class="sc-tile-top"><div class="sc-key sc-key-pay">We pay</div></div>
+      <div class="sc-tile-top"><div class="sc-key sc-key-pay" id="sc-sg-pay-key">We pay</div></div>
       <div class="sc-pay-val sc-blank" id="sc-sg-pay">-</div>
       <div class="sc-math" id="sc-sg-pay-note"></div>
     </div>
@@ -4219,6 +4259,24 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   <p class="sc-sheet-note" id="sc-rates-note">For this pile only. The weekend rates stay as they are.</p>
   <div class="sc-band-list" id="sc-rates-list"></div>
   <button type="button" class="sc-btn sc-btn-quiet sc-btn-block sc-rates-reset" id="sc-rates-reset">Set default</button>
+</dialog>
+
+<!-- Adjust (the chip on the scoreboard's THIS VISIT tile, empty pile or not): the same persisted per-login Adjust % as the pile section's
+     box, as minus / the figure / plus. Points added to or taken off every band for the cards priced from now on. -->
+<dialog class="sc-settings sc-adjust-dlg" id="sc-adjust-dlg" aria-labelledby="sc-adjust-dlg-title">
+  <div class="sc-settings-head">
+    <h2 class="sc-settings-title" id="sc-adjust-dlg-title">Adjust</h2>
+    <button type="button" class="sc-btn sc-btn-quiet" id="sc-adjust-dlg-done">Done</button>
+  </div>
+  <p class="sc-adjust-note">Points added to or taken off every rate, like -2 or 1.5. It applies to the cards you scan from now on, and stays on your login for every seller until you change it.</p>
+  <div class="sc-adjust-stepper">
+    <button type="button" class="sc-adjust-step" id="sc-adjust-dlg-minus" aria-label="One point less">&minus;</button>
+    <div class="sc-adjust-valbox"><input class="sc-adjust-val" id="sc-adjust-dlg-input" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done" placeholder="0" aria-label="Adjust, in percent points"><span class="sc-adjust-pct" aria-hidden="true">%</span></div>
+    <button type="button" class="sc-adjust-step" id="sc-adjust-dlg-plus" aria-label="One point more">+</button>
+  </div>
+  <div class="sc-adjust-err" id="sc-adjust-dlg-err" role="alert" hidden></div>
+  <div class="sc-adjust-status" id="sc-adjust-dlg-status" role="status"></div>
+  <button type="button" class="sc-btn sc-btn-quiet sc-btn-block sc-adjust-zero" id="sc-adjust-dlg-zero">Set to 0</button>
 </dialog>
 
 <!-- Edit card (tap a pile row's numbers): a Market and a Pay for that one card, typed by hand. A blank field follows the
@@ -15777,6 +15835,25 @@ function cameraGuide(guideRect, width, height, safeTop) {
   return box.height >= 60 ? box : null;
 }
 
+/** A trading card is 2.5 x 3.5 inches: the guide's height over its width. */
+var CARD_ASPECT = 3.5 / 2.5;
+/** How much of the camera's width the guide takes when the height allows (iPhone feedback 11/25: 70-80%). */
+var GUIDE_WIDTH_SHARE = 0.75;
+
+/**
+ * The Singles viewfinder's card guide in a camera `width` x `height` (the same numbers inline and full screen): a 2.5 x 3.5 card,
+ * 75% of the camera's width wide, shrunk (never stretched) to fit between `top` (the round buttons) and `bottom` (the hint and
+ * the shutter), centred in what is left. Null when the room is too small to use. A bigger viewport gives a bigger guide.
+ */
+function viewfinderGuide(width, height, top, bottom) {
+  var room = Math.max(0, height - Math.max(0, top) - Math.max(0, bottom));
+  var w = width * GUIDE_WIDTH_SHARE;
+  var h = w * CARD_ASPECT;
+  if (h > room) { h = room; w = h / CARD_ASPECT; }
+  if (h < 60) return null;
+  return { x: (width - w) / 2, y: Math.max(0, top) + (room - h) / 2, width: w, height: h };
+}
+
 // ── layout.ts: swipe left to delete a pile row (scanner/swipeRow.js's rules) ─────────────────────
 
 var LOCK_PX = 10;
@@ -15925,6 +16002,7 @@ function createSinglesMotion(flow) {
     SHEET_OVERLAP: SHEET_OVERLAP, HANDLE_ZONE: HANDLE_ZONE, FLING_SPEED: FLING_SPEED, stopHeights: stopHeights,
     settleStop: settleStop, sheetMoves: sheetMoves, clampCamera: clampCamera, GUIDE_TOP: GUIDE_TOP, GUIDE_BOTTOM: GUIDE_BOTTOM,
     cameraGuide: function (width, height, safeTop) { return cameraGuide(flow.guideRect, width, height, safeTop); },
+    viewfinderGuide: viewfinderGuide, CARD_ASPECT: CARD_ASPECT, GUIDE_WIDTH_SHARE: GUIDE_WIDTH_SHARE,
     LOCK_PX: LOCK_PX, HOLD_PX: HOLD_PX, HOLD_RATIO: HOLD_RATIO, HORIZONTAL_RATIO: HORIZONTAL_RATIO, DELETE_FRACTION: DELETE_FRACTION, FLICK_PX_PER_MS: FLICK_PX_PER_MS,
     FLICK_MIN_PX: FLICK_MIN_PX, VELOCITY_WINDOW_MS: VELOCITY_WINDOW_MS, PAUSE_MS: PAUSE_MS, lockDirection: lockDirection,
     holdsPage: holdsPage, clampOffset: clampOffset, velocityOf: velocityOf, releaseDecision: releaseDecision, createSwipe: createSwipe,
@@ -15953,6 +16031,9 @@ window.SinglesMotion = {
   GUIDE_TOP: GUIDE_TOP,
   GUIDE_BOTTOM: GUIDE_BOTTOM,
   cameraGuide: cameraGuide,
+  viewfinderGuide: viewfinderGuide,
+  CARD_ASPECT: CARD_ASPECT,
+  GUIDE_WIDTH_SHARE: GUIDE_WIDTH_SHARE,
   LOCK_PX: LOCK_PX,
   HOLD_PX: HOLD_PX,
   HOLD_RATIO: HOLD_RATIO,
@@ -16886,7 +16967,7 @@ window.SinglesPrice = {
       ['sc-sg', 'sc-sg-cam', 'sc-sg-video', 'sc-sg-guide', 'sc-sg-cam-wait', 'sc-sg-cam-off', 'sc-sg-cam-text', 'sc-sg-cam-on', 'sc-sg-cam-stop',
         'sc-sg-slot', 'sc-sg-done', 'sc-sg-torch', 'sc-sg-expand', 'sc-sg-review',
         'sc-sg-matching', 'sc-sg-bottom', 'sc-sg-hint', 'sc-sg-shutter', 'sc-sg-slab', 'sc-sg-slab-text', 'sc-sg-slab-yes', 'sc-sg-slab-no',
-        'sc-sg-pay', 'sc-sg-pay-note', 'sc-sg-visit', 'sc-sg-visit-sub', 'sc-sg-card', 'sc-sg-check', 'sc-sg-check-count', 'sc-sg-strip',
+        'sc-sg-pay', 'sc-sg-pay-key', 'sc-sg-pay-note', 'sc-sg-visit', 'sc-sg-visit-sub', 'sc-sg-card', 'sc-sg-check', 'sc-sg-check-count', 'sc-sg-strip',
         'sc-sg-pile', 'sc-sg-pile-count', 'sc-sg-rows', 'sc-sg-pile-empty', 'sc-sg-totals', 'sc-sg-confirm', 'sc-sg-confirm-text',
         'sc-sg-clear-yes', 'sc-sg-clear-no', 'sc-sg-pile-btns', 'sc-sg-copy', 'sc-sg-clear', 'sc-sg-info', 'sc-sg-add', 'sc-sg-undo',
         'sc-sg-skip', 'sc-sg-find', 'sc-sg-search', 'sc-sg-toast', 'sc-sg-toast-text', 'sc-sg-toast-undo'
@@ -16924,7 +17005,11 @@ window.SinglesPrice = {
       on_(el.search, 'focus', function () { touched(); });
       on_(el['toast-undo'], 'click', function () { var f = toastUndo; hideToast(); if (f) f(); });
       on_(el.copy, 'click', copyList);
-      on_(el.clear, 'click', function () { el.confirm.hidden = false; el['pile-btns'].hidden = true; });
+      on_(el.clear, 'click', function () {
+        el.confirm.hidden = false; el['pile-btns'].hidden = true;
+        // bring the confirm into view, or the tap looks like it did nothing
+        if (typeof el.confirm.scrollIntoView === 'function') { try { el.confirm.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { /* an old engine: no smooth scroll */ } }
+      });
       on_(el['clear-no'], 'click', function () { el.confirm.hidden = true; renderPile(); });
       on_(el['clear-yes'], 'click', newSeller);
       on_(el.card, 'click', cardClick);
@@ -17337,7 +17422,16 @@ window.SinglesPrice = {
       if (!on || !el.cam || !el.cam.getBoundingClientRect || !flow) return;
       var r = el.cam.getBoundingClientRect();
       if (!r.width || !r.height) return;
-      guide = motion.cameraGuide(r.width, r.height, -40) || flow.guideRect(r.width, r.height, 12, 72);
+      // A 2.5 x 3.5 card, 75% of the camera's width, shrunk to fit between the round buttons and the hint + shutter row (measured, so the
+      // notch, the wrapped full-screen row and any window size are all in it): the same rule inline and full screen, it grows with the window.
+      var top = 60, bottom = 100;
+      try {
+        var cs = el['cam-stop'] && el['cam-stop'].getClientRects().length ? el['cam-stop'].getBoundingClientRect() : null;
+        if (cs && cs.bottom > r.top) top = Math.round(cs.bottom - r.top) + 8;
+        var bt = el.bottom && el.bottom.getClientRects().length ? el.bottom.getBoundingClientRect() : null;
+        if (bt && bt.top < r.bottom) bottom = Math.round(r.bottom - bt.top) + 8;
+      } catch (e) { top = 60; bottom = 100; }
+      guide = motion.viewfinderGuide(r.width, r.height, top, bottom) || flow.guideRect(r.width, r.height, 12, 72);
       var s = el.guide.style;
       s.left = guide.x + 'px'; s.top = guide.y + 'px'; s.width = guide.width + 'px'; s.height = guide.height + 'px';
       el.guide.classList.add('sc-sg-placed');
@@ -17980,6 +18074,7 @@ window.SinglesPrice = {
       el.hint.textContent = flow.cameraHint({ capturing: capturing, note: note, matching: matching, ready: ready });
       el.matching.hidden = !matching;
       el.matching.textContent = matching ? 'Matching ' + matching + '…' : '';
+      try { placeGuide(); } catch (e) { /* placed again on the next draw */ } // measured from the controls just shown or hidden
     }
 
     /** Full screen shows the pile at a glance (and more when something waits in To check); tapping it drops back to the box. */
@@ -17995,22 +18090,31 @@ window.SinglesPrice = {
       el.review.classList.toggle('sc-sg-check-more', waiting > 0);
     }
 
+    /** The two tiles under the camera are the PILE's: YOUR OFFER (a sourcer; WE PAY for an owner) is what we pay for the whole pile,
+        THIS VISIT is how many cards and what they are worth in the market. Never a slab's "scan a card" line (iPhone feedback 11/25):
+        what we pay for the card on screen is on the card itself (payLineHtml). */
     function renderScore(lines, priced) {
-      var price = pick ? flow.priceFor(pick.card, pick.printing, liveMap) : null;
-      var row = pick && settings ? flow.pickQuote(lines, pick, price, settings) : null;
-      var pv = flow.payView(row, pick, settings, ratesState === 'loading', price);
-      var cents = row && row.outcome === 'priced' ? row.payoutCents : null;
-      el.pay.classList.toggle('sc-blank', !pick);
-      el.pay.classList.toggle('sc-words', !!pick && cents == null);
-      el.pay.classList.toggle('sc-no', !!pick && pv.buying === false);
-      if (cents != null) countTo(el.pay, shownPay, cents); else el.pay.textContent = pick ? pv.pay : '-';
-      shownPay = cents;
-      el['pay-note'].textContent = pick ? pv.note : (settings ? 'Scan a card to see what we pay.' : pv.note);
+      var cents = null, cards = 0;
+      try { cards = lines.reduce(function (a, l) { return a + l.quantity; }, 0); } catch (e) { cards = 0; }
       var vv = motion.visitView(priced, lines);
-      el.visit.classList.toggle('sc-blank', vv.amountCents == null);
-      if (vv.amountCents != null) countTo(el.visit, shownVisit, vv.amountCents); else el.visit.textContent = '-';
-      shownVisit = vv.amountCents;
-      el['visit-sub'].textContent = vv.sub;
+      cents = vv.amountCents;
+      var sourcer = false;
+      try { sourcer = !!(host && host.isSourcer && host.isSourcer()); } catch (e) { sourcer = false; }
+      if (el['pay-key']) el['pay-key'].textContent = sourcer ? 'Your offer' : 'We pay';
+      el.pay.classList.toggle('sc-blank', cents == null);
+      el.pay.classList.remove('sc-words', 'sc-no');
+      if (cents != null) countTo(el.pay, shownPay, cents); else el.pay.textContent = '-';
+      shownPay = cents;
+      var note;
+      if (!settings) note = flow.payView(null, null, settings, ratesState === 'loading', null).note;
+      else if (!cards) note = 'Scan a card to see what we pay.';
+      else note = vv.sub;
+      el['pay-note'].textContent = note;
+      var market = priced && priced.totals && priced.totals.cards ? priced.totals.marketCents : null;
+      el.visit.classList.toggle('sc-blank', !cards);
+      el.visit.textContent = cards ? flow.plural(cards, 'card') : '-';
+      shownVisit = cents;
+      el['visit-sub'].textContent = !cards ? 'Nothing scanned yet' : (market != null ? 'Market ' + flow.fmt(market) : 'Pricing…');
     }
 
     function chip(act, value, label, pressed) {
@@ -18018,6 +18122,16 @@ window.SinglesPrice = {
     }
     function pic(productId, cls, alt) {
       return '<img class="' + (cls || '') + '" src="' + escHtml(flow.imageUrl(productId)) + '" alt="' + escHtml(alt || '') + '" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.visibility=\'hidden\'">';
+    }
+
+    /** What we pay for the card on screen, and the rule behind it (it used to fill the first tile; the tiles are the pile's now). */
+    function payLineHtml(lines, price) {
+      var row = pick && settings ? flow.pickQuote(lines, pick, price, settings) : null;
+      var pv = flow.payView(row, pick, settings, ratesState === 'loading', price);
+      var who = 'We pay';
+      try { if (host && host.isSourcer && host.isSourcer()) who = 'Your offer'; } catch (e) { who = 'We pay'; }
+      return '<div class="sc-sg-price sc-sg-payline' + (pv.buying === false ? ' sc-no' : '') + '"><span>' + who + '</span><b>' + escHtml(pv.pay) + '</b></div>' +
+        (pv.note ? '<div class="sc-sg-rarity sc-sg-paynote">' + escHtml(pv.note) + '</div>' : '');
     }
 
     function renderCard(lines) {
@@ -18072,6 +18186,7 @@ window.SinglesPrice = {
               '<div class="sc-sg-price"><span class="sc-sg-dot' + (price.source === 'live' ? ' sc-sg-live' : '') + '"></span>' +
                 '<span>' + escHtml(price.source === 'live' ? agoText(price.asOf) : 'List price') + '</span>' +
                 '<b>' + escHtml(price.market == null ? 'no price' : flow.fmt(price.market)) + '</b></div>') +
+            payLineHtml(lines, price) +
             (onPile ? '<div class="sc-sg-price"><span class="sc-sg-dot sc-sg-live"></span><span>On the pile</span></div>' : '') +
           '</div>' +
         '</div>' +
@@ -19508,6 +19623,17 @@ window.SheetFiles = {
       input: document.getElementById('sc-adjust-input'),
       err: document.getElementById('sc-adjust-err'),
       status: document.getElementById('sc-adjust-status')
+    };
+    // The same box as minus / the figure / plus in a small sheet (the scoreboard's Adjust chip opens it, empty pile or not).
+    var adjustDlg = {
+      sheet: document.getElementById('sc-adjust-dlg'),
+      done: document.getElementById('sc-adjust-dlg-done'),
+      minus: document.getElementById('sc-adjust-dlg-minus'),
+      plus: document.getElementById('sc-adjust-dlg-plus'),
+      input: document.getElementById('sc-adjust-dlg-input'),
+      err: document.getElementById('sc-adjust-dlg-err'),
+      status: document.getElementById('sc-adjust-dlg-status'),
+      zero: document.getElementById('sc-adjust-dlg-zero')
     };
 
     function metaContent(name) {
@@ -21370,7 +21496,7 @@ window.SheetFiles = {
       if (fig && fig.payEdited) return 'Pay typed by hand';
       if (fig && fig.payFromMarket && price) return 'Typed market × ' + price.pct + '%';
       var m = OfferRules.ruleMath(price);
-      if (m && typeof price.weekendPct === 'number' && price.weekendPct !== price.pct) m += ' (weekend ' + price.weekendPct + '%)';
+      if (m && typeof price.weekendPct === 'number' && price.weekendPct !== price.pct) m += ' (we pay ' + price.weekendPct + '%)';
       return m;
     }
     /** The words that change for a sourcer: the tile says Your offer, not We pay. */
@@ -21409,11 +21535,17 @@ window.SheetFiles = {
         The line goes when it has neither. */
     function renderScoreAdjust() {
       var p = myAdjust();
+      // The chip is the way to the Adjust sheet, so it is there for any signed-in login (not a lock-only screen, which has no pile
+      // and no rates) at 0 too, before the first scan: "Adjust 0%". It is always the Adjust figure, never the login's cut.
+      var show = !!viewer().id && !lkOn();
       if (dom.scoreAdjust) {
-        dom.scoreAdjust.textContent = p ? adjustWords(p) : '';
-        dom.scoreAdjust.hidden = !p;
+        var words = adjustWords(p);
+        dom.scoreAdjust.textContent = show ? words : '';
+        dom.scoreAdjust.setAttribute('aria-label', words + '. Tap to change it');
+        dom.scoreAdjust.classList.toggle('sc-sub-adjust-on', p !== 0);
+        dom.scoreAdjust.hidden = !show;
       }
-      if (dom.pileSub) dom.pileSub.hidden = !p && !dom.pileBuyCount.textContent;
+      if (dom.pileSub) dom.pileSub.hidden = !show && !dom.pileBuyCount.textContent;
     }
     /** Something about the pile's rates changed: price every card again, keep it with the pile, draw it. */
     function pileChanged() {
@@ -21472,8 +21604,8 @@ window.SheetFiles = {
     function bandMetaHtml(b, sourcer, points) {
       var words = bandBasisWords(b);
       var of = words ? ' of ' + words : '';
-      var parts = ['Weekend ' + b.weekendPct + '%' + of];
-      if (sourcer) parts.push('you offer ' + b.pct + '%');
+      var parts = ['We pay ' + b.weekendPct + '%' + of];
+      if (sourcer) parts.push('Your offer ' + b.pct + '%');
       else if (points) parts.push('pays ' + b.pct + '% with ' + adjustWords(points));
       var html = parts.map(function (p) { return esc(p); }).join(' · ');
       if (b.cards) html += ' · <span class="sc-band-cards">' + b.cards + (b.cards === 1 ? ' card' : ' cards') + '</span>';
@@ -21682,7 +21814,10 @@ window.SheetFiles = {
     var ADJUST_RETRY_MS = 30000;
     var ADJUST_NO_SIGNAL = 'Saved on this phone. No signal to save it to your login: it tries again when the signal is back.';
     var ADJUST_HINT = 'Type points from -100 to 100, like -5, 2 or 1.5.';
-    function adjustStatus(text) { if (adjustUi.status) adjustUi.status.textContent = text || ''; }
+    function adjustStatus(text) {
+      if (adjustUi.status) adjustUi.status.textContent = text || '';
+      if (adjustDlg.status) adjustDlg.status.textContent = text || '';
+    }
     /** This phone holds a box their login has not taken, and no save is waiting or out. */
     function adjustUnsaved() {
       return !adjustTimer && !adjustSaving && PileRates.adjustNeedsSave(viewer(), loadAdjustCache());
@@ -21697,9 +21832,77 @@ window.SheetFiles = {
       if (adjustUi.sign) adjustUi.sign.disabled = !known;
       if (!adjustTyping) adjustUi.input.value = p ? PileRates.formatPoints(p) : '';
       if (adjustUi.box) adjustUi.box.classList.toggle('sc-adjust-on', p !== 0);
+      renderAdjustDlg();
+    }
+    /** The sheet's figure and keys (never rewritten under a finger typing in it), and nothing to press while no login is known. */
+    var adjustDlgTyping = false;
+    function renderAdjustDlg() {
+      if (!adjustDlg.input) return;
+      var p = myAdjust();
+      var known = !!viewer().id;
+      adjustDlg.input.disabled = !known;
+      if (adjustDlg.minus) adjustDlg.minus.disabled = !known || p <= -100;
+      if (adjustDlg.plus) adjustDlg.plus.disabled = !known || p >= 100;
+      if (adjustDlg.zero) adjustDlg.zero.disabled = !known || p === 0;
+      if (!adjustDlgTyping) adjustDlg.input.value = p ? PileRates.formatPoints(p) : '0';
+    }
+    function adjustDlgError(text) {
+      if (adjustDlg.input) adjustDlg.input.setAttribute('aria-invalid', text ? 'true' : 'false');
+      if (!adjustDlg.err) return;
+      adjustDlg.err.textContent = text || '';
+      adjustDlg.err.hidden = !text;
+    }
+    function openAdjustDlg() {
+      if (!adjustDlg.sheet || !viewer().id) return;
+      adjustDlgTyping = false;
+      adjustDlgError('');
+      renderAdjustDlg();
+      showSheet(adjustDlg.sheet);
+    }
+    function closeAdjustDlg() {
+      adjustDlgTyping = false;
+      adjustDlgError('');
+      hideSheet(adjustDlg.sheet);
+      renderAdjustDlg();
+    }
+    /** One point up or down (a figure with a half is rounded the way the box keeps it): the pile and the scoreboard follow at once. */
+    function stepAdjust(dir) {
+      var p = PileRates.normalizePoints(Math.round((myAdjust() + dir) * 100) / 100);
+      if (p == null) return;
+      adjustDlgError('');
+      setAdjust(Math.max(-100, Math.min(100, p)));
+      renderAdjustDlg();
+    }
+    function onAdjustDlgInput() {
+      var r = PileRates.parseAdjustInput(adjustDlg.input.value);
+      adjustDlgError(r.ok || r.partial ? '' : ADJUST_HINT);
+      if (r.ok) setAdjust(r.points);
+    }
+    function onAdjustDlgCommit() {
+      var r = PileRates.parseAdjustInput(adjustDlg.input.value);
+      adjustDlgTyping = false;
+      renderAdjustDlg();
+      if (r.ok || r.partial) { adjustDlgError(''); return; }
+      adjustDlgError('Not changed: still ' + PileRates.formatPoints(myAdjust()) + '%. ' + ADJUST_HINT);
+    }
+    function wireAdjustDlg() {
+      if (!adjustDlg.sheet) return;
+      if (dom.scoreAdjust) dom.scoreAdjust.addEventListener('click', openAdjustDlg);
+      if (adjustDlg.done) adjustDlg.done.addEventListener('click', closeAdjustDlg);
+      if (adjustDlg.minus) adjustDlg.minus.addEventListener('click', function () { stepAdjust(-1); });
+      if (adjustDlg.plus) adjustDlg.plus.addEventListener('click', function () { stepAdjust(1); });
+      if (adjustDlg.zero) adjustDlg.zero.addEventListener('click', function () { adjustDlgError(''); setAdjust(0); renderAdjustDlg(); });
+      if (adjustDlg.input) {
+        adjustDlg.input.addEventListener('focus', function () { adjustDlgTyping = true; });
+        adjustDlg.input.addEventListener('blur', onAdjustDlgCommit);
+        adjustDlg.input.addEventListener('input', onAdjustDlgInput);
+        adjustDlg.input.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' && adjustDlg.input.blur) { ev.preventDefault(); adjustDlg.input.blur(); } });
+      }
+      sheetDismissals(adjustDlg.sheet, closeAdjustDlg);
     }
     /** The box's error line: `text` shows it (and rings the box red), '' hides it. */
     function adjustError(text) {
+      adjustDlgError(text);
       if (adjustUi.box) adjustUi.box.classList.toggle('sc-adjust-bad', !!text);
       if (adjustUi.input) adjustUi.input.setAttribute('aria-invalid', text ? 'true' : 'false');
       if (!adjustUi.err) return;
@@ -21821,6 +22024,7 @@ window.SheetFiles = {
     }
 
     function wirePileRates() {
+      wireAdjustDlg();
       if (dom.ratesOpen) dom.ratesOpen.addEventListener('click', openRates);
       if (ratesUi.done) ratesUi.done.addEventListener('click', closeRates);
       if (ratesUi.reset) ratesUi.reset.addEventListener('click', setDefaultRates);
@@ -24365,6 +24569,8 @@ window.SheetFiles = {
         if (!pile.list().length) return; // nothing to lose, nothing to confirm
         dom.clearCount.textContent = String(pile.list().length);
         dom.clearConfirm.hidden = false;
+        // the confirm row sits below the pile: bring it into view, or the tap looks like it did nothing
+        if (typeof dom.clearConfirm.scrollIntoView === 'function') { try { dom.clearConfirm.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { /* an old engine: no smooth scroll */ } }
       });
       dom.clearNo.addEventListener('click', function () { dom.clearConfirm.hidden = true; });
       dom.clearYes.addEventListener('click', function () {
@@ -24553,6 +24759,7 @@ window.SheetFiles = {
       // this login's bar had Singles last time (iopTabBar): before /status answers, Singles opens as it was left
       remembers: function () { return tabRemembers('singles'); },
       inApp: function () { return bridge.isAvailable(); },
+      isSourcer: function () { return isSourcer(); }, // YOUR OFFER for a sourcer, WE PAY for an owner (as on Slabs)
       changed: function () { renderTabs(); },
       slabCamerasOff: function () {
         closeCamera();
