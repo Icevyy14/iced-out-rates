@@ -389,8 +389,9 @@ function shownTabs(states, cached, capped) {
 
 /**
  * The very first frame's bar, from storage alone (run in the page head, before anything is drawn).
- * `o`: { session (iopScannerAuth, raw), roleRaw (iopViewerRole, raw), cacheRaw (iopTabBar, raw), kind (iopKind), ownerIds, decode }.
- * -> { ids, cur } (an owner's remembered bar), { ids: [], cur: null, wait: true } (an owner with nothing remembered for this login:
+ * `o`: { session (iopScannerAuth, raw), roleRaw (iopViewerRole, raw), cacheRaw (iopTabBar, raw), ownerIds, decode }.
+ * -> { ids, cur } (an owner's remembered bar; cur is always Slabs: the Scanner always opens on Slabs, whatever the last tab was,
+ *    Penguin 11/25), { ids: [], cur: null, wait: true } (an owner with nothing remembered for this login:
  *    the bar's space is kept, empty, until the answers are in), or null (draw nothing: the Scanner module draws the bar when it knows).
  * The login's role is decided here exactly as the Scanner does it (PileRates.roleOf): this phone's saved answer for THAT user id,
  * else an owner's own user id; anyone else is not known yet, and gets nothing from memory.
@@ -415,9 +416,7 @@ function earlyTabs(o) {
     if (!krec || krec.who !== who || krec.role !== 'sourcer' || !isObj(known)) return null;
     var kids = flaggedTabs(known, krec.tabs);
     if (kids.length < 2) return null;
-    var kcur = kids.indexOf(o.kind) >= 0 ? o.kind : 'slabs';
-    if (kids.indexOf(kcur) < 0) kcur = kids[0];
-    return { ids: kids, cur: kcur };
+    return { ids: kids, cur: kids.indexOf('slabs') >= 0 ? 'slabs' : kids[0] };
   }
   // Any other login (not answered for yet, signed out) gets nothing from memory.
   if (role !== 'owner') return null;
@@ -425,9 +424,7 @@ function earlyTabs(o) {
   if (!rec || rec.who !== who || rec.role !== 'owner') return { ids: [], cur: null, wait: true };
   var ids = rec.tabs.slice();
   if (ids.length < 2) return null;
-  var cur = ids.indexOf(o.kind) >= 0 ? o.kind : 'slabs';
-  if (ids.indexOf(cur) < 0) cur = ids[0];
-  return { ids: ids, cur: cur };
+  return { ids: ids, cur: ids.indexOf('slabs') >= 0 ? 'slabs' : ids[0] };
 }
 
 /**
@@ -493,7 +490,7 @@ window.TabCache = {
     if (!ls || !window.TabCache) return;
     var get = function (k) { try { return ls.getItem(k); } catch (e) { return null; } };
     var early = window.TabCache.earlyTabs({
-      session: get('iopScannerAuth'), roleRaw: get('iopViewerRole'), cacheRaw: get(window.TabCache.KEY), kind: get('iopKind'),
+      session: get('iopScannerAuth'), roleRaw: get('iopViewerRole'), cacheRaw: get(window.TabCache.KEY),
       ownerIds: /* TABCACHE-OWNERS */["d3214c2a-4222-4171-9153-fe7ec466fc24"]/* /TABCACHE-OWNERS */, decode: typeof atob === 'function' ? function (s) { return atob(s); } : null,
     });
     window.TabCache.early = early;
@@ -2838,8 +2835,15 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
      right, so it comes from the right), 220ms, easing out. Only the parts that change between tabs move; the header and the fixed
      docks never get a transform (it would unpin a fixed dock for the moment it runs), and the fill is "backwards" so nothing is left
      transformed afterwards. CSS only: a barcode that lands mid-way is read and shown exactly as ever. */
-  @keyframes sc-tab-in-r{from{opacity:0;transform:translateX(10px);}to{opacity:1;transform:none;}}
-  @keyframes sc-tab-in-l{from{opacity:0;transform:translateX(-10px);}to{opacity:1;transform:none;}}
+  /* (Penguin, 11/25: switching Slabs <-> Singles "its so buggy"). The screen starts at 40%, never 0: the old screen is gone on the
+     tap's own frame, so a start at 0 was a black frame or two with only the parts that do not animate (the header, the docks) on it.
+     Slabs <-> Singles is a plain 150ms cross-fade (.sc-tab-in-fade): no sideways slide, because Singles' camera box is the screen's
+     full width (100vw) and 10px of slide pushed it past the right edge (the whole page zoomed out for a moment), and in the apps the
+     camera panel's own slide up or down is the motion; a second one sideways read as jumpy. Reduced motion: the page-wide rule cuts
+     these to nothing, so the switch is a one-frame swap. */
+  @keyframes sc-tab-in-r{from{opacity:.4;transform:translateX(10px);}to{opacity:1;transform:none;}}
+  @keyframes sc-tab-in-l{from{opacity:.4;transform:translateX(-10px);}to{opacity:1;transform:none;}}
+  @keyframes sc-tab-in-fade{from{opacity:.4;}to{opacity:1;}}
   @keyframes sc-tab-fade{from{opacity:0;}to{opacity:1;}}
   #tab-scanner .scanner-layout.sc-tab-in > :is(#sc-vf-wrap,#sc-score,#sc-sheet-cue,#sc-result,#sc-pl,#sc-seller,#sc-lock,#sc-rule-card,#sc-earlier,#sc-account-open),
   #tab-scanner .scanner-layout.sc-tab-in > #sc-sg > :not(.sc-sg-dock):not(.sc-sg-toast),
@@ -2849,10 +2853,13 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .scanner-layout.sc-tab-in.sc-tab-in-l > :is(#sc-vf-wrap,#sc-score,#sc-sheet-cue,#sc-result,#sc-pl,#sc-seller,#sc-lock,#sc-rule-card,#sc-earlier,#sc-account-open),
   #tab-scanner .scanner-layout.sc-tab-in.sc-tab-in-l > #sc-sg > :not(.sc-sg-dock):not(.sc-sg-toast),
   #tab-scanner .scanner-layout.sc-tab-in.sc-tab-in-l > #sc-sh > :not(.sc-sh-dock):not(.sc-sh-toast){animation-name:sc-tab-in-l;}
+  #tab-scanner .scanner-layout.sc-tab-in.sc-tab-in-fade > :is(#sc-vf-wrap,#sc-score,#sc-sheet-cue,#sc-result,#sc-pl,#sc-seller,#sc-lock,#sc-rule-card,#sc-earlier,#sc-account-open),
+  #tab-scanner .scanner-layout.sc-tab-in.sc-tab-in-fade > #sc-sg > :not(.sc-sg-dock):not(.sc-sg-toast),
+  #tab-scanner .scanner-layout.sc-tab-in.sc-tab-in-fade > #sc-sh > :not(.sc-sh-dock):not(.sc-sh-toast){animation:sc-tab-in-fade 150ms ease-out backwards;}
   @media (prefers-reduced-motion:reduce){
     #tab-scanner .scanner-layout.sc-tab-in > :is(#sc-vf-wrap,#sc-score,#sc-sheet-cue,#sc-result,#sc-pl,#sc-seller,#sc-lock,#sc-rule-card,#sc-earlier,#sc-account-open),
     #tab-scanner .scanner-layout.sc-tab-in > #sc-sg > :not(.sc-sg-dock):not(.sc-sg-toast),
-    #tab-scanner .scanner-layout.sc-tab-in > #sc-sh > :not(.sc-sh-dock):not(.sc-sh-toast){animation-name:sc-tab-fade;animation-duration:140ms;animation-timing-function:linear;}
+    #tab-scanner .scanner-layout.sc-tab-in > #sc-sh > :not(.sc-sh-dock):not(.sc-sh-toast){animation-name:sc-tab-in-fade;animation-duration:140ms;animation-timing-function:linear;}
     #tab-scanner .sc-tabbar.sc-tab-anim::after{transition:opacity 160ms linear;}
     #tab-scanner .sc-tabbar.sc-tab-anim .sc-tab[aria-current="page"]::before{animation:none;}
   }
@@ -3564,7 +3571,9 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   /* Camera off, the same as the slab camera (Penguin, 11/23): no big panel, the frame shrinks to one slim row with the
      round camera button and a short line (the slab's own .sc-vf-off / .sc-start / .sc-vf-off-text look). Tap it, it's on. */
   #tab-scanner .sc-sg-cam.sc-sg-cam-is-off{width:auto;margin:calc(12px + env(safe-area-inset-top)) 0 0;height:auto;border-radius:var(--sc-r-card);background:var(--sc-fill-card-bg);box-shadow:inset 0 0 0 1px var(--sc-line);}
-  #tab-scanner .sc-sg-cam.sc-sg-cam-is-off .sc-sg-cam-off{animation:sc-sg-appear 200ms var(--sc-ease) both;}
+  /* the off row fades in only when the camera goes off in place (turned off, refused, failed): on opening Singles the whole screen
+     already fades in with the switch, and a second fade from nothing under it read as a blank flicker (Penguin, 11/25) */
+  #tab-scanner .sc-sg-cam.sc-sg-cam-is-off.sc-sg-off-fade .sc-sg-cam-off{animation:sc-sg-appear 200ms var(--sc-ease) both;}
   #tab-scanner .sc-sg-cam-off[hidden]{display:none;}
   #tab-scanner .sc-sg-bottom{position:absolute;left:12px;right:12px;bottom:12px;display:flex;align-items:center;gap:10px;}
   #tab-scanner .sc-sg-bottom[hidden],#tab-scanner .sc-sg-guide[hidden]{display:none;}
@@ -4144,16 +4153,14 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
 <script>
 (function () {
   var html = document.documentElement;
-  // The camera box (a phone's or a computer's browser, not the apps): when its camera came up last time (iopCamOn) and the screen
-  // opening is the slab one, the box starts in its full "Starting camera" state, as the camera's own start would put it a moment
+  // The camera box (a phone's or a computer's browser, not the apps): when its camera came up last time (iopCamOn), the box starts
+  // in its full "Starting camera" state, as the camera's own start would put it a moment
   // later (autoCamera takes it over, and puts the slim off row back if the camera does not start after all).
   try {
     var ls0 = window.localStorage;
-    var kind0 = ls0.getItem('iopKind');
-    var e0 = window.TabCache ? window.TabCache.early : null;
     var auth0 = JSON.parse(ls0.getItem('iopScannerAuth') || 'null');
-    var slabScreen = e0 && !e0.wait ? e0.cur === 'slabs' && kind0 !== 'singles' : kind0 !== 'singles' && kind0 !== 'sheet';
-    if (!window.penguinNative && ls0.getItem('iopCamOn') === '1' && auth0 && auth0.access_token && slabScreen) {
+    // (the screen opening is always the slab one: neither Singles nor the Sheet opens by itself, whatever iopKind says: Penguin, 11/25)
+    if (!window.penguinNative && ls0.getItem('iopCamOn') === '1' && auth0 && auth0.access_token) {
       var vfw = document.getElementById('sc-vf-wrap'), vf0 = document.getElementById('sc-vf'), off0 = document.getElementById('sc-vf-off');
       if (vfw && vf0 && off0) { vf0.hidden = false; off0.hidden = true; vfw.setAttribute('data-early-cam', ''); }
     }
@@ -4181,21 +4188,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
       bar.style.setProperty('--sc-tab-x', Math.round(on.offsetLeft + on.offsetWidth / 2) + 'px');
       bar.classList.add('sc-tab-ind');
     }
-    if (early.cur === 'sheet') {
-      var sub = document.querySelector('#tab-scanner .sc-brand-sub');
-      if (sub) sub.textContent = 'Sheet';
-    }
-    // ...and the screen of the tab on show, so the slab screen is never seen under a Singles or Sheet tab: its pane's own markup
-    // shows (the pane fills it in when it opens, a moment later). The Scanner takes it back off if that pane does not open.
-    if (early.cur === 'sheet' || early.cur === 'singles') {
-      var layout = document.getElementById('sc-layout');
-      var pane = document.getElementById(early.cur === 'sheet' ? 'sc-sh' : 'sc-sg');
-      if (layout && pane) {
-        layout.classList.add(early.cur === 'sheet' ? 'sc-sheet-mode' : 'sc-singles-mode');
-        pane.hidden = false;
-        bar.setAttribute('data-early-mode', early.cur);
-      }
-    }
+    // (the tab on show is always Slabs, and the slab screen is already the one in the markup: nothing else to put up)
   } catch (e) { /* the Scanner module draws the bar */ }
   finally { try { html.setAttribute('data-iop-bar', ''); } catch (e) { /* the head's own fallback shows the screen */ } }
 })();
@@ -10221,17 +10214,113 @@ function installScanReceiver(win, onScan) {
   return function uninstall() { win.penguinScan = prev; };
 }
 
+/**
+ * The camera panel's show / hide, smoothed for tab switches (Penguin, 11/25: "when you switch between singles and slabs, make
+ * the transition smooth, its so buggy"). Every showScanner / hideScanner the page sends goes through here, so:
+ *  - the panel is never asked back (show) less than `minGapMs` after it was sent away (hide): each turn-round costs the app a web
+ *    view resize and a status bar change mid-slide. A show asked for sooner waits for the gap, and only the LAST wish is sent
+ *    (Singles, Slabs, Singles in quick taps: the panel never comes back at all). A hide is never held: Singles takes the whole
+ *    screen at once, and a panel left to finish arriving over it would cover it (the apps turn a panel round mid-slide);
+ *  - a wish that is already what the app was last told sends nothing (a pending opposite one is dropped);
+ *  - a show can wait for the page to paint first (`afterPaint`: two frames), so the app's slide never starts on the frame the page
+ *    relays itself out; a hide goes at once (the Singles screen takes the whole screen as the panel slides away);
+ *  - while the person is tapping back and forth (a show wished for within `busyMs` of the last hide wished for), a show also waits until
+ *    they have stayed `settleMs` on the screen that wants it: taps a fifth of a second apart send one hide and then nothing until
+ *    the last tap, so the panel never slides in only to be sent straight back out. A hide is never held, so a show and the hide
+ *    after it can still be closer than `minGapMs` when the person stays just long enough for the show and then leaves;
+ *  - `force` sends a hide even when the last word was hide (a panel the app put back by itself from memory).
+ * `o`: { send(show) -> posts the message, now() ms, setTimeout, clearTimeout, frame(cb) (requestAnimationFrame), minGapMs, settleMs,
+ * busyMs }.
+ * Pure: no DOM; the page passes its own clock and timers.
+ */
+var PANEL_MIN_GAP_MS = 400;
+var PANEL_SETTLE_MS = 250;
+var PANEL_BUSY_MS = 700;
+function createPanelGate(o) {
+  o = o || {};
+  var send = o.send || function () {};
+  var now = o.now || function () { return Date.now(); };
+  var setT = o.setTimeout || setTimeout;
+  var clearT = o.clearTimeout || clearTimeout;
+  var frame = o.frame || function (cb) { return setT(cb, 16); };
+  var minGap = typeof o.minGapMs === 'number' ? o.minGapMs : PANEL_MIN_GAP_MS;
+  var settle = typeof o.settleMs === 'number' ? o.settleMs : PANEL_SETTLE_MS;
+  var busy = typeof o.busyMs === 'number' ? o.busyMs : PANEL_BUSY_MS;
+  var last = null; // true (show) / false (hide) / null (nothing sent yet)
+  var lastAt = -Infinity;
+  var slideAt = -Infinity; // when a shown panel was last sent away (a hide with nothing shown before it slides nothing: no gap)
+  var wish = null; // a send waiting (true / false), or null
+  var leftAt = -Infinity; // when a hide was last wished for (sent or not): the person left the panel's screen
+  var timer = null;
+  var gen = 0;
+  function fire(show) {
+    wish = null;
+    timer = null;
+    if (!show && last === true) slideAt = now();
+    last = show;
+    lastAt = now();
+    send(show);
+  }
+  function cancel() {
+    gen++;
+    if (timer !== null) { clearT(timer); timer = null; }
+    wish = null;
+  }
+  function want(show, opts) {
+    show = !!show;
+    opts = opts || {};
+    if (!show) leftAt = now();
+    if (wish !== null && wish === show && !opts.force) return; // already on its way
+    cancel();
+    if (show === last && !opts.force) return; // the app already has it (an opposite one that was waiting is dropped)
+    var wantedAt = now();
+    // tapping back and forth: the panel only comes back once the person has stayed on its screen settleMs
+    var settling = show && last === false && slideAt > -Infinity && wantedAt - leftAt < busy;
+    var wait = last !== null && last !== show ? Math.max(0, minGap - (now() - lastAt)) : 0;
+    if (!wait && !settling && !(show && opts.afterPaint)) { fire(show); return; }
+    wish = show;
+    var g = gen;
+    var go = function () { if (g === gen) fire(show); };
+    var afterGap = function () {
+      if (g !== gen) return;
+      var w = show && last === false ? Math.max(0, minGap - (now() - slideAt), settling ? settle - (now() - wantedAt) : 0) : 0;
+      if (w > 0) timer = setT(function () { timer = null; go(); }, w); else go();
+    };
+    // a show after paint: two frames, so the page's new layout is on screen before the app starts its slide
+    if (show && opts.afterPaint) frame(function () { if (g === gen) frame(afterGap); });
+    else afterGap();
+  }
+  /** The app re-sends its state when asked again for a panel it already shows: only when nothing is moving. */
+  function resend() {
+    if (wish !== null || last !== true || now() - lastAt < minGap) return false;
+    fire(true);
+    return true;
+  }
+  return {
+    want: want,
+    resend: resend,
+    cancel: cancel,
+    /** What the app was last told: true, false, or null. */
+    sent: function () { return last; },
+    /** A send still waiting (true / false), or null. */
+    pending: function () { return wish; }
+  };
+}
+
 window.NativeBridge = {
   MESSAGE_TYPES: MESSAGE_TYPES,
   SHEET_STOPS: SHEET_STOPS,
   THEMES_FROM_VERSION: THEMES_FROM_VERSION,
   CAMERA_PANEL_FROM_VERSION: CAMERA_PANEL_FROM_VERSION,
+  PANEL_MIN_GAP_MS: PANEL_MIN_GAP_MS,
+  PANEL_SETTLE_MS: PANEL_SETTLE_MS,
   createNativeBridge: createNativeBridge,
   themeWire: themeWire,
   sheetStopOf: sheetStopOf,
   cameraStateOf: cameraStateOf,
   layoutStop: layoutStop,
   installScanReceiver: installScanReceiver,
+  createPanelGate: createPanelGate,
 };
 })();
 
@@ -16853,6 +16942,11 @@ window.SinglesPrice = {
     var TICK_MS = 30 * 1000;
     var FETCH_WAIT_MS = 25000;
     var TOAST_MS = 5000;
+    // Back to the app: always Slabs (Penguin, 11/25), unless the Singles camera is starting or has only just started or failed: the
+    // phone's camera permission sheet can send the page to the background and back while it is up (RESUME_CAM_GRACE_MS after it).
+    var RESUME_CAM_GRACE_MS = 3000;
+    // In the apps the panel's camera is let go before Singles asks for its own: the panel slides away for about a third of a second.
+    var PANEL_RELEASE_MS = 400;
     var MAX_FAILED = 8;
     var KEEP_PHOTO_CHARS = 512 * 1024; // To check photos kept on the phone: well under the browser's store, which the slab pile shares
     var PHOTO_WIDTH = 640;
@@ -16873,10 +16967,9 @@ window.SinglesPrice = {
     // singles-live's /status: null not asked yet, true on, false off (or never answered). Asked again every STATUS_EVERY_MS: an
     // answer of off hides Singles at once; a read that fails keeps an earlier "on" (a blip at a show) and is tried again soon.
     var liveState = null, statusAsking = false, statusAt = 0, statusFailed = false, tickTimer = null;
-    // Opening the page, or coming back to the Scanner, reopens Singles when it was the last choice (and the slab camera waits for
-    // it: claimsCamera). A later "on" (after an off or no answer) only shows the Singles tab, so an owner scanning slabs meanwhile is
-    // never pulled away mid-scan.
-    var mayAutoEnter = true;
+    // Singles never opens by itself (Penguin, 11/25: "it auto opens to singles, i want it to auto open to slabs"): opening the app,
+    // coming back to the Scanner and coming back to the app always show Slabs. Only a tap on the Singles tab opens it. (iopKind is
+    // still kept, but never read to open Singles.)
     var on = false, active = false;
     var pile = null, queue = [], checking = null, results = null, pick = null, noMatch = null;
     // The match list whose "Not this one?" was answered (a look-alike tapped): that list folds away, so the same options don't stay
@@ -16889,10 +16982,12 @@ window.SinglesPrice = {
     var matching = 0, capturing = false, jobs = 0, seller = 0;
     var note = '', noteTimer = null, nextTimer = null, toastTimer = null, toastUndo = null, flashTimer = null;
     var stream = null, camStarting = false, camGen = 0, camMsg = '';
-    // camAsking: opened by itself in a browser, while it asks whether the camera is already allowed (it is about to start).
-    // camLive: the picture has real frames (it fades in over the dark box then). LIVE_FALLBACK_MS: a browser that never says so.
-    // camHeld: opened from the bar's memory before singles-live's first answer; no camera until it says on (camHeldTap: by a tap).
-    var camHeld = false, camHeldTap = false;
+    var camSettledAt = -Infinity; // when the last camera start answered (a stream, or an error)
+    // Singles always opens with its camera OFF (Penguin, 11/25: "have singles scanner have a turned off camera until they tap the
+    // camera button thing to turn it on and off"): the slim off row with the round camera button, as the slab camera when off. Only
+    // that button starts it (the browser asks for permission then, never before); the camera-off button and leaving Singles stop it.
+    // camAsking: the box keeps its full "starting" look (kept for cameraView; nothing sets it any more since Singles never starts its
+    // own camera). camLive: the picture has real frames (it fades in over the dark box then). LIVE_FALLBACK_MS: a browser that never says so.
     var camAsking = false, camLive = false, liveTimer = null, LIVE_FALLBACK_MS = 1500;
     // fullPref: the camera covers the screen while it runs (only after the expand button; Singles always opens in the box;
     // Done drops it back to the box). isFull: it does right now. camTrack/torchCap/torchOn: the flashlight, only where the browser reports one.
@@ -16902,6 +16997,7 @@ window.SinglesPrice = {
     // waiting box is shown only when it will start; a browser that is going to wait for a tap goes straight to the slim off row.
     var camPerm = null;
     var shownVisit = null, shownPay = null;
+    var wentAway = false; // the page went to the background (and is not back yet)
     var lastKeys = {};
 
     function reduceMotion() {
@@ -17015,6 +17111,14 @@ window.SinglesPrice = {
       }
       on_(window, 'resize', placeGuide);
       on_(el.video, 'loadedmetadata', placeGuide);
+      // Back to the app: Slabs (resumed), however short the trip away (Penguin, 11/25: "always Slabs"). Only the camera's own
+      // permission sheet keeps Singles: a camera still starting, or one that answered in the last RESUME_CAM_GRACE_MS.
+      on_(document, 'visibilitychange', function () {
+        if (document.hidden) { wentAway = true; return; }
+        var wasAway = wentAway;
+        wentAway = false;
+        if (wasAway && !camStarting && now() - camSettledAt >= RESUME_CAM_GRACE_MS) resumed();
+      });
     }
 
     // ── which screen: the tab bar, the remote off switch, owners only ───────────────────────────────
@@ -17040,7 +17144,6 @@ window.SinglesPrice = {
       var api = liveApi();
       if (!api) { liveState = false; statusAt = now(); return; }
       statusAsking = true;
-      var before = liveState;
       // singles-live's own function: the signed-in bearer rides along when the page has one (an auth gate there); the book and the rates
       // (other hosts) never get it
       var authed = null;
@@ -17055,13 +17158,7 @@ window.SinglesPrice = {
       }).then(function () {
         statusAsking = false;
         statusAt = now();
-        var wasOn = on; // (opened from memory before this answer: an answer of off closes it in refresh, which brings the slab camera back)
-        refresh();
-        // Opened from memory before this answer, its camera held back: singles-live said on, so it comes up now.
-        if (on && camHeld && liveState === true) { camHeld = false; camAsking = false; camUp(camHeldTap); }
-        mayAutoEnter = false;
-        // The slab camera was held back for a Singles that isn't coming (claimsCamera): it comes up now.
-        if (before === null && liveState !== true && !on && !wasOn && active && getKey(KIND_KEY) === 'singles') host.slabCamerasBack(false);
+        refresh(); // (opened from memory before this answer: an answer of off closes it there, which brings the slab camera back)
       });
     }
     function statusDue() {
@@ -17080,20 +17177,33 @@ window.SinglesPrice = {
       }
       if (statusDue()) askStatus();
       if (!mayBeOn()) { if (on) leave(false); changed(); return; }
-      if (!on && active && mayAutoEnter && getKey(KIND_KEY) === 'singles') { mayAutoEnter = false; enter(false); }
       if (on && ratesDue()) ensureData();
+      if (!on && liveState === true) preloadSoon();
       changed();
     }
 
-    /**
-     * Singles is on, or is about to come on by itself: an owner whose last choice was Singles, while singles-live's answer is still
-     * on its way (or said on). The slab camera (the app's panel, the browser camera) waits instead of coming up for a moment and
-     * being sent away. Never for a sourcer or the signed out (allowed() is false), and not once singles-live has said off.
-     */
-    function claimsCamera() {
-      if (on) return true;
-      return !!host && mayAutoEnter && liveState !== false && getKey(KIND_KEY) === 'singles' && allowed();
+    // The book (1.8 MB, indexed in about 70 ms on a phone) is read and indexed a moment after the Scanner opens for someone who may use
+    // Singles, on the slab screen while nothing else is going on, so the first tap on Singles never freezes mid-fade (Penguin, 11/25: switching "its so
+    // buggy"). Only once Singles is allowed and on; nothing starts, nothing is shown, no camera.
+    var PRELOAD_MS = 800;
+    var preloadTimer = null;
+    function preloadSoon() {
+      if (preloadTimer !== null || bookLoading || idx) return;
+      preloadTimer = setTimeout(function () {
+        preloadTimer = 'done';
+        // only while the slab screen is on show (the Sheet makes no network call of its own: it is not woken for this)
+        var sheetUp = false;
+        try { sheetUp = host.layout.classList.contains('sc-sheet-mode'); } catch (e) { sheetUp = false; }
+        if (!host || !active || on || sheetUp || !allowed() || liveState !== true) { preloadTimer = null; return; }
+        try { ensureEngine(); ensureData(); } catch (e) { /* Singles reads it on opening instead */ }
+      }, PRELOAD_MS);
     }
+
+    /**
+     * Does Singles hold the camera (the slab camera, the app's panel or the browser camera, stays away)? Only while Singles is on:
+     * it never opens by itself any more, so nothing is held back for it on start (Penguin, 11/25).
+     */
+    function claimsCamera() { return on; }
 
     /** The tab bar's Singles / Slabs (and "That's a slab: switch to Slabs?"). Remembered under iopKind. */
     function pickKind(kind) {
@@ -17110,8 +17220,13 @@ window.SinglesPrice = {
       }
     }
 
+    var SETTLE_MS = 250; // the switch's fade (150 ms) and a little more
+    var enteredAt = -Infinity;
+    var entering = false; // (the off row does not fade in on its own while the whole screen fades in)
     function enter(byTap) {
       on = true;
+      entering = true;
+      enteredAt = now();
       // Singles always opens on its main screen, the camera in the box (Penguin, 11/25: "I need it to be the main UI", on opening the
       // app and on tapping Singles). Full screen only from the expand button.
       fullPref = false;
@@ -17121,41 +17236,18 @@ window.SinglesPrice = {
       host.slabCamerasOff();
       ensureEngine();
       ensureData();
-      render();
+      // Every opening starts with the camera off (the slim off row and its round camera button): no camera, no permission prompt,
+      // until that button is tapped (Penguin, 11/25).
+      camAsking = false;
+      try { render(); } finally { entering = false; }
       placeGuide();
-      // Opened from memory (the bar's last choice) before singles-live has said it is on: the camera is held back (no camera is
-      // asked for a Singles that may be off), the box keeping its full size, until the answer comes (askStatus).
-      if (liveState !== true) {
-        camHeld = true;
-        camHeldTap = !!byTap;
-        camAsking = true;
-        renderCam();
-      } else camUp(byTap);
       if (liveState === true && pile) refreshStaleLive();
       changed();
     }
 
-    function camUp(byTap) {
-      if (!on) return;
-      // In the apps the page's own camera is allowed and the panel was just sent away; in a browser, a tap on the tab is the
-      // person asking (the browser may ask for permission). Opened by itself (the last choice kept) it waits for a tap,
-      // unless the browser already allows the camera.
-      if (byTap || host.inApp()) startCamera();
-      else {
-        // the box keeps its full size while the browser answers (a quick "yes" starts the camera with no jump), but only when the
-        // camera is (or may well be) allowed: one the browser has said will ask goes straight to the off row (never full, then slim)
-        camAsking = camPerm === 'granted' || (camPerm === null && hasPermissionsApi());
-        if (camAsking) renderCam();
-        cameraAllowedAlready().then(function (ok) {
-          camAsking = false;
-          if (ok && on && active) startCamera();
-          else if (on) renderCam();
-        });
-      }
-    }
-
     function leave(byTap) {
-      camHeld = false;
+      // a Singles field left focused would read as a keyboard on Slabs in the apps (the page there is shorter under the camera panel)
+      try { var f = document.activeElement; if (f && el.root.contains(f) && f.blur) f.blur(); } catch (e) { /* nothing focused */ }
       camAsking = false;
       stopCamera();
       clearTimeout(nextTimer);
@@ -17170,18 +17262,19 @@ window.SinglesPrice = {
 
     function paneActivate() {
       active = true;
-      mayAutoEnter = true;
       if (tickTimer === null) tickTimer = setInterval(function () { if (active) refresh(); }, TICK_MS);
       refresh();
-      if (on) { el.root.hidden = false; render(); placeGuide(); if (!stream && !camHeld && host.inApp()) startCamera(); }
     }
     function paneDeactivate() {
       active = false;
-      mayAutoEnter = true; // back on the Scanner: Singles again, if it was the last choice
-      fullPref = false; // and back in the box, not full screen, until the expand button
+      fullPref = false;
       if (tickTimer !== null) { clearInterval(tickTimer); tickTimer = null; }
-      stopCamera();
+      // Leaving the Scanner (Settings, another tab) closes Singles: coming back always shows Slabs (Penguin, 11/25). The slab
+      // cameras are not asked back here (the Scanner is going away; slabCamerasBack does nothing while it is not active).
+      if (on) leave(false); else stopCamera();
     }
+    /** The app (or the browser tab) came back to the front: Slabs, never Singles (Penguin, 11/25), with the slab camera as on start. */
+    function resumed() { if (on && active) leave(false); }
     function isOn() { return on; }
 
     /** A slab barcode while Singles is on (the app's scanner, a scanner gun, or a cert typed in the search). */
@@ -17234,6 +17327,10 @@ window.SinglesPrice = {
     function ensureData() {
       if (!bookLoading) {
         bookLoading = getJson('singles-book.json', 60000).then(function (raw) {
+          // Singles has just opened: the indexing (a long task) waits for its fade to finish
+          var wait = on ? Math.max(0, enteredAt + SETTLE_MS - now()) : 0;
+          return wait ? new Promise(function (r) { setTimeout(function () { r(raw); }, wait); }) : raw;
+        }).then(function (raw) {
           idx = window.SinglesMatch.indexBook(raw);
           bookInfo = { cards: raw.cards.length, date: shortDate(raw.syncedAt || raw.build) || 'unknown' };
           bookFailed = false;
@@ -17302,7 +17399,7 @@ window.SinglesPrice = {
       } catch (e) { return Promise.resolve(false); }
     }
     function startCamera() {
-      if (!on || !active || stream || camStarting || camHeld) return;
+      if (!on || !active || stream || camStarting) return;
       if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
         camMsg = "This browser can't use the camera here. Type the card's name or number below.";
         render();
@@ -17312,12 +17409,15 @@ window.SinglesPrice = {
       camMsg = 'Starting the camera…';
       render();
       var gen = ++camGen;
-      // In the apps the panel's camera is let go first (it slides away for about a third of a second).
-      new Promise(function (r) { setTimeout(r, host.inApp() ? 400 : 0); }).then(function () {
+      // In the apps the panel's camera is let go first (it slides away for about a third of a second): only what is left of that
+      // since Singles sent it away, so a tap long after opening Singles starts at once.
+      var release = host.inApp() ? Math.max(0, enteredAt + PANEL_RELEASE_MS - now()) : 0;
+      new Promise(function (r) { setTimeout(r, release); }).then(function () {
         if (gen !== camGen) throw new Error('stale');
         return navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } } });
       }).then(function (s) {
         camStarting = false;
+        camSettledAt = now();
         if (gen !== camGen || !on || !active) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
         stream = s;
         setupTrack(s);
@@ -17334,6 +17434,7 @@ window.SinglesPrice = {
       }, function (e) {
         if (gen !== camGen) return;
         camStarting = false;
+        camSettledAt = now();
         if (e && e.name === 'NotAllowedError') camPerm = 'denied';
         camMsg = e && e.name === 'NotAllowedError'
           ? "The camera is blocked for this page. Allow it in the browser's settings, or type the card below."
@@ -18049,6 +18150,8 @@ window.SinglesPrice = {
       el.video.hidden = !ready;
       el['cam-off'].hidden = !view.off;
       el['cam-wait'].hidden = !view.wait;
+      if (entering) el.cam.classList.remove('sc-sg-off-fade');
+      else if (view.off && !el.cam.classList.contains('sc-sg-cam-is-off')) el.cam.classList.add('sc-sg-off-fade');
       el.cam.classList.toggle('sc-sg-cam-is-off', view.off);
       el.cam.classList.toggle('sc-sg-cam-starting', view.starting);
       el.cam.classList.toggle('sc-sg-cam-live', view.live);
@@ -18681,7 +18784,7 @@ window.SheetFiles = {
     var host = null;
     var el = {};
     var book = null;
-    var on = false;
+    var on = false, active = false, wentAway = false;
     var lastRead = { key: '', at: 0 };
     var toastTimer = null, toastFn = null, flashTimer = null;
     var swipe = null, swipeEatUntil = 0, touchAt = null, renderLater = false;
@@ -18772,6 +18875,13 @@ window.SheetFiles = {
         var early = s.swipe.state() === 'pending' && window.SwipeRow.holdsPage(t.clientX - touchAt.x, t.clientY - touchAt.y);
         if (s.swipe.holding() || early) ev.preventDefault();
       }, { passive: false });
+      // Back to the app: Slabs (resumed), however short the trip away (Penguin, 11/25: "always Slabs").
+      on_(document, 'visibilitychange', function () {
+        if (document.hidden) { wentAway = true; return; }
+        var wasAway = wentAway;
+        wentAway = false;
+        if (wasAway) resumed();
+      });
     }
 
     // ── on / off (the tab bar) ─────────────────────────────────────────────────────────────────────
@@ -18790,6 +18900,9 @@ window.SheetFiles = {
     }
     function leave() {
       if (!on) return;
+      // a Sheet field left focused would read as a keyboard on Slabs in the apps (the page there is shorter under the camera panel).
+      // What was typed in it stays (nothing here clears it): it is there again on the next tap of Sheet.
+      try { var f = focusedHere(); if (f && f.blur) f.blur(); } catch (e) { /* nothing focused */ }
       on = false;
       host.layout.classList.remove('sc-sheet-mode');
       el.root.hidden = true;
@@ -18800,8 +18913,26 @@ window.SheetFiles = {
       changed();
     }
     function refresh() { if (on && !allowed()) leave(); }
-    function paneActivate() { if (on) render(); }
-    function paneDeactivate() { hideToast(); }
+    function paneActivate() { active = true; if (on) render(); }
+    // Leaving the Scanner (Settings, another tab) closes the Sheet: coming back always shows Slabs (Penguin, 11/25). Its certs are
+    // already saved (SheetBook saves every change at once), so nothing is lost.
+    function paneDeactivate() { active = false; if (on) leave(); else hideToast(); }
+    /** The Sheet field that has the focus (the cert box, a sheet's name), or null. */
+    function focusedHere() {
+      var f = document.activeElement;
+      if (!f || f === document.body) return null;
+      if (f === el.input || f === el['name-input']) return f;
+      try { if ((el.root && el.root.contains && el.root.contains(f)) || [el.sheets, el.export].some(function (d) { return d && d.contains && d.contains(f); })) return f; } catch (e) { /* not ours */ }
+      return null;
+    }
+    /** Someone is in the middle of something on the Sheet: a field of it focused (typing), or one of its windows open (the sheet
+     *  picker, naming or deleting a sheet, an export, whose share sheet is what sent the app away). */
+    function busyHere() {
+      if (focusedHere()) return true;
+      return [el.sheets, el.export].some(function (d) { return !!(d && (d.open || (d.hasAttribute && d.hasAttribute('open')))); });
+    }
+    /** The app (or the browser tab) came back to the front: Slabs, never the Sheet (Penguin, 11/25), unless it is mid-use (busyHere). */
+    function resumed() { if (on && active && !busyHere()) leave(); }
     function isOn() { return on; }
 
     // ── feedback ────────────────────────────────────────────────────────────────────────────────
@@ -19669,6 +19800,9 @@ window.SheetFiles = {
       }
       return {
         unlock: function () { var a = get(); if (a && a.resume) { try { a.resume(); } catch (e) { /* audio blocked */ } } },
+        /** Made ahead, while nothing else happens (it starts suspended: no sound, nothing asked), so the first tap only resumes it. */
+        warm: function () { get(); },
+        made: function () { return !!ctx; },
         /** True while the browser still keeps sound shut (a page that has had no tap yet): the first scan by itself says so. */
         suspended: function () { return !!(ctx && ctx.state === 'suspended'); },
         tone: function (spec) {
@@ -19866,10 +20000,20 @@ window.SheetFiles = {
     // never snaps out from under a panel still on screen. Shown again meanwhile: the timer is cancelled, nothing moves.
     var PANEL_SLIDE_MS = 320;
     var panelHideTimer = null;
-    function setPanel(show) {
+    // Every showScanner / hideScanner goes through one gate (scanner/nativeBridge.js createPanelGate; Penguin, 11/25: switching
+    // Slabs <-> Singles "its so buggy"): never a show and a hide less than 400 ms apart (quick taps send only the last wish, often
+    // nothing at all), and a show is sent once the page has painted its sheet layout (two frames), so the app's slide never starts
+    // on the frame the page relays itself out.
+    var panelGate = NativeBridge.createPanelGate({
+      send: function (show) { if (show) bridge.showScanner(); else bridge.hideScanner(); },
+      frame: function (cb) { try { return window.requestAnimationFrame(cb); } catch (e) { return setTimeout(cb, 16); } }
+    });
+    var panelChangedAt = -Infinity; // the keyboard check's baseline restarts while the app resizes the page for its panel
+    function setPanel(show, opts) {
       show = !!show;
-      if (show === panelShown) { if (show) bridge.showScanner(); return; } // asked again: the app re-sends its state
+      if (show === panelShown) { if (show) panelGate.resend(); return; } // asked again: the app re-sends its state (never mid-switch)
       panelShown = show;
+      panelChangedAt = Date.now();
       if (panelHideTimer !== null) { clearTimeout(panelHideTimer); panelHideTimer = null; }
       if (show) {
         dom.layout.classList.add('sc-native-cam');
@@ -19877,9 +20021,9 @@ window.SheetFiles = {
         sheetStop = sheetStop || 'mid'; // the panel always arrives at 'mid'
         if (dom.certInput.value) setTypeOpen(true); // typed before: the box stays in view
         applySheet();
-        bridge.showScanner();
+        panelGate.want(true, { afterPaint: !!(opts && opts.afterPaint) }); // back from Singles: after the page has painted
       } else {
-        bridge.hideScanner();
+        panelGate.want(false);
         nativeCameraOn = false;
         sheetStop = null;
         panelHideTimer = setTimeout(panelGone, PANEL_SLIDE_MS);
@@ -19896,8 +20040,8 @@ window.SheetFiles = {
       applySheet();
     }
     /** The panel goes up when the Scanner is on screen and signed in (version 4 only). */
-    function showPanelIfReady() {
-      if (bridge.cameraPanelSupported() && scannerActive && session && !SinglesPane.claimsCamera()) setPanel(true);
+    function showPanelIfReady(opts) {
+      if (bridge.cameraPanelSupported() && scannerActive && session && !SinglesPane.claimsCamera()) setPanel(true, opts);
     }
     // The app says what its panel camera is doing: remembered, and NOTHING else. No class, no layout: on or off, the page stays put.
     window.addEventListener('penguincamera', function (ev) {
@@ -19923,6 +20067,7 @@ window.SheetFiles = {
     var TEXT_INPUT_TYPES = ['text', 'search', 'tel', 'url', 'email', 'password', 'number'];
     var tallestHeight = 0;
     var tallestWidth = -1;
+    var fieldFocusedAt = -Infinity; // when a text field last took focus
     function textFieldFocused() {
       var el = document.activeElement;
       if (!el || !el.tagName) return false;
@@ -19933,7 +20078,11 @@ window.SheetFiles = {
       var vv = window.visualViewport;
       var open = !!vv && (vv.scale || 1) <= 1.05 && vv.height < window.innerHeight - KEYBOARD_GAP_PX;
       // the baseline is kept on every call, focused or not: it must already be the full height when a field is tapped
-      if (window.innerWidth !== tallestWidth) { tallestWidth = window.innerWidth; tallestHeight = window.innerHeight; }
+      // The app resizes the page as its camera panel comes and goes (Slabs <-> Singles): for a second after that the baseline is
+      // the new height, so a field that was already focused (a scanner gun's cert box) never reads as a keyboard just because the
+      // panel came back. A field tapped AFTER the switch ends that second at once: the shrink that follows is its keyboard.
+      var panelSettling = Date.now() - panelChangedAt < PANEL_SLIDE_MS + 700 && !(fieldFocusedAt > panelChangedAt && textFieldFocused());
+      if (window.innerWidth !== tallestWidth || panelSettling) { tallestWidth = window.innerWidth; tallestHeight = window.innerHeight; }
       else if (window.innerHeight > tallestHeight) tallestHeight = window.innerHeight;
       if (!open && bridge.isAvailable() && textFieldFocused()) open = window.innerHeight < tallestHeight - KEYBOARD_GAP_PX;
       dom.layout.classList.toggle('sc-kbd-open', open);
@@ -19946,7 +20095,7 @@ window.SheetFiles = {
     window.addEventListener('resize', updateKeyboardOpen);
     window.addEventListener('pageshow', updateKeyboardOpen);
     document.addEventListener('visibilitychange', updateKeyboardOpen);
-    document.addEventListener('focusin', updateKeyboardOpen);
+    document.addEventListener('focusin', function () { if (textFieldFocused()) fieldFocusedAt = Date.now(); updateKeyboardOpen(); });
     document.addEventListener('focusout', function () { setTimeout(updateKeyboardOpen, 0); }); // activeElement is not the new field yet
     if (window.visualViewport) window.visualViewport.addEventListener('resize', updateKeyboardOpen);
     updateKeyboardOpen();
@@ -23972,7 +24121,7 @@ window.SheetFiles = {
     }
     /** -> true when the camera box is taken care of (the camera is starting or on, or a check that sets the box right is under way). */
     function autoCameraNow(early) {
-      if (SinglesPane.claimsCamera()) return false; // Singles has its own camera (on, or about to come back on by itself): never two at once
+      if (SinglesPane.claimsCamera()) return false; // Singles has its own camera (while it is on): never two at once
       if (bridge.cameraPanelSupported()) return false; // app 1.10: the camera starts OFF, its panel's switch turns it on
       if (cam || cameraStarting) return true;
       if (!scannerActive || cameraTurnedOff || !session || nativeScannerOpen) return false;
@@ -24353,8 +24502,27 @@ window.SheetFiles = {
       });
       // The camera now starts with no tap, so the first touch anywhere primes the beep instead (cheap, idempotent).
       // (On an iPhone a touch's pointerdown does not count as the tap that lets sound start; pointerup, touchend and click do: all four prime it.)
+      // The first one used to create the sound system (an AudioContext: ~180 ms in a test browser) inside the tap, which held a tab
+      // switch back (Penguin, 11/25: switching "its so buggy"). It is made ahead now, suspended (no sound, no prompt), a second
+      // after the page opens with the sound on, so a touch only resumes it. Should a tab bar tap still come first, it primes
+      // the sound 600 ms later (after the switch has settled, still inside WebKit's 1 s gesture window), never inside the switch.
+      var soundPrimed = false, soundPrimeTimer = null;
+      setTimeout(function () { try { if (feedback.isSoundOn()) FeedbackAudio.warm(); } catch (e) { /* made on the first tone */ } }, 1000);
       ['pointerdown', 'pointerup', 'touchend', 'click'].forEach(function (type) {
-        document.addEventListener(type, function () { feedback.unlock(); userGesture = true; }, { capture: true, passive: true });
+        document.addEventListener(type, function (ev) {
+          userGesture = true;
+          if (!soundPrimed && !FeedbackAudio.made()) {
+            var t = ev && ev.target;
+            var onBar = !!(t && t.closest && dom.tabbar && t.closest('#sc-tabbar'));
+            if (onBar) {
+              if (soundPrimeTimer === null) soundPrimeTimer = setTimeout(function () { soundPrimed = true; feedback.unlock(); }, 600);
+              return;
+            }
+            soundPrimed = true;
+            if (soundPrimeTimer !== null) { clearTimeout(soundPrimeTimer); soundPrimeTimer = null; }
+          }
+          feedback.unlock();
+        }, { capture: true, passive: true });
       });
       renderCamButton(); // no camera and no app: no button, the row says so (never a dead "Camera not available here")
       function renderSoundButton() {
@@ -24616,12 +24784,13 @@ window.SheetFiles = {
         if (nativeScannerOpen) { bridge.closeScanner(); setNativeCamera(false); }
         // the panel's layout comes off with it, not a third of a second later (that would make the Singles screen jump down)
         if (panelShown) { setPanel(false); panelGone(); }
-        // a panel the app put back by itself (from memory) while the page held it for Singles: sent away too (no panel: nothing)
-        else if (bridge.cameraPanelSupported()) bridge.hideScanner();
+        // a panel the app put back by itself (from memory) while the page held it for Singles: sent away too (no panel: nothing).
+        // Through the gate: a show still waiting (quick taps) is dropped instead, and nothing is sent inside the 400 ms gap.
+        else if (bridge.cameraPanelSupported()) panelGate.want(false, { force: panelGate.pending() === null });
       },
       slabCamerasBack: function () {
         if (!scannerActive) return;
-        if (bridge.cameraPanelSupported()) showPanelIfReady(); else autoCamera();
+        if (bridge.cameraPanelSupported()) showPanelIfReady({ afterPaint: true }); else autoCamera();
       }
     });
 
@@ -24634,8 +24803,9 @@ window.SheetFiles = {
     //     neither on it sees no bar at all, and the lock screens are exactly what they were (no class, no request, nothing in storage
     //     changes for them). Its Slabs screen is the same either way;
     //   - signed out, or a login the server has not answered for yet ('Checking your account'): no bar.
-    // A bar with one tab is no bar. The last tab is kept under iopKind ('slabs' | 'singles' | 'sheet'); one that is no longer
-    // allowed falls back to Slabs. The camera hand-offs stay where they were: Singles sends the slab cameras away and brings them
+    // A bar with one tab is no bar. The last tab tapped is still written under iopKind ('slabs' | 'singles' | 'sheet'), but nothing
+    // reads it to open a tab: the Scanner always opens on Slabs (Penguin, 11/25), and a Sheet no longer allowed falls back to Slabs.
+    // The camera hand-offs stay where they were: Singles sends the slab cameras away and brings them
     // back (SinglesPane), and the Sheet uses the slab camera itself (the app's panel, or this page's camera in a browser).
     var KIND_KEY = 'iopKind';
     var TABS = [
@@ -24704,21 +24874,17 @@ window.SheetFiles = {
       return TABS ? TABS.filter(function (t) { return ids.indexOf(t.id) >= 0; }) : [];
     }
     function sheetOn() { return SheetPane.isOn(); }
-    /** The tab on show: the screen that is on, or Singles while it is about to come back by itself (the last choice, its answer still out). */
+    /** The tab on show: the screen that is on (Singles never opens by itself, so it is only ever on after a tap). */
     function tabOn() {
       if (singlesOn()) return 'singles';
       if (sheetOn()) return 'sheet';
-      try { if (SinglesPane.claimsCamera()) return 'singles'; } catch (e) { /* slabs */ }
       return 'slabs';
     }
-    function savedKind() { try { var s = safeLocalStorage(); return s ? s.getItem(KIND_KEY) : null; } catch (e) { return null; } }
     function saveKind(kind) { try { var s = safeLocalStorage(); if (s) s.setItem(KIND_KEY, kind); } catch (e) { /* this visit only */ } }
-    var sheetMayAuto = true; // opening the Scanner goes back to the Sheet when it was the last tab (until the first tap)
     // What the bar holds: its ids and the tab on show ('slabs,singles,sheet|slabs'), null while it was never drawn. A bar the first-frame
     // script drew is taken over as it is (data-early), so the hand-over itself changes nothing on screen.
     var tabsDrawn = null, tabIdsDrawn = [], tabCurDrawn = null;
     var tabTapping = false; // a tap on the bar is being handled (pickTab brings its own screen in)
-    var earlyMode = null; // the screen the first-frame script put up ('sheet' | 'singles'), until the Scanner's first activate
     (function adoptEarly() {
       try {
         var early = dom.tabbar && dom.tabbar.getAttribute ? dom.tabbar.getAttribute('data-early') : null;
@@ -24727,8 +24893,6 @@ window.SheetFiles = {
         tabIdsDrawn = early === 'wait' ? [] : early.split('|')[0].split(',').filter(Boolean);
         tabCurDrawn = early === 'wait' ? null : early.split('|')[1] || null;
         dom.tabbar.removeAttribute('data-early');
-        earlyMode = dom.tabbar.getAttribute('data-early-mode');
-        dom.tabbar.removeAttribute('data-early-mode');
       } catch (e) { /* drawn fresh */ }
     })();
     var TAB_MORPH_MS = 300, TAB_FADE_MS = 160;
@@ -24797,10 +24961,6 @@ window.SheetFiles = {
       var ids = plan.ids;
       if (!!SheetPane.canAdd() !== sheetAddShown) renderPile(); // the pile's Add to sheet follows the Sheet tab (whenever the bar's answer moves)
       if (sheetOn() && ids.indexOf('sheet') < 0) SheetPane.leave(); // no longer allowed: back to Slabs (iopKind kept)
-      if (sheetMayAuto && scannerActive && ids.indexOf('sheet') >= 0 && !sheetOn() && !singlesOn() && savedKind() === 'sheet') {
-        sheetMayAuto = false;
-        SheetPane.enter();
-      }
       // The memory: an owner's bar, kept once every answer is in (a /status read that failed is not an answer: the last record stays,
       // so one network blip never teaches the next open a bar without Singles); dropped when nobody is signed in, or when the login it
       // was kept for turns out to be a sourcer without a flag (such a phone gets nothing new in storage: its bar never waits for an answer).
@@ -24897,7 +25057,7 @@ window.SheetFiles = {
       // way a tap brings one in (a short fade and slide), never a hard cut. (A tap does this itself, in pickTab.)
       if (smooth && oldCur && oldCur !== cur && !tabTapping) {
         var from = oldIds.indexOf(oldCur), to = ids.indexOf(cur);
-        animateTabIn(to < from ? -1 : 1);
+        animateTabIn(to < from ? -1 : 1, cur === 'singles' || oldCur === 'singles');
       }
       tabIdsDrawn = ids.slice();
       tabCurDrawn = cur;
@@ -24921,14 +25081,14 @@ window.SheetFiles = {
     // Classes only, taken off once the animation is over; the switch itself (and any scan) never waits for it.
     var TAB_IN_MS = 220;
     var tabInTimer = null, tabAnimTimer = null;
-    function animateTabIn(dir) {
+    function animateTabIn(dir, fade) {
       var L = dom.layout;
       if (!L || !L.classList) return;
-      L.classList.remove('sc-tab-in', 'sc-tab-in-r', 'sc-tab-in-l');
+      L.classList.remove('sc-tab-in', 'sc-tab-in-r', 'sc-tab-in-l', 'sc-tab-in-fade');
       try { void L.offsetWidth; } catch (e) { /* restarts anyway */ }
-      L.classList.add('sc-tab-in', dir < 0 ? 'sc-tab-in-l' : 'sc-tab-in-r');
+      L.classList.add('sc-tab-in', fade ? 'sc-tab-in-fade' : dir < 0 ? 'sc-tab-in-l' : 'sc-tab-in-r');
       clearTimeout(tabInTimer);
-      tabInTimer = setTimeout(function () { L.classList.remove('sc-tab-in', 'sc-tab-in-r', 'sc-tab-in-l'); }, TAB_IN_MS + 80);
+      tabInTimer = setTimeout(function () { L.classList.remove('sc-tab-in', 'sc-tab-in-r', 'sc-tab-in-l', 'sc-tab-in-fade'); }, TAB_IN_MS + 80);
       if (dom.tabbar && dom.tabbar.classList) {
         dom.tabbar.classList.add('sc-tab-anim');
         clearTimeout(tabAnimTimer);
@@ -24939,33 +25099,28 @@ window.SheetFiles = {
       try { if (navigator.vibrate) navigator.vibrate(8); else if (bridge.isAvailable()) bridge.haptic('success'); } catch (e) { /* no buzz */ }
     }
     function pickTab(id) {
-      sheetMayAuto = false;
       if (!tabsNow().some(function (t) { return t.id === id; })) return;
       var cur = tabOn();
       if (id === cur) { try { window.scrollTo(0, 0); } catch (e) { /* stays */ } return; }
       var order = tabsNow().map(function (t) { return t.id; });
       tabTapping = true; // (renderTabs leaves the screen's slide-in to this tap)
       if (dom.tabbar && dom.tabbar.classList) dom.tabbar.classList.add('sc-tab-anim'); // the pill glides to the new tab
-      // Singles only about to come back by itself (its answer still out): there is no Singles screen to leave, only the choice
-      var claimedOnly = cur === 'singles' && !singlesOn();
-      if (cur === 'singles' && !claimedOnly) SinglesPane.pick('slabs'); // Singles' camera stops and the slab camera comes back (it buzzes)
+      if (cur === 'singles') SinglesPane.pick('slabs'); // Singles' camera stops and the slab camera comes back (it buzzes)
       if (cur === 'sheet') SheetPane.leave();
       if (id === 'singles') {
-        SinglesPane.pick('singles'); // sends the slab cameras away, starts its own (it buzzes, saves iopKind)
-        // (shown from memory and not yet able to open: the choice is kept, and Singles opens by itself when /status says on)
-        if (!singlesOn()) { saveKind('singles'); buzzTab(); }
+        SinglesPane.pick('singles'); // sends the slab cameras away; Singles opens with its camera off (it buzzes, saves iopKind)
+        if (!singlesOn()) { saveKind('singles'); buzzTab(); } // (not able to open right now: only the buzz, it never opens by itself)
       } else {
         if (id === 'sheet') SheetPane.enter();
         saveKind(id);
-        if (cur !== 'singles' || claimedOnly) buzzTab();
-        // the slab camera was held back for that Singles (claimsCamera): it comes up now
-        if (claimedOnly && scannerActive) { if (bridge.cameraPanelSupported()) showPanelIfReady(); else autoCamera(); }
+        if (cur !== 'singles') buzzTab();
       }
       renderTabs();
       tabTapping = false;
       // a new screen starts at its top (never halfway down the last one's pile), and comes in from the side of the tab tapped
       try { window.scrollTo(0, 0); } catch (e) { /* stays */ }
-      animateTabIn(order.indexOf(id) - order.indexOf(cur));
+      // Slabs <-> Singles: a plain 150ms cross-fade (CSS .sc-tab-in-fade: no sideways slide where the app's camera panel moves)
+      animateTabIn(order.indexOf(id) - order.indexOf(cur), id === 'singles' || cur === 'singles');
     }
     if (dom.tabbar) {
       dom.tabbar.addEventListener('click', function (ev) {
@@ -25074,25 +25229,13 @@ window.SheetFiles = {
       scannerActive = true;
       // App 1.10 signed out: a panel the app put back at launch (from memory) is sent away at once, so the sign-in form
       // is never under it (the app does nothing if no panel is up).
-      if (bridge.cameraPanelSupported() && !session && !panelShown) bridge.hideScanner();
+      if (bridge.cameraPanelSupported() && !session && !panelShown) panelGate.want(false, { force: true });
       if (bridge.cameraPanelSupported()) showPanelIfReady(); else autoCamera();
       applyPageHiding();
-      sheetMayAuto = true;
       applyLockMode();
       SinglesPane.activate();
       SheetPane.activate();
       renderTabs();
-      // the screen the first-frame script put up, if its pane did not open after all (no longer allowed, not loaded): the slab screen
-      if (earlyMode) {
-        var em = earlyMode;
-        earlyMode = null;
-        var emOn = em === 'sheet' ? sheetOn() : singlesOn();
-        if (!emOn) {
-          dom.layout.classList.remove(em === 'sheet' ? 'sc-sheet-mode' : 'sc-singles-mode');
-          var emPane = document.getElementById(em === 'sheet' ? 'sc-sh' : 'sc-sg');
-          if (emPane) emPane.hidden = true;
-        }
-      }
       if (lk.on) { // back on this tab: the status ticks again, and so does the Allocation tab if it is the one showing (with a fresh read if its numbers went stale)
         lkStartTimer(); lkStatus();
         if (lk.tab === 'alloc') { if (lk.alloc && Date.now() - lk.allocAt >= LK_ALLOC_EVERY_MS - 1000) lkLoadAlloc(true); lkAllocStart(); }
