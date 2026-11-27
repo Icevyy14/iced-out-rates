@@ -3840,6 +3840,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   }
   #tab-scanner .sc-sg-selver span{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;font-size:12px;opacity:.85;}
   #tab-scanner .sc-sg-selver::after{content:"";flex:none;width:14px;height:14px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center/contain no-repeat;}
+  #tab-scanner .sc-sg-selver.sc-sg-addit{border-color:color-mix(in srgb, var(--c-green, var(--sc-clv)) 30%, transparent);background:color-mix(in srgb, var(--c-green, var(--sc-clv)) 14%, transparent);color:var(--c-green, var(--sc-clv));}
   #tab-scanner .sc-sg-selver.sc-sg-quiet{border-color:var(--sc-line);background:var(--c-s2, var(--sc-fill));color:var(--c-text, var(--sc-ink));}
   #tab-scanner .sc-sg-failed-pic{flex:none;width:64px;aspect-ratio:63/88;border-radius:8px;object-fit:cover;background:var(--sc-fill);}
   #tab-scanner .sc-sg-reason{margin-top:6px;font-size:13px;font-weight:600;line-height:1.35;color:var(--c-text, var(--sc-ink));
@@ -14090,7 +14091,7 @@ function mergePhotoMatch(idx, photoCandidates, textResult, opts) {
   const offLanguage = photoOffLanguage(idx, photoCandidates, answer, buy, jaIdx);
   // Japanese or Both, and the answer can't say the card's language (TCGAPIs, or no photo answer): never sure either.
   const langUnknown = buy != null && unboughtLang(buy) !== 'ja' && !(answer && answer.languageKnown === true);
-  const withOff = res => (offLanguage ? Object.assign(res, { sure: false, offLanguage }) : langUnknown ? Object.assign(res, { sure: false }) : res);
+  const withOff = res => (offLanguage ? Object.assign(res, { sure: false, offLanguage }) : langUnknown ? Object.assign(res, { sure: false, langUnknown: true }) : res);
   const seen = new Set();
   const candidates = [];
   for (const p of Array.isArray(photoCandidates) ? photoCandidates : []) {
@@ -14117,9 +14118,20 @@ function searchCards(idx, query, opts) {
 
 // ── printings and prices ─────────────────────────────────────────────────────────────────────────
 
-/** The printings a card is priced in, most common first. */
+/** Whether TCGplayer has a price for this printing (a market or a low). tcgcsv lists a row for every subtype a product could have
+ *  (Normal, Holofoil, Reverse Holofoil...) with null prices for the ones that don't exist. */
+const isPricedPrinting = p => !!p && typeof p === 'object' && (p.market != null || p.low != null);
+
+/**
+ * The printings a card is priced in, most common first. Only printings with a price count: a card TCGplayer prices in ONE
+ * printing has one version, however many empty rows the list carries for it, so it never asks anyone to pick. (A card with
+ * no priced printing at all keeps every row it has, as before, so it still goes on and is turned down for no price.)
+ */
 function printingsOf(card) {
-  const names = Object.keys((card && card.prices) || {});
+  const prices = (card && card.prices) || {};
+  const all = Object.keys(prices);
+  const priced = all.filter(n => isPricedPrinting(prices[n]));
+  const names = priced.length ? priced : all;
   return names.sort((a, b) => {
     const ia = PRINTING_ORDER.indexOf(a), ib = PRINTING_ORDER.indexOf(b);
     return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
@@ -14142,6 +14154,7 @@ window.SinglesMatch = {
   SCAN_BOOK_SCHEMA: SCAN_BOOK_SCHEMA,
   POINTS: POINTS,
   PRINTING_ORDER: PRINTING_ORDER,
+  isPricedPrinting: isPricedPrinting,
   plain: plain,
   numKey: numKey,
   numFront: numFront,
@@ -16556,17 +16569,61 @@ function createSinglesFlow(deps) {
     return out.concat(tail).join('\n');
   }
 
+  /** The most TCGplayer's market is for any printing the list prices this card in (cents), or null when none has a market. */
+  function dearestMarket(card) {
+    var best = null;
+    printingsOf(card).forEach(function (p) {
+      var m = card.prices && card.prices[p] ? card.prices[p].market : null;
+      if (typeof m === 'number' && (best == null || m > best)) best = m;
+    });
+    return best;
+  }
+  /** A not-sure match that is ONE card still waits for a tap from this market up (the text reader's own money guard: 80% of
+      its $50 limit, because the list's price may be a day old). Under it, one card is the card. */
+  function soleAddMaxCents() {
+    var T = SinglesText;
+    var max = T && typeof T.TEXT_ONLY_MAX_CENTS === 'number' ? T.TEXT_ONLY_MAX_CENTS : 5000;
+    var share = T && typeof T.LIST_PRICE_SHARE === 'number' ? T.LIST_PRICE_SHARE : 0.8;
+    return Math.round(max * share);
+  }
+  /**
+   * A match that came back as exactly ONE card in our list and goes straight on the list even though the matcher wasn't
+   * "sure": nothing to pick between, so nothing to ask (Josh 11/26: "if it scans a card that only has one version, it should
+   * not make us choose"). Never when: there are look-alikes (2+ candidates, the picker stays), the card is in a language we
+   * don't buy or its language isn't known, the reader gave a reason to look again (`hint`: a look-alike, a digit off, a number the
+   * photo's card doesn't carry, not English, no signal), or its market is unknown or at the money guard.
+   */
+  function soleMatchAdds(res, hint) {
+    if (!res || hint || res.offLanguage || res.langUnknown) return false;
+    var cands = res.candidates || [];
+    if (cands.length !== 1 || !cands[0] || !cands[0].card) return false;
+    var card = cands[0].card;
+    if (isOffCard(card) || !printingsOf(card).length) return false;
+    var top = dearestMarket(card);
+    return top != null && top < soleAddMaxCents();
+  }
+
   /**
    * A photo match that came back: 'notBuying' when the card is in a language the sheet doesn't buy (never added: it waits on
-   * screen or in To check with its look-alikes); 'add' only when sure AND the card has printings (one is used, 2+ wait unpicked); else 'check',
+   * screen or in To check with its look-alikes); 'add' when sure AND the card has printings (one is used, 2+ wait unpicked), or
+   * when it is the ONLY card the match found (soleMatchAdds; `hint` = the reader's reason to look again, if it gave one); else 'check',
    * or 'none'.
    */
-  function photoOutcome(res) {
+  function photoOutcome(res, hint) {
     if (res.offLanguage) return 'notBuying';
     var top = res.candidates[0];
     if (!top) return 'none';
     // sure goes on the list, also with 2+ printings (then as "Pick variant", unpriced, until one is picked)
-    return res.sure && printingsOf(top.card).length ? 'add' : 'check';
+    if (res.sure && printingsOf(top.card).length) return 'add';
+    return soleMatchAdds(res, hint) ? 'add' : 'check';
+  }
+
+  /** A card the person TYPED: sure, or the only card that matched what they typed, goes straight on the list; else 'check'. */
+  function typedOutcome(res) {
+    var top = res && res.candidates && res.candidates[0];
+    if (!top) return 'none';
+    if (!printingsOf(top.card).length) return 'check';
+    return res.sure || res.candidates.length === 1 ? 'add' : 'check';
   }
 
   function needText(what) {
@@ -16710,7 +16767,7 @@ function createSinglesFlow(deps) {
     cardById: cardById, imageUrl: imageUrl, printingsOf: printingsOf, defaultPrinting: defaultPrinting, priceFor: priceFor,
     applyLive: applyLive, newPick: newPick, onlyPrinting: onlyPrinting, variantQuotes: variantQuotes, upTo: upTo, pickQuote: pickQuote, editPick: editPick, setPickQuantity: setPickQuantity,
     fmt: fmt, excludedBy: excludedBy, whyText: whyText, payView: payView, linePay: linePay, totalsView: totalsView,
-    shareText: shareText, photoOutcome: photoOutcome, afterRead: afterRead, languageGate: languageGate, textFirst: textFirst,
+    shareText: shareText, photoOutcome: photoOutcome, typedOutcome: typedOutcome, soleMatchAdds: soleMatchAdds, afterRead: afterRead, languageGate: languageGate, textFirst: textFirst,
     loadPile: loadPile, savePile: savePile, loadToCheck: loadToCheck, saveToCheck: saveToCheck,
     // engine-free
     printingLabel: printingLabel, setTitle: setTitle, plural: plural, matchMeta: matchMeta, lineMeta: lineMeta, shortName: shortName,
@@ -18834,12 +18891,12 @@ window.SinglesPrice = {
     function fromLast(forSeller) { return flow.fromLastSeller(forSeller, seller); }
 
     /**
-     * A match came back. Sure (and a language we buy) goes straight onto the list: with its only printing, or as "Pick variant" when
-     * the card has 2+ (never guessed). Anything else is a To check card on the panel (amber), with its look-alikes behind the 1/N flip.
+     * A match came back. Sure (and a language we buy), or the ONLY card it found (flow.soleMatchAdds), goes straight onto the list: with
+     * its only printing, or as "Pick variant" when the card has 2+ priced printings (never guessed). Anything else is a To check card on the panel (amber), with its look-alikes behind the 1/N flip.
      * Either way the panel jumps to it.
      */
     function photoBack(res, id, hint) {
-      var outcome = flow.photoOutcome(res);
+      var outcome = flow.photoOutcome(res, hint);
       var top = flow.shownCard(res);
       if (outcome === 'add' && flow.buysCard(buyLanguages(), top)) {
         var p0 = flow.newPick(top);
@@ -18928,6 +18985,7 @@ window.SinglesPrice = {
       else if (act === 'remove') removeSlide(sid);
       else if (act === 'flip') flipSlide(sid);
       else if (act === 'ver') openVersions(sid);
+      else if (act === 'addit') addOnlyVersion(sid);
       else if (act === 'comps') openComps(sid);
       else if (act === 'retry') retrySlide(sid);
       else if (act === 'type') openType(null);
@@ -19030,7 +19088,7 @@ window.SinglesPrice = {
       var b = c && c.prices ? c : cardOfLine(c);
       var prices = b && b.prices && typeof b.prices === 'object' ? b.prices : {};
       return { name: b.name || c.name, number: b.num || c.num, setName: b.setName || c.setName, lang: (b.lang || c.lang) === 'ja' ? 'ja' : 'en',
-        printings: Object.keys(prices), prices: prices, bookAsOf: bookInfo && bookInfo.asOf ? bookInfo.asOf : null };
+        printings: window.SinglesMatch.printingsOf({ prices: prices }), prices: prices, bookAsOf: bookInfo && bookInfo.asOf ? bookInfo.asOf : null };
     }
 
     // ── Select version ─────────────────────────────────────────────────────────────────────────────
@@ -19095,6 +19153,19 @@ window.SinglesPrice = {
       commitPile();
       good();
       askLive([line.productId]);
+    }
+    /** "Add" on an unsure card whose card has ONE priced version: nothing to select, so it goes on the list in that version. */
+    function addOnlyVersion(sid) {
+      if (!sid || sid.indexOf('q:') !== 0) return;
+      var qid = Number(sid.slice(2));
+      var item = queued(qid);
+      if (!item) return;
+      var fo = flipOf(item);
+      var card = fo.list[fo.f.at];
+      var only = card && !flow.isOffCard(card) ? flow.printingsOf(card) : [];
+      if (only.length !== 1) { openVersions(sid); return; }
+      pickFromCheck(qid, card.productId, only[0]);
+      render();
     }
     /** A version picked on an unsure card: THAT card goes on the list in THAT printing (with the condition and count set on it). */
     function pickFromCheck(qid, productId, printing) {
@@ -19161,7 +19232,8 @@ window.SinglesPrice = {
       el.search.value = '';
       try { el.search.blur(); } catch (e) { /* fine */ }
       closeType();
-      if (res.sure && flow.buysCard(buyLanguages(), top.card)) {
+      // sure, or the one card the typing matched: nothing to pick between, so it goes straight on (flow.typedOutcome)
+      if (flow.typedOutcome(res) === 'add' && flow.buysCard(buyLanguages(), top.card)) {
         var p0 = flow.newPick(top.card);
         var added = flow.addPick(pile, p0, flow.priceFor(top.card, p0.printing, liveMap), now());
         if (added.lineKey) {
@@ -19596,6 +19668,10 @@ window.SinglesPrice = {
       if (names.length < 2) return '';
       return names.slice(0, -1).join(', ') + ' or ' + names[names.length - 1];
     }
+    /** The green Add button on an unsure card with one version: the version it goes on the list in is beside it. */
+    function addItHtml(version) {
+      return '<button type="button" class="sc-sg-selver sc-sg-addit iop-press" data-act="addit">Add<span>' + escHtml(version) + '</span></button>';
+    }
     /** The amber Select version button. `choices`: the words beside it ('' = "Select version" alone, the versions are inside). */
     function selectVersionHtml(choices) {
       return '<button type="button" class="sc-sg-selver iop-press" data-act="ver">Select version' + (choices ? '<span>' + escHtml(choices) + '</span>' : '') + '</button>';
@@ -19657,8 +19733,10 @@ window.SinglesPrice = {
         }
       }
       var name = card.name ? motion.displayName(card.name, card.num) : flow.langWord(card.lang) + ' card';
+      // a card TCGplayer prices in ONE version has nothing to select: one tap on Add puts it on the list (no Select version sheet)
+      var oneVersion = !off && flow.buysCard(buyLanguages(), card) && flow.printingsOf(card).length === 1;
       var hintWords = off ? flow.offHint(card.lang, fo.list.length > 1) : (item.hint ? item.hint + ' ' : item.typed ? 'More than one card matches. ' : 'Not sure it\'s this one. ') +
-        (fo.list.length > 1 ? (item.typed ? 'Tap ' + fo.f.label + ' to see each.' : 'Flip the picture to compare.') : 'Select the version to add it.');
+        (fo.list.length > 1 ? (item.typed ? 'Tap ' + fo.f.label + ' to see each.' : 'Flip the picture to compare.') : oneVersion ? 'Tap Add if it is.' : 'Select the version to add it.');
       return '<div class="sc-sg-top">' +
           '<div class="sc-sg-pic">' + (card.productId ? pic(card.productId, '', name) : '') + langTagHtml(card) +
             (fo.list.length > 1 ? '<button type="button" class="sc-sg-flip iop-press" data-act="flip" aria-label="Show the next look-alike">' + escHtml(fo.f.label) + '</button>' : '') +
@@ -19666,7 +19744,7 @@ window.SinglesPrice = {
           '<div class="sc-sg-words"><div class="sc-sg-t"><div class="sc-sg-name">' + langTagHtml(card) + escHtml(name) + '</div>' +
             '<button type="button" class="sc-sg-x iop-press" data-act="remove" aria-label="Remove this scan"></button></div>' +
             setLinesHtml(card) +
-            '<div class="sc-sg-acts">' + pill + selectVersionHtml(off ? flow.offAltsLabel(card.lang) : printingsWords(card)) + '</div>' + meta +
+            '<div class="sc-sg-acts">' + pill + (oneVersion ? addItHtml(flow.printingLabel(flow.printingsOf(card)[0])) : selectVersionHtml(off ? flow.offAltsLabel(card.lang) : printingsWords(card))) + '</div>' + meta +
             '<div class="sc-sg-hint-line" data-act="hint" role="button" tabindex="0" aria-label="' + escHtml(hintWords) + '">' + escHtml(hintWords) + '</div>' +
           '</div>' +
         '</div>' +
