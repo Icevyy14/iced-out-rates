@@ -18247,8 +18247,8 @@ window.SinglesPrice = {
 
     function on_(node, type, fn) { if (node && node.addEventListener) node.addEventListener(type, fn); }
     function wire() {
-      on_(el['cam-on'], 'click', function () { startCamera(); });
-      on_(el['cam-stop'], 'click', function () { stopCamera(); camMsg = ''; camWhy = ''; render(); });
+      on_(el['cam-on'], 'click', function () { camChoiceOf(true); startCamera(); });
+      on_(el['cam-stop'], 'click', function () { camChoiceOf(false); stopCamera(); camMsg = ''; camWhy = ''; render(); });
       on_(el.torch, 'click', function (ev) { if (ev && ev.stopPropagation) ev.stopPropagation(); toggleTorch(); });
       on_(el.video, 'playing', videoLive);
       on_(el.video, 'loadeddata', videoLive);
@@ -18409,6 +18409,25 @@ window.SinglesPrice = {
       placeGuide();
       if (liveState === true && pile) refreshStaleLive();
       changed();
+      // Penguin 11/26: Singles opens with the camera ON, unless he turned it off himself this app session.
+      if (camChoiceOf() !== false && camAutoHere()) startCamera();
+    }
+    /** A phone or the app (never a computer's browser asking for the camera out of nowhere); page tests opt in. */
+    function camAutoHere() {
+      if (window.IOP_TEST_START_SCAN) return !!window.IOP_TEST_CAM_AUTO;
+      try { return host.inApp() || /iPhone|iPad|Android/i.test(navigator.userAgent || ''); } catch (e) { return false; }
+    }
+    var camChoiceMine = null; // this page's copy (also the answer when session storage is unavailable)
+    function camChoiceOf(on) {
+      var rec = {};
+      try { var ss = window.sessionStorage; if (ss) rec = JSON.parse(ss.getItem('iopCamChoice') || '{}') || {}; } catch (e) { rec = {}; }
+      if (on === undefined) {
+        if (camChoiceMine !== null) return camChoiceMine;
+        return rec.singles === true || rec.singles === false ? rec.singles : null;
+      }
+      camChoiceMine = !!on;
+      try { var s2 = window.sessionStorage; if (s2) { rec.singles = !!on; s2.setItem('iopCamChoice', JSON.stringify(rec)); } } catch (e) { /* kept in the page's copy */ }
+      return null;
     }
 
     function leave(byTap) {
@@ -25104,7 +25123,20 @@ var CompsPane = (function () {
       var s = NativeBridge.cameraStateOf(ev);
       if (!s || !panelShown) return;
       nativeCameraOn = s.on;
+      // Penguin 11/26: the camera starts ON (Slabs and Singles); his own tap on the switch is remembered for this app session.
+      if (s.reason === 'switch') camChoice('slabs', s.on);
+      else if (s.reason === 'show' && !s.on && camChoice('slabs') !== false && !portalOn() && !SinglesPane.claimsCamera()) bridge.setCamera(true);
     });
+    /** The camera on/off the person chose this app session ('slabs' | 'singles'): true, false or null (never chosen: on). */
+    var camChoiceMem = {}; // this page's copy (also the answer when session storage is unavailable)
+    function camChoice(which, on) {
+      var key = 'iopCamChoice', rec = camChoiceMem;
+      try { var ss = window.sessionStorage; if (ss) { var r = JSON.parse(ss.getItem(key) || '{}'); if (r && typeof r === 'object') rec = Object.assign({}, r, camChoiceMem); } } catch (e) { /* the page's copy */ }
+      if (on === undefined) return rec[which] === true || rec[which] === false ? rec[which] : null;
+      camChoiceMem[which] = !!on;
+      try { var s2 = window.sessionStorage; if (s2) { rec[which] = !!on; s2.setItem(key, JSON.stringify(rec)); } } catch (e) { /* kept in the page's copy */ }
+      return null;
+    }
 
     // ── the on-screen keyboard: the dock (Normal / Lower and Hide) steps aside for it. A field merely having
     // focus is never the signal (a Bluetooth scanner gun keeps the cert box focused with no keyboard at all),
