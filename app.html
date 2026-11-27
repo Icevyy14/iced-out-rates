@@ -4190,6 +4190,8 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .sc-sh-count{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;min-width:0;}
   #tab-scanner .sc-sh-num{font-size:var(--sc-fs-hero);font-weight:800;line-height:1;letter-spacing:-.02em;color:var(--sc-ink);font-variant-numeric:tabular-nums;}
   #tab-scanner .sc-sh-unit{font-size:var(--sc-fs-body);font-weight:800;color:var(--sc-muted);}
+  #tab-scanner .sc-sh-cost{font-size:var(--sc-fs-body);font-weight:800;color:var(--sc-ink);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-sh-cost[hidden]{display:none;}
   #tab-scanner .sc-sh-flag{
     align-self:center;display:inline-flex;align-items:center;min-height:26px;padding:0 10px;border-radius:999px;
     background:var(--sc-wait-tint);color:var(--sc-ink);font-size:var(--sc-fs-label);font-weight:800;line-height:1.2;
@@ -4203,7 +4205,10 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .sc-sh-list{padding:4px 0;overflow:hidden;}
   #tab-scanner .sc-sh-empty{margin:0;padding:18px 16px;font-size:var(--sc-fs-body);font-weight:700;line-height:1.45;color:var(--sc-muted);text-align:center;}
   #tab-scanner .sc-sh-empty[hidden]{display:none;}
-  #tab-scanner .sc-sh-row{position:relative;overflow:hidden;touch-action:pan-y;}
+  #tab-scanner .sc-sh-row{position:relative;overflow:hidden;touch-action:pan-y;cursor:pointer;}
+  #tab-scanner .sc-sh-costline{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;min-width:0;}
+  #tab-scanner .sc-sh-paid{font-size:var(--sc-fs-row);font-weight:800;color:var(--sc-ink);font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-sh-lot{font-size:var(--sc-fs-label);font-weight:700;color:var(--sc-muted);}
   #tab-scanner .sc-sh-row + .sc-sh-row::before{content:"";position:absolute;top:0;left:58px;right:0;height:1px;background:var(--sc-line);}
   #tab-scanner .sc-sh-slide{position:relative;display:flex;align-items:center;gap:10px;min-height:64px;padding:8px 4px 8px 14px;transition:transform 200ms ease-out;}
   #tab-scanner .sc-sh-row.sc-swiping .sc-sh-slide{transition:none;}
@@ -4258,6 +4263,15 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   /* "Add to sheet" from the Slabs pile: its note (Added 5 to <list>) floats above the Slabs dock, outside the Sheet screen */
   #tab-scanner .sc-sh-to-toast{bottom:calc(var(--sc-dock-h, 96px) + env(safe-area-inset-bottom) + 12px);}
   #tab-scanner .sc-sh-to-sub{margin:0 0 10px;color:var(--sc-muted);font-size:var(--sc-fs-row);font-weight:700;line-height:1.4;}
+  #tab-scanner .sc-sh-to-paid{display:flex;flex-direction:column;gap:6px;margin:0 0 12px;}
+  #tab-scanner .sc-sh-to-paid[hidden]{display:none;}
+  #tab-scanner .sc-sh-to-preview{min-height:1.4em;margin:0;font-size:var(--sc-fs-row);font-weight:800;line-height:1.4;color:var(--sc-ink);}
+  #tab-scanner .sc-sh-to-preview.sc-sh-bad{color:var(--sc-err-ink);}
+  #tab-scanner .sc-sh-edit-note{margin:0;font-size:var(--sc-fs-row);font-weight:600;line-height:1.45;color:var(--sc-muted);}
+  #tab-scanner .sc-sh-edit-note.sc-sh-bad{color:var(--sc-err-ink);font-weight:800;}
+  #tab-scanner .sc-sh-edit-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  #tab-scanner .sc-sh-edit-btns .sc-btn{min-height:48px;}
+  #tab-scanner .sc-sh-edit-btns [hidden]{display:none;}
   #tab-scanner .sc-sh-to-form{display:flex;gap:8px;margin-top:14px;}
   #tab-scanner .sc-sh-to-form .sc-input{flex:1 1 auto;min-width:0;}
   #tab-scanner .sc-sh-to-form .sc-btn{flex:none;min-height:var(--sc-field-h);}
@@ -4286,7 +4300,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .sc-sh-export-btns{display:flex;flex-direction:column;gap:10px;}
   #tab-scanner .sc-sh-export-btns .sc-btn{justify-content:flex-start;min-height:60px;padding:0 20px;font-size:calc(var(--sc-fs-body) + 1px);border-radius:18px;}
   #tab-scanner .sc-sh-export-btns .sc-btn::before{content:"";flex:none;width:22px;height:22px;background:currentColor;-webkit-mask:var(--sc-i) center / contain no-repeat;mask:var(--sc-i) center / contain no-repeat;}
-  #tab-scanner .sc-sh-export-btns [data-export="copy"]{--sc-i:var(--i-copy);}
+  #tab-scanner .sc-sh-export-btns [data-export="copy"],#tab-scanner .sc-sh-export-btns [data-export="copycost"]{--sc-i:var(--i-copy);}
   #tab-scanner .sc-sh-export-btns [data-export="csv"],#tab-scanner .sc-sh-export-btns [data-export="xlsx"]{--sc-i:var(--i-download);}
   #tab-scanner .sc-sh-export-hint{margin-left:auto;padding-left:12px;color:var(--sc-muted);font-size:var(--sc-fs-label);font-weight:700;}
   #tab-scanner .sc-sh-export-btns .sc-btn-primary .sc-sh-export-hint{color:inherit;opacity:.85;}
@@ -4312,6 +4326,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   @media (prefers-reduced-motion:reduce){
     #tab-scanner .sc-sh-slide,#tab-scanner .sc-sh-del{transition:none;}
   }
+  #tab-scanner .scanner-layout.sc-native-cam.sc-sheet-down .sc-sh-cost{display:none;}
 </style>
 <section class="sc-sh sc-sheet-only" id="sc-sh" aria-label="Sheet" hidden>
   <section class="sc-card sc-sh-head" id="sc-sh-head">
@@ -4319,7 +4334,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
       <button type="button" class="sc-sh-pick" id="sc-sh-pick" aria-haspopup="dialog" aria-controls="sc-sh-sheets" title="Your sheets"><span class="sc-sh-name" id="sc-sh-name">Sheet</span></button>
       <button type="button" class="sc-btn sc-btn-primary" id="sc-sh-export-open" aria-haspopup="dialog" aria-controls="sc-sh-export" disabled>Export</button>
     </div>
-    <div class="sc-sh-count"><span class="sc-sh-num" id="sc-sh-num">0</span><span class="sc-sh-unit" id="sc-sh-unit">slabs</span><span class="sc-sh-flag" id="sc-sh-unexported" hidden>Not exported yet</span></div>
+    <div class="sc-sh-count"><span class="sc-sh-num" id="sc-sh-num">0</span><span class="sc-sh-unit" id="sc-sh-unit">slabs</span><span class="sc-sh-cost" id="sc-sh-cost" hidden></span><span class="sc-sh-flag" id="sc-sh-unexported" hidden>Not exported yet</span></div>
     <div class="sc-sh-peek-name" id="sc-sh-peek-name" aria-hidden="true"></div>
     <div class="sc-sh-last" id="sc-sh-last" role="status">Scan a slab's barcode to add it</div>
   </section>
@@ -4372,15 +4387,33 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     </div>
   </dialog>
 
+  <dialog class="sc-settings sc-sh-dialog" id="sc-sh-edit" aria-labelledby="sc-sh-edit-title">
+    <div class="sc-settings-head">
+      <h2 class="sc-settings-title" id="sc-sh-edit-title">Price paid</h2>
+    </div>
+    <form class="sc-sh-form" id="sc-sh-edit-form" autocomplete="off">
+      <p class="sc-sh-export-sub" id="sc-sh-edit-sub"></p>
+      <label class="sc-field"><span class="sc-label">Price paid ($)</span>
+        <input class="sc-input" id="sc-sh-edit-input" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" placeholder="0.00"></label>
+      <p class="sc-sh-edit-note" id="sc-sh-edit-note" role="status"></p>
+      <div class="sc-sh-edit-btns">
+        <button type="submit" class="sc-btn sc-btn-primary" id="sc-sh-edit-save">Save</button>
+        <button type="button" class="sc-btn sc-btn-quiet" id="sc-sh-edit-clear">Clear</button>
+        <button type="button" class="sc-btn sc-btn-quiet" id="sc-sh-edit-cancel">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog class="sc-settings sc-sh-dialog" id="sc-sh-export" aria-labelledby="sc-sh-export-title">
     <div class="sc-settings-head">
       <h2 class="sc-settings-title" id="sc-sh-export-title">Export</h2>
       <button type="button" class="sc-btn sc-btn-quiet" id="sc-sh-export-done">Done</button>
     </div>
-    <p class="sc-sh-export-sub" id="sc-sh-export-sub">Certs only, in the order you scanned them.</p>
+    <p class="sc-sh-export-sub" id="sc-sh-export-sub">Certs, in the order you scanned them.</p>
     <div class="sc-sh-export-btns" id="sc-sh-export-btns">
       <button type="button" class="sc-btn sc-btn-primary" data-export="copy">Copy certs<span class="sc-sh-export-hint">Paste in a ticket</span></button>
-      <button type="button" class="sc-btn sc-btn-quiet" data-export="csv">CSV<span class="sc-sh-export-hint">Plain list file</span></button>
+      <button type="button" class="sc-btn sc-btn-quiet" data-export="copycost" id="sc-sh-export-copycost" hidden>Copy with cost<span class="sc-sh-export-hint">Cert and price</span></button>
+      <button type="button" class="sc-btn sc-btn-quiet" data-export="csv">CSV<span class="sc-sh-export-hint">Cert and Cost columns</span></button>
       <button type="button" class="sc-btn sc-btn-quiet" data-export="xlsx">Excel<span class="sc-sh-export-hint">Long certs stay whole</span></button>
     </div>
     <p class="sc-sh-export-note" id="sc-sh-export-note" role="status"></p>
@@ -4398,6 +4431,11 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     <button type="button" class="sc-btn sc-btn-quiet" id="sc-sh-to-cancel">Cancel</button>
   </div>
   <p class="sc-sh-to-sub" id="sc-sh-to-sub"></p>
+  <div class="sc-sh-to-paid" id="sc-sh-to-paid-wrap">
+    <label class="sc-field"><span class="sc-label" id="sc-sh-to-paid-label">Price paid ($)</span>
+      <input class="sc-input" id="sc-sh-to-paid" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" placeholder="Optional"></label>
+    <p class="sc-sh-to-preview" id="sc-sh-to-preview" role="status"></p>
+  </div>
   <div class="sc-sh-sheet-list" id="sc-sh-to-list"></div>
   <form class="sc-sh-to-form" id="sc-sh-to-form" autocomplete="off">
     <input class="sc-input" id="sc-sh-to-name" type="text" maxlength="60" enterkeyhint="done" autocomplete="off" aria-label="Name for a new sheet" placeholder="New sheet name">
@@ -20992,8 +21030,18 @@ window.SinglesPrice = {
 // The Sheet tab's cert lists (Penguin, 11/24: "to the sheet it should ONLY be the cert, nothing else"). Several named sheets
 // kept on this phone under ONE storage key (iopSheets, JSON with a version), each an ordered list of slab certs. What a sheet
 // holds per row: the cert as read (text, so a leading zero is never lost), its zero-stripped key (certs.js certKey: what dedupes),
-// the grader the reader named, and when it went on. Nothing else: no card name, no grade, never a price, a market value, a
-// percentage or anything else with money in it.
+// the grader the reader named, and when it went on. Plus, since 2026-11-27, what Josh PAID for it (see "price paid" below).
+// Nothing else: no card name, no grade, never our offer, a band or any rate.
+//
+// PRICE PAID (Josh, 11/27): each row may carry `cost` (whole cents, null = not set), what the person paid for that slab. A lot
+// ("Add all to sheet" with a total) is split over its cards at ONE shared percentage of their MARKET value: the row also keeps
+// `mv` (the card's market value in cents when it was added, null if the pile had none), `lotId` and `lotTotal` (the batch it
+// came in with and what the whole batch cost), and `pin` (the person typed this card's price by hand). Cards with no market
+// value get no cost and stay out of the split. Editing one lot card's cost pins it and re-splits the REST of the lot's total
+// over the cards that are not pinned (the chase-card case: type the big card's real price and the others re-balance). Clearing a
+// lot card's cost takes it out of the lot (the others stay as they are). Rounding is largest-remainder, so the parts add up to
+// the total to the cent. It all stays on this phone (no network). A list saved before this has rows without these fields: they
+// load as "no cost".
 //
 // NO LOOKUP (Penguin, 11/24): a cert on a sheet is never sent anywhere. The lookup the Sheet used to have (triumph-sourcer,
 // for the card's name and grade on screen) put every cert on Josh's Triumph member draft, which Triumph counts as pool used.
@@ -21013,7 +21061,7 @@ window.SinglesPrice = {
 'use strict';
 
 var SHEETS_KEY = 'iopSheets';
-var SHEETS_VERSION = 1;
+var SHEETS_VERSION = 2; // 2 = rows may carry cost / mv / lotId / lotTotal / pin; version 1 lists load as they are
 var MAX_NAME = 60;
 
 function cleanName(name) {
@@ -21026,7 +21074,49 @@ function defaultName(ms) {
   return 'Sheet ' + (d.getMonth() + 1) + '/' + d.getDate();
 }
 
-/** One saved row read back: { cert, key, grader, at }. Anything else on it (an older version's `look`) is dropped. */
+var MAX_CENTS = 1000000000; // $10,000,000: nothing a person types here is bigger
+function cents(v) { return typeof v === 'number' && isFinite(v) && v >= 0 && v <= MAX_CENTS && Math.floor(v) === v ? v : null; }
+function lotIdOf(v) { return typeof v === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(v) ? v : null; }
+
+/** "12.34", "$1,234.5", "40" -> whole cents; '' -> null (nothing typed); anything else -> NaN. */
+function parseDollars(text) {
+  var t = String(text == null ? '' : text).replace(/[\s$,]/g, '');
+  if (t === '') return null;
+  if (!/^(\d+\.?\d{0,2}|\.\d{1,2})$/.test(t)) return NaN;
+  var c = Math.round(parseFloat(t) * 100);
+  return c <= MAX_CENTS ? c : NaN;
+}
+/** Whole cents -> "$1,234.56". */
+function moneyText(c) {
+  var n = Math.round(Number(c) || 0), neg = n < 0;
+  n = Math.abs(n);
+  var d = Math.floor(n / 100), r = n % 100;
+  return (neg ? '-' : '') + '$' + String(d).replace(/\B(?=(\d{3})+$)/g, ',') + '.' + (r < 10 ? '0' : '') + r;
+}
+/** Split `total` cents over `weights` (cents; null, 0 or negative = no share) in proportion, largest remainder: the parts are
+    whole cents and add up to `total` exactly (ties go to the earlier card). -> an array like weights: cents, null where no share. */
+function splitCents(total, weights) {
+  var t = cents(total) == null ? 0 : total;
+  var w = (weights || []).map(function (x) { return typeof x === 'number' && isFinite(x) && x > 0 ? x : 0; });
+  var sum = w.reduce(function (a, b) { return a + b; }, 0);
+  var out = w.map(function () { return null; });
+  if (!sum) return out;
+  var floors = [], rem = [], used = 0;
+  w.forEach(function (x) {
+    if (!x) { floors.push(0); rem.push(-1); return; }
+    var exact = t * x; // exact below 2^53 for any realistic pile
+    var f = Math.floor(exact / sum);
+    floors.push(f); rem.push(exact - f * sum); used += f;
+  });
+  var order = [];
+  w.forEach(function (x, i) { if (x) order.push(i); });
+  order.sort(function (a, b) { return rem[b] - rem[a] || a - b; });
+  for (var k = 0; k < t - used; k++) floors[order[k % order.length]] += 1;
+  w.forEach(function (x, i) { if (x) out[i] = floors[i]; });
+  return out;
+}
+
+/** One saved row read back: { cert, key, grader, at, cost, mv, lotId, lotTotal, pin }. Anything else on it (an older version's `look`) is dropped. */
 function rowOf(raw) {
   if (!raw || typeof raw !== 'object') return null;
   var cert = String(raw.cert == null ? '' : raw.cert);
@@ -21034,7 +21124,15 @@ function rowOf(raw) {
   var key = cert.replace(/^0+(?=\d)/, '');
   var grader = typeof raw.grader === 'string' && /^[a-z]{2,8}$/.test(raw.grader) ? raw.grader : null;
   var at = Number(raw.at);
-  return { cert: cert, key: key, grader: grader, at: isFinite(at) && at > 0 ? at : 0 };
+  var lotId = lotIdOf(raw.lotId), lotTotal = cents(raw.lotTotal);
+  if (!lotId || lotTotal == null) { lotId = null; lotTotal = null; }
+  var row = { cert: cert, key: key, grader: grader, at: isFinite(at) && at > 0 ? at : 0 };
+  // the price-paid fields exist only when set, so a row with no price is byte for byte what it always was
+  var cost = cents(raw.cost), mv = cents(raw.mv);
+  if (cost != null) row.cost = cost;
+  if (mv) row.mv = mv;
+  if (lotId) { row.lotId = lotId; row.lotTotal = lotTotal; if (raw.pin === true) row.pin = true; }
+  return row;
 }
 
 function emptyState() { return { v: SHEETS_VERSION, open: null, sheets: [] }; }
@@ -21107,6 +21205,23 @@ function createSheetBook(opts) {
   }
   ensureOne();
 
+  /** Re-splits a lot: the total less what was typed by hand (pinned cards), over the other cards that have a market value. */
+  function resplit(s, lotId) {
+    var rows = s.rows.filter(function (r) { return r.lotId === lotId; });
+    if (!rows.length) return;
+    var total = rows[0].lotTotal;
+    var pinned = 0;
+    rows.forEach(function (r) { if (r.pin && r.cost != null) pinned += r.cost; });
+    var free = rows.filter(function (r) { return !r.pin; });
+    var parts = splitCents(Math.max(0, total - pinned), free.map(function (r) { return r.mv; }));
+    free.forEach(function (r, i) { if (parts[i] == null) delete r.cost; else r.cost = parts[i]; });
+  }
+  function lotStats(rows, total, lotId) {
+    var priced = rows.filter(function (r) { return r.mv; });
+    var m = priced.reduce(function (a, r) { return a + r.mv; }, 0);
+    return { lotId: lotId, n: priced.length, marketCents: m, pct: m ? (total / m) * 100 : null };
+  }
+
   function whereIs(key) {
     for (var i = 0; i < state.sheets.length; i++) {
       var rows = state.sheets[i].rows;
@@ -21144,8 +21259,9 @@ function createSheetBook(opts) {
       return true;
     },
     whereIs: whereIs,
-    /** `parsed` = certs.js parseOneCert's { cert, certKey, grader }. -> { ok: true, row } | { ok: false, dup: sheet } | { ok: false, zero: true } */
-    add: function (sheetId, parsed) {
+    /** `parsed` = certs.js parseOneCert's { cert, certKey, grader }; `extra` (optional) = { cost, mv } in cents.
+        -> { ok: true, row } | { ok: false, dup: sheet } | { ok: false, zero: true } */
+    add: function (sheetId, parsed, extra) {
       var s = byId(sheetId);
       var cert = String(parsed && parsed.cert != null ? parsed.cert : '');
       if (!s || !/^\d{1,20}$/.test(cert)) return { ok: false, bad: true };
@@ -21153,7 +21269,7 @@ function createSheetBook(opts) {
       var key = cert.replace(/^0+(?=\d)/, '');
       var there = whereIs(key);
       if (there) return { ok: false, dup: there.sheet, row: there.row };
-      var row = rowOf({ cert: cert, grader: parsed.grader || null, at: now() });
+      var row = rowOf({ cert: cert, grader: parsed.grader || null, at: now(), cost: extra && extra.cost, mv: extra && extra.mv });
       s.rows.push(row);
       s.dirty = true;
       save();
@@ -21184,6 +21300,52 @@ function createSheetBook(opts) {
       save();
       return { ok: true };
     },
+    /** A batch just added (`keys` = the certs' keys on that sheet) cost `totalCents` in all: gives them a lotId and splits the total
+        over their market values at one shared percentage. -> { lotId, n (cards that got a cost), marketCents (their market in all), pct } | null */
+    startLot: function (sheetId, keys, totalCents) {
+      var s = byId(sheetId), total = cents(totalCents);
+      if (!s || total == null) return null;
+      var rows = s.rows.filter(function (r) { return keys.indexOf(r.key) >= 0; });
+      if (!rows.length) return null;
+      var id = newId();
+      rows.forEach(function (r) { r.lotId = id; r.lotTotal = total; delete r.pin; delete r.cost; });
+      resplit(s, id);
+      s.dirty = true;
+      save();
+      return lotStats(rows, total, id);
+    },
+    /** What a total would do over cards with these market values (a preview; changes nothing): { n (cards with a market value), all, marketCents, pct }. */
+    preview: function (totalCents, marketList) {
+      var list = marketList || [];
+      var mv = list.filter(function (x) { return typeof x === 'number' && x > 0; });
+      var m = mv.reduce(function (a, b) { return a + b; }, 0);
+      var t = cents(totalCents);
+      return { n: mv.length, all: list.length, marketCents: m, pct: t != null && m ? (t / m) * 100 : null };
+    },
+    /** Sets (cents) or clears (null) one cert's cost. A card from a lot split is pinned at the typed number and the rest of that
+        lot is re-split over the cards not pinned; clearing a lot card takes it out of the lot. -> true, or false when there is no such cert. */
+    setCost: function (sheetId, key, costCents) {
+      var s = byId(sheetId), row = null;
+      if (!s) return false;
+      s.rows.forEach(function (r) { if (r.key === key) row = r; });
+      var c = costCents == null ? null : cents(costCents);
+      if (!row || (costCents != null && c == null)) return false;
+      if (row.lotId && c != null) {
+        row.cost = c; row.pin = true;
+        resplit(s, row.lotId);
+      } else if (row.lotId) {
+        delete row.cost; delete row.lotId; delete row.lotTotal; delete row.pin; // out of the lot; the others stay as they are
+      } else if (c != null) row.cost = c; else delete row.cost;
+      if (s.exportedAt != null) s.dirty = true;
+      save();
+      return true;
+    },
+    /** { cents (the costs added up), costed (rows with one), count (all rows) } */
+    totals: function (sheet) {
+      var t = { cents: 0, costed: 0, count: 0 };
+      (sheet ? sheet.rows : []).forEach(function (r) { t.count++; if (r.cost != null) { t.cents += r.cost; t.costed++; } });
+      return t;
+    },
     certsOf: function (sheet) { return (sheet ? sheet.rows : []).map(function (r) { return r.cert; }); },
     needsExport: function (sheet) { return !!sheet && sheet.rows.length > 0 && (sheet.exportedAt == null || sheet.dirty); },
     markExported: function (id) {
@@ -21205,6 +21367,9 @@ window.SheetBook = {
   cleanName: cleanName,
   parseState: parseState,
   createSheetBook: createSheetBook,
+  splitCents: splitCents,
+  parseDollars: parseDollars,
+  moneyText: moneyText,
 };
 })();
 
@@ -21220,6 +21385,10 @@ window.SheetBook = {
 //     "Cert" then one cert per row, every cell a TEXT cell (an inline string, in a Text-formatted column), so nothing is ever
 //     read as a number.
 //   - fileBase: a sheet's name made safe as a file name ("Sheet 11/24" -> "Sheet 11-24").
+// PRICE PAID (Josh, 11/27): the export functions take either certs (strings: the certs-only files above, unchanged) or rows
+// ({ cert, cost }: cost in whole cents, null = not set). Given rows, the CSV and the .xlsx gain a second column, "Cost" (plain dollars
+// with cents, "12.34"; a number cell in the .xlsx; BLANK when the row has no cost), and copyWithCost writes "cert<TAB>cost" lines.
+// copyText stays certs only whatever it is given, so a paste into a ticket is never changed by a price.
 // A cert here is digits only (certs.js parseOneCert's `cert`); anything else is left out, so no other text can reach a file.
 //
 // Pure (embedded whole into the page by rates-portal/build-portal.js as window.SheetFiles). Tested in scanner/sheetPage.test.js,
@@ -21227,6 +21396,7 @@ window.SheetBook = {
 'use strict';
 
 var CSV_HEADER = 'Cert';
+var COST_HEADER = 'Cost';
 var XLSX_TAB = 'Certs';
 var XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 var CSV_MIME = 'text/csv';
@@ -21235,10 +21405,31 @@ function onlyCerts(certs) {
   return (Array.isArray(certs) ? certs : []).map(function (c) { return String(c == null ? '' : c); }).filter(function (c) { return /^\d{1,20}$/.test(c); });
 }
 
-function copyText(certs) { return onlyCerts(certs).join('\n'); }
+function certOf(x) { return x && typeof x === 'object' ? x.cert : x; }
 
-function csvText(certs) {
-  return [CSV_HEADER].concat(onlyCerts(certs)).join('\r\n') + '\r\n';
+/** Rows ({ cert, cost }) given? Then the files carry the Cost column. A plain list of certs is the certs-only file. */
+function withCost(list) { return Array.isArray(list) && list.some(function (x) { return x && typeof x === 'object'; }); }
+
+/** [{ cert, cost }] for the valid certs of a list (strings or rows); cost is whole cents or null. */
+function rowsOf(list) {
+  return (Array.isArray(list) ? list : []).map(function (x) {
+    var cert = String(certOf(x) == null ? '' : certOf(x));
+    var c = x && typeof x === 'object' && typeof x.cost === 'number' && isFinite(x.cost) && x.cost >= 0 ? Math.round(x.cost) : null;
+    return { cert: cert, cost: c };
+  }).filter(function (r) { return /^\d{1,20}$/.test(r.cert); });
+}
+
+/** 1234 -> "12.34" (integer arithmetic, no float noise). */
+function dollars(c) { var n = Math.round(c); return Math.floor(n / 100) + '.' + (n % 100 < 10 ? '0' : '') + (n % 100); }
+
+function copyText(certs) { return onlyCerts((Array.isArray(certs) ? certs : []).map(certOf)).join('\n'); }
+
+/** "cert<TAB>12.34" per line, the cost blank when not set: pastes as two columns. */
+function copyWithCost(list) { return rowsOf(list).map(function (r) { return r.cert + '\t' + (r.cost == null ? '' : dollars(r.cost)); }).join('\n'); }
+
+function csvText(list) {
+  if (!withCost(list)) return [CSV_HEADER].concat(onlyCerts(list)).join('\r\n') + '\r\n';
+  return [CSV_HEADER + ',' + COST_HEADER].concat(rowsOf(list).map(function (r) { return r.cert + ',' + (r.cost == null ? '' : dollars(r.cost)); })).join('\r\n') + '\r\n';
 }
 
 function fileBase(name) {
@@ -21309,17 +21500,21 @@ var NS_REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationship
 var NS_PKG = 'http://schemas.openxmlformats.org/package/2006/relationships';
 
 /** The worksheet XML: "Cert" in A1, then one TEXT cell per cert (inline strings, style 1 = the Text number format "@"). */
-function sheetXml(certs) {
-  var rows = ['<row r="1"><c r="A1" t="inlineStr"><is><t>' + CSV_HEADER + '</t></is></c></row>'];
-  onlyCerts(certs).forEach(function (c, i) {
+function sheetXml(list) {
+  var costs = withCost(list);
+  var head = '<c r="A1" t="inlineStr"><is><t>' + CSV_HEADER + '</t></is></c>' + (costs ? '<c r="B1" t="inlineStr"><is><t>' + COST_HEADER + '</t></is></c>' : '');
+  var rows = ['<row r="1">' + head + '</row>'];
+  rowsOf(list).forEach(function (x, i) {
     var r = i + 2;
-    rows.push('<row r="' + r + '"><c r="A' + r + '" s="1" t="inlineStr"><is><t>' + c + '</t></is></c></row>');
+    // the cost is a real number cell (style 2: two decimals) so a sum works; no cell at all when it is not set
+    rows.push('<row r="' + r + '"><c r="A' + r + '" s="1" t="inlineStr"><is><t>' + x.cert + '</t></is></c>' +
+      (costs && x.cost != null ? '<c r="B' + r + '" s="2"><v>' + dollars(x.cost) + '</v></c>' : '') + '</row>');
   });
-  return XML_HEAD + '<worksheet xmlns="' + NS_MAIN + '"><cols><col min="1" max="1" width="20" style="1" customWidth="1"/></cols><sheetData>' +
-    rows.join('') + '</sheetData></worksheet>';
+  return XML_HEAD + '<worksheet xmlns="' + NS_MAIN + '"><cols><col min="1" max="1" width="20" style="1" customWidth="1"/>' +
+    (costs ? '<col min="2" max="2" width="14" customWidth="1"/>' : '') + '</cols><sheetData>' + rows.join('') + '</sheetData></worksheet>';
 }
 
-function xlsxParts(certs) {
+function xlsxParts(list) {
   return [
     { name: '[Content_Types].xml', text: XML_HEAD + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
       '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
@@ -21339,17 +21534,22 @@ function xlsxParts(certs) {
       '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' +
       '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
       '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
-      '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
-      '<xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>' +
+      '<cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+      '<xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
+      '<xf numFmtId="2" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>' +
       '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>' },
-    { name: 'xl/worksheets/sheet1.xml', text: sheetXml(certs) },
+    { name: 'xl/worksheets/sheet1.xml', text: sheetXml(list) },
   ];
 }
 
-function xlsxBytes(certs) { return zipStored(xlsxParts(certs)); }
+function xlsxBytes(list) { return zipStored(xlsxParts(list)); }
 
 window.SheetFiles = {
   CSV_HEADER: CSV_HEADER,
+  COST_HEADER: COST_HEADER,
+  copyWithCost: copyWithCost,
+  rowsOf: rowsOf,
+  dollars: dollars,
   XLSX_TAB: XLSX_TAB,
   XLSX_MIME: XLSX_MIME,
   CSV_MIME: CSV_MIME,
@@ -21385,6 +21585,7 @@ window.SheetFiles = {
     var toastTimer = null, toastFn = null, flashTimer = null;
     var swipe = null, swipeEatUntil = 0, touchAt = null, renderLater = false;
     var nameMode = 'new';
+    var editKey = null; // the cert whose price paid is open in the editor
     var toPending = null, toToastTimer = null; // "Add to sheet" from the Slabs pile: the certs the picker is open for, and its note's timer
 
     function now() { return Date.now(); }
@@ -21392,6 +21593,8 @@ window.SheetFiles = {
       return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
     }
     function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+    function money(c) { return window.SheetBook.moneyText(c); }
+    function dollarsOf(c) { return window.SheetFiles.dollars(c); }
     function reduceMotion() {
       try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }
     }
@@ -21408,8 +21611,10 @@ window.SheetFiles = {
         'sc-sh-sheets', 'sc-sh-sheets-done', 'sc-sh-sheet-list', 'sc-sh-tools', 'sc-sh-new', 'sc-sh-rename', 'sc-sh-delete', 'sc-sh-name-form',
         'sc-sh-name-label', 'sc-sh-name-input', 'sc-sh-name-save', 'sc-sh-name-cancel', 'sc-sh-delete-confirm', 'sc-sh-delete-text',
         'sc-sh-delete-yes', 'sc-sh-delete-no', 'sc-sh-export', 'sc-sh-export-done', 'sc-sh-export-sub',
-        'sc-sh-export-btns', 'sc-sh-export-note',
-        'sc-sh-to', 'sc-sh-to-cancel', 'sc-sh-to-sub', 'sc-sh-to-list', 'sc-sh-to-form', 'sc-sh-to-name', 'sc-sh-to-toast', 'sc-sh-to-toast-text'
+        'sc-sh-export-btns', 'sc-sh-export-note', 'sc-sh-export-copycost', 'sc-sh-cost',
+        'sc-sh-edit', 'sc-sh-edit-form', 'sc-sh-edit-sub', 'sc-sh-edit-input', 'sc-sh-edit-note', 'sc-sh-edit-clear', 'sc-sh-edit-cancel',
+        'sc-sh-to', 'sc-sh-to-cancel', 'sc-sh-to-sub', 'sc-sh-to-list', 'sc-sh-to-form', 'sc-sh-to-name', 'sc-sh-to-toast', 'sc-sh-to-toast-text',
+        'sc-sh-to-paid-wrap', 'sc-sh-to-paid-label', 'sc-sh-to-paid', 'sc-sh-to-preview'
       ].forEach(function (id) { el[id.replace(/^sc-sh-?/, '') || 'root'] = document.getElementById(id); });
       el.root = root;
       wire();
@@ -21449,6 +21654,11 @@ window.SheetFiles = {
       });
       on_(el['to-cancel'], 'click', function () { closeDialog(el.to); toPending = null; });
       on_(el.to, 'click', function (ev) { if (ev && ev.target === el.to) { closeDialog(el.to); toPending = null; } });
+      on_(el['to-paid'], 'input', previewPaid);
+      on_(el['edit-form'], 'submit', function (ev) { if (ev && ev.preventDefault) ev.preventDefault(); saveEdit(false); });
+      on_(el['edit-clear'], 'click', function () { saveEdit(true); });
+      on_(el['edit-cancel'], 'click', function () { closeDialog(el.edit); editKey = null; });
+      on_(el.edit, 'click', function (ev) { if (ev && ev.target === el.edit) { closeDialog(el.edit); editKey = null; } });
       on_(el['to-list'], 'click', function (ev) {
         var t = ev.target && ev.target.closest ? ev.target.closest('[data-to]') : null;
         if (t) toChosen({ id: t.getAttribute('data-to') });
@@ -21505,6 +21715,8 @@ window.SheetFiles = {
       hideToast();
       closeDialog(el.sheets);
       closeDialog(el.export);
+      closeDialog(el.edit);
+      editKey = null;
       swipeReset();
       changed();
     }
@@ -21518,14 +21730,14 @@ window.SheetFiles = {
       var f = document.activeElement;
       if (!f || f === document.body) return null;
       if (f === el.input || f === el['name-input']) return f;
-      try { if ((el.root && el.root.contains && el.root.contains(f)) || [el.sheets, el.export].some(function (d) { return d && d.contains && d.contains(f); })) return f; } catch (e) { /* not ours */ }
+      try { if ((el.root && el.root.contains && el.root.contains(f)) || [el.sheets, el.export, el.edit].some(function (d) { return d && d.contains && d.contains(f); })) return f; } catch (e) { /* not ours */ }
       return null;
     }
     /** Someone is in the middle of something on the Sheet: a field of it focused (typing), or one of its windows open (the sheet
      *  picker, naming or deleting a sheet, an export, whose share sheet is what sent the app away). */
     function busyHere() {
       if (focusedHere()) return true;
-      return [el.sheets, el.export].some(function (d) { return !!(d && (d.open || (d.hasAttribute && d.hasAttribute('open')))); });
+      return [el.sheets, el.export, el.edit].some(function (d) { return !!(d && (d.open || (d.hasAttribute && d.hasAttribute('open')))); });
     }
     /** The app (or the browser tab) came back to the front: Slabs, never the Sheet (Penguin, 11/25), unless it is mid-use (busyHere). */
     function resumed() { if (on && active && !busyHere()) leave(); }
@@ -21612,6 +21824,12 @@ window.SheetFiles = {
     function graderPill(grader) {
       return grader ? '<span class="sc-sh-grader">' + escHtml(String(grader).toUpperCase()) + '</span>' : '';
     }
+    /** What was paid for the cert, under it (nothing when no cost is set). A lot card says so, in small type. */
+    function costLine(r) {
+      if (r.cost == null) return '';
+      return '<div class="sc-sh-costline"><span class="sc-sh-paid">' + escHtml(money(r.cost)) + '</span>' +
+        (r.lotId ? '<span class="sc-sh-lot">' + (r.pin ? 'set by hand' : 'from a lot') + '</span>' : '') + '</div>';
+    }
     function render() {
       if (!on || !book) return;
       if (swipe) { renderLater = true; return; } // a row under a finger is not redrawn away; it catches up on release
@@ -21622,6 +21840,11 @@ window.SheetFiles = {
       el.num.textContent = String(n);
       el.unit.textContent = n === 1 ? 'slab' : 'slabs';
       el.unexported.hidden = !book.needsExport(s);
+      var tot = book.totals(s);
+      if (el.cost) {
+        el.cost.hidden = tot.costed === 0;
+        el.cost.textContent = tot.costed ? money(tot.cents) + ' paid' + (tot.costed < tot.count ? ' · ' + tot.costed + ' of ' + tot.count : '') : '';
+      }
       el['export-open'].disabled = n === 0;
       if (!n && !el.last.textContent) say("Scan a slab's barcode to add it");
       var h = '';
@@ -21630,7 +21853,7 @@ window.SheetFiles = {
         h += '<div class="sc-sh-row" data-key="' + escHtml(r.key) + '">' +
           '<div class="sc-sh-del" aria-hidden="true"><span>Remove</span></div>' +
           '<div class="sc-sh-slide"><span class="sc-sh-n" aria-hidden="true">' + (i + 1) + '</span>' +
-          '<div class="sc-sh-words"><div class="sc-sh-certline"><div class="sc-sh-cert">' + escHtml(r.cert) + '</div>' + graderPill(r.grader) + '</div></div>' +
+          '<div class="sc-sh-words"><div class="sc-sh-certline"><div class="sc-sh-cert">' + escHtml(r.cert) + '</div>' + graderPill(r.grader) + '</div>' + costLine(r) + '</div>' +
           '<button type="button" class="sc-sh-x" data-remove="' + escHtml(r.key) + '" aria-label="Remove ' + escHtml(r.cert) + '" title="Remove"></button></div></div>';
       }
       el.rows.innerHTML = h;
@@ -21674,7 +21897,52 @@ window.SheetFiles = {
       if (Date.now() < swipeEatUntil) return; // the click a swipe leaves behind
       var t = ev.target && ev.target.closest ? ev.target.closest('[data-remove]') : null;
       var key = t ? t.getAttribute('data-remove') : null;
-      if (key) removeKey(key);
+      if (key) { removeKey(key); return; }
+      var row = ev.target && ev.target.closest ? ev.target.closest('.sc-sh-row') : null;
+      var rk = row ? row.getAttribute('data-key') : null;
+      if (rk) openEdit(rk);
+    }
+    // ── price paid: tap a row to set, change or clear it ─────────────────────────────────────────
+    function rowOfKey(key) {
+      var rows = book.open().rows;
+      for (var i = 0; i < rows.length; i++) if (rows[i].key === key) return rows[i];
+      return null;
+    }
+    function openEdit(key) {
+      var r = rowOfKey(key);
+      if (!r || !el.edit) return;
+      editKey = key;
+      el['edit-sub'].textContent = (r.grader ? r.grader.toUpperCase() + ' ' : '') + r.cert;
+      el['edit-input'].value = r.cost == null ? '' : dollarsOf(r.cost);
+      el['edit-clear'].hidden = r.cost == null;
+      el['edit-note'].className = 'sc-sh-edit-note';
+      el['edit-note'].textContent = r.lotId
+        ? 'Part of a lot paid ' + money(r.lotTotal) + '. Saving a new price re-splits the rest of the lot over the other cards. Clear takes this card out of the lot.'
+        : 'What you paid for this slab. Leave it blank for no price.';
+      openDialog(el.edit);
+      try { el['edit-input'].focus(); el['edit-input'].select(); } catch (e) { /* no focus */ }
+    }
+    function saveEdit(clear) {
+      var key = editKey;
+      if (!key || !rowOfKey(key)) { closeDialog(el.edit); editKey = null; return; }
+      var c = clear ? null : window.SheetBook.parseDollars(el['edit-input'].value);
+      if (c !== c) { // NaN: not a price
+        el['edit-note'].className = 'sc-sh-edit-note sc-sh-bad';
+        el['edit-note'].textContent = 'Type dollars, like 12.50';
+        try { el['edit-input'].focus(); } catch (e) { /* no focus */ }
+        return;
+      }
+      var r = rowOfKey(key), lot = !!(r && r.lotId);
+      book.setCost(book.open().id, key, c);
+      closeDialog(el.edit);
+      editKey = null;
+      var now_ = rowOfKey(key);
+      say(c == null ? 'Cleared the price for ' + r.cert : 'Paid ' + money(c) + ' for ' + r.cert + (lot ? ' (the rest of the lot re-split)' : ''), 'good');
+      good(false);
+      render();
+      renderPicker();
+      changed();
+      return now_;
     }
     function swipeShow(s, x) {
       s.slide.style.transform = x ? 'translateX(' + x + 'px)' : '';
@@ -21814,7 +22082,10 @@ window.SheetFiles = {
       var s = book.open();
       if (!s.rows.length) return;
       el['export-note'].textContent = '';
-      el['export-sub'].textContent = plural(s.rows.length, 'cert', 'certs') + ' from ' + s.name + '. Certs only, in the order you scanned them.';
+      var costed = book.totals(s).costed > 0;
+      if (el['export-copycost']) el['export-copycost'].hidden = !costed;
+      el['export-sub'].textContent = plural(s.rows.length, 'cert', 'certs') + ' from ' + s.name + ', in the order you scanned them.' +
+        (costed ? ' Copy certs is just the certs; the files and Copy with cost carry what you paid.' : ' The files have a Cost column, blank until you set a price.');
       openDialog(el.export);
     }
     function clipboard(text) {
@@ -21880,6 +22151,14 @@ window.SheetFiles = {
         });
       };
       var done = function () { render(); renderPicker(); };
+      var rows = s.rows.map(function (r) { return { cert: r.cert, cost: r.cost == null ? null : r.cost }; });
+      if (kind === 'copycost') {
+        clipboard(F.copyWithCost(rows)).then(function (ok) {
+          if (ok) { book.markExported(s.id); exportNote('Copied ' + count + ' with cost. Paste them anywhere.'); }
+          else exportNote("Couldn't copy. Try CSV or Excel.");
+        }).then(done);
+        return;
+      }
       if (kind === 'copy') {
         clipboard(F.copyText(certs)).then(function (ok) {
           if (ok) { book.markExported(s.id); exportNote('Copied ' + count + '. Paste them anywhere.'); }
@@ -21888,7 +22167,7 @@ window.SheetFiles = {
         return;
       }
       var name = F.fileBase(s.name) + (kind === 'csv' ? '.csv' : '.xlsx');
-      var data = kind === 'csv' ? F.csvText(certs) : F.xlsxBytes(certs);
+      var data = kind === 'csv' ? F.csvText(rows) : F.xlsxBytes(rows);
       deliver(data, name, kind === 'csv' ? F.CSV_MIME : F.XLSX_MIME).then(function (res) {
         if (res === 'saved') { book.markExported(s.id); exportNote('Saved ' + name); return null; }
         if (res === 'cancelled') { exportNote('Not saved.'); return null; }
@@ -21909,11 +22188,13 @@ window.SheetFiles = {
       ensureBook();
       return book.sheets().map(function (s) { return { id: s.id, name: s.name, count: s.rows.length }; });
     }
-    /** Certs (strings, or { cert, grader }) -> the distinct ones, first seen first. */
+    /** Certs (strings, or { cert, grader, marketCents }) -> the distinct ones, first seen first. marketCents is the card's market value
+        on the pile (a whole number of cents above 0), else null: it is what a lot's total is split by. */
     function distinctCerts(input) {
       var seen = {}, out = [];
       (Array.isArray(input) ? input : []).forEach(function (c) {
-        var p = c && typeof c === 'object' ? { cert: String(c.cert == null ? '' : c.cert), grader: c.grader || null } : { cert: String(c == null ? '' : c), grader: null };
+        var mv = c && typeof c === 'object' && typeof c.marketCents === 'number' && isFinite(c.marketCents) && c.marketCents > 0 ? Math.round(c.marketCents) : null;
+        var p = c && typeof c === 'object' ? { cert: String(c.cert == null ? '' : c.cert), grader: c.grader || null, marketCents: mv } : { cert: String(c == null ? '' : c), grader: null, marketCents: null };
         var key = p.cert.replace(/^0+(?=\d)/, '');
         if (!key || seen[key]) return;
         seen[key] = true;
@@ -21923,7 +22204,7 @@ window.SheetFiles = {
     }
     /** Puts the certs on a list: target { id } (an existing sheet) or { name } (a new one). In order; a cert already on ANY sheet, or that
         starts with 0, is skipped and counted. -> { ok, added, dup, zero, bad, sheet } ({ ok: false } when the Sheet is not offered). */
-    function addCerts(input, target) {
+    function addCerts(input, target, paid) {
       var none = { ok: false, added: 0, dup: 0, zero: 0, bad: 0, sheet: null };
       if (!canAdd()) return none;
       ensureBook();
@@ -21931,11 +22212,17 @@ window.SheetFiles = {
       var s = target && target.id ? book.get(target.id) : null;
       if (!s && target && target.name != null) s = book.create(target.name);
       if (!s) return none;
-      var n = { ok: true, added: 0, dup: 0, zero: 0, bad: 0, sheet: s };
+      var n = { ok: true, added: 0, dup: 0, zero: 0, bad: 0, sheet: s, paidCents: null, lot: null };
+      // paid = { each: cents } (one slab's price paid) or { total: cents } (a lot: split by market value over the cards that went on)
+      var each = paid && typeof paid.each === 'number' && certs.length ? paid.each : null;
+      var total = paid && typeof paid.total === 'number' ? paid.total : null;
+      var keys = [];
       certs.forEach(function (p) {
-        var r = book.add(s.id, p);
-        if (r.ok) n.added++; else if (r.dup) n.dup++; else if (r.zero) n.zero++; else n.bad++;
+        var r = book.add(s.id, p, { mv: total != null ? p.marketCents : null, cost: each }); // the market is kept only for a lot (its split needs it)
+        if (r.ok) { n.added++; keys.push(r.row.key); } else if (r.dup) n.dup++; else if (r.zero) n.zero++; else n.bad++;
       });
+      if (each != null && n.added) n.paidCents = each;
+      if (total != null && keys.length) { n.lot = book.startLot(s.id, keys, total); if (n.lot) n.paidCents = total; }
       if (on) render();
       renderPicker();
       changed();
@@ -21956,7 +22243,27 @@ window.SheetFiles = {
         return 'Nothing to add';
       }
       var why = n.dup ? n.dup + ' already on a sheet' : n.zero ? n.zero + ' start with 0' : skipped + ' not certs';
-      return 'Added ' + n.added + ' to ' + n.sheet.name + (skipped ? ' (' + why + ')' : '');
+      return 'Added ' + n.added + ' to ' + n.sheet.name + (skipped ? ' (' + why + ')' : '') + (n.paidCents != null ? ' · ' + money(n.paidCents) + ' paid' : '');
+    }
+    /** The paid box's words and what it does for the certs in the open picker. One slab: its own price. Several: the total for the lot. */
+    function paidMode() { return toPending && toPending.length === 1 ? 'one' : 'lot'; }
+    function percentText(p) {
+      var v = p >= 10 ? Math.round(p) : Math.round(p * 10) / 10;
+      return String(v) + '%';
+    }
+    function previewPaid() {
+      if (!el['to-preview'] || !toPending) return;
+      el['to-preview'].className = 'sc-sh-to-preview';
+      el['to-preview'].textContent = '';
+      var c = window.SheetBook.parseDollars(el['to-paid'].value);
+      if (c !== c) { el['to-preview'].className = 'sc-sh-to-preview sc-sh-bad'; el['to-preview'].textContent = 'Type dollars, like 1250.50'; return; }
+      if (c == null || paidMode() === 'one') return;
+      // only the cards that will go on count: one already on a sheet, or that starts with 0, is skipped and is not in the percentage
+      var going = toPending.filter(function (p) { return p.cert.charAt(0) !== '0' && /^\d{1,20}$/.test(p.cert) && !book.whereIs(p.cert.replace(/^0+(?=\d)/, '')); });
+      var pv = book.preview(c, going.map(function (p) { return p.marketCents; }));
+      if (!pv.n) { el['to-preview'].textContent = 'None of these cards has a market value, so none gets a cost.'; return; }
+      el['to-preview'].textContent = plural(pv.n, 'card', 'cards') + ' · ' + percentText(pv.pct) + ' of market value' +
+        (pv.n < pv.all ? ' (' + plural(pv.all - pv.n, 'card has', 'cards have') + ' no market value, no cost)' : '');
     }
     /** Opens the picker for these certs. Nothing is written until a list is chosen. */
     function openAddPicker(input) {
@@ -21966,6 +22273,13 @@ window.SheetFiles = {
       ensureBook();
       toPending = certs;
       el['to-sub'].textContent = plural(certs.length, 'cert', 'certs') + ' from this pile. Pick a list, or start a new one.';
+      if (el['to-paid']) {
+        el['to-paid'].value = '';
+        el['to-paid-label'].textContent = paidMode() === 'one' ? 'Price paid ($)' : 'Total paid for these cards ($)';
+        el['to-paid'].setAttribute('aria-label', el['to-paid-label'].textContent);
+        el['to-preview'].textContent = '';
+        el['to-preview'].className = 'sc-sh-to-preview';
+      }
       el['to-name'].value = window.SheetBook.defaultName(now());
       renderPicker();
       openDialog(el.to);
@@ -21974,7 +22288,13 @@ window.SheetFiles = {
     function toChosen(target) {
       var certs = toPending;
       if (!certs) return;
-      var r = addCerts(certs, target);
+      var paid = null;
+      if (el['to-paid']) {
+        var c = window.SheetBook.parseDollars(el['to-paid'].value);
+        if (c !== c) { previewPaid(); try { el['to-paid'].focus(); } catch (e) { /* no focus */ } return; } // not a price: nothing is added yet
+        if (c != null) paid = paidMode() === 'one' ? { each: c } : { total: c };
+      }
+      var r = addCerts(certs, target, paid);
       toPending = null;
       closeDialog(el.to);
       if (!r.ok) { addNote('Could not add to a sheet'); return; }
@@ -27501,6 +27821,16 @@ var CompsPane = (function () {
       return PileRates.validCents(m && m.facts ? OfferRules.rowMarketCents(m.facts, e.price, choice.mode) : e.marketValueCents);
     }
     function figuresOf(e) { return PileRates.cardFigures(e, pileAdjust.overrides[pileKeyOf(e)], PriceCore.money, compedOf(e)); }
+    /** What "Add to sheet" is handed for a pile card: its cert and grader, and its MARKET value as the row shows it (a typed Market, else the
+        comped one; null when the pile has none). The Sheet splits a lot's "total paid" by that market value (Josh, 11/27: one shared
+        percentage of market for every card), so only the market goes along, never our offer, a band or a rate. */
+    function sheetItem(c) {
+      var e = c, list = pile.list();
+      for (var i = 0; i < list.length; i++) if (list[i].cert === c.cert && list[i].grader === c.grader) { e = list[i]; break; }
+      var m = null;
+      try { m = figuresOf(e).marketCents; } catch (err) { m = null; }
+      return { cert: c.cert, grader: c.grader, marketCents: typeof m === 'number' && m > 0 ? m : null };
+    }
     /** A sourcer's "We pay $x" for a card (the weekend comp); `long` adds where it comes from. */
     function weText(key, long) {
       var m = pileMeta[key];
@@ -30648,14 +30978,14 @@ var CompsPane = (function () {
         var rm = ev.target.closest('.sc-earlier-remove');
         if (rm) { removePileRow(rm); return; }
         var ts = ev.target.closest('.sc-earlier-tosheet');
-        if (ts) { SheetPane.openAddPicker([{ cert: ts.getAttribute('data-cert'), grader: ts.getAttribute('data-grader') }]); return; }
+        if (ts) { SheetPane.openAddPicker([sheetItem({ cert: ts.getAttribute('data-cert'), grader: ts.getAttribute('data-grader') })]); return; }
         var val = ev.target.closest('.sc-earlier-val');
         if (val) { openEditor(val.getAttribute('data-key')); return; }
         var main = ev.target.closest('.sc-earlier-main');
         if (main) priceCert(main.getAttribute('data-cert'), main.getAttribute('data-grader'));
       });
       if (dom.sheetAll) dom.sheetAll.addEventListener('click', function () {
-        SheetPane.openAddPicker(pile.list().map(function (c) { return { cert: c.cert, grader: c.grader }; })); // the whole pile, in the order it was scanned
+        SheetPane.openAddPicker(pile.list().map(sheetItem)); // the whole pile, in the order it was scanned
       });
       dom.earlierList.addEventListener('pointerdown', pileSwipeDown);
       dom.earlierList.addEventListener('pointermove', pileSwipeMove);
