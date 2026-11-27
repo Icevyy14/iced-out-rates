@@ -26,13 +26,14 @@
 // change the way our app looks", then "i want there to be the default look which is how it looks now. a darker red
 // crimson theme, a darker bluer theme, and all other contrasting themes you like").
 //
-// Ten choices, in this order, ids and names fixed (the phone apps' own Settings sheet lists the first nine (all but
-// Crown, until bridge 5) and sends these ids back with window.IOPTheme.set('<id>')):
-//   auto     "Match phone"  Daylight while the phone is in light mode, Iced Out while it is in dark mode, and it
-//                           follows the phone switching over live (matchMedia).
-//   crown    "Crown"        the portal's look C (11/26): near-black, ice blue #66D4FF, white. The DEFAULT for a phone
-//                           with nothing saved (portal build plan, Stage 2). Apps before bridge 5 are told 'blackout'
-//                           with Crown's colours (scanner/nativeBridge.js), since they only know the nine.
+// Nine choices, in this order, ids and names fixed (the phone apps' own Settings sheet sends these ids back with
+// window.IOPTheme.set('<id>')):
+//   crown    "Crown"        the portal's look C (11/26): near-black, ice blue #66D4FF, white. The DEFAULT for everyone
+//                           who has not picked a theme (Penguin, 11/26). Apps before bridge 5 are told 'blackout'
+//                           with Crown's colours (scanner/nativeBridge.js), since they do not know Crown.
+// "Match phone" (id 'auto') is gone (Penguin, 11/26): a phone that had it saved opens in Crown (and Crown is saved over
+// it), and IOPTheme.set('auto') from an older app's own Settings sheet, which still lists it until an app build, paints
+// Crown. Every other pick stays exactly as it was.
 //   iced     "Iced Out"     the look before the portal, untouched: its colours are the --sc-* values the Scanner
 //                           panel's own <style> has always had (the BASE: no CSS block of its own).
 //   crimson  "Crimson"      the whole look goes dark red: wine and oxblood surfaces, brand red #E3263F buttons.
@@ -58,10 +59,10 @@
 // body exists and there is no flash of the wrong colours.
 //
 // The page's API, for the Settings sheet on the page and for the phone apps (which run it in the web view):
-//   window.IOPTheme.list()  -> [{ id, name }, ...] the ten, in order
-//   window.IOPTheme.get()   -> the chosen id ('auto' stays 'auto')
-//   window.IOPTheme.set(id) -> true, applied and saved at once; an unknown id is ignored (false)
-// Each time a theme is applied (on load, on set, and when 'auto' follows the phone) the page fires a window event
+//   window.IOPTheme.list()  -> [{ id, name }, ...] the nine, in order
+//   window.IOPTheme.get()   -> the chosen id
+//   window.IOPTheme.set(id) -> true, applied and saved at once ('auto' applies and saves Crown); an unknown id is ignored (false)
+// Each time a theme is applied (on load and on set) the page fires a window event
 // 'iopthemechange' whose detail is themeMessage(): { id, light, bg, accent }. The Scanner module forwards that to
 // the app as the bridge's 'setTheme' message (scanner/nativeBridge.js), so the app's own background, status bar and
 // sheet match the page.
@@ -73,15 +74,11 @@ var THEME_KEY = 'iopTheme';
 var DEFAULT_THEME = 'crown';
 // The theme whose colours are the page's own defaults (no CSS block): the head's shipped metas belong to it.
 var BASE_THEME = 'iced';
-var AUTO_THEME = 'auto';
-// What 'Match phone' turns into.
-var AUTO_LIGHT_THEME = 'daylight';
-var AUTO_DARK_THEME = 'iced';
+// The old "Match phone" id: never a choice any more, read (saved, or sent by an older app) as Crown.
+var LEGACY_AUTO = 'auto';
 
 // `light`: a light theme (dark text). `bg`: the page background behind everything. `accent`: the buttons' colour.
-// 'auto' has none of its own: it borrows Daylight's or Iced Out's.
 var THEMES = [
-  { id: 'auto', name: 'Match phone', light: null, bg: null, accent: null },
   { id: 'crown', name: 'Crown', light: false, bg: '#0A0A0B', accent: '#66D4FF' },
   { id: 'iced', name: 'Iced Out', light: false, bg: '#0A0F18', accent: '#3478F5' },
   { id: 'crimson', name: 'Crimson', light: false, bg: '#12060A', accent: '#E3263F' },
@@ -93,12 +90,12 @@ var THEMES = [
   { id: 'gold', name: 'Gold', light: false, bg: '#0B0A07', accent: '#E8B94A' },
 ];
 
-/** The ten, in order, as { id, name } (copies: a caller can never change the list). */
+/** The nine, in order, as { id, name } (copies: a caller can never change the list). */
 function listThemes() {
   return THEMES.map(function (t) { return { id: t.id, name: t.name }; });
 }
 
-/** true for one of the ten ids, exactly as written. */
+/** true for one of the nine ids, exactly as written ('auto' is not one any more). */
 function isThemeId(id) {
   if (typeof id !== 'string') return false;
   for (var i = 0; i < THEMES.length; i++) if (THEMES[i].id === id) return true;
@@ -111,16 +108,20 @@ function themeOf(id) {
   return themeOf(DEFAULT_THEME);
 }
 
-/** The theme actually painted for a choice: 'auto' becomes Daylight or Iced Out by the phone's mode. */
-function resolveTheme(choice, prefersLight) {
-  if (choice === AUTO_THEME) return prefersLight ? AUTO_LIGHT_THEME : AUTO_DARK_THEME;
+/** The theme actually painted for a choice: one of the nine as it is, anything else (the old 'auto' included) Crown. */
+function resolveTheme(choice) {
   return isThemeId(choice) ? choice : DEFAULT_THEME;
 }
 
-/** The saved choice, or the default when nothing (or nothing valid) is saved, or storage is blocked. */
+/** The saved choice, or the default when nothing (or nothing valid) is saved, or storage is blocked. A saved 'Match
+    phone' becomes Crown and Crown is written over it, so it is never read again. */
 function loadThemeChoice(storage) {
   try {
     var raw = storage && storage.getItem(THEME_KEY);
+    if (raw === LEGACY_AUTO) {
+      try { storage.setItem(THEME_KEY, DEFAULT_THEME); } catch (e) { /* read as Crown again next time */ }
+      return DEFAULT_THEME;
+    }
     return isThemeId(raw) ? raw : DEFAULT_THEME;
   } catch (e) {
     return DEFAULT_THEME;
@@ -134,28 +135,26 @@ function saveThemeChoice(storage, id) {
 }
 
 /**
- * What the app is told: the CHOSEN id (so its Settings sheet ticks 'Match phone', not what that turned into), and
- * the colours actually on screen: `light` (dark status bar icons), `bg` (the page background, #rrggbb) and `accent`
- * (#rrggbb).
+ * What the app is told: the chosen id and the colours on screen: `light` (dark status bar icons), `bg` (the page
+ * background, #rrggbb) and `accent` (#rrggbb).
  */
-function themeMessage(choice, prefersLight) {
+function themeMessage(choice) {
   var id = isThemeId(choice) ? choice : DEFAULT_THEME;
-  var shown = themeOf(resolveTheme(id, prefersLight));
+  var shown = themeOf(id);
   return { id: id, light: shown.light === true, bg: shown.bg, accent: shown.accent };
 }
 
 /**
  * Sets the theme up on a real page: reads the saved choice, paints it (<html data-iop-theme>, plus the
- * color-scheme and theme-color metas), follows the phone for 'auto', and publishes window.IOPTheme. Every step is
- * guarded, so a page with no matchMedia, no storage or an unusual document still gets the default look and a
- * working API. Returns the API (or null with no window).
+ * color-scheme and theme-color metas), and publishes window.IOPTheme. Every step is guarded, so a page with no
+ * storage or an unusual document still gets the default look and a working API. Returns the API (or null with no
+ * window).
  */
 function installThemes(win) {
   if (!win) return null;
-  var doc = null, root = null, storage = null, mq = null;
+  var doc = null, root = null, storage = null;
   try { doc = win.document || null; root = doc && doc.documentElement; } catch (e) { root = null; }
   try { storage = win.localStorage || null; } catch (e) { storage = null; }
-  try { if (typeof win.matchMedia === 'function') mq = win.matchMedia('(prefers-color-scheme: light)'); } catch (e) { mq = null; }
 
   function meta(name) {
     try { return doc && typeof doc.querySelector === 'function' ? doc.querySelector('meta[name="' + name + '"]') : null; } catch (e) { return null; }
@@ -168,10 +167,9 @@ function installThemes(win) {
   try { schemeAsShipped = schemeMeta ? schemeMeta.content || null : null; } catch (e) { schemeAsShipped = null; }
 
   var choice = loadThemeChoice(storage);
-  function prefersLight() { try { return !!(mq && mq.matches); } catch (e) { return false; } }
 
   function apply() {
-    var shownId = resolveTheme(choice, prefersLight());
+    var shownId = resolveTheme(choice);
     var shown = themeOf(shownId);
     try {
       if (root && typeof root.setAttribute === 'function') {
@@ -188,22 +186,16 @@ function installThemes(win) {
     } catch (e) { /* only the browser's own bar colour is affected */ }
     try {
       if (typeof win.dispatchEvent === 'function' && typeof win.CustomEvent === 'function') {
-        win.dispatchEvent(new win.CustomEvent('iopthemechange', { detail: themeMessage(choice, prefersLight()) }));
+        win.dispatchEvent(new win.CustomEvent('iopthemechange', { detail: themeMessage(choice) }));
       }
     } catch (e) { /* nobody listening yet */ }
   }
-
-  // 'Match phone' follows the phone switching between light and dark while the page is open.
-  function onPhoneMode() { if (choice === AUTO_THEME) apply(); }
-  try {
-    if (mq && typeof mq.addEventListener === 'function') mq.addEventListener('change', onPhoneMode);
-    else if (mq && typeof mq.addListener === 'function') mq.addListener(onPhoneMode); // older Safari
-  } catch (e) { /* it still applies on the next load */ }
 
   var api = {
     list: listThemes,
     get: function () { return choice; },
     set: function (id) {
+      if (id === LEGACY_AUTO) id = DEFAULT_THEME; // an older app's Settings sheet still offers Match phone: it paints Crown
       if (!isThemeId(id)) return false;
       choice = id;
       saveThemeChoice(storage, id);
@@ -211,7 +203,7 @@ function installThemes(win) {
       return true;
     },
     /** What the app should be told right now (see themeMessage). */
-    message: function () { return themeMessage(choice, prefersLight()); },
+    message: function () { return themeMessage(choice); },
   };
   try { win.IOPTheme = api; } catch (e) { /* a frozen window: the page keeps the default */ }
   apply();
@@ -222,9 +214,7 @@ window.ScannerTheme = {
   THEME_KEY: THEME_KEY,
   DEFAULT_THEME: DEFAULT_THEME,
   BASE_THEME: BASE_THEME,
-  AUTO_THEME: AUTO_THEME,
-  AUTO_LIGHT_THEME: AUTO_LIGHT_THEME,
-  AUTO_DARK_THEME: AUTO_DARK_THEME,
+  LEGACY_AUTO: LEGACY_AUTO,
   THEMES: THEMES,
   listThemes: listThemes,
   isThemeId: isThemeId,
@@ -3060,14 +3050,23 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .scanner-layout.sc-singles-mode #sc-vf-wrap,
   #tab-scanner .scanner-layout.sc-singles-mode #sc-score,
   #tab-scanner .scanner-layout.sc-singles-mode #sc-sheet-cue,
-  #tab-scanner .scanner-layout.sc-singles-mode #sc-result,
-  #tab-scanner .scanner-layout.sc-singles-mode #sc-seller,
-  #tab-scanner .scanner-layout.sc-singles-mode #sc-lock,
-  #tab-scanner .scanner-layout.sc-singles-mode #sc-dock,
-  #tab-scanner .scanner-layout.sc-singles-mode #sc-rule-card,
-  #tab-scanner .scanner-layout.sc-singles-mode #sc-pl,
+  #tab-scanner .scanner-layout.sc-singles-mode:not(.sc-one-up) #sc-result,
+  #tab-scanner .scanner-layout.sc-singles-mode:not(.sc-one-up) #sc-seller,
+  #tab-scanner .scanner-layout.sc-singles-mode:not(.sc-one-up) #sc-lock,
+  #tab-scanner .scanner-layout.sc-singles-mode:not(.sc-one-up) #sc-dock,
+  #tab-scanner .scanner-layout.sc-singles-mode:not(.sc-one-up) #sc-rule-card,
+  #tab-scanner .scanner-layout.sc-singles-mode:not(.sc-one-up) #sc-pl,
   #tab-scanner .scanner-layout.sc-singles-mode .sc-brand,
-  #tab-scanner .scanner-layout.sc-singles-mode #sc-earlier{display:none !important;}
+  #tab-scanner .scanner-layout.sc-singles-mode:not(.sc-one-up) #sc-earlier{display:none !important;}
+  /* one scanner, one screen: the slab list pulled up (.sc-one-up). The slab sections (the card, Lock card, seller card, lock screens,
+     Normal / Lower + Hide + type a cert, Price with, the pile with Rates / Adjust % / Add to sheet / its rows) are moved, once, into the
+     tray's own body (#sc-sg-tall), so the tray grows up over the camera and holds them; the camera keeps running underneath. Only where
+     they are shown changes: the dock row sits in the tray instead of being pinned to the bottom of the screen. */
+  #tab-scanner .scanner-layout.sc-one-up #sc-vf-wrap,
+  #tab-scanner .scanner-layout.sc-one-up #sc-score,
+  #tab-scanner .scanner-layout.sc-one-up #sc-sheet-cue{display:none !important;}
+  #tab-scanner .sc-sg-tall .sc-dock{display:flex;flex-direction:column;gap:10px;}
+  #tab-scanner .sc-sg-tall .sc-controls{position:static;padding:0;background:none;border-radius:0;box-shadow:none;z-index:auto;}
   /* Rates and "Allocation: what is open" (#sc-pl) are slab things (Triumph allocation, the pile's bands): not on Singles or the Sheet.
      Singles' camera starts at the very top of the page (no header above it): the page's own top padding goes. */
   body:has(#tab-scanner .scanner-layout.sc-singles-mode) .main{padding-top:0;}
@@ -3375,8 +3374,10 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     </div>
     <button type="button" class="sc-brand-gear sc-staff-only" id="sc-settings-open" aria-label="Settings" title="Settings" aria-haspopup="dialog" aria-controls="sc-settings"></button>
   </header>
-  <!-- portal shell (Stage 1): the Scan tab's Slabs / Singles switch, drawn by the Scanner module (renderScanSwitch) -->
+  <!-- portal shell (Stage 1): the Scan tab's Slabs / Singles switch, drawn by the Scanner module (renderScanSwitch); pinned in CSS
+       directly above the bottom tab bar, the same spot on Slabs and Singles -->
   <div class="sc-scanside" id="sc-scanside" role="group" aria-label="Scan" hidden></div>
+  <!-- one scanner, one screen: the slab list pulled up over the camera (Review on the tray, Slab); this goes back to the camera -->
 
   <section class="sc-card sc-signin sc-staff-only" id="sc-signin" hidden>
     <div class="sc-signin-head">
@@ -3668,9 +3669,9 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
 <style>
   /* no dock under Singles any more (the search row sits in the page): the layout keeps only the tab bar's room */
   #tab-scanner .scanner-layout.sc-singles-mode{--sc-dock-h:0px;}
-  /* the Slabs / Singles switch floats on the camera's top bar, between the search and camera buttons (DeckTradr's "Scan" pill), so
-     the camera starts at the very top: the switch's own row (its margin, 38 px and the layout's 10 px gap) goes to the camera */
-  #tab-scanner .scanner-layout.sc-singles-mode .sc-scanside{margin-bottom:calc(-54px - env(safe-area-inset-top));}
+  /* the Slabs / Singles switch is no longer on the camera's top bar (Penguin 11/26: the same spot on both sides): it is pinned
+     directly above the tab bar (page.html, .sc-scanside), out of the page's flow, so the camera still starts at the very top and
+     the compact card panel ends on the switch (the layout reads the bar as the switch's height taller: --sc-tabbar-h) */
 
   /* ── the pane ── */
   #tab-scanner .sc-sg{position:relative;display:flex;flex-direction:column;gap:10px;min-width:0;}
@@ -3686,8 +3687,8 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
      always show whole; only when the camera is already at its 220 px floor does the card scroll inside the panel. */
   #tab-scanner .sc-sg-cam{
     position:relative;min-width:0;box-sizing:border-box;width:100vw;margin-left:calc(50% - 50vw);
-    height:clamp(220px, calc(100vh - var(--sc-tabbar-h) - env(safe-area-inset-bottom) - 190px - var(--sc-sg-give, 0px)), 760px);
-    height:clamp(220px, calc(100svh - var(--sc-tabbar-h) - env(safe-area-inset-bottom) - 190px - var(--sc-sg-give, 0px)), 760px);
+    height:clamp(220px, calc(100vh - var(--sc-tabbar-h) - env(safe-area-inset-bottom) - 190px - var(--sc-sg-give, 0px) - var(--sc-one-trim, 0px)), 760px);
+    height:clamp(220px, calc(100svh - var(--sc-tabbar-h) - env(safe-area-inset-bottom) - 190px - var(--sc-sg-give, 0px) - var(--sc-one-trim, 0px)), 760px);
     overflow:hidden;isolation:isolate;border-radius:0;background:var(--sc-cam);box-shadow:none;
     touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
   }
@@ -3750,6 +3751,65 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     --sc-i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5L21 21'/%3E%3C/svg%3E");}
   #tab-scanner .sc-sg-matching{position:absolute;top:calc(18px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);max-width:calc(100% - 140px);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   #tab-scanner .sc-sg-matching[hidden]{display:none;}
+
+  /* one scanner, one screen (Penguin 11/26): Slab shows the slab rows in the card panel's own room; the raw cards stay drawn underneath
+     (only hidden), so the panel, and the camera above it, keep exactly their height when the switch flips */
+  #tab-scanner .sc-sg-slabs{position:absolute;inset:0;z-index:2;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:var(--c-s1, var(--sc-card-bg));}
+  #tab-scanner .sc-sg-slabs[hidden]{display:none;}
+  #tab-scanner .sc-sg-panel.sc-sg-show-slabs .sc-sg-track,#tab-scanner .sc-sg-panel.sc-sg-show-slabs .sc-sg-dots{visibility:hidden;}
+  /* a slab row is a raw card's compact row (Penguin 11/26: "exactly identical"): the 64 px picture, the name, grade and cert under it,
+     the status pill (green what we pay / your offer, red Not buying, amber a look needed) and the x. Slabs are a list: the newest
+     on top, older ones scroll inside the tray (no dots). */
+  #tab-scanner .sc-sg-slabrow{display:flex;gap:12px;align-items:flex-start;padding:6px 12px 8px 16px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  #tab-scanner .sc-sg-slabrow + .sc-sg-slabrow{box-shadow:inset 0 1px 0 var(--sc-line);padding-top:8px;}
+  #tab-scanner .sc-sg-slabrow .sc-thumb{position:relative;display:block;flex:none;width:64px;height:auto;aspect-ratio:63/88;border-radius:8px;overflow:hidden;background:var(--sc-fill);box-shadow:var(--sc-ring);}
+  #tab-scanner .sc-sg-slabrow .sc-thumb img{display:block;width:100%;height:100%;object-fit:cover;}
+  #tab-scanner .sc-sg-slabrow .sc-sg-acts{margin-top:0;}
+  #tab-scanner .sc-sg-slabrow .status-pill{margin-top:4px;}
+
+  /* one screen: the tray's header is one fixed height in every mode (the amber line may take two lines in any of them), so the
+     camera above it never moves when the switch flips; the grab handle sits on its top edge in every mode */
+  #tab-scanner .scanner-layout.sc-one .sc-sg-sum{height:60px;box-sizing:border-box;padding-top:9px;touch-action:none;}
+  #tab-scanner .scanner-layout.sc-one .sc-sg-sum-check{max-height:2.45em;overflow:hidden;}
+  #tab-scanner .sc-sg-grab{display:none;}
+  #tab-scanner .scanner-layout.sc-one .sc-sg-grab{display:block;position:absolute;z-index:3;top:0;left:50%;width:72px;height:14px;margin-left:-36px;padding:0;border:0;background:none;cursor:grab;touch-action:none;-webkit-tap-highlight-color:transparent;}
+  #tab-scanner .scanner-layout.sc-one .sc-sg-grab::before{content:"";position:absolute;top:5px;left:18px;width:36px;height:4px;border-radius:2px;background:var(--c-s4, var(--sc-faint));}
+  /* the tray's card room is ONE fixed size whatever is in it (an empty pile, a slab list, a raw card with its condition / qty / Comps row),
+     so no pile and no card ever moves the camera (owner QA 11/27: the first raw card shrank it 13 px). A taller card (an unsure one with its
+     hint) scrolls inside the room. The foot is the flashlight's height whether the flashlight shows or not. */
+  #tab-scanner .scanner-layout.sc-one .sc-sg-deck{height:142px;min-height:142px;box-sizing:border-box;}
+  #tab-scanner .scanner-layout.sc-one .sc-sg-foot{height:34px;min-height:34px;box-sizing:border-box;}
+  /* one screen: the whole screen fits the phone exactly (the camera takes what the tray leaves, --sc-one-trim from fitOne), so it never
+     scrolls under a finger; the page's own bottom padding is not added under it (owner / sourcer / Android QA 11/27) */
+  body:has(#tab-scanner .scanner-layout.sc-one) .main{padding-bottom:0;}
+  html:has(#tab-scanner .scanner-layout.sc-one:not(.sc-sheet-mode)),body:has(#tab-scanner .scanner-layout.sc-one:not(.sc-sheet-mode)){overscroll-behavior:none;}
+  /* a problem line (no card list, no rates, buying paused) sits over the camera's top, out of the flow, so it never moves anything */
+  #tab-scanner .scanner-layout.sc-one .sc-sg-info{position:absolute;z-index:4;top:calc(56px + env(safe-area-inset-top));left:16px;right:16px;margin:0;
+    padding:6px 12px;border-radius:12px;text-align:center;background:color-mix(in srgb, var(--sc-cam) 72%, transparent);color:var(--sc-danger-ink);pointer-events:none;}
+  /* pulled up (Slab, or Auto showing slabs): the tray grows up over the camera, its foot where it was, and holds the whole slab screen */
+  #tab-scanner .sc-sg-tall{display:none;}
+  #tab-scanner .sc-sg-panel.sc-sg-up{
+    position:fixed;z-index:30;margin:0;display:flex;flex-direction:column;
+    left:var(--sc-sg-up-l, 16px);width:var(--sc-sg-up-w, calc(100vw - 32px));bottom:var(--sc-sg-up-b, 120px);top:calc(env(safe-area-inset-top) + 56px);
+    transition:top 260ms var(--sc-ease);
+  }
+  #tab-scanner .sc-sg-panel.sc-sg-up .sc-sg-deck,#tab-scanner .sc-sg-panel.sc-sg-up .sc-sg-foot{display:none;}
+  #tab-scanner .sc-sg-panel.sc-sg-up .sc-sg-sum{flex:none;}
+  #tab-scanner .sc-sg-panel.sc-sg-up .sc-sg-tall{
+    display:flex;flex-direction:column;gap:10px;flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+    padding:10px 12px calc(14px + env(safe-area-inset-bottom, 0px));
+  }
+  #tab-scanner .sc-sg-review-btn.sc-sg-done::after{transform:rotate(90deg);}
+  /* Raw pulled up: the same tray, the same rise, the switch still showing; it holds the Review list (totals, rows, Copy list, New seller) */
+  #tab-scanner .sc-sg-tall-raw{display:none;}
+  #tab-scanner .sc-sg-panel.sc-sg-up.sc-sg-up-raw .sc-sg-tall{display:none;}
+  #tab-scanner .sc-sg-panel.sc-sg-up.sc-sg-up-raw .sc-sg-tall-raw{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;}
+  #tab-scanner .sc-sg-tall-raw .sc-sg-sheet-body{padding-top:10px;}
+  /* Hide mode on the one screen (the phone shown to a seller): the raw tray shows the cards only, like the slab tray: no pay pill, no
+     market or "up to" line, no Comps, no remove, no version prices (money review + owner QA 11/27) */
+  #tab-scanner .scanner-layout.sc-one.sc-seller-mode .sc-sg :is(.sc-sg-deck .sc-sg-pill, .sc-sg-deck .sc-sg-meta, .sc-sg-deck .sc-sg-comps, .sc-sg-deck .sc-sg-x, .sc-sg-ver-m, .sc-sg-ver-p, .sc-sg-tot, .sc-sg-tot-note, .sc-sg-row-pay){display:none !important;}
+  /* an empty pile's Review reads as quiet in every mode (Android QA 11/27: Slab's Review 0 was bright, Raw's dim) */
+  #tab-scanner .sc-sg-review-btn.sc-sg-zero{opacity:.45;}
 
   /* "That's a slab" */
   #tab-scanner .sc-sg-banner{
@@ -3895,8 +3955,8 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .sc-sg-shade{position:fixed;inset:0;z-index:23;background:color-mix(in srgb, var(--sc-cam) 55%, transparent);animation:sc-sg-appear 180ms var(--sc-ease) both;}
   #tab-scanner .sc-sg-shade[hidden],#tab-scanner .sc-sg-sheet[hidden]{display:none;}
   #tab-scanner .sc-sg-sheet{
-    position:fixed;left:0;right:0;z-index:24;bottom:calc(var(--sc-tabbar-h) + env(safe-area-inset-bottom));
-    max-height:calc(100vh - var(--sc-tabbar-h) - env(safe-area-inset-bottom) - 64px);max-height:calc(100svh - var(--sc-tabbar-h) - env(safe-area-inset-bottom) - 64px);
+    position:fixed;left:0;right:0;z-index:24;bottom:calc(var(--sc-bar-base, var(--sc-tabbar-h)) + env(safe-area-inset-bottom));
+    max-height:calc(100vh - var(--sc-bar-base, var(--sc-tabbar-h)) - env(safe-area-inset-bottom) - 64px);max-height:calc(100svh - var(--sc-bar-base, var(--sc-tabbar-h)) - env(safe-area-inset-bottom) - 64px);
     display:flex;flex-direction:column;margin:0 auto;max-width:520px;border-radius:22px 22px 0 0;overflow:hidden;
     background:var(--c-s1, var(--sc-card-bg));box-shadow:0 -12px 40px -8px var(--sc-dock-sh), inset 0 1px 0 var(--sc-line);
     animation:sc-sg-rise 240ms var(--sc-ease) both;
@@ -3998,6 +4058,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     #tab-scanner .sc-sg-spin{animation:sc-sg-breathe 900ms ease-in-out infinite alternate;}
     #tab-scanner .sc-sg-review-btn:active,#tab-scanner .sc-sg-x:active,#tab-scanner .sc-sg-flip:active,#tab-scanner .sc-sg-selver:active,
     #tab-scanner .sc-sg-comps:active,#tab-scanner .sc-sg-ver:active{transform:none;}
+    #tab-scanner .sc-sg-panel.sc-sg-up{transition:none;}
   }
 </style>
 
@@ -4023,7 +4084,8 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   </div>
 
   <section class="sc-sg-panel" id="sc-sg-panel" aria-label="Your cards">
-    <div class="sc-sg-sum">
+    <button type="button" class="sc-sg-grab" id="sc-sg-grab" aria-label="Pull up the list"></button>
+    <div class="sc-sg-sum" id="sc-sg-sum">
       <div class="sc-sg-sum-l">
         <div class="sc-sg-sum-key" id="sc-sg-pay-key">We pay</div>
         <div class="sc-sg-sum-row">
@@ -4035,12 +4097,18 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     </div>
     <div class="sc-sg-deck" id="sc-sg-card" aria-live="polite" aria-roledescription="carousel">
       <div class="sc-sg-track" id="sc-sg-track"></div>
+      <!-- one scanner, one screen: the slab rows, over the card panel's own room (so a flip never changes its height) -->
+      <div class="sc-sg-slabs" id="sc-sg-slabs" aria-live="polite" hidden></div>
     </div>
     <div class="sc-sg-foot">
       <span class="sc-sg-foot-side" aria-hidden="true"></span>
       <div class="sc-sg-dots" id="sc-sg-dots" aria-hidden="true"></div>
       <span class="sc-sg-foot-side"><button type="button" class="sc-vf-round" id="sc-sg-torch" aria-label="Flashlight" title="Flashlight" aria-pressed="false" hidden></button></span>
     </div>
+    <!-- one scanner, one screen: the tray pulled up holds the whole slab screen; page.html moves its slab sections in here -->
+    <div class="sc-sg-tall" id="sc-sg-tall" aria-label="Slab list"></div>
+    <!-- one scanner, one screen: Raw's pull-up is the same tray rising (owner QA 11/27), holding the Review list (moved in from #sc-sg-review) -->
+    <div class="sc-sg-tall-raw" id="sc-sg-tall-raw" aria-label="Raw list"></div>
   </section>
 
   <form class="sc-sg-find" id="sc-sg-find" autocomplete="off" hidden>
@@ -4477,20 +4545,40 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     font-family:var(--sc-font);
   }
 
-  /* ── the Scan switch (Slabs / Singles), at the top of the Scanner's own screen ── */
+  /* ── the Scan switch (Slabs / Singles): pinned at ONE spot on both sides (Penguin 11/26: "literally in the same exact position"),
+     a strip of its own directly above the bottom tab bar, centered, the same size on Slabs and Singles, in the app and in a browser.
+     It is out of the page's flow, so nothing above it ever moves it. While it shows (.sc-side-on on #sc-layout, set by
+     renderScanSwitch) the layout reads the bar as that much taller (--sc-tabbar-h + --sc-side-h), so every dock, toast and the Singles
+     camera / card panel that sit "on the bar" sit on the switch instead and nothing overlaps; the bar itself (a sibling of the layout)
+     keeps its own 50 px. --sc-bar-base is the bar's real height. The selected pill slides between the two (transform, 220 ms). ── */
+  #tab-scanner{--sc-bar-base:var(--sc-tabbar-h);--sc-side-h:48px;}
+  #tab-scanner .scanner-layout.sc-side-on:not(.sc-sheet-mode):not(.sc-kbd-open):not(.sc-sheet-down){--sc-tabbar-h:calc(var(--sc-bar-base) + var(--sc-side-h));}
   #tab-scanner .sc-scanside[hidden]{display:none !important;}
   #tab-scanner .sc-scanside{
-    align-self:center;display:inline-flex;gap:2px;padding:3px;border-radius:999px;background:var(--c-s2);
-    position:relative;z-index:4;
+    position:fixed;left:0;right:0;z-index:22;bottom:calc(var(--sc-bar-base) + env(safe-area-inset-bottom));
+    height:var(--sc-side-h);box-sizing:border-box;margin:0;padding:6px 0 4px;
+    display:flex;justify-content:center;align-items:flex-start;background:var(--sc-dock);
   }
-  #tab-scanner .scanner-layout.sc-sheet-mode .sc-scanside{display:none !important;}
-  #tab-scanner .scanner-layout.sc-singles-mode .sc-scanside{margin-top:calc(env(safe-area-inset-top) + 6px);}
+  html[data-iop-theme="crown"] #tab-scanner .sc-scanside{background:color-mix(in srgb, var(--c-bg) 92%, transparent);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);}
+  #tab-scanner .scanner-layout:is(.sc-sheet-mode,.sc-kbd-open,.sc-sheet-down) .sc-scanside{display:none !important;}
+  #tab-scanner .sc-scanside-track{position:relative;display:inline-flex;gap:2px;padding:3px;border-radius:999px;background:var(--c-s2);}
+  #tab-scanner .sc-scanside-pill{
+    position:absolute;left:3px;top:3px;width:96px;height:32px;border-radius:999px;background:var(--c-text);pointer-events:none;
+    transform:translateX(0);transition:transform 220ms cubic-bezier(.2,.8,.2,1);
+  }
+  #tab-scanner .sc-scanside[data-mode="singles"] .sc-scanside-pill{transform:translateX(98px);}
   #tab-scanner .sc-scanside-opt{
-    min-width:88px;height:32px;padding:0 14px;border:0;border-radius:999px;background:none;color:var(--c-dim);
+    position:relative;z-index:1;width:96px;height:32px;padding:0;border:0;border-radius:999px;background:none;color:var(--c-dim);
     font:inherit;font-size:14px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;
-    transition:background-color 150ms ease-out, color 150ms ease-out;
+    transition:color 220ms ease-out;
   }
-  #tab-scanner .sc-scanside-opt[aria-pressed="true"]{background:var(--c-text);color:var(--c-bg);}
+  #tab-scanner .sc-scanside-opt[aria-pressed="true"]{color:var(--c-bg);}
+  /* one scanner, one screen (Penguin 11/26): Auto | Slab | Raw, three 72 px segments on the same centred strip (226 px track, it was
+     196); the pill slides the same way. A flip moves only the pill: the strip, its spot and the tab bar stay put. */
+  #tab-scanner .sc-scanside[data-kinds="3"] .sc-scanside-opt,#tab-scanner .sc-scanside[data-kinds="3"] .sc-scanside-pill{width:72px;}
+  #tab-scanner .sc-scanside[data-kinds="3"][data-mode="slab"] .sc-scanside-pill{transform:translateX(74px);}
+  #tab-scanner .sc-scanside[data-kinds="3"][data-mode="raw"] .sc-scanside-pill{transform:translateX(148px);}
+  @media (prefers-reduced-motion:reduce){ #tab-scanner .sc-scanside-pill,#tab-scanner .sc-scanside-opt{transition:none;} }
 
   /* ── shared look C pieces ── */
   #tab-scanner .iop-press{transition:transform 120ms ease, filter 120ms ease;-webkit-tap-highlight-color:transparent;cursor:pointer;user-select:none;-webkit-user-select:none;}
@@ -7017,6 +7105,10 @@ var HW_ZOOM_MAX_FACTOR = 10;
 /** A worker that keeps failing to START (not merely a slow wasm download) this many times in a row is
     given up on; decoding moves to the page thread instead of trying to restart it forever. */
 var WORKER_FAILURE_LIMIT = 3;
+// A BarcodeDetector that has found nothing this many frames in a row (and never anything yet) gets zxing on every other frame (withZxingBackup).
+var DETECTOR_BACKUP_AFTER = 20;
+// zxing failing this many times in a row as the backup is given up on for that camera.
+var ZXING_BACKUP_FAILURES = 3;
 
 /** Nothing after the camera is GRANTED is allowed to hold it up forever (an iPhone left "Starting camera" on screen with no
     way to tell where it stood): the first picture is waited for this long (then the camera is opened again with a plainer
@@ -7680,6 +7772,40 @@ function openCamera(video, opts) {
     };
   }
 
+  /**
+   * A BarcodeDetector that says it reads Code 128 but never finds anything (Android QA 11/27: the app's web view had one that returned
+   * nothing on a clear slab label for 15 s, while zxing read the same frame at once). Until the detector has found its first code in this
+   * camera session, once it has come up empty DETECTOR_BACKUP_AFTER frames in a row, every other frame (and every other pass of a hard look)
+   * is read by zxing too. The first code the detector finds itself proves it works: zxing is never run again for this camera. A zxing that
+   * fails to load or read is only a frame with nothing in it, and after ZXING_BACKUP_FAILURES failures it is not tried again.
+   */
+  function withZxingBackup(det) {
+    var zx = null, zxDead = false, zxFails = 0, emptyRun = 0, detectorWorks = false, turn = 0;
+    function backupFind(region, maxSide, isHard, passNum) {
+      try { if (!zx) zx = zxingEngine(); } catch (e) { zxDead = true; return Promise.resolve([]); }
+      return Promise.resolve().then(function () { return zx.find(region, maxSide, isHard, passNum); }).then(function (found) {
+        zxFails = 0;
+        return found || [];
+      }, function () {
+        if (++zxFails >= ZXING_BACKUP_FAILURES) { zxDead = true; try { zx.close(); } catch (e) { /* closed */ } zx = null; }
+        return [];
+      });
+    }
+    return {
+      name: det.name,
+      find: function (region, maxSide, isHard, passNum) {
+        var backup = !detectorWorks && !zxDead && (isHard ? (passNum || 0) % 2 === 1 : emptyRun >= DETECTOR_BACKUP_AFTER && (turn++ % 2 === 1));
+        if (backup) return backupFind(region, maxSide, isHard, passNum);
+        return Promise.resolve(det.find(region, maxSide, isHard, passNum)).then(function (found) {
+          if (found && found.length) { detectorWorks = true; emptyRun = 0; if (zx) { try { zx.close(); } catch (e) { /* closed */ } zx = null; } }
+          else emptyRun++;
+          return found;
+        });
+      },
+      close: function () { det.close(); if (zx) { try { zx.close(); } catch (e) { /* closed */ } zx = null; } }
+    };
+  }
+
   /** BarcodeDetector where this browser has one and it covers what a slab label needs, else zxing -
       feature-detected via scanDecode.chooseEngine, never the user agent. */
   function pickDecoder() {
@@ -7690,7 +7816,7 @@ function openCamera(video, opts) {
     return formatsP.catch(function () { return null; }).then(function (supported) {
       var choice = scanDecode.chooseEngine(hasDetector, supported);
       if (choice.engine === 'detector') {
-        try { return detectorEngine(new BD({ formats: choice.formats })); } catch (e) { /* fall through to zxing */ }
+        try { return withZxingBackup(detectorEngine(new BD({ formats: choice.formats }))); } catch (e) { /* fall through to zxing */ }
       }
       return zxingEngine();
     });
@@ -8035,9 +8161,12 @@ function saveMode(storage, mode) {
 /**
  * Whether the page's own camera may take codes by itself: never with the apps' bridge (the native scanner is in charge there), never in an
  * app's own web view without it (`kind` 'webview', see cameraKind: the Android app falls back to the page's camera on a web view too old for
- * the bridge, and that stays the tap-to-scan camera it was), and only in 'auto'.
+ * the bridge, and that stays the tap-to-scan camera it was), and only in 'auto'. With `oneCamera` true (one scanner, one screen: the page's
+ * camera is Scan's only camera and the app's native panel is not shown) it reads in the apps and their web views too, still only in 'auto'.
  */
-function runsHere(bridgeAvailable, mode, kind) {
+function runsHere(bridgeAvailable, mode, kind, oneCamera) {
+  // One scanner, one screen (Penguin, 11/26): the page's camera is Scan's only camera, in the apps too, so it reads by itself there as well.
+  if (oneCamera === true) return normalizeMode(mode) === 'auto';
   return !bridgeAvailable && kind !== 'webview' && normalizeMode(mode) === 'auto';
 }
 
@@ -8279,7 +8408,7 @@ function createAutoCapture(opts) {
 
 /**
  * What the page drives: the capture rules plus the mode and a pause (a dialog is open over the camera). One call per read
- * frame: onFrame(items, area) follows every code seen, and returns the code to take now (already marked sent) or null.
+ * frame: onFrame(items, area[, aim]) follows every code seen, and returns the code to take now (already marked sent) or null.
  * While paused or in Tap to scan it still follows the frames, so a done code expires on time, but takes nothing.
  */
 function createAutoScanner(opts) {
@@ -8290,11 +8419,16 @@ function createAutoScanner(opts) {
 
   function active() { return cap.getMode() === 'auto' && !paused; }
 
-  function onFrame(items, area) {
+  function onFrame(items, area, aim) {
     var f = frameOf(items, area);
     cap.frame(f.reads, []);
     if (!active()) return null;
-    var pick = cap.next(f.candidates, aimRect(area, fraction));
+    // `aim` (optional): the zone to take from instead of the middle of the view (one scanner, one screen: the card frame, where a slab
+    // held to fill it has its label in the top third). Without it, the middle half of the view, as always.
+    var zone = aim && typeof aim.left === 'number' && aim.right > aim.left && aim.bottom > aim.top
+      ? { left: aim.left, right: aim.right, top: aim.top, bottom: aim.bottom, center: aim.center || { x: (aim.left + aim.right) / 2, y: (aim.top + aim.bottom) / 2 } }
+      : aimRect(area, fraction);
+    var pick = cap.next(f.candidates, zone);
     if (pick) cap.sent(pick.payload, pick.box);
     return pick;
   }
@@ -8328,6 +8462,18 @@ function platformOf(userAgent, maxTouchPoints, standalone) {
 }
 
 /**
+ * The platform for the camera's words inside the IOP Pricing phone app (its bridge is there): 'androidnative' or 'iphonenative'. The app has
+ * no address bar and no browser site settings, so a blocked camera is fixed in the phone's own Settings (Android QA 11/27: the page told the
+ * app to tap the lock icon in Chrome's address bar). `inApp` false: the browser's platform, unchanged.
+ */
+function appPlatformOf(platform, inApp) {
+  if (!inApp) return platform;
+  if (platform === 'android') return 'androidnative';
+  if (platform === 'ios' || platform === 'iosapp') return 'iphonenative';
+  return platform;
+}
+
+/**
  * What kind of window this is, for the camera's first move: 'webview' (an app's own web view: the Android app's says "; wv)", an iPhone
  * web view has no "Safari/" in it: scanning by itself never runs there), 'phone' (a phone or tablet's browser: the camera starts by itself,
  * the browser asks for permission right there when it must) or 'desktop' (a computer's browser: it starts by itself only once the browser
@@ -8349,18 +8495,24 @@ var HELP = {
     ios: "Safari has the camera blocked for this site. Tap aA in the address bar, then Website Settings, then Camera, then Allow. Or open Settings, Safari, Camera and choose Ask or Allow. Then come back here.",
     iosapp: "The camera is blocked for this app. Close the app completely, open it again, and tap Allow when your iPhone asks. If it never asks, delete the icon from your Home Screen and add it again from Safari (Share, then Add to Home Screen).",
     android: "Chrome has the camera blocked for this site. Tap the lock icon in the address bar, then Permissions, then Camera, then Allow. If a prompt never showed, close any floating bubble or screen filter app (Android hides the prompt under an overlay), then tap Try again.",
+    androidnative: "The camera is turned off for IOP Pricing. Open your phone's Settings, then Apps, then IOP Pricing, then Permissions, then Camera, and choose Allow. Then come back and tap Try again.",
+    iphonenative: "The camera is turned off for IOP Pricing. Open your iPhone's Settings, then Apps, then IOP Pricing, and turn Camera on. Then come back and tap Try again.",
     other: "The camera is blocked for this site. Allow it in your browser's site settings (the lock icon by the address), then tap Try again."
   },
   gesture: {
     ios: "Your phone paused the camera preview (Low Power Mode does this). Tap Allow camera to start it.",
     iosapp: "Your phone paused the camera preview (Low Power Mode does this). Tap Allow camera to start it.",
     android: "The browser needs a tap to start the camera preview. Tap Allow camera.",
+    androidnative: "The camera preview needs a tap to start. Tap Allow camera.",
+    iphonenative: "Your phone paused the camera preview (Low Power Mode does this). Tap Allow camera to start it.",
     other: "The browser needs a tap to start the camera preview. Tap Allow camera."
   },
   ask: {
     ios: 'Tap Allow camera, then choose Allow when Safari asks.',
     iosapp: 'Tap Allow camera, then choose Allow when your iPhone asks.',
     android: 'Tap Allow camera, then choose Allow when your browser asks.',
+    androidnative: 'Tap Allow camera, then choose Allow when your phone asks.',
+    iphonenative: 'Tap Allow camera, then choose Allow when your iPhone asks.',
     other: 'Tap Allow camera, then choose Allow when your browser asks.'
   },
   none: { all: 'No camera found on this device. Type the cert or use the scanner gun below.' },
@@ -8434,7 +8586,8 @@ function watchdogPlan(stage, elapsedMs) {
 /** The line shown when the watchdog fires. */
 function stallText(plan, stage, platform) {
   if (plan === 'allow') {
-    if (platform === 'iosapp') return 'Waiting for the camera. If your iPhone has not asked, tap Allow camera, then choose Allow.';
+    if (platform === 'iosapp' || platform === 'iphonenative') return 'Waiting for the camera. If your iPhone has not asked, tap Allow camera, then choose Allow.';
+    if (platform === 'androidnative') return 'Waiting for the camera. If your phone has not asked, tap Allow camera, then choose Allow.';
     return platform === 'ios'
       ? 'Waiting for the camera. If Safari has not asked, tap Allow camera, then choose Allow.'
       : 'Waiting for the camera permission. If no prompt shows, tap Allow camera, then choose Allow.';
@@ -8491,6 +8644,7 @@ window.AutoScan = {
   createAutoCapture: createAutoCapture,
   createAutoScanner: createAutoScanner,
   platformOf: platformOf,
+  appPlatformOf: appPlatformOf,
   cameraKind: cameraKind,
   cameraHelp: cameraHelp,
   needsTap: needsTap,
@@ -8500,6 +8654,293 @@ window.AutoScan = {
   watchdogPlan: watchdogPlan,
   stallText: stallText,
   startPlan: startPlan,
+};
+})();
+
+(function () {
+'use strict';
+// One scanner, one screen (Penguin, 11/26: "like DeckTradr ... one scanner one screen, but it just knows what to identify and what
+// task it needs to perform"): the decisions only. Pure, dependency-free, no DOM, no timers, so node tests them and build-portal.js's
+// embedWholeFile drops it into the page as window.OneScan.
+//
+// Scan is ONE camera on ONE screen, with a three-way switch pinned above the tab bar: Auto | Slab | Raw.
+//  - Slab: the camera reads the slab label's barcode by itself (the page's own reader, scanner/autoScan.js rules) and a cert goes to the
+//    slab flow exactly as before (handleScanned, pricing untouched). A tap on the camera is the old tap: a hard look for a barcode.
+//    Nothing is ever photo matched.
+//  - Raw: no barcode is read. A tap takes the photo and the Mac mini matcher identifies the card (the Singles flow, unchanged).
+//  - Auto: the barcode reader runs all the time; a cert read in the card frame goes to the slab flow. A tap with no cert seen in the frame
+//    lately goes straight to the photo match (no hard look first); a tap while a cert is in the frame takes that cert.
+// A login that may not have Singles (raw cards) gets the same screen fixed to Slab, with no switch: effectiveKind() says 'slab' for it
+// whatever was saved. The choice lasts the app session (sessionStorage, iopScanKind), Auto when nothing was chosen.
+'use strict';
+
+/** The session key the switch's choice is kept under (an iop* key: /iop/ shares an origin with the TCG product). */
+var KIND_KEY = 'iopScanKind';
+/** The switch's segments, left to right. Auto is first and the default. */
+var KINDS = ['auto', 'slab', 'raw'];
+var DEFAULT_KIND = 'auto';
+/** The words on the switch. */
+var KIND_LABEL = { auto: 'Auto', slab: 'Slab', raw: 'Raw' };
+/** The hint on the card frame while the camera is on, per mode (the frame itself is the same in every mode). */
+var HINT = {
+  auto: 'Hold a slab or card in the frame. Tap for a raw card',
+  slab: "Point at the slab's barcode",
+  raw: 'Fill the frame with one card, then tap'
+};
+/** A cert-shaped code seen inside the frame this recently makes a tap in Auto take that slab instead of photo matching (ScanCamera.SEEN_MS). */
+var SEEN_MS = 700;
+
+/** Anything but a known kind is Auto. The old screen ids map across: 'slabs' is Slab, 'singles' is Raw. */
+function normalizeKind(value) {
+  var v = String(value == null ? '' : value).toLowerCase();
+  if (v === 'slabs') return 'slab';
+  if (v === 'singles') return 'raw';
+  return KINDS.indexOf(v) >= 0 ? v : DEFAULT_KIND;
+}
+
+/** The kind kept for this app session. `storage` is { getItem } or null; a throwing read is Auto. */
+function loadKind(storage) {
+  if (!storage || typeof storage.getItem !== 'function') return DEFAULT_KIND;
+  try { return normalizeKind(storage.getItem(KIND_KEY)); } catch (e) { return DEFAULT_KIND; }
+}
+
+/** Keeps the kind for the app session. True once written; false when storage refused (the page keeps its own copy then). */
+function saveKind(storage, kind) {
+  if (!storage || typeof storage.setItem !== 'function') return false;
+  try { storage.setItem(KIND_KEY, normalizeKind(kind)); return true; } catch (e) { return false; }
+}
+
+/** What the screen really does: a login without raw cards (no Singles flag, or singles-live off) is always Slab. */
+function effectiveKind(kind, rawAllowed) {
+  return rawAllowed ? normalizeKind(kind) : 'slab';
+}
+
+/** The segments the switch shows: all three when raw cards may be scanned, else none (the screen is fixed to Slab, no switch). */
+function kindsFor(rawAllowed) {
+  return rawAllowed ? KINDS.slice() : [];
+}
+
+/** Whether the barcode reader takes slabs by itself in this mode: Slab and Auto do, Raw never does. */
+function readsBarcodes(kind, rawAllowed) {
+  return effectiveKind(kind, rawAllowed) !== 'raw';
+}
+
+/** Whether a tap may photo match in this mode: Raw and Auto do, Slab never does. */
+function photoMatches(kind, rawAllowed) {
+  return effectiveKind(kind, rawAllowed) !== 'slab';
+}
+
+/**
+ * What a tap on the running camera does:
+ *  - 'nothing': signed out, or the camera is not running;
+ *  - 'slab': the slab tap (the camera's capture: the code under the finger, or a hard look for one), then the slab flow;
+ *  - 'photo': the photo match (the raw card flow).
+ * `ctx` is { kind, rawAllowed, signedIn, cameraOn, certSeen } where certSeen says a cert-shaped code was seen inside the frame within
+ * SEEN_MS (the page asks its camera). Slab never photo matches; Raw never reads a barcode; Auto photo matches only when no cert is there.
+ */
+function decideTap(ctx) {
+  ctx = ctx || {};
+  if (!ctx.signedIn || ctx.cameraOn === false) return 'nothing';
+  var k = effectiveKind(ctx.kind, !!ctx.rawAllowed);
+  if (k === 'slab') return 'slab';
+  if (k === 'raw') return 'photo';
+  return ctx.certSeen ? 'slab' : 'photo';
+}
+
+/**
+ * Where a cert read by the camera goes: 'slab' (the slab flow, priced as always), 'banner' (Raw: "That's a slab", nothing priced) or
+ * 'none' (signed out). A typed cert or a scanner gun goes the same way.
+ */
+function routeCert(kind, rawAllowed, signedIn) {
+  if (!signedIn) return 'none';
+  return effectiveKind(kind, rawAllowed) === 'raw' ? 'banner' : 'slab';
+}
+
+/** The frame's hint for a mode. */
+function hintFor(kind, rawAllowed) {
+  return HINT[effectiveKind(kind, rawAllowed)];
+}
+
+/**
+ * Which pile the tray shows: 'slabs' or 'raw'. Slab shows slabs and Raw shows raw cards; Auto shows the pile the last scan went to
+ * (`last`: 'slabs' | 'raw' | null), raw cards until the first scan.
+ */
+function trayPile(kind, rawAllowed, last) {
+  var k = effectiveKind(kind, rawAllowed);
+  if (k === 'slab') return 'slabs';
+  if (k === 'raw') return 'raw';
+  return last === 'slabs' ? 'slabs' : 'raw';
+}
+
+/** The aim rect AutoScan's capture rules take, from the card frame ({ x, y, width, height } in the camera box's CSS px); null without one. */
+function aimFromGuide(guide) {
+  if (!guide || !(guide.width > 0) || !(guide.height > 0)) return null;
+  var left = Number(guide.x) || 0, top = Number(guide.y) || 0;
+  return { left: left, right: left + guide.width, top: top, bottom: top + guide.height, center: { x: left + guide.width / 2, y: top + guide.height / 2 } };
+}
+
+/**
+ * Whether a cert-shaped code is inside the frame: `seen` are the codes the camera saw lately, each { text, format, corners } with the
+ * corners already on screen (CSS px of the camera box); `isCert(text, format)` is the cert-shape rule (AutoScan.sendsItself); `aim` an
+ * aimFromGuide rect (null: anywhere in view counts).
+ */
+function certInFrame(seen, isCert, aim) {
+  return (seen || []).some(function (s) {
+    if (!s || s.text == null || !s.corners || !s.corners.length) return false;
+    if (typeof isCert === 'function' && !isCert(s.text, s.format)) return false;
+    if (!aim) return true;
+    var x = 0, y = 0;
+    s.corners.forEach(function (p) { x += p.x; y += p.y; });
+    x /= s.corners.length; y /= s.corners.length;
+    return x >= aim.left && x <= aim.right && y >= aim.top && y <= aim.bottom;
+  });
+}
+
+/**
+ * The camera on/off chosen this app session, from the session record { scan, slabs, singles } (the old two sides each had their own):
+ * the one-screen choice when there is one, else off if either old side was turned off, on if either was turned on, else null (never
+ * chosen: the camera starts on).
+ */
+function camChoiceOf(rec) {
+  rec = rec && typeof rec === 'object' ? rec : {};
+  if (rec.scan === true || rec.scan === false) return rec.scan;
+  if (rec.slabs === false || rec.singles === false) return false;
+  if (rec.slabs === true || rec.singles === true) return true;
+  return null;
+}
+
+window.OneScan = {
+  KIND_KEY: KIND_KEY,
+  KINDS: KINDS,
+  DEFAULT_KIND: DEFAULT_KIND,
+  KIND_LABEL: KIND_LABEL,
+  HINT: HINT,
+  SEEN_MS: SEEN_MS,
+  normalizeKind: normalizeKind,
+  loadKind: loadKind,
+  saveKind: saveKind,
+  effectiveKind: effectiveKind,
+  kindsFor: kindsFor,
+  readsBarcodes: readsBarcodes,
+  photoMatches: photoMatches,
+  decideTap: decideTap,
+  routeCert: routeCert,
+  hintFor: hintFor,
+  trayPile: trayPile,
+  aimFromGuide: aimFromGuide,
+  certInFrame: certInFrame,
+  camChoiceOf: camChoiceOf,
+};
+})();
+
+(function () {
+'use strict';
+// One scanner, one screen: the ONE camera Scan has (Penguin, 11/26). Before this, Scan had two cameras: the slab camera (ScanCamera on
+// #sc-video, or the app's own native panel) and the Singles camera (its own getUserMedia on #sc-sg-video), and switching sides stopped one
+// and started the other, which is why the screen jumped. Now there is one owner of one ScanCamera stream on the Singles video: the slab
+// side and the raw-card side both read from it, and changing the mode (Auto | Slab | Raw) never stops or reopens it. Only close() stops it:
+// the camera button, leaving Scan (another tab, the Sheet), or signing out.
+//
+// Pure apart from what it is handed (the engine's openCamera, the browser's getUserMedia, the <video>): node tests it with fakes
+// (scanner/oneCamera.test.js). ScanCamera itself is unchanged; this only owns the instance, and caps the size the camera is asked for
+// (MAX_SIDE: the engine's ladder starts at 4K, which on a phone in a web view costs battery and heat for no better read on a slab label),
+// as an option on the call (the getUserMedia it is handed), never a change to the engine.
+'use strict';
+
+/** The longest side the camera is asked for (CSS px of the ask's ideal width / height). 1920 x 1080 is what Singles asked for before. */
+var MAX_SIDE = 1920;
+
+/** A copy of one getUserMedia ask with an ideal width / height over `maxSide` scaled down, keeping its shape. Anything else is left as is. */
+function capAsk(ask, maxSide) {
+  var cap = typeof maxSide === 'number' && maxSide > 0 ? maxSide : MAX_SIDE;
+  if (!ask || typeof ask !== 'object' || !ask.video || typeof ask.video !== 'object') return ask;
+  var v = ask.video;
+  var w = v.width && typeof v.width.ideal === 'number' ? v.width.ideal : null;
+  var h = v.height && typeof v.height.ideal === 'number' ? v.height.ideal : null;
+  var long = Math.max(w || 0, h || 0);
+  if (!(long > cap)) return ask;
+  var k = cap / long;
+  var video = Object.assign({}, v);
+  if (w != null) video.width = Object.assign({}, v.width, { ideal: Math.round(w * k) });
+  if (h != null) video.height = Object.assign({}, v.height, { ideal: Math.round(h * k) });
+  return Object.assign({}, ask, { video: video });
+}
+
+/**
+ * The owner. `opts`:
+ *  - openCamera(video, cameraOpts): the engine's ScanCamera.openCamera (required);
+ *  - getUserMedia(ask): the browser's, bound (or passed in each open's cameraOpts.getUserMedia); every ask goes through capAsk;
+ *  - maxSide: the cap (MAX_SIDE).
+ * open(video, cameraOpts) starts the camera on that <video> and resolves the engine's control object; asked again for the same video while
+ * it is open or opening it hands back the same one (never a second stream). close() stops it. asks() counts the getUserMedia calls.
+ */
+function createOneCamera(opts) {
+  opts = opts || {};
+  if (typeof opts.openCamera !== 'function') throw new Error('oneCamera: opts.openCamera is required');
+  var maxSide = typeof opts.maxSide === 'number' && opts.maxSide > 0 ? opts.maxSide : MAX_SIDE;
+  var control = null;   // the engine's control object while the camera is on
+  var opening = null;   // the promise of a start in flight
+  var onVideo = null;   // the <video> the camera is on (or opening on)
+  var gen = 0;          // every open and every close is a new number: a camera that arrives for an old one is stopped
+  var asked = 0;        // getUserMedia calls, all told
+  var opens = 0;        // open() calls that started a camera (not the ones handed back the camera already there)
+
+  function gum(fromCall) {
+    var real = typeof fromCall === 'function' ? fromCall : opts.getUserMedia;
+    if (typeof real !== 'function') return undefined; // the engine says 'unsupported'
+    return function (ask) { asked++; return real(capAsk(ask, maxSide)); };
+  }
+
+  function open(video, cameraOpts) {
+    if (control && onVideo === video) return Promise.resolve(control);
+    if (opening && onVideo === video) return opening;
+    if (control || opening) close();
+    var mine = ++gen;
+    onVideo = video;
+    opens++;
+    var o = Object.assign({}, cameraOpts || {});
+    var current = typeof o.isCurrent === 'function' ? o.isCurrent : function () { return true; };
+    o.isCurrent = function () { return mine === gen && current(); };
+    var g = gum(o.getUserMedia);
+    if (g) o.getUserMedia = g; else delete o.getUserMedia;
+    var p = Promise.resolve().then(function () { return opts.openCamera(video, o); }).then(function (c) {
+      if (mine !== gen) { try { c.stop(); } catch (e) { /* already stopped */ } var gone = new Error('superseded'); gone.problem = 'superseded'; throw gone; }
+      control = c;
+      opening = null;
+      return c;
+    }, function (e) {
+      if (mine === gen) { opening = null; onVideo = null; }
+      throw e;
+    });
+    opening = p;
+    return p;
+  }
+
+  function close() {
+    gen++;
+    opening = null;
+    var c = control;
+    control = null;
+    onVideo = null;
+    if (c) { try { c.stop(); } catch (e) { /* already stopped */ } }
+  }
+
+  return {
+    open: open,
+    close: close,
+    control: function () { return control; },
+    isOn: function () { return !!control; },
+    isOpening: function () { return !!opening && !control; },
+    video: function () { return onVideo; },
+    asks: function () { return asked; },
+    opens: function () { return opens; }
+  };
+}
+
+window.OneCamera = {
+  MAX_SIDE: MAX_SIDE,
+  capAsk: capAsk,
+  createOneCamera: createOneCamera,
 };
 })();
 
@@ -10967,7 +11408,7 @@ window.ViewPrefs = {
 // with no event the page simply keeps its 'mid' arrangement.
 //
 // The theme (app 1.8, `penguinNative.version >= 3`): each time the page applies a colour theme (on load, when one
-// is picked, and when 'Match phone' follows the phone) it sends {type: 'setTheme', id, light, bg, accent}: the
+// is picked) it sends {type: 'setTheme', id, light, bg, accent}: the
 // chosen id (scanner/theme.js), whether it is a light theme (dark status bar icons), the page background and the
 // accent, both '#rrggbb'. The app paints its own background, status bar and Settings sheet to match and remembers
 // the last one, so its next launch opens in the right colours before the page loads. Older apps (Android 1.4-1.7,
@@ -18184,11 +18625,15 @@ window.SinglesPrice = {
     var RESUME_CAM_GRACE_MS = 3000;
     var PANEL_RELEASE_MS = 400;
     var MAX_FAILED = 8;
+    /** Auto: a slab barcode read this soon after a tap that went to the photo match means the tap was that slab (its label had not been read
+        yet): the photo's raw line is not added, or taken back off, so one card is never on both lists (money review 11/27). */
+    var AUTO_SLAB_MS = 3000;
     var KEEP_PHOTO_CHARS = 512 * 1024;
     var PHOTO_WIDTH = 640;
     var CARD_FROM_VERSION = 5;
     var MAX_FLIP = 6; // look-alikes the 1/N flip goes through
     var LIST_NOT_READY = "Card list wasn't ready. Tap Retry.";
+    var SLAB_NOT_RAW = "That was a slab: it's on the slab list, not as a raw card.";
 
     var host = null;
     var el = {};
@@ -18204,6 +18649,7 @@ window.SinglesPrice = {
     var liveMap = {};
     var lastAdded = null, lastAddedFrom = null; // the last add (for Undo), and the To check card it used up (Undo puts it back)
     var matching = 0, capturing = false, jobs = 0, seller = 0;
+    var autoTaps = []; // Auto's photo taps of the last AUTO_SLAB_MS: { at, done, slab, pick, queueId } (slabTaken drops what a slab read undoes)
     var note = '', noteTimer = null, toastTimer = null, toastUndo = null, flashTimer = null;
     var stream = null, camStarting = false, camGen = 0, camMsg = '';
     var camWhy = '';
@@ -18219,6 +18665,11 @@ window.SinglesPrice = {
     var deckIds = [], deckAt = 0, deckCur = null, jumpTo = null, deckNoClickUntil = 0;
     var flips = {}, itemOpts = {};
     var reviewOpen = false, verFor = null; // verFor: the slide id whose Select version sheet is open
+    // One scanner, one screen (Penguin, 11/26): this pane's screen is Scan's only screen, for every signed-in Scan (raw cards or not), with
+    // the page's ONE camera (host.cameraOn / cameraOff / cameraState) and the Auto | Slab | Raw switch. The raw-card engine (the card list,
+    // the rates, live prices, the matcher) runs only while raw cards may be scanned (rawAllowed). kindMine: the switch's choice (this page's
+    // copy of the session's iopScanKind); lastPile: the pile Auto's last scan went to ('slabs' | 'raw'); kindShown / pileShownNow: drawn.
+    var kindMine = null, lastPile = null, kindShown = null, pileShownNow = null;
 
     function reduceMotion() {
       try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }
@@ -18272,7 +18723,7 @@ window.SinglesPrice = {
       host = h;
       ['sc-sg', 'sc-sg-cam', 'sc-sg-video', 'sc-sg-guide', 'sc-sg-cam-wait', 'sc-sg-cam-off', 'sc-sg-cam-text', 'sc-sg-cam-on', 'sc-sg-cam-stop',
         'sc-sg-torch', 'sc-sg-matching', 'sc-sg-bottom', 'sc-sg-hint', 'sc-sg-slab', 'sc-sg-slab-text', 'sc-sg-slab-yes', 'sc-sg-slab-no',
-        'sc-sg-panel', 'sc-sg-pay', 'sc-sg-pay-key', 'sc-sg-sum-check', 'sc-sg-review-open', 'sc-sg-card', 'sc-sg-track', 'sc-sg-dots',
+        'sc-sg-panel', 'sc-sg-pay', 'sc-sg-pay-key', 'sc-sg-sum-check', 'sc-sg-review-open', 'sc-sg-card', 'sc-sg-track', 'sc-sg-dots', 'sc-sg-slabs', 'sc-sg-grab', 'sc-sg-sum', 'sc-sg-tall', 'sc-sg-tall-raw',
         'sc-sg-find', 'sc-sg-search', 'sc-sg-go', 'sc-sg-type-open', 'sc-sg-type-close', 'sc-sg-info', 'sc-sg-shade', 'sc-sg-review', 'sc-sg-review-title', 'sc-sg-review-close', 'sc-sg-tot', 'sc-sg-totals',
         'sc-sg-rows', 'sc-sg-pile-empty', 'sc-sg-confirm', 'sc-sg-confirm-text', 'sc-sg-clear-yes', 'sc-sg-clear-no', 'sc-sg-pile-btns',
         'sc-sg-copy', 'sc-sg-clear', 'sc-sg-ver', 'sc-sg-ver-close', 'sc-sg-vers', 'sc-sg-toast', 'sc-sg-toast-text', 'sc-sg-toast-undo'
@@ -18293,9 +18744,23 @@ window.SinglesPrice = {
     }
 
     function on_(node, type, fn) { if (node && node.addEventListener) node.addEventListener(type, fn); }
+    /** Whether `node` sits in something that scrolls up and down right now (its content taller than it, and overflow auto / scroll). */
+    function scrollsInside(node) {
+      for (var n = node; n && n.nodeType === 1 && n !== document.body && n !== document.documentElement; n = n.parentNode) {
+        if (!(n.scrollHeight > n.clientHeight + 1)) continue;
+        var oy = '';
+        try { oy = window.getComputedStyle(n).overflowY; } catch (e) { oy = ''; }
+        if (oy === 'auto' || oy === 'scroll') return true;
+      }
+      return false;
+    }
     function wire() {
       on_(el['cam-on'], 'click', function () { camChoiceOf(true); startCamera(); });
-      on_(el['cam-stop'], 'click', function () { camChoiceOf(false); stopCamera(); camMsg = ''; camWhy = ''; render(); });
+      on_(el['cam-stop'], 'click', function () {
+        camChoiceOf(false);
+        if (one()) { try { host.cameraOff(); } catch (e) { /* the page keeps its camera */ } return; } // the page's one camera: it says when it is off
+        stopCamera(); camMsg = ''; camWhy = ''; render();
+      });
       on_(el.torch, 'click', function (ev) { if (ev && ev.stopPropagation) ev.stopPropagation(); toggleTorch(); });
       on_(el.video, 'playing', videoLive);
       on_(el.video, 'loadeddata', videoLive);
@@ -18305,7 +18770,9 @@ window.SinglesPrice = {
       on_(el.cam, 'pointerup', function (ev) {
         var d = down; down = null;
         if (!d || !stream || (ev.target && ev.target.closest && ev.target.closest('button'))) return;
-        if (flow && flow.isTap({ dx: ev.clientX - d.x, dy: ev.clientY - d.y, ms: now() - d.t })) shutter();
+        if (!flow || !flow.isTap({ dx: ev.clientX - d.x, dy: ev.clientY - d.y, ms: now() - d.t })) return;
+        if (one()) { oneTap(ev); return; }
+        shutter();
       });
       on_(el['slab-yes'], 'click', function () { el.slab.hidden = true; pickKind('slabs'); });
       on_(el['slab-no'], 'click', function () { el.slab.hidden = true; });
@@ -18313,11 +18780,37 @@ window.SinglesPrice = {
       on_(el['type-open'], 'click', function () { if (typeShown()) closeType(); else openType(''); });
       on_(el['type-close'], 'click', function () { closeType(); });
       on_(el['toast-undo'], 'click', function () { var f = toastUndo; hideToast(); if (f) f(); });
-      on_(el['review-open'], 'click', function () { openReview(); });
-      on_(el['sum-check'], 'click', function () { goNextAmber(); });
+      on_(el['review-open'], 'click', function () {
+        if (one()) { if (trayUpNow || rawUpNow) pullDown(); else pullUp(); return; }
+        openReview();
+      });
+      on_(el['sum-check'], 'click', function () { if (one() && pileShownNow === 'slabs') { pullUp(); return; } goNextAmber(); });
+      // one screen: the grab handle and the header pull the tray up (and back down); a tap on the handle does the same
+      [el.grab, el.sum].forEach(function (n) {
+        on_(n, 'pointerdown', function (ev) {
+          if (!one() || (n === el.sum && ev.target && ev.target.closest && ev.target.closest('button'))) return;
+          trayDrag = { y: ev.clientY, t: now(), grab: n === el.grab };
+        });
+      });
+      on_(window, 'pointerup', function (ev) {
+        var d = trayDrag; trayDrag = null;
+        if (!d || !one()) return;
+        var dy = ev.clientY - d.y;
+        if (dy < -TRAY_PULL_PX) pullUp();
+        else if (dy > TRAY_PULL_PX) pullDown();
+        else if (d.grab && Math.abs(dy) < 10) { if (trayUpNow) pullDown(); else pullUp(); }
+      });
+      on_(window, 'pointercancel', function () { trayDrag = null; });
+      // a slab row: its x is the pile row's own remove; anywhere else on it pulls the list up (the card, its figures, every control)
+      on_(el.slabs, 'click', function (ev) {
+        var t = ev.target;
+        var rm = t && t.closest ? t.closest('[data-slab-rm]') : null;
+        if (rm) { try { host.removeSlab(rm.getAttribute('data-slab-rm')); } catch (e) { /* the row stays */ } return; }
+        if (t && t.closest && t.closest('[data-slab]')) pullUp();
+      });
       on_(el['review-close'], 'click', function () { closeSheets(); });
-      on_(el['ver-close'], 'click', function () { closeSheets(); });
-      on_(el.shade, 'click', function () { closeSheets(); });
+      on_(el['ver-close'], 'click', function () { closeVer(); });
+      on_(el.shade, 'click', function () { if (rawUpNow) closeVer(); else closeSheets(); });
       on_(el.copy, 'click', copyList);
       on_(el.clear, 'click', function () {
         el.confirm.hidden = false; el['pile-btns'].hidden = true;
@@ -18341,10 +18834,22 @@ window.SinglesPrice = {
       }
       on_(window, 'resize', placeGuide);
       on_(window, 'resize', fitDeck);
+      on_(window, 'resize', function () { try { fitOneIfMoved(); } catch (e) { /* fitted on the next draw */ } });
+      // One screen: a drag never moves the page (it is exactly the phone's height) and never pulls the app's refresh down mid-scan (the
+      // iPhone app only turns its pull-to-refresh off for its own camera panel, which Scan no longer shows: owner QA 11/27). A drag inside
+      // something that scrolls (the pulled-up list, a sheet, a tall card) still scrolls it.
+      try {
+        document.addEventListener('touchmove', function (ev) {
+          if (!on || !one() || !ev || !ev.cancelable) return;
+          if (scrollsInside(ev.target)) return;
+          ev.preventDefault();
+        }, { passive: false });
+      } catch (e) { /* an old browser: the page may move a little */ }
       on_(el.video, 'loadedmetadata', placeGuide);
       on_(document, 'keydown', function (ev) {
         if (!ev || ev.key !== 'Escape') return;
-        if (reviewOpen || verFor) closeSheets();
+        if (verFor) closeVer();
+        else if (reviewOpen) closeSheets();
         else if (typeShown()) closeType();
       });
       // Back to the app: Slabs (resumed), however short the trip away (Penguin, 11/25: "always Slabs"). Only the camera's own
@@ -18397,13 +18902,15 @@ window.SinglesPrice = {
     function refresh() {
       if (!host) return;
       if (!allowed()) {
-        if (on) leave(false);
+        if (on && !one()) leave(false);
+        if (on && one()) applyKind(); // one screen: it stays, as Slab (no raw cards for this login)
         changed();
         return;
       }
       if (statusDue()) askStatus();
-      if (!mayBeOn()) { if (on) leave(false); changed(); return; }
-      if (on && ratesDue()) ensureData();
+      if (!mayBeOn()) { if (on && !one()) leave(false); if (on && one()) applyKind(); changed(); return; }
+      if (on && ratesDue() && (!one() || rawAllowed())) ensureData();
+      if (on && one()) { if (rawAllowed() && !idx && !bookLoading) ensureData(); applyKind(); }
       if (!on && liveState === true) preloadSoon();
       changed();
     }
@@ -18421,10 +18928,19 @@ window.SinglesPrice = {
       }, PRELOAD_MS);
     }
 
-    function claimsCamera() { return on; }
+    function claimsCamera() { return on && !one(); } // one screen: the camera is the page's, never this pane's own
 
-    /** The Slabs / Singles choice (and "That's a slab: switch to Slabs?"). Remembered under iopKind. opts.quiet: no buzz. */
+    /** The Slabs / Singles choice (and "That's a slab: switch to Slabs?"). Remembered under iopKind. opts.quiet: no buzz. One screen: the
+        old ids are the switch's modes ('slabs' is Slab, 'singles' is Raw), and the screen never goes. */
     function pickKind(kind, opts) {
+      if (one()) {
+        if (kind === 'singles') {
+          if (!allowed() || !mayBeOn()) return;
+          show();
+          setKind('raw', { tap: !(opts && opts.quiet) });
+        } else if (on) setKind('slab', { tap: true });
+        return;
+      }
       if (kind === 'singles') {
         if (on || !allowed() || !mayBeOn()) return;
         setKey(KIND_KEY, 'singles');
@@ -18478,6 +18994,7 @@ window.SinglesPrice = {
     }
 
     function leave(byTap) {
+      if (one()) { hide(); return; } // one screen: the page brings it back (and stops its camera) itself
       try { var f = document.activeElement; if (f && el.root.contains(f) && f.blur) f.blur(); } catch (e) { /* nothing focused */ }
       camAsking = false;
       stopCamera();
@@ -18501,8 +19018,314 @@ window.SinglesPrice = {
       if (tickTimer !== null) { clearInterval(tickTimer); tickTimer = null; }
       if (on) leave(false); else stopCamera();
     }
-    function resumed() { if (on && active) leave(false); }
+    function resumed() { if (on && active && !one()) leave(false); } // one screen: back to the app is the same screen, in the same mode
     function isOn() { return on; }
+
+    // ── one scanner, one screen ──────────────────────────────────────────────────────────────────────────
+    function one() { try { return !!(host && typeof host.oneCamera === 'function' && host.oneCamera()); } catch (e) { return false; } }
+    /** The page may draw Scan as this pane's screen (attached, and the one-screen flow is on). */
+    function shellReady() { return !!host && one(); }
+    /** Raw cards may be scanned: the Singles rule (an owner, or a sourcer account with the flag) and singles-live's /status on. */
+    function rawAllowed() { return available(); }
+    function sessionStore() { try { return window.sessionStorage || null; } catch (e) { return null; } }
+    /** The switch's choice (Auto when none): this page's copy first, else the app session's. */
+    function kindChosen() { return kindMine || window.OneScan.loadKind(sessionStore()); }
+    /** What the screen does now: the choice, or Slab for a login without raw cards. */
+    function kindNow() { return window.OneScan.effectiveKind(kindChosen(), rawAllowed()); }
+    function readsBarcodes() { return window.OneScan.readsBarcodes(kindChosen(), rawAllowed()); }
+    /** Hide (seller) mode on the one screen: the tray shows the cards only, no money (the page's own Hide button sets it). */
+    function sellerHidden() { try { return one() && !!host.layout && host.layout.classList.contains('sc-seller-mode'); } catch (e) { return false; } }
+    var hiddenDrawn = null;
+    function sayFrom(words) { if (on) say(words); }
+    /** The card frame on the camera (camera box CSS px): where Auto and Slab take a slab's barcode from. */
+    function guideRect() { return guide ? { x: guide.x, y: guide.y, width: guide.width, height: guide.height } : null; }
+    /** A sheet or the type box is open over the screen: the page's camera takes nothing meanwhile. */
+    function busy() { return !!on && (reviewOpen || !!verFor || typeShown()); }
+    /** Something on the one screen that Android's Back should close first (a sheet, Raw's pulled-up tray, the type box). */
+    function backWanted() { return !!on && one() && (rawUpNow || reviewOpen || !!verFor || typeShown()); }
+    /** Back: closes the top one of them; false when there was none. */
+    function backMoved() { try { if (on && one() && typeof host.backChanged === 'function') host.backChanged(); } catch (e) { /* Back follows on the next draw */ } }
+    function backStep() {
+      if (!on || !one()) return false;
+      if (verFor) { closeVer(); return true; }
+      if (rawUpNow || reviewOpen) { closeSheets(); return true; }
+      if (typeShown()) { closeType(); return true; }
+      return false;
+    }
+
+    /** The one screen comes up (the page calls it whenever Scan is on show and someone is signed in). No camera here: the page starts its
+        own on this pane's video. The raw-card engine is read only while raw cards may be scanned. */
+    function show() {
+      if (on || !host) return;
+      on = true;
+      entering = true;
+      enteredAt = now();
+      host.layout.classList.add('sc-singles-mode');
+      host.layout.classList.add('sc-one');
+      el.root.hidden = false;
+      el.slab.hidden = true;
+      if (el['slab-text']) el['slab-text'].textContent = "That's a slab. Switch to Slab to price it?";
+      if (el['slab-yes']) el['slab-yes'].textContent = 'Switch to Slab';
+      ensureEngine();
+      if (rawAllowed()) ensureData();
+      camAsking = false;
+      kindShown = null;
+      oneFitKey = '';
+      try { applyKind(); render(); } finally { entering = false; }
+      try { fitOne(); } catch (e) { /* fitted on the next draw */ }
+      placeGuide();
+      if (rawAllowed() && liveState === true && pile) refreshStaleLive();
+      changed();
+    }
+    /** The one screen goes (another tab, the Sheet, signed out). The page stops its camera itself. */
+    function hide() {
+      if (!on) return;
+      try { var f = document.activeElement; if (f && el.root.contains(f) && f.blur) f.blur(); } catch (e) { /* nothing focused */ }
+      camAsking = false;
+      stopCamera();
+      on = false;
+      trayUp(false);
+      host.layout.classList.remove('sc-singles-mode');
+      host.layout.classList.remove('sc-one');
+      try { el.root.style.removeProperty('--sc-one-trim'); } catch (e) { /* a test double */ }
+      oneTrim = -1; oneFitKey = '';
+      el.root.hidden = true;
+      el.slab.hidden = true;
+      closeSheets(true);
+      hideToast();
+      changed();
+    }
+    /** The switch: Auto | Slab | Raw. Kept for the app session. Only the tray, the frame's hint and how the camera reads change: the
+        camera, the frame, the buttons, the tray's place, the switch and the tab bar stay exactly where they are. */
+    function setKind(k, opts) {
+      var next = window.OneScan.normalizeKind(k);
+      kindMine = next;
+      window.OneScan.saveKind(sessionStore(), next);
+      if (opts && opts.tap) tick();
+      if (el.slab) el.slab.hidden = true;
+      if (rawUpNow) rawTray(false); // a flip puts a pulled-up tray back down first, whole (Android QA 11/27)
+      if (trayUpNow) { try { host.closeSlabList(); } catch (e) { /* the page puts it down with kindChanged */ } }
+      applyKind();
+      try { if (host && typeof host.kindChanged === 'function') host.kindChanged(kindNow()); } catch (e) { /* the page reads it next frame */ }
+    }
+    /** Draws what the mode changes, only when it changed: which pile the tray shows, and the hint. */
+    function applyKind() {
+      if (!on || !one()) return;
+      var k = kindNow();
+      var showing = window.OneScan.trayPile(k, rawAllowed(), lastPile);
+      if (k === kindShown && showing === pileShownNow) return;
+      if (rawUpNow && showing !== 'raw') rawTray(false);
+      if (k !== kindShown && el.search && el.search.setAttribute) {
+        // the type box says what it takes in this mode (owner QA 11/27: Slab's said "Card name and number", though a cert works there)
+        var ph = k === 'slab' ? 'Cert number' : k === 'auto' ? 'Cert, or card name and number' : 'Card name and number';
+        el.search.setAttribute('placeholder', ph);
+        el.search.setAttribute('aria-label', k === 'slab' ? "Type a slab's cert number" : k === 'auto' ? "Type a slab's cert, or a card's name and number, like Pikachu 25" : "Type a card's name and number, like Pikachu 25");
+      }
+      kindShown = k;
+      pileShownNow = showing;
+      try { el.root.setAttribute('data-kind', k); } catch (e) { /* a test double */ }
+      if (el.panel && el.panel.classList) el.panel.classList.toggle('sc-sg-show-slabs', showing === 'slabs');
+      if (el.slabs) el.slabs.hidden = showing !== 'slabs';
+      render();
+    }
+    /** The tray in Slab (or Auto after a slab), drawn exactly like the raw tray: the header "Slabs · We pay $X · N to check · Review N"
+        (the page's own pile figures: host.slabTray), and the compact rows. Hide (seller) mode: the cards only, no money anywhere. */
+    function renderSlabs() {
+      if (!on || !one() || pileShownNow !== 'slabs' || !el.slabs) return;
+      var t = null;
+      try { t = host.slabTray(); } catch (e) { t = null; }
+      var rows = t && t.rows ? t.rows : [];
+      var hiddenMode = !!(t && t.hidden);
+      el['pay-key'].textContent = hiddenMode ? 'Slabs' : 'Slabs · ' + ((t && t.payKey) || 'We pay');
+      el.pay._sgToken = null;
+      var fig = t && t.payText ? String(t.payText) : '';
+      el.pay.classList.toggle('sc-blank', !fig);
+      el.pay.textContent = fig || (hiddenMode ? (rows.length ? rows.length + (rows.length === 1 ? ' slab' : ' slabs') : 'No slabs yet') : '$0.00');
+      var n = t && t.toCheck ? t.toCheck : 0;
+      el['sum-check'].hidden = !n;
+      el['sum-check'].textContent = n ? n + ' to check' : '';
+      el['review-open'].textContent = trayUpNow ? 'Done' : 'Review ' + rows.length;
+      el['review-open'].classList.toggle('sc-sg-done', trayUpNow);
+      el['review-open'].disabled = false; // the whole slab screen (Rates, Adjust %, type a cert) even before the first slab
+      el['review-open'].classList.toggle('sc-sg-zero', !trayUpNow && !rows.length); // it still opens, but reads as quiet like Raw's Review 0
+      var pillCls = { pay: 'sc-sg-pay', no: 'sc-sg-no', chk: 'sc-sg-chk' };
+      el.slabs.innerHTML = rows.length ? rows.map(function (r) {
+        var pill = r.pill ? '<span class="sc-sg-pill ' + (pillCls[r.pill.kind] || '') + '">' + escHtml(r.pill.text) + '</span>' : '';
+        var label = [r.grade, r.cert].filter(Boolean).join(' · ');
+        return '<div class="sc-sg-slabrow" data-slab="' + escHtml(r.key) + '">' + (r.thumbHtml || '') +
+          '<div class="sc-sg-words"><div class="sc-sg-t"><div class="sc-sg-name">' + escHtml(r.card) + (r.number ? ' <span class="sc-sg-code">' + escHtml(r.number) + '</span>' : '') + '</div>' +
+          (hiddenMode ? '' : '<button type="button" class="sc-sg-x" data-slab-rm="' + escHtml(r.key) + '" aria-label="Remove ' + escHtml(label) + '"></button>') + '</div>' +
+          '<div class="sc-sg-sub">' + escHtml(label) + '</div>' +
+          '<div class="sc-sg-acts">' + pill + (r.lockHtml || '') + '</div></div></div>';
+      }).join('') : '<div class="sc-sg-slide"><div class="sc-sg-empty">' +
+        escHtml(t && t.lockOnly ? 'Hold a slab in the frame: your lock screen comes up here. Review shows it any time.'
+          : stream ? "Hold a slab's barcode in the frame. Each slab shows up here." : 'Turn the camera on and hold a slab in the frame, or tap search to type the cert.') + '</div></div>';
+    }
+    // ── the tray pulled up (one screen) ──
+    var TRAY_PULL_PX = 24; // a drag this far up on the handle or the header pulls the tray up (down: back down)
+    var trayDrag = null, trayUpNow = false, rawUpNow = false;
+    /** Up: Slab's whole list (the page pulls it up: setOneUp), or Raw's Review sheet, as today. */
+    function pullUp() {
+      if (!on || !one()) return;
+      if (pileShownNow === 'slabs') { try { host.openSlabList(); } catch (e) { /* stays down */ } return; }
+      if (!el['review-open'].disabled) rawTray(true);
+    }
+    function pullDown() {
+      if (!on || !one()) return;
+      if (rawUpNow) { rawTray(false); return; }
+      if (trayUpNow) { try { host.closeSlabList(); } catch (e) { /* stays up */ } }
+    }
+    /** Raw's pull-up: the same tray rising as Slab's (the switch and the tab bar still showing), with the Review list in it. The list's
+        nodes are moved into the tray and back, so everything that draws them (renderReview) and every listener is unchanged. */
+    var rawHomes = null;
+    function rawTray(up) {
+      up = !!up && on && one();
+      if (up === rawUpNow) return;
+      var box = el['tall-raw'];
+      var body = el.tot && el.tot.parentNode;
+      var btns = el['pile-btns'];
+      if (up) {
+        if (!box || !body || !btns || typeof box.appendChild !== 'function') { openReview(); return; } // no tray to rise: the sheet, as before
+        if (!rawHomes) {
+          rawHomes = [];
+          [body, btns].forEach(function (n) {
+            try {
+              var mark = document.createComment('one screen: the Review list sits in the tray');
+              n.parentNode.insertBefore(mark, n);
+              box.appendChild(n);
+              rawHomes.push({ node: n, mark: mark });
+            } catch (e) { /* stays in the sheet */ }
+          });
+        }
+        rawUpNow = true;
+        tick();
+        reviewOpen = true;
+        verFor = null;
+        el.confirm.hidden = true;
+        el.panel.classList.add('sc-sg-up-raw');
+        trayUp(true);
+        if (body) body.scrollTop = 0;
+      } else {
+        rawUpNow = false;
+        reviewOpen = false;
+        if (el.confirm) el.confirm.hidden = true;
+        if (rawHomes) {
+          rawHomes.forEach(function (h) {
+            try { if (h.mark.parentNode) { h.mark.parentNode.insertBefore(h.node, h.mark); h.mark.parentNode.removeChild(h.mark); } } catch (e) { /* stays */ }
+          });
+          rawHomes = null;
+        }
+        trayUp(false);
+        el.panel.classList.remove('sc-sg-up-raw');
+      }
+      render();
+    }
+    /** The page says the tray is up or down. Up: the tray's foot stays where it is and its top rises to just under the status bar. */
+    function trayUp(up) {
+      up = !!up;
+      if (up === trayUpNow || !el.panel) return;
+      trayUpNow = up;
+      var p = el.panel;
+      if (up) {
+        var r = p.getBoundingClientRect();
+        var vh = window.innerHeight || 0;
+        if (p.style && typeof p.style.setProperty === 'function' && r.width) {
+          p.style.setProperty('--sc-sg-up-l', Math.round(r.left) + 'px');
+          p.style.setProperty('--sc-sg-up-w', Math.round(r.width) + 'px');
+          p.style.setProperty('--sc-sg-up-b', Math.max(0, Math.round(vh - r.bottom)) + 'px');
+          if (!reduceMotion()) p.style.top = Math.round(r.top) + 'px'; // it starts where it is and slides up (the class's top)
+        }
+        p.classList.add('sc-sg-up');
+        if (p.style && p.style.top) { void p.offsetHeight; p.style.top = ''; }
+        if (el.tall) el.tall.scrollTop = 0;
+      } else {
+        p.classList.remove('sc-sg-up');
+        if (p.style) p.style.top = '';
+      }
+      if (pileShownNow === 'slabs') renderSlabs();
+      else render(); // Raw: Review N / Done and its arrow follow at once (Android QA 11/27: a flip left "Review 1" with the down arrow)
+    }
+    /** The page's pile changed (a slab added, priced, removed). */
+    function slabsChanged() {
+      if (!on || !one()) return;
+      if (pileShownNow === 'slabs') { renderSlabs(); return; }
+      if (sellerHidden() !== hiddenDrawn) { if (rawUpNow && sellerHidden()) rawTray(false); else render(); } // Hide turned on or off: Raw's tray follows
+    }
+    /** A cert went to the slab flow (Auto or Slab): the frame flashes, and Auto's tray shows the slabs. */
+    function slabTaken(ok) {
+      if (!on || !one()) return;
+      if (ok) slabUndoesTaps();
+      flash(ok ? 'ok' : 'look');
+      if (el.slab) el.slab.hidden = true;
+      lastPile = 'slabs';
+      applyKind();
+    }
+    /** A slab was read: Auto's photo taps of the last AUTO_SLAB_MS were that slab. A match still on its way is dropped when it lands, a raw
+        line it added comes off the list, and a To check card it left goes. Nothing else on the list is touched. */
+    function slabUndoesTaps() {
+      var cut = now() - AUTO_SLAB_MS;
+      var undid = false;
+      autoTaps.forEach(function (t) {
+        if (t.at < cut || t.slab) return;
+        t.slab = true;
+        if (t.pick && t.pick.lineKey && pile.get(t.pick.lineKey)) {
+          flow.undoPick(pile, t.pick);
+          if (lastAdded && lastAdded.lineKey === t.pick.lineKey) { lastAdded = lastAddedFrom = null; hideToast(); }
+          commitPile();
+          undid = true;
+        }
+        if (t.queueId != null && queued(t.queueId)) {
+          var qid = t.queueId;
+          queue = queue.filter(function (q) { return q.id !== qid; });
+          saveQueue();
+          undid = true;
+        }
+        t.pick = null; t.queueId = null;
+      });
+      autoTaps = autoTaps.filter(function (t) { return !t.done; }); // a match still out keeps its ticket (dropped when it lands)
+      if (undid) { say(SLAB_NOT_RAW); render(); }
+    }
+    /** The page's one camera says what it is doing: { starting }, { on, torch, msg, why }, { torchOn } (any of them). */
+    function cameraState(st) {
+      if (!one() || !st) return;
+      if ('starting' in st) { camStarting = !!st.starting; if (st.starting) { camMsg = ''; camWhy = ''; } }
+      if ('on' in st) {
+        camStarting = false;
+        camSettledAt = now();
+        clearTimeout(liveTimer);
+        liveTimer = null;
+        if (st.on) {
+          stream = (el.video && el.video.srcObject) || true;
+          camMsg = ''; camWhy = '';
+          camLive = false;
+          if (el.video && el.video.videoWidth) videoLive(); else liveTimer = setTimeout(videoLive, LIVE_FALLBACK_MS);
+        } else {
+          stream = null;
+          camLive = false;
+          torchCap = false; torchOn = false;
+          camMsg = st.msg ? String(st.msg) : '';
+          camWhy = st.msg ? (st.why || 'failed') : '';
+        }
+      }
+      if ('torch' in st) torchCap = !!st.torch;
+      if ('torchOn' in st) torchOn = !!st.torchOn;
+      if (on) render();
+    }
+    /** A tap on the running camera (OneScan.decideTap): Slab's tap (a hard look under the finger), or the photo match. */
+    function oneTap(ev) {
+      var act = 'nothing';
+      try {
+        var r = el.cam.getBoundingClientRect();
+        var tapBox = { x: ev.clientX - r.left, y: ev.clientY - r.top };
+        var k = kindNow();
+        act = window.OneScan.decideTap({
+          kind: k, rawAllowed: rawAllowed(), signedIn: !!host.signedIn(), cameraOn: !!stream,
+          certSeen: k === 'auto' && !!host.certInView(),
+        });
+        if (act === 'slab') { host.slabTap(tapBox); return; }
+      } catch (e) { act = 'nothing'; }
+      if (act === 'photo') shutter();
+    }
 
     /** A slab barcode while Singles is on (the app's scanner, a scanner gun, or a cert typed in the search). */
     function slabScanned() {
@@ -18658,6 +19481,7 @@ window.SinglesPrice = {
       } catch (e) { return Promise.resolve(false); }
     }
     function startCamera() {
+      if (one()) { if (on) { try { host.cameraOn(); } catch (e) { /* the page says why */ } } return; } // the page's one camera
       if (!on || !active || stream || camStarting) return;
       if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
         camMsg = "This browser can't use the camera here. Tap search to type the card's name or number.";
@@ -18717,10 +19541,13 @@ window.SinglesPrice = {
       camLive = false;
       clearTimeout(liveTimer);
       liveTimer = null;
-      if (stream) { try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { /* already stopped */ } }
+      // one screen: the stream is the page's one camera, which only the page stops (it says so through cameraState)
+      if (!one()) {
+        if (stream) { try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { /* already stopped */ } }
+        if (el.video) { try { el.video.srcObject = null; } catch (e) { /* fake video */ } }
+      }
       stream = null;
       camTrack = null; torchCap = false; torchOn = false;
-      if (el.video) { try { el.video.srcObject = null; } catch (e) { /* fake video */ } }
       if (on) render();
     }
 
@@ -18740,6 +19567,7 @@ window.SinglesPrice = {
       } catch (e) { camTrack = null; torchCap = false; }
     }
     function toggleTorch() {
+      if (one()) { if (torchCap) { try { host.torch(); } catch (e) { /* no flashlight */ } } return; } // the page's camera owns the track
       if (!camTrack || !torchCap || typeof camTrack.applyConstraints !== 'function') return;
       var want = !torchOn;
       var t = camTrack;
@@ -18831,17 +19659,26 @@ window.SinglesPrice = {
       try { photo = grabPhoto(); } catch (e) { photo = null; }
       capturing = false;
       if (!photo) { say("Couldn't take the picture. Try again or type it."); return; }
+      if (one()) { lastPile = 'raw'; applyKind(); } // Auto: the tray shows the raw cards this photo goes to
       el.cam.classList.add('sc-sg-reading');
       if (nativeReader()) return;
-      matchPhoto(photo, forSeller);
+      var tapTicket = null;
+      if (one() && kindNow() === 'auto') {
+        var keepFrom = now() - AUTO_SLAB_MS;
+        autoTaps = autoTaps.filter(function (t) { return !t.done || t.at >= keepFrom; });
+        tapTicket = { at: now(), done: false, slab: false, pick: null, queueId: null };
+        autoTaps.push(tapTicket);
+      }
+      matchPhoto(photo, forSeller, tapTicket);
     }
 
     /** A photo matched in the background ("Matching 2… keep scanning") for the seller it was taken for. Retry sends it again. */
-    function matchPhoto(photo, forSeller) {
+    function matchPhoto(photo, forSeller, ticket) {
       var id = nextId();
       if (!idx) {
         ensureData();
         keepFailed({ id: id, kind: 'failed', photo: photo, reason: LIST_NOT_READY, retryable: true });
+        if (ticket) { ticket.done = true; ticket.queueId = id; }
         render();
         return;
       }
@@ -18858,9 +19695,18 @@ window.SinglesPrice = {
       }).catch(function () { return null; }).then(function (res) {
         matching = Math.max(0, matching - 1);
         if (!matching) el.cam.classList.remove('sc-sg-reading');
+        if (ticket) ticket.done = true;
         if (fromLast(forSeller)) { say('A photo from the last seller was dropped.'); renderCam(); return; }
-        if (res && flow.photoOutcome(res) !== 'none') photoBack(res, nextId(), null);
-        else keepFailed(Object.assign({ id: nextId(), kind: 'failed', photo: photo }, flow.failedReason(found || { error: 'internal' })));
+        // Auto: the camera read a slab's barcode while this photo was matching: the tap was that slab, already on the slab list
+        if (ticket && ticket.slab) { say(SLAB_NOT_RAW); render(); return; }
+        var backId = nextId();
+        if (res && flow.photoOutcome(res) !== 'none') {
+          var added = photoBack(res, backId, null);
+          if (ticket) { if (added) ticket.pick = added; else ticket.queueId = backId; }
+        } else {
+          keepFailed(Object.assign({ id: backId, kind: 'failed', photo: photo }, flow.failedReason(found || { error: 'internal' })));
+          if (ticket) ticket.queueId = backId;
+        }
         render();
       });
     }
@@ -18910,7 +19756,7 @@ window.SinglesPrice = {
           jumpTo = 'l:' + p.lineKey;
           addedToast(top, p);
           askLive([top.productId]);
-          return;
+          return p;
         }
       }
       bad();
@@ -18919,6 +19765,7 @@ window.SinglesPrice = {
       jumpTo = 'q:' + id;
       saveQueue();
       if (top && !flow.isOffCard(top)) askLive([top.productId]);
+      return null;
     }
 
     function keepFailed(item) {
@@ -19095,11 +19942,20 @@ window.SinglesPrice = {
     function openVersions(sid) {
       if (!sid) return;
       verFor = sid;
-      reviewOpen = false;
+      if (!rawUpNow) reviewOpen = false; // Raw pulled up: the tray stays up under the version sheet
       render();
+    }
+    /** Closes only the version sheet when Raw is pulled up (the tray stays up), else every sheet. */
+    function closeVer(quiet) {
+      if (!rawUpNow) { closeSheets(quiet); return; }
+      verFor = null;
+      if (el.ver) el.ver.hidden = true;
+      if (el.shade) el.shade.hidden = true;
+      if (!quiet) render();
     }
     function closeSheets(quiet) {
       var was = reviewOpen || !!verFor;
+      if (rawUpNow) { verFor = null; if (el.ver) el.ver.hidden = true; if (el.shade) el.shade.hidden = true; rawTray(false); return; }
       reviewOpen = false;
       verFor = null;
       if (el.review) el.review.hidden = true;
@@ -19117,7 +19973,7 @@ window.SinglesPrice = {
       var productId = Number(t.getAttribute('data-id'));
       var printing = t.getAttribute('data-pv');
       var sid = verFor;
-      closeSheets(true);
+      closeVer(true);
       if (sid.indexOf('l:') === 0) pickLinePrinting(sid.slice(2), printing);
       else pickFromCheck(Number(sid.slice(2)), productId, printing);
       render();
@@ -19213,17 +20069,28 @@ window.SinglesPrice = {
       if (words != null) el.search.value = words;
       var n = String(el.search.value || '').length;
       try { el.search.focus(); el.search.setSelectionRange(n, n); } catch (e) { /* no keyboard */ }
+      backMoved();
     }
     function closeType() {
       if (!el.find) return;
       el.find.hidden = true;
       if (el['type-open'] && el['type-open'].setAttribute) el['type-open'].setAttribute('aria-expanded', 'false');
       try { if (el.search) el.search.blur(); } catch (e) { /* fine */ }
+      backMoved();
     }
 
     function find() {
       var q = String(el.search.value || '').trim();
       if (!q) { el.search.focus(); return; }
+      // a cert (7+ digits, a grader word in front allowed): one screen in Auto or Slab takes it as a slab (the cert box's own path); else "That's a slab"
+      if (one() && kindNow() !== 'raw' && /^(?:[a-z]{2,4}\s*)?\d{7,}$/i.test(q.replace(/\s+/g, ' ').trim())) {
+        var took = null;
+        try { took = host.typedCert(q); } catch (e) { took = null; }
+        el.search.value = '';
+        closeType();
+        if (!took || !took.ok) { bad(); if (took && took.why) say(took.why); }
+        return;
+      }
       if (/^\d{7,}$/.test(q.replace(/\s+/g, ''))) { slabScanned(); return; }
       if (!idx) { say(bookFailed ? "The card list didn't load, so typing can't find cards yet." : 'The card list is still loading…'); ensureData(); return; }
       var res = flow.search(idx, q);
@@ -19335,7 +20202,9 @@ window.SinglesPrice = {
         (owner + sourcer QA 11/26). Only a card taller than the camera's 220 px floor allows scrolls inside the panel. */
     var camGive = 0;
     function deckRoom() {
-      var bar = document.getElementById('sc-tabbar');
+      // the Slabs / Singles switch, pinned just above the tab bar, is the floor when it shows; else the tab bar
+      var side = document.getElementById('sc-scanside');
+      var bar = side && !side.hidden && typeof side.getClientRects === 'function' && side.getClientRects().length ? side : document.getElementById('sc-tabbar');
       var barTop = bar && bar.getClientRects().length ? bar.getBoundingClientRect().top : (window.innerHeight || 0);
       var y = window.scrollY || window.pageYOffset || 0;
       var deckTop = el.card.getBoundingClientRect().top + y;
@@ -19351,8 +20220,48 @@ window.SinglesPrice = {
       el.cam.style.setProperty('--sc-sg-give', px + 'px');
       return true;
     }
+    /** One screen: the camera's height is trimmed (--sc-one-trim) so the page is exactly the phone's height and the tray ends 8 px clear of
+        the switch: nothing scrolls under a finger, and nothing moves. Measured with no trim, then set, in one go (no frame between). The tray
+        is one fixed size, so this only changes with the phone's size (show, a resize, a rotation), never with a mode or a card. */
+    var oneTrim = -1, oneFitKey = '';
+    /** fitOne when something it depends on changed: the phone's size, or whether the switch shows. */
+    function fitOneIfMoved() {
+      if (!on || !one()) return;
+      var side = document.getElementById('sc-scanside');
+      var key = (window.innerWidth || 0) + 'x' + (window.innerHeight || 0) + '|' + (side && !side.hidden ? 1 : 0) + '|' + (host && host.layout && host.layout.classList.contains('sc-side-on') ? 1 : 0);
+      if (key === oneFitKey) return;
+      oneFitKey = key;
+      fitOne();
+    }
+    function fitOne() {
+      if (!on || !one() || !el.root || !el.root.style || typeof el.root.style.setProperty !== 'function' || trayUpNow) return;
+      var vh = window.innerHeight || 0;
+      var doc = document.scrollingElement || document.documentElement;
+      if (!vh || !doc || !el.panel || typeof el.panel.getBoundingClientRect !== 'function') return;
+      el.root.style.setProperty('--sc-one-trim', '0px');
+      var y = window.scrollY || window.pageYOffset || 0;
+      var over = Math.max(0, (doc.scrollHeight || 0) - vh);
+      var side = document.getElementById('sc-scanside');
+      var floor = side && !side.hidden && side.getClientRects().length ? side : document.getElementById('sc-tabbar');
+      var floorTop = floor && floor.getClientRects().length ? floor.getBoundingClientRect().top + y : vh + y;
+      var clash = el.panel.getBoundingClientRect().bottom + y + 8 - floorTop;
+      var trim = Math.max(0, Math.ceil(Math.max(over, clash)));
+      el.root.style.setProperty('--sc-one-trim', trim + 'px');
+      if (y && (doc.scrollHeight || 0) <= vh + 1) { try { window.scrollTo(0, 0); } catch (e) { /* stays */ } }
+      if (trim !== oneTrim) { oneTrim = trim; try { placeGuide(); } catch (e) { /* placed on the next draw */ } }
+    }
     function capDeck(slideH) {
       var h = Number(slideH) || 0;
+      if (one()) {
+        // one screen: the card room is one fixed size (CSS) and the camera never gives way; a taller card scrolls inside the room
+        if (camGive) { setGive(0); try { placeGuide(); } catch (e) { /* placed on the next draw */ } }
+        el.card.style.height = '';
+        var fixedRoom = el.card.clientHeight || 0;
+        var over = fixedRoom > 0 && h > fixedRoom + 1;
+        el.card.classList.toggle('sc-sg-capped', over);
+        if (!over) el.card.scrollTop = 0;
+        return;
+      }
       var room = Infinity;
       try {
         var had = camGive;
@@ -19593,11 +20502,15 @@ window.SinglesPrice = {
       var priced = settings ? flow.pricePile(lines, settings) : null;
       renderCam();
       var slides = renderDeck(lines, priced);
+      renderSlabs(); // one screen, Slab: the slab rows over the panel's room, and the header says Slabs
       renderReview(lines, priced, slides);
       renderVersions(lines);
       // How many cards and the price date live in Account now; here only a problem shows (no list, no rates, buying paused).
       var rs = ratesState === 'loading' ? 'loading' : ratesState === 'failed' ? 'failed' : 'live';
+      try { fitOneIfMoved(); } catch (e) { /* fitted on the next draw */ }
+      backMoved();
       var trouble = !bookInfo || rs === 'failed' || !!(settings && settings.paused);
+      if (one() && !rawAllowed()) trouble = false; // a login that scans slabs only never loads the card list: nothing to say (sourcer QA 11/27)
       el.info.textContent = flow.headerInfo(bookInfo, bookFailed, rs, !!(settings && settings.paused));
       el.info.hidden = !trouble;
     }
@@ -19624,7 +20537,8 @@ window.SinglesPrice = {
       el['cam-on'].disabled = camStarting;
       el['cam-text'].textContent = (view.off && camMsg) || 'Camera off';
       el.hint.textContent = view.off ? (camWhy === 'failed' ? 'Tap the camera to try again' : (camWhy && camMsg) ? 'Tap search to type the card' : 'Tap the camera to scan cards')
-        : (note || capturing || matching ? flow.cameraHint({ capturing: capturing, note: note, matching: matching, ready: ready }) : 'Fill the frame with one card, then tap');
+        : (note || capturing || matching ? flow.cameraHint({ capturing: capturing, note: note, matching: matching, ready: ready })
+          : one() ? window.OneScan.hintFor(kindChosen(), rawAllowed()) : 'Fill the frame with one card, then tap');
       el.matching.hidden = !matching;
       el.matching.textContent = matching ? 'Matching ' + matching + '…' : '';
       try { placeGuide(); } catch (e) { /* placed again on the next draw */ }
@@ -19784,15 +20698,28 @@ window.SinglesPrice = {
 
       var h = deck.header(priced && priced.totals, slides);
       // "We pay" for everyone, the word Search, Collections and the card chips use (a sourcer included: it is what we pay them)
-      el['pay-key'].textContent = 'We pay';
+      var hideMoney = sellerHidden();
+      hiddenDrawn = hideMoney;
+      el['pay-key'].textContent = one() ? (hideMoney ? 'Raw' : 'Raw · We pay') : 'We pay'; // one screen: the label says which pile the tray shows
       var cents = lines.length ? h.payCents : null;
-      el.pay.classList.toggle('sc-blank', cents == null);
-      if (cents != null) countTo(el.pay, shownPay, cents); else { el.pay._sgToken = null; el.pay.textContent = lines.length && !settings ? 'Pricing…' : '$0.00'; }
-      shownPay = cents;
-      el['sum-check'].hidden = !h.words;
-      el['sum-check'].textContent = h.words;
-      el['review-open'].textContent = 'Review ' + h.reviewCount;
-      el['review-open'].disabled = !h.reviewCount;
+      if (hideMoney) {
+        // Hide mode: the cards only, as the slab tray does ("2 cards"), never a figure
+        var nCards = slides.length;
+        el.pay._sgToken = null;
+        el.pay.classList.add('sc-blank');
+        el.pay.textContent = nCards ? nCards + (nCards === 1 ? ' card' : ' cards') : 'No cards yet';
+        shownPay = null;
+      } else {
+        el.pay.classList.toggle('sc-blank', cents == null);
+        if (cents != null) countTo(el.pay, shownPay, cents); else { el.pay._sgToken = null; el.pay.textContent = lines.length && !settings ? 'Pricing…' : '$0.00'; }
+        shownPay = cents;
+      }
+      el['sum-check'].hidden = hideMoney || !h.words;
+      el['sum-check'].textContent = hideMoney ? '' : h.words;
+      el['review-open'].textContent = rawUpNow ? 'Done' : 'Review ' + h.reviewCount;
+      el['review-open'].disabled = !rawUpNow && (!h.reviewCount || hideMoney); // Hide mode: the list (with its totals) does not come up
+      el['review-open'].classList.toggle('sc-sg-done', rawUpNow);
+      el['review-open'].classList.remove('sc-sg-zero');
 
       var byKey = {};
       if (priced) priced.rows.forEach(function (r) { byKey[r.key] = r; });
@@ -19819,8 +20746,8 @@ window.SinglesPrice = {
 
     /** Review N: the whole list with its totals (market, we pay), every card on it (tap one to open it on the panel). */
     function renderReview(lines, priced, slides) {
-      el.review.hidden = !reviewOpen;
-      el.shade.hidden = !(reviewOpen || verFor);
+      el.review.hidden = !reviewOpen || rawUpNow; // Raw pulled up: the list is in the tray, the sheet stays shut
+      el.shade.hidden = !((reviewOpen && !rawUpNow) || verFor);
       if (!reviewOpen) return;
       var byKey = {};
       if (priced) priced.rows.forEach(function (r) { byKey[r.key] = r; });
@@ -19832,7 +20759,7 @@ window.SinglesPrice = {
       if (el['review-title']) el['review-title'].textContent = 'Review ' + slides.length;
       var t = priced ? priced.totals : null;
       el.tot.innerHTML = '<div class="sc-sg-tot-box"><small>Market</small><b>' + escHtml(t ? flow.fmt(t.acceptedMarketCents) : '—') + '</b></div>' + // (the cards we buy)
-        '<div class="sc-sg-tot-box sc-sg-tot-pay"><small>' + escHtml(el['pay-key'].textContent) + '</small><b>' + escHtml(t ? flow.fmt(t.payoutCents) : '—') + '</b></div>';
+        '<div class="sc-sg-tot-box sc-sg-tot-pay"><small>We pay</small><b>' + escHtml(t ? flow.fmt(t.payoutCents) : '—') + '</b></div>';
       var h = deck.header(t, slides);
       var notes = [];
       if (t && t.cards) { var tv = flow.totalsView(t); notes.push('<p>' + escHtml(flow.plural(count, 'card') + ' · ' + tv.rate) + '</p>'); if (tv.bigLot) notes.push('<p class="sc-sg-warn">' + escHtml(tv.bigLot) + '</p>'); }
@@ -19874,7 +20801,7 @@ window.SinglesPrice = {
     /** Select version: each printing (of each look-alike, on an unsure card) with what we pay for it, priced inside the list. */
     function renderVersions(lines) {
       el.ver.hidden = !verFor;
-      el.shade.hidden = !(reviewOpen || verFor);
+      el.shade.hidden = !((reviewOpen && !rawUpNow) || verFor); // Raw pulled up: no shade over the tray and the switch
       if (!verFor) return;
       var groups = [];
       var o = { condition: 'NM', quantity: 1, skipKey: null };
@@ -20049,6 +20976,10 @@ window.SinglesPrice = {
       attach: attach, activate: paneActivate, deactivate: paneDeactivate, refresh: refresh, isOn: isOn, claimsCamera: claimsCamera,
       slabScanned: slabScanned, cardRead: cardRead, available: available, pending: pending, failed: failed, pick: pickKind,
       openList: openList, currentList: currentList, addSingle: addSingle, price: priceLines,
+      // one scanner, one screen
+      shellReady: shellReady, show: show, hide: hide, setKind: setKind, kind: kindNow, rawAllowed: rawAllowed, readsBarcodes: readsBarcodes,
+      cameraState: cameraState, say: sayFrom, slabTaken: slabTaken, guide: guideRect, busy: busy, slabsChanged: slabsChanged, trayUp: trayUp,
+      backWanted: backWanted, back: backStep,
     };
   })();
 /* SINGLES-PANE-JS:END */
@@ -24398,6 +25329,11 @@ var CompsPane = (function () {
       attach: call('attach'), activate: call('activate'), deactivate: call('deactivate'), refresh: call('refresh'),
       isOn: call('isOn', false), claimsCamera: call('claimsCamera', false), slabScanned: call('slabScanned'), cardRead: call('cardRead'),
       available: call('available', false), pending: call('pending', false), failed: call('failed', false), pick: call('pick'),
+      // one scanner, one screen (Penguin, 11/26): the pane's screen is Scan's only screen; without the pane the old Slabs screen runs
+      shellReady: call('shellReady', false), show: call('show'), hide: call('hide'), setKind: call('setKind'), kind: call('kind', 'slab'),
+      rawAllowed: call('rawAllowed', false), readsBarcodes: call('readsBarcodes', true), cameraState: call('cameraState'), say: call('say'),
+      slabTaken: call('slabTaken'), guide: call('guide', null), busy: call('busy', false), slabsChanged: call('slabsChanged'),
+      trayUp: call('trayUp'), backWanted: call('backWanted', false), back: call('back', false),
     };
   })(window.SinglesPane);
   // The Sheet tab (rates-portal/sheet-pane.html, its own <script> after the Sheet core): reached the same way, through a guard that
@@ -24868,6 +25804,20 @@ var CompsPane = (function () {
     // only remembered), so the switch never moves the page. Older apps and a browser never get here: they keep the
     // openScanner path below exactly as it was.
     var panelShown = false;
+    // ── One scanner, one screen (Penguin, 11/26: "like DeckTradr ... one scanner one screen, but it just knows what to identify"). Scan is
+    // ONE screen (the Singles pane's: big camera, card frame, tray, the Auto | Slab | Raw switch) with ONE camera, the page's own
+    // (scanner/oneCamera.js on #sc-sg-video), in a browser and inside the apps. The app's native slab camera panel is not shown on Scan
+    // any more; the page tells it to hide. The old flow (the app's panel over a slab screen, Slabs and Singles as two screens with a
+    // camera each) is all still here, behind this ONE constant: true brings it back exactly as it was. The Sheet (Account > Admin) keeps
+    // its own camera either way, panel included. Without the Singles pane (its script failed) the old Slabs screen runs, as it always did.
+    var NATIVE_SLAB_PANEL = false;
+    try { if (window.IOP_TEST_LEGACY_SCAN === true) NATIVE_SLAB_PANEL = true; } catch (e) { /* the constant stands */ } // page tests of the old flow
+    /** Scan is the one screen with the one camera (the constant is off and the Singles pane is there to draw it). */
+    function oneScreen() { return !NATIVE_SLAB_PANEL && SinglesPane.shellReady(); }
+    /** The old camera flow applies: the constant brings it back, or the Sheet is up (it keeps its own camera, the app's panel too). */
+    function legacyCam() { return !oneScreen() || sheetOn(); }
+    /** The app's camera panel is wanted here: an app that has one (bridge version 4), and the old flow. Never on the one screen. */
+    function nativePanelWanted() { return bridge.cameraPanelSupported() && legacyCam(); }
     var nativeCameraOn = false; // what the app last said its panel camera is doing (the app is the source of truth)
     /** The page is the sheet under an app camera: the legacy one opened by openScanner, or the camera panel. */
     function appSheet() { return nativeScannerOpen || panelShown; }
@@ -24904,8 +25854,8 @@ var CompsPane = (function () {
     var CAM_NONE = 'No camera on this device or browser. Type or paste the cert below instead.';
     /** What a tap on the camera button does now: 'on', 'off', or null when there is nothing it could do. */
     function camButtonAction() {
-      if (bridge.cameraPanelSupported()) return session ? 'on' : null;
-      if (bridge.isAvailable()) return nativeScannerOpen ? 'off' : 'on';
+      if (nativePanelWanted()) return session ? 'on' : null;
+      if (bridge.isAvailable() && legacyCam()) return nativeScannerOpen ? 'off' : 'on';
       return cameraSupported() ? 'on' : null;
     }
     function renderCamButton() {
@@ -25040,7 +25990,7 @@ var CompsPane = (function () {
     /** The panel goes up when the Scanner is on screen and signed in (version 4 only). */
     function showPanelIfReady(opts) {
       if (portalOn()) return; // portal shell: never under a portal pane (Home, Search, Collections, Account)
-      if (bridge.cameraPanelSupported() && scannerActive && session && !SinglesPane.claimsCamera()) setPanel(true, opts);
+      if (nativePanelWanted() && scannerActive && session && !SinglesPane.claimsCamera()) setPanel(true, opts);
     }
     // The app says what its panel camera is doing: remembered, and NOTHING else. No class, no layout: on or off, the page stays put.
     window.addEventListener('penguincamera', function (ev) {
@@ -25060,6 +26010,12 @@ var CompsPane = (function () {
       camChoiceMem[which] = !!on;
       try { var s2 = window.sessionStorage; if (s2) { rec[which] = !!on; s2.setItem(key, JSON.stringify(rec)); } } catch (e) { /* kept in the page's copy */ }
       return null;
+    }
+    /** One screen: the camera on/off chosen this app session (OneScan.camChoiceOf: the one-screen choice, else what the old two sides said). */
+    function camChoiceNow() {
+      var rec = camChoiceMem;
+      try { var ss = window.sessionStorage; if (ss) { var r = JSON.parse(ss.getItem('iopCamChoice') || '{}'); if (r && typeof r === 'object') rec = Object.assign({}, r, camChoiceMem); } } catch (e) { /* the page's copy */ }
+      return OneScan.camChoiceOf(rec);
     }
 
     // ── the on-screen keyboard: the dock (Normal / Lower and Hide) steps aside for it. A field merely having
@@ -25186,8 +26142,8 @@ var CompsPane = (function () {
       showSigninStep('form');
       renderAuthState();
       applyScanMode(); // a camera that was already on (signed out until now) scans by itself again: brackets, hint and read rate follow the sign-in
-      // signed in on the Scanner: the camera comes up (app 1.10: its camera panel, with the camera off)
-      if (bridge.cameraPanelSupported()) showPanelIfReady(); else autoCamera();
+      // signed in on the Scanner: the camera comes up (app 1.10: its camera panel, with the camera off; one screen: the page's camera)
+      if (oneScreen()) syncOneScreen(); else if (nativePanelWanted()) showPanelIfReady(); else autoCamera();
       // signed in: the private Scanner sheet can be read now, and "Normal" prices on it. Nothing is known
       // about THIS login's sheet until it answers: a scan waits for it (ensureSettings) and a card in the pile
       // keeps its price, instead of "Normal" falling back on the consignor rates meanwhile.
@@ -26316,6 +27272,7 @@ var CompsPane = (function () {
       applyPageHiding();
       savePrefsNow();
       renderSeller();
+      try { SinglesPane.slabsChanged(); } catch (e) { /* the tray follows on its next draw */ } // one screen: the tray hides its figures too
     }
 
     function renderRuleControls() {
@@ -26405,6 +27362,7 @@ var CompsPane = (function () {
         dom.pilePayout.textContent = '-';
         dom.pileBuyCount.textContent = '';
         renderScoreAdjust();
+        SinglesPane.slabsChanged(); // one screen: the tray's slab rows follow the pile
         return;
       }
 
@@ -26480,6 +27438,52 @@ var CompsPane = (function () {
         '</div>';
       }).join('');
       renderRatesSheet(true); // the Rates sheet's card counts follow the pile (never under a finger typing a percent)
+      SinglesPane.slabsChanged(); // one screen: the tray's slab rows follow the pile
+    }
+
+    /** One screen, the tray (Penguin 11/26: the slab tray looks exactly like the raw one). The header's figure is the pile's own total
+        (PileRates.pileTotals: the very number the pile's You'd pay / Your offer shows, no new arithmetic), "N to check" the rows whose
+        status pill says they need a look (Needs average, Unpriced, No percent, No value), and each compact row is what the slab is
+        (photo, name, grade, cert) with its status: green the pay the row's big number shows (figuresOf: a typed Pay, else a typed Market
+        at the pile rate, else its price), red Not buying, amber a look needed. A sourcer's figures are their own offer (what their
+        pile already shows them), never a buyer-side or owner number. Hide (seller) mode: no money anywhere in the tray, only the cards. */
+    function trayPill(price, fig, sourcer) {
+      if (!price || price.noSheet) return { kind: 'chk', text: 'Unpriced' };
+      if (price.noPct) return { kind: 'chk', text: 'No percent' };
+      if (price.awaitingAverage) return { kind: 'chk', text: price.avgOff ? OfferRules.NEEDS_AVG_OFF : 'Needs average' };
+      if (price.rejected) return { kind: 'no', text: 'Not buying' };
+      if (price.staffPrice) return { kind: 'chk', text: 'No value' };
+      return { kind: 'pay', text: fig && fig.payCents != null ? (sourcer ? 'Your offer ' : 'We pay ') + money(fig.payCents) : 'Buying' };
+    }
+    function slabTrayData() {
+      var entries = pile.list();
+      var sourcer = isSourcer();
+      var hidden = !!sellerMode;
+      var t = PileRates.pileTotals(entries, pileAdjust, pileKeyOf, weOf, PriceCore.money);
+      var toCheck = 0;
+      var rows = entries.slice().reverse().filter(function (c) { return !pileLeaving[pileMetaKey(c.grader, c.certKey)]; }).map(function (c) {
+        var key = pileMetaKey(c.grader, c.certKey);
+        var meta = pileMeta[key] || {};
+        var title = CardView.shortCard(meta.card || (c.grader.toUpperCase() + ' ' + c.cert));
+        var g = gradeNum(meta.grade);
+        var fig = figuresOf(c);
+        var pill = trayPill(PileRates.shownPrice(c.price, fig), fig, sourcer);
+        if (pill.kind === 'chk') toCheck++;
+        return {
+          key: key,
+          card: title.card, number: title.number || '', set: title.set || '',
+          grade: (c.grader ? c.grader.toUpperCase() : '') + (g != null && g !== '' ? ' ' + g : ''), cert: String(c.cert),
+          thumbHtml: thumbHtml(meta.facts && meta.facts.imageUrl),
+          pill: hidden ? null : pill,
+          lockHtml: hidden ? '' : plChipHtml(key),
+        };
+      });
+      return {
+        count: rows.length, rows: rows, hidden: hidden, lockOnly: lkOn(),
+        payKey: sourcer ? 'Your offer' : 'We pay',
+        payText: !hidden && entries.length ? money(t.buyPayoutCents) : '',
+        toCheck: hidden ? 0 : toCheck,
+      };
     }
 
     // ── the pile's own rates: the Rates button and the Adjust % box over the pile, the "Rates for this pile" sheet, and Edit
@@ -28798,10 +29802,16 @@ var CompsPane = (function () {
         same parse-and-price path either way. `format` is the barcode's type as the reader named it
         ("ITF", "itf", "code_128"...), or '' from an app build that doesn't send one. */
     function handleScanned(raw, viaApp, format) {
-      if (singlesOn()) { SinglesPane.slabScanned(raw); return; } // Singles on: "That's a slab: switch to Slabs?", nothing priced
+      // Singles on (the old flow), or the one screen in Raw: "That's a slab: switch to Slab?", nothing priced. One screen in Auto or Slab:
+      // the slab flow below, exactly as it always was (OneScan.routeCert).
+      if (singlesOn() && (!oneScreen() || SinglesPane.kind() === 'raw')) { SinglesPane.slabScanned(raw); return; }
       if (sheetOn()) { SheetPane.scanned(raw, !!viaApp, format || ''); return; } // the Sheet: the cert goes on the open sheet, never priced or locked
       var parsed = Certs.parseOneCert(raw, { scan: true, format: format || '', buyGraders: scanBuyGraders() });
-      var say = function (text) { if (cam) dom.vfStatus.textContent = text; else dom.vfOffText.textContent = text; };
+      var say = camSay;
+      if (oneScreen() && singlesOn()) {
+        SinglesPane.slabTaken(!!parsed.ok); // the frame flashes, and Auto's tray shows the slabs
+        if (parsed.ok && lkOn()) setOneUp(true); // a lock-only login: its lock screen (Josh's, unchanged) comes up in the tray with the card
+      }
       if (!parsed.ok) {
         feedback.play('bad');
         if (viaApp && typeof navigator.vibrate !== 'function') bridge.haptic('warning');
@@ -28836,6 +29846,27 @@ var CompsPane = (function () {
     var cam = null; // the ScanCamera control object, or null while the camera is off
     var camBoxObserver = null;
     var torchOn = false;
+    // One screen: Scan's ONE camera (scanner/oneCamera.js) on the Singles pane's video, which every mode reads from; a mode change never
+    // stops it. The Sheet keeps the old camera box (#sc-video), and the old flow (NATIVE_SLAB_PANEL) opens the engine directly, as before.
+    var camOwner = OneCamera.createOneCamera({ openCamera: ScanCamera.openCamera });
+    var sgVideo = document.getElementById('sc-sg-video');
+    var sgCam = document.getElementById('sc-sg-cam');
+    /** Whether the camera belongs to the one screen right now (not the Sheet, not the old flow). */
+    function oneCamHere() { return oneScreen() && !sheetOn() && !!sgVideo && !!sgCam; }
+    function camVideo() { return oneCamHere() ? sgVideo : dom.video; }
+    function camBoxEl() { return oneCamHere() ? sgCam : dom.vf; }
+    var camOnVideo = null; // the <video> the camera was opened on
+    /** The camera's state, told to the one screen (its buttons, the waiting spinner, the off words). */
+    function tellCamera(state) {
+      if (!oneScreen()) return;
+      SinglesPane.cameraState(state);
+      try { syncOneBack(); } catch (e) { /* Back follows on the next change */ }
+    }
+    /** A line for the person scanning: the old camera's status pill, and on the one screen its hint over the frame. */
+    function camSay(text) {
+      if (cam) dom.vfStatus.textContent = text; else dom.vfOffText.textContent = text;
+      if (oneScreen() && singlesOn()) SinglesPane.say(text);
+    }
 
     // ── Scan automatically, in a phone's BROWSER (scanner/autoScan.js; Josh, 11/19, on Safari: "it should be like the app when
     // it's automatic, and then you could set it in settings"). The page's own camera now takes a cert by itself when a slab's
@@ -28849,7 +29880,8 @@ var CompsPane = (function () {
     // web view and keep automatic scanning and the camera's own start-up switched off. It is a browser window in every way that matters here, so it is told
     // apart by the home-screen flag, and never when the phone apps' bridge is there (the apps keep exactly what they had).
     var homeScreen = !bridge.isAvailable() && (navigator.standalone === true || (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches));
-    var platform = AutoScan.platformOf(navigator.userAgent, navigator.maxTouchPoints, homeScreen);
+    // inside the phone apps (their bridge): the camera's words point at the phone's own Settings, not a browser's address bar
+    var platform = AutoScan.appPlatformOf(AutoScan.platformOf(navigator.userAgent, navigator.maxTouchPoints, homeScreen), bridge.isAvailable());
     // 'phone' (a phone or tablet's browser: starts by itself), 'desktop' (a computer's: by itself only once the browser has allowed the camera) or
     // 'webview' (an app's own web view, e.g. the Android app on a web view too old for its bridge: the page's camera stays what it was there).
     var camKind = AutoScan.cameraKind(navigator.userAgent, navigator.maxTouchPoints, homeScreen);
@@ -28868,7 +29900,7 @@ var CompsPane = (function () {
     var flashTimer = null;
 
     /** Whether the page's own camera takes codes by itself: a browser (never an app's bridge) in Scan automatically. */
-    function autoOn() { return AutoScan.runsHere(bridge.isAvailable(), scanMode, camKind); }
+    function autoOn() { return AutoScan.runsHere(bridge.isAvailable(), scanMode, camKind, oneCamHere()); }
     /** Whether the camera is scanning by itself right now: a browser's camera on, in Scan automatically, and signed in (signed out nothing is
         taken behind the sign-in form, so the brackets and the hint must not promise it). */
     function liveScan() { return !!cam && autoOn() && !!session; }
@@ -28887,11 +29919,16 @@ var CompsPane = (function () {
     var camOnScreen = true;    // enough of the camera view shows (IntersectionObserver); true where the browser has none
     var camVisObserver = null;
     /** Nothing is taken while a sheet is open over the camera (Settings, Rates, Edit card) or the camera view is scrolled off screen. */
-    function camPaused() { return !camOnScreen || !!(document.querySelector && document.querySelector('dialog[open]')); }
+    function camPaused() {
+      if (!camOnScreen || !!(document.querySelector && document.querySelector('dialog[open]'))) return true;
+      // one screen: nothing is taken while the slab list is pulled up, or a sheet / the type box is open on the screen
+      return oneCamHere() && (dom.layout.classList.contains('sc-one-up') || !!SinglesPane.busy());
+    }
     /** Pause (or not) and read slowly (or at the mode's rate) to match where the camera view is. */
     function applyCamWatch() {
       auto.setPaused(camPaused());
-      if (cam) cam.setWatchGap(AutoScan.watchGapFor(liveScan(), camOnScreen));
+      // one screen, Raw: no barcode is read at all, so the camera is only looked at slowly (the photo is taken from the same stream on a tap)
+      if (cam) cam.setWatchGap(oneCamHere() && !SinglesPane.readsBarcodes() ? AutoScan.OFFSCREEN_GAP_MS : AutoScan.watchGapFor(liveScan(), camOnScreen));
     }
     /** Starts watching whether the camera view is on screen; stopWatchingOnScreen() ends it (the camera went off). */
     function watchOnScreen() {
@@ -28903,7 +29940,7 @@ var CompsPane = (function () {
           camOnScreen = AutoScan.onScreenEnough(entries[entries.length - 1]); // the newest report is where the view is now
           applyCamWatch();
         }, { threshold: AutoScan.WATCH_THRESHOLDS });
-        camVisObserver.observe(dom.vf);
+        camVisObserver.observe(camBoxEl());
       } catch (e) { camVisObserver = null; camOnScreen = true; }
     }
     function stopWatchingOnScreen() {
@@ -28943,11 +29980,16 @@ var CompsPane = (function () {
     }
     /** One frame the camera read (video px): the aim rules decide whether a cert is taken now. Not run in the apps, not in Tap to scan. */
     function onCamFrame(items) {
-      if (!cam || bridge.isAvailable() || camKind === 'webview' || !session || !camBox.w || !camBox.h) return; // signed out (or the session ended): nothing is taken behind the sign-in form
+      if (!cam || !session || !camBox.w || !camBox.h) return; // signed out (or the session ended): nothing is taken behind the sign-in form
+      var one = oneCamHere();
+      // the old flow: never in the apps (their native scanner reads there), never in an app's web view. One screen: everywhere, except Raw
+      if (one) { if (!singlesOn() || !SinglesPane.readsBarcodes()) return; }
+      else if (bridge.isAvailable() || camKind === 'webview') return;
       auto.setPaused(camPaused()); // a sheet over the camera (Settings, Rates, Edit card) takes nothing, nor does a camera scrolled off screen
       var m = cam.mapping();
       var onScreen = items.map(function (it) { return { text: it.text, format: it.format, ready: it.ready, corners: cam.onScreen(it, m) }; });
-      var pick = auto.onFrame(onScreen, camBox);
+      // one screen: the code is taken from the card frame (a slab held to fill it has its label in the top third), not the middle of the view
+      var pick = auto.onFrame(onScreen, camBox, one ? OneScan.aimFromGuide(SinglesPane.guide()) : null);
       if (pick) autoTake(pick);
     }
     var lastAutoTake = null; // { text, at } of the code taken by itself last, so a tap's hard look that finds the same slab does not take it again
@@ -28955,8 +29997,8 @@ var CompsPane = (function () {
       lastAutoTake = { text: pick.payload, at: Date.now() };
       feedback.unlock();
       flashRead();
-      handleScanned(pick.payload, false, pick.format); // the same beep, buzz and parse-and-price path a tap takes
-      if (cam && FeedbackAudio.suspended()) dom.vfStatus.textContent += ' (tap once for sound)'; // a browser keeps sound shut until the first tap
+      handleScanned(pick.payload, oneCamHere() && bridge.isAvailable(), pick.format); // the same beep, buzz and parse-and-price path a tap takes (in the app: its buzz too)
+      if (cam && FeedbackAudio.suspended() && !oneCamHere()) dom.vfStatus.textContent += ' (tap once for sound)'; // a browser keeps sound shut until the first tap
       scheduleIdle();
     }
 
@@ -28969,6 +30011,7 @@ var CompsPane = (function () {
       dom.vfOffText.textContent = text;
       dom.allow.hidden = !tapLabel;
       if (tapLabel) dom.allow.textContent = tapLabel;
+      tellCamera({ on: false, msg: text, why: tapLabel ? 'failed' : 'blocked' }); // one screen: the frame says it, and the camera button tries again
     }
     function setCamStage(stage) {
       camStage = stage;
@@ -29021,6 +30064,7 @@ var CompsPane = (function () {
       torchOn = on;
       dom.torch.classList.toggle('on', on);
       dom.torch.setAttribute('aria-pressed', on ? 'true' : 'false');
+      tellCamera({ torchOn: !!on });
     }
 
     /** Leaving a phone's torch burning in a pocket after the camera stops (or the tab goes to the
@@ -29048,6 +30092,7 @@ var CompsPane = (function () {
     }
 
     function drawMarks(seenList) {
+      if (oneCamHere()) return; // the one screen draws no outlines (yet): the old camera box they belong to is not on show
       var m = cam.mapping();
       var b = dom.vf.getBoundingClientRect();
       dom.marks.setAttribute('viewBox', '0 0 ' + b.width + ' ' + b.height);
@@ -29071,8 +30116,11 @@ var CompsPane = (function () {
       auto.reset();
       if (camBoxObserver) { camBoxObserver.disconnect(); camBoxObserver = null; }
       stopWatchingOnScreen();
+      if (camOwner && (camOwner.video() || camOwner.control())) camOwner.close(); // the one camera (also a start still in flight)
       if (cam) { cam.stop(); cam = null; }
+      camOnVideo = null;
       torchOn = false;
+      tellCamera({ on: false });
       dom.torch.hidden = true;
       dom.zoomWrap.hidden = true;
       dom.marks.innerHTML = '';
@@ -29092,18 +30140,18 @@ var CompsPane = (function () {
     var scannerActive = false; // this tab is the one on screen
     var cameraStarting = false;
     function turnCameraOn() {
-      if (singlesOn()) return; // Singles has its own camera: never two at once
+      if (singlesOn() && !oneScreen()) return; // the old flow: Singles has its own camera, never two at once
       // App 1.10 (camera panel): its own switch turns the camera on; this button is hidden there (CSS), but if it is
       // ever reached it asks the panel for the camera, and never opens the old full camera.
-      if (bridge.cameraPanelSupported()) {
+      if (nativePanelWanted()) {
         if (!session) { if (dom.email) dom.email.focus(); return; } // sign in first: never a camera over the form
         if (!panelShown) showPanelIfReady();
         if (panelShown) bridge.setCamera(true);
         return;
       }
       // Inside the app its own scanner replaces the browser camera; every barcode it reads
-      // comes back through window.penguinScan -> handleScanned, the same path the camera uses.
-      if (bridge.isAvailable()) {
+      // comes back through window.penguinScan -> handleScanned, the same path the camera uses. (One screen: the page's camera, always.)
+      if (bridge.isAvailable() && legacyCam()) {
         setNativeCamera(bridge.openScanner());
         if (nativeScannerOpen) return;
       }
@@ -29135,10 +30183,17 @@ var CompsPane = (function () {
     function autoCameraNow(early) {
       if (SinglesPane.claimsCamera()) return false; // Singles has its own camera (while it is on): never two at once
       if (portalOn()) return false; // portal shell: a portal pane (Home, Search, Collections, Account) is on: no camera at all
-      if (bridge.cameraPanelSupported()) return false; // app 1.10: the camera starts OFF, its panel's switch turns it on
+      if (nativePanelWanted()) return false; // app 1.10: the camera starts OFF, its panel's switch turns it on
       if (cam || cameraStarting) return true;
       if (!scannerActive || cameraTurnedOff || !session || nativeScannerOpen) return false;
-      if (bridge.isAvailable()) { turnCameraOn(); return !!(cam || cameraStarting); }
+      if (oneCamHere()) {
+        // One screen: the camera starts ON in the apps and on a phone (Penguin 11/26), unless he turned it off this app session; a
+        // computer's browser only once it has already allowed the camera (below). Page tests opt in (IOP_TEST_CAM_AUTO).
+        if (!singlesOn() || camChoiceNow() === false) return false;
+        if (window.IOP_TEST_START_SCAN && window.IOP_TEST_CAM_AUTO) { turnCameraOn(); return !!(cam || cameraStarting); }
+        if (bridge.isAvailable() || camKind === 'webview') { turnCameraOn(); return !!(cam || cameraStarting); }
+      }
+      if (bridge.isAvailable() && legacyCam()) { turnCameraOn(); return !!(cam || cameraStarting); }
       if (!cameraSupported()) return false;
       watchPermission();
       // A phone's browser (Josh, 11/19: "it should be like the app when it's automatic"): the camera starts by itself as soon as the
@@ -29186,6 +30241,10 @@ var CompsPane = (function () {
       // reports a 0x0 bounding rect, which would otherwise make the very first setBox() a no-op.
       dom.vf.hidden = false;
       dom.vfOff.hidden = true;
+      var one = oneCamHere();
+      var video = camVideo(), boxEl = camBoxEl();
+      if (one && camOwner.isOpening()) camOwner.close(); // asked again (Allow camera): this start replaces the one in flight, as before
+      tellCamera({ starting: true });
       setCamStage('asking');
       startCamWatch(gen);
       /** This start is still the current one, and no longer waiting: false for one that was replaced or stopped meanwhile. */
@@ -29196,7 +30255,7 @@ var CompsPane = (function () {
         clearCamWatch();
         return true;
       }
-      return ScanCamera.openCamera(dom.video, {
+      var camOpts = {
         scanPick: ScanPick,
         scanDecode: ScanDecode,
         zxingReaderUrl: ZXING_READER_URL,
@@ -29212,14 +30271,20 @@ var CompsPane = (function () {
             if (gen !== camGen) return; // a replaced start's camera ending says nothing about the current one
             closeCamera();
             dom.vfOffText.textContent = 'The camera stopped. Tap the camera to turn it back on.';
+            tellCamera({ on: false, msg: 'The camera stopped. Tap the camera to turn it back on.', why: 'failed' });
           }
         }
-      }).then(function (c) {
+      };
+      // One screen: through the one camera's owner (one stream, the ask capped at 1920; the page's getUserMedia so the cap applies).
+      // The old flow: the engine directly, exactly as before.
+      if (one && cameraSupported()) camOpts.getUserMedia = function (ask) { return navigator.mediaDevices.getUserMedia(ask); };
+      return (one ? camOwner.open(video, camOpts) : ScanCamera.openCamera(video, camOpts)).then(function (c) {
         // Replaced by a newer start (Allow camera was tapped), stopped, or the tab left while the browser was asking: this
         // camera is switched off again and nothing on screen changes.
-        if (gen !== camGen || !scannerActive) { c.stop(); return; }
+        if (gen !== camGen || !scannerActive) { if (!one) c.stop(); else if (camOwner.control() === c) camOwner.close(); return; }
         settle();
         cam = c;
+        camOnVideo = video;
         if (!bridge.isAvailable()) rememberCamOn(true);
         camNeedsTap = null;
         dom.allow.hidden = true;
@@ -29229,26 +30294,28 @@ var CompsPane = (function () {
         dom.torch.hidden = !cam.torchAvailable();
         setTorchUi(false);
         setupZoomUi();
-        var r = dom.vf.getBoundingClientRect();
+        var r = boxEl.getBoundingClientRect();
         camBox = { w: r.width, h: r.height };
         cam.setBox(r.width, r.height);
         if (typeof ResizeObserver !== 'undefined') {
           camBoxObserver = new ResizeObserver(function () {
-            var rr = dom.vf.getBoundingClientRect();
+            var rr = boxEl.getBoundingClientRect();
             camBox = { w: rr.width, h: rr.height };
             if (cam) cam.setBox(rr.width, rr.height);
           });
-          camBoxObserver.observe(dom.vf);
+          camBoxObserver.observe(boxEl);
         }
         watchOnScreen();
         auto.reset();
         applyScanMode();
+        tellCamera({ on: true, torch: cam.torchAvailable() });
       }, function (err) {
         if (gen !== camGen) return; // a replaced start's refusal says nothing about the new one
         settle();
         var problem = AutoScan.problemFor((err && err.problem) || 'failed', { userGesture: userGesture, permission: camPermStatus ? camPermStatus.state : null });
         rememberCamOn(false);
         camNeedsTap = AutoScan.needsTap(problem) ? 'retry' : null;
+        if (problem === 'superseded') { tellCamera({ on: false }); throw err; } // replaced by a newer start or a stop: nothing to say
         showOff(AutoScan.cameraHelp(problem, platform), AutoScan.tapLabel(problem));
         throw err;
       });
@@ -29260,15 +30327,22 @@ var CompsPane = (function () {
       // iOS backgrounding re-suspended" hook feedback.js's own header calls for - cheap and safe to
       // call on every single capture attempt, not just the first.
       feedback.unlock();
+      var one = oneCamHere();
       dom.vfStatus.textContent = 'Looking…'; // the tap answers at once, before the frame is read
+      if (one) SinglesPane.say("Looking for the slab's barcode…");
       var tapAt = Date.now();
       cam.capture(tapBox).then(function (found) {
-        if (!found) { feedback.play('nothing'); dom.vfStatus.textContent = 'Nothing found - try again or type it below'; return; }
+        if (!found) {
+          feedback.play('nothing');
+          dom.vfStatus.textContent = 'Nothing found - try again or type it below';
+          if (one) SinglesPane.say('No barcode found. Hold the slab label in the frame, or tap search to type the cert');
+          return;
+        }
         // The slab the tap's hard look found was already taken by itself while it looked: once, not twice.
         if (lastAutoTake && lastAutoTake.at >= tapAt && AutoScan.sameCode(lastAutoTake.text, found.text)) return;
         auto.noteSent(found.text); // what a tap sends is done for Scan automatically too: it never adds the same slab a second time
         flashRead();
-        handleScanned(found.text, false, found.format);
+        handleScanned(found.text, one && bridge.isAvailable(), found.format);
         scheduleIdle();
       });
     }
@@ -29346,13 +30420,10 @@ var CompsPane = (function () {
       }
     }
     function themeApi() { return window.IOPTheme && typeof window.IOPTheme.list === 'function' ? window.IOPTheme : null; }
-    /** The little two-colour circle on a row: the theme's page colour and its accent ('Match phone': light and dark). */
+    /** The little two-colour circle on a row: the theme's page colour and its accent. */
     function swatchFor(id) {
       var T = window.ScannerTheme;
       if (!T || typeof T.themeOf !== 'function') return '';
-      if (id === T.AUTO_THEME) {
-        return 'linear-gradient(135deg, ' + T.themeOf(T.AUTO_LIGHT_THEME).bg + ' 0 50%, ' + T.themeOf(T.AUTO_DARK_THEME).bg + ' 50% 100%)';
-      }
       var t = T.themeOf(id);
       return 'linear-gradient(135deg, ' + t.bg + ' 0 50%, ' + t.accent + ' 50% 100%)';
     }
@@ -29808,7 +30879,58 @@ var CompsPane = (function () {
       slabCamerasBack: function () {
         if (!scannerActive) return;
         // back from Singles (a tab switch): the panel is there in one frame, no slide, sent with the page's own sheet layout
-        if (bridge.cameraPanelSupported()) showPanelIfReady({ instant: true }); else autoCamera();
+        if (nativePanelWanted()) showPanelIfReady({ instant: true }); else autoCamera();
+      },
+      // ── one scanner, one screen: the pane draws Scan's only screen, and everything a camera does goes through here ──
+      oneCamera: function () { return !NATIVE_SLAB_PANEL; },
+      signedIn: function () { return !!session; },
+      /** The camera button on the frame: on (remembered for the app session), or off (remembered too). */
+      cameraOn: function () {
+        userGesture = true;
+        cameraTurnedOff = false;
+        camChoice('scan', true);
+        if (camNeedsTap) { closeCamera(); } // Allow camera / Try again: a fresh ask
+        turnCameraOn();
+      },
+      cameraOff: function () { cameraTurnedOff = true; camChoice('scan', false); closeCamera(); },
+      torch: function () { toggleTorch(); },
+      /** A tap on the camera that is a slab tap (Slab; Auto with a cert in the frame): the old tap, under the finger (camera box px). */
+      slabTap: function (tapBox) { userGesture = true; if (cam) take(tapBox); },
+      /** Whether a cert-shaped code is in the card frame right now (seen within OneScan.SEEN_MS): Auto's tap then takes that slab. */
+      certInView: function () {
+        if (!cam) return false;
+        try {
+          var m = cam.mapping();
+          var seen = cam.seen().map(function (x) { return { text: x.text, format: x.format, corners: cam.onScreen(x, m) }; });
+          return OneScan.certInFrame(seen, AutoScan.sendsItself, OneScan.aimFromGuide(SinglesPane.guide()));
+        } catch (e) { return false; }
+      },
+      /** A cert typed in the search on the frame (Auto or Slab): the cert box's own path, exactly as if it were typed there. */
+      typedCert: function (text) {
+        dom.certInput.value = String(text == null ? '' : text);
+        submitTyped();
+        if (!dom.certInput.value) return { ok: true }; // taken: the box empties, as it always does
+        // not taken (a cert that needs its grader picked, or one that does not read as a cert): the slab list comes up with the box, its
+        // words and the grader pick in view, exactly as typing it there would have shown them
+        setTypeOpen(true);
+        setOneUp(true);
+        return { ok: false, why: dom.boxErr && !dom.boxErr.hidden ? dom.boxErr.textContent : '' };
+      },
+      /** The switch moved (or the pane changed what it does): the reading rate, the pause and the switch follow; nothing else moves. */
+      kindChanged: function () { setOneUp(false); applyCamWatch(); renderScanSwitch(); },
+      /** The slab pile for the tray: the header's figures (PileRates.pileTotals, the very numbers the pile shows) and the compact rows. */
+      slabTray: function () { return slabTrayData(); },
+      /** Review / the grab handle on the tray in Slab: the whole slab screen (every control), pulled up over the camera; and back down. */
+      openSlabList: function () { setOneUp(true); },
+      closeSlabList: function () { setOneUp(false); },
+      slabListUp: function () { return oneTrayUp(); },
+      /** Something on the screen opened or closed: Android's Back follows (syncOneBack). */
+      backChanged: function () { syncOneBack(); },
+      /** The tray row's x: the pile row's own remove (removePileRow), as if its x in the pulled-up list were tapped. */
+      removeSlab: function (key) {
+        var btns = dom.earlierList && dom.earlierList.querySelectorAll ? dom.earlierList.querySelectorAll('.sc-earlier-remove') : [];
+        for (var i = 0; i < btns.length; i++) if (btns[i].getAttribute('data-key') === key) { removePileRow(btns[i]); return true; }
+        return false;
       }
     });
 
@@ -29885,7 +31007,7 @@ var CompsPane = (function () {
       if (back.scan === 'singles') placeSingles = true;
       if (back.tab === 'scan') {
         scanSide = back.scan;
-        if (back.scan === 'singles' && screenAllowed('singles')) SinglesPane.pick('singles', { quiet: true }); // camera off, as a tap opens it
+        if (back.scan === 'singles' && screenAllowed('singles') && !oneScreen()) SinglesPane.pick('singles', { quiet: true }); // camera off, as a tap opens it (one screen: its mode is kept for the session already)
       } else {
         enterPortal(back.tab);
         scanSide = back.scan; // (for coming back to Scan: enterPortal starts it on Slabs)
@@ -30011,23 +31133,167 @@ var CompsPane = (function () {
         try { if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost); } catch (e) { /* drawn over next time */ }
       }, TAB_FADE_MS + 40);
     }
-    /** The Scan tab's Slabs / Singles switch (#sc-scanside, at the top of the slab layout): shown once Singles may open for this login
+    /** The Scan tab's Slabs / Singles switch (#sc-scanside, pinned directly above the bottom tab bar on both sides): shown once Singles may open for this login
         (an owner, or a sourcer account with the Singles flag, and singles-live's /status says on), never on the Sheet. */
     function renderScanSwitch() {
       var sw = document.getElementById('sc-scanside');
       if (!sw) return;
+      if (oneScreen()) { renderKindSwitch(sw); return; }
       var role = barRole();
       var show = !!session && role !== 'none' && tabStates(role).some(function (t) { return t.id === 'singles' && t.state === 'yes'; });
       var mode = singlesOn() ? 'singles' : 'slabs';
       var key = show ? mode : '';
+      var L = document.getElementById('sc-layout');
+      if (L && L.classList) L.classList.toggle('sc-side-on', show); // the docks / Singles panel sit on the switch, not under it
       if (sw.getAttribute('data-drawn') === key && sw.hidden === !show) return;
       sw.setAttribute('data-drawn', key);
       sw.hidden = !show;
-      if (!show) { sw.innerHTML = ''; return; }
-      sw.innerHTML = ['slabs', 'singles'].map(function (m) {
+      if (!show) return; // (kept as drawn: it comes back in the same frame, with no redraw)
+      sw.setAttribute('data-mode', mode); // the pill slides to the side (CSS transform)
+      // Never redrawn once drawn (Penguin 11/26: "smoother"): the two buttons stay, only which one is pressed changes.
+      var opts = typeof sw.querySelectorAll === 'function' ? sw.querySelectorAll('[data-scan-mode]') : null;
+      if (opts && opts.length === 2) {
+        for (var i = 0; i < opts.length; i++) opts[i].setAttribute('aria-pressed', opts[i].getAttribute('data-scan-mode') === mode ? 'true' : 'false');
+        return;
+      }
+      sw.innerHTML = '<span class="sc-scanside-track"><i class="sc-scanside-pill" aria-hidden="true"></i>' + ['slabs', 'singles'].map(function (m) {
         return '<button type="button" class="sc-scanside-opt" data-scan-mode="' + m + '"' + (m === mode ? ' aria-pressed="true"' : ' aria-pressed="false"') + '>' + (m === 'slabs' ? 'Slabs' : 'Singles') + '</button>';
-      }).join('');
+      }).join('') + '</span>';
     }
+    /** One screen: the Auto | Slab | Raw switch, at the same pinned spot the Slabs / Singles switch had, shown on Scan once raw cards may be
+        scanned (the same rule: an owner, or a sourcer account with the Singles flag, and singles-live's /status on). Drawn once; a flip only
+        moves the pill (data-mode) and which segment is pressed. */
+    function renderKindSwitch(sw) {
+      var role = barRole();
+      var show = !!session && role !== 'none' && oneShown === 'scan' && tabStates(role).some(function (t) { return t.id === 'singles' && t.state === 'yes'; });
+      var kind = SinglesPane.kind();
+      var L = document.getElementById('sc-layout');
+      if (L && L.classList) L.classList.toggle('sc-side-on', show); // the tray sits on the switch, not under it
+      sw.hidden = !show;
+      if (!show) return;
+      sw.setAttribute('data-mode', kind); // the pill slides to the segment (CSS transform)
+      sw.setAttribute('data-kinds', '3');
+      var opts = typeof sw.querySelectorAll === 'function' ? sw.querySelectorAll('[data-scan-kind]') : null;
+      if (sw.getAttribute('data-drawn') !== 'kinds' || !opts || opts.length !== OneScan.KINDS.length) {
+        sw.setAttribute('data-drawn', 'kinds');
+        sw.innerHTML = '<span class="sc-scanside-track"><i class="sc-scanside-pill" aria-hidden="true"></i>' + OneScan.KINDS.map(function (k) {
+          return '<button type="button" class="sc-scanside-opt" data-scan-kind="' + k + '" aria-pressed="' + (k === kind ? 'true' : 'false') + '">' + esc(OneScan.KIND_LABEL[k]) + '</button>';
+        }).join('') + '</span>';
+        return;
+      }
+      for (var i = 0; i < opts.length; i++) opts[i].setAttribute('aria-pressed', opts[i].getAttribute('data-scan-kind') === kind ? 'true' : 'false');
+    }
+    // ── One screen: Scan is the pane's screen whenever it is on show and someone is signed in (never the Sheet, never a portal pane). When
+    // it comes up the app's camera panel is told to go (also one the app put back from memory), the Sheet's camera stops, and the one
+    // camera starts on its own video. When it goes (another tab, the Sheet, signing out) its camera stops. The Sheet keeps its own camera. ──
+    var oneShown; // 'scan' | 'sheet' | null (no initial value: renderTabs can run before this line has)
+    var kindTapped; // the switch was tapped this launch (the launch's jump to Home is then not made)
+    function syncOneScreen() {
+      if (!oneScreen() || !camOwner) return;
+      var want = scannerActive && !!session && !portalOn() && !sheetOn();
+      if (want) {
+        var fresh = oneShown !== 'scan';
+        oneShown = 'scan';
+        if (fresh) {
+          if (cam && camOnVideo !== sgVideo) closeCamera(); // the Sheet's camera (its own box) stops: the one camera takes over
+          if (nativeScannerOpen) { bridge.closeScanner(); setNativeCamera(false); }
+          if (panelShown) setPanel(false, { instant: true });
+          else if (bridge.cameraPanelSupported()) panelGate.want(false, { force: true, instant: true }); // a panel the app remembered goes too
+        }
+        if (!SinglesPane.isOn()) SinglesPane.show();
+        oneSectionsInTray(true); // the slab sections live in the tray while the one screen is up
+        if (fresh) autoCamera();
+      } else {
+        var was = oneShown;
+        oneShown = sheetOn() && scannerActive && session ? 'sheet' : null;
+        if (was === 'scan') {
+          setOneUp(false);
+          oneSectionsInTray(false); // back to their own places (the Sheet, signed out)
+          if (SinglesPane.isOn()) SinglesPane.hide();
+          if (cam || cameraStarting || camOwner.video()) closeCamera();
+        }
+        if (oneShown === 'sheet' && was !== 'sheet') { if (nativePanelWanted()) showPanelIfReady({ instant: true }); else autoCamera(); }
+      }
+      renderScanSwitch();
+      try { syncOneBack(); } catch (e) { /* Back follows on the next change */ }
+    }
+    /** One screen: the slab sections (the card, Josh's Lock card, the seller card, the lock screens, the dock row, Price with, the
+        pile) are moved into the tray's body (#sc-sg-tall) while Scan's one screen is up, and back to their own places when it goes (the
+        Sheet, signed out, the old flow), so every other screen finds them exactly where they always were. Only WHERE they are shown
+        changes: ids, listeners and what draws them stay the same. */
+    var ONE_SECTIONS = ['sc-result', 'sc-pl', 'sc-seller', 'sc-lock', 'sc-dock', 'sc-rule-card', 'sc-earlier'];
+    var oneHomes = null; // [{ node, mark }] while the sections are in the tray
+    function oneSectionsInTray(into) {
+      if (into) {
+        if (oneHomes) return;
+        var full = document.getElementById('sc-sg-tall');
+        if (!full || typeof full.appendChild !== 'function' || typeof document.createComment !== 'function') return;
+        oneHomes = [];
+        ONE_SECTIONS.forEach(function (id) {
+          var n = document.getElementById(id);
+          if (!n || !n.parentNode || typeof n.parentNode.insertBefore !== 'function') return;
+          try {
+            var mark = document.createComment('one screen: #' + id + ' sits in the tray');
+            n.parentNode.insertBefore(mark, n);
+            full.appendChild(n);
+            oneHomes.push({ node: n, mark: mark });
+          } catch (e) { /* stays where it is */ }
+        });
+        return;
+      }
+      if (!oneHomes) return;
+      oneHomes.forEach(function (h) {
+        try { if (h.mark.parentNode) { h.mark.parentNode.insertBefore(h.node, h.mark); h.mark.parentNode.removeChild(h.mark); } } catch (e) { /* stays */ }
+      });
+      oneHomes = null;
+    }
+    /** One screen: the tray pulled up over the camera (Slab's whole list with every slab control: the card, Lock card, Normal / Lower,
+        Hide, type a cert, Price with, Rates, Adjust %, Add to sheet, remove), or back down. The camera keeps running underneath and
+        takes nothing while it is up. */
+    function setOneUp(up) {
+      if (!dom.layout || !dom.layout.classList) return;
+      up = !!up && oneScreen() && SinglesPane.isOn();
+      var was = dom.layout.classList.contains('sc-one-up');
+      if (up === was) return;
+      if (up) oneSectionsInTray(true);
+      dom.layout.classList.toggle('sc-one-up', up);
+      try { SinglesPane.trayUp(up); } catch (e) { /* the tray draws itself on its next render */ }
+      applyCamWatch();
+      syncOneBack();
+    }
+    /** Android's Back on the one screen (Android QA 11/27: with no camera panel any more, Back left the app from Scan). The app's Back goes
+        back through the page's history, so while something on Scan should close first (the pulled-up tray, a sheet, the type box) or the
+        camera is on, ONE history entry of the page's own is kept; Back takes it and the page closes the top thing (the tray, then a sheet or
+        the type box, then the camera, as the old panel did), and keeps an entry again while there is more. Only inside the Android app. */
+    var oneBackPushed = false, oneBackSkip = 0;
+    function oneBackHere() { return platform === 'androidnative' && oneCamHere() && SinglesPane.isOn(); }
+    function oneBackWanted() { return oneBackHere() && (oneTrayUp() || !!SinglesPane.backWanted() || !!cam || !!cameraStarting); }
+    function syncOneBack() {
+      if (!window.history || typeof window.history.pushState !== 'function') return;
+      var want = oneBackWanted();
+      if (want && !oneBackPushed) {
+        try { window.history.pushState({ iopOneBack: 1 }, ''); oneBackPushed = true; } catch (e) { /* no history: Back leaves, as before */ }
+      } else if (!want && oneBackPushed) {
+        oneBackPushed = false;
+        oneBackSkip++;
+        try { window.history.back(); } catch (e) { oneBackSkip--; }
+      }
+    }
+    window.addEventListener('popstate', function () {
+      if (oneBackSkip) { oneBackSkip--; return; }
+      if (!oneBackPushed) return;
+      oneBackPushed = false;
+      if (oneBackHere()) {
+        if (oneTrayUp()) setOneUp(false);
+        else if (SinglesPane.back()) { /* a sheet or the type box closed */ }
+        else if (cam || cameraStarting) { cameraTurnedOff = true; camChoice('scan', false); closeCamera(); }
+      }
+      setTimeout(syncOneBack, 0);
+    });
+    // Android's web view skips a history entry the page added with no tap since (its back-button intervention), so the entry is also
+    // (re)made on a tap: a Back after any tap on Scan always steps back inside Scan first.
+    document.addEventListener('pointerdown', function () { try { if (oneBackHere()) syncOneBack(); } catch (e) { /* Back follows on the next change */ } }, true);
+    function oneTrayUp() { return !!(dom.layout && dom.layout.classList && dom.layout.classList.contains('sc-one-up')); }
     /** What the portal panes are told about this login (IOPPanes.context()): allow-listed, no money, no token. */
     function portalContext() {
       var role = barRole();
@@ -30057,10 +31323,11 @@ var CompsPane = (function () {
       // reload in the same app session (the app's pull-to-refresh) comes back to where he was instead, for the same login only
       if (!openedHome && plan.settled && ids.indexOf('home') >= 0) {
         openedHome = true;
-        if (!window.IOP_TEST_START_SCAN && !portalPane && !tabTapping && !sheetOn() && !singlesOn()) { // (tests of Scan itself start there)
+        if (!window.IOP_TEST_START_SCAN && !portalPane && !tabTapping && !sheetOn() && (oneScreen() ? !kindTapped : !singlesOn())) { // (tests of Scan itself start there)
           if (!restorePlace(ids, plan.who)) enterPortal('home');
         }
       }
+      syncOneScreen(); // one screen: Scan's screen and its camera follow what is on show (it draws the switch too)
       renderScanSwitch();
       var cur = tabOn();
       if (ids.indexOf(cur) < 0) cur = ids.indexOf('scan') >= 0 ? 'scan' : (ids.length ? ids[0] : 'scan'); // never a tab that is not on the bar
@@ -30134,12 +31401,19 @@ var CompsPane = (function () {
     }
     try { window.addEventListener('resize', function () { if (dom.tabbar && !dom.tabbar.hidden) placeTabPill(); }); } catch (e) { /* no resize */ }
     var tabInTimer = null, tabAnimTimer = null;
-    function animateTabIn() {
+    function animateTabIn(fade) {
       // Penguin, 11/25: "i want it to stay solid. the bottom tab stays ... and the rest just moves". The new screen is simply there,
-      // in the same frame as the tap (no slide, no fade); only the bar's pill glides.
+      // in the same frame as the tap (no slide); only the bar's pill glides. Slabs <-> Singles (the Scan switch, Penguin 11/26:
+      // "smoother"): the screen's content fades in over 150 ms (.sc-tab-in-fade, opacity only, from 40%), while the switch, the
+      // bar and the docks stay put; reduced motion makes it a one-frame swap.
       var L = dom.layout;
       if (L && L.classList) L.classList.remove('sc-tab-in', 'sc-tab-in-r', 'sc-tab-in-l', 'sc-tab-in-fade');
       clearTimeout(tabInTimer);
+      if (fade && L && L.classList) {
+        void L.offsetWidth; // (restarts the fade on a quick second tap)
+        L.classList.add('sc-tab-in', 'sc-tab-in-fade');
+        tabInTimer = setTimeout(function () { L.classList.remove('sc-tab-in', 'sc-tab-in-fade'); }, 200);
+      }
       if (dom.tabbar && dom.tabbar.classList) {
         dom.tabbar.classList.add('sc-tab-anim');
         clearTimeout(tabAnimTimer);
@@ -30166,9 +31440,11 @@ var CompsPane = (function () {
       portalPane = id; // first: every camera hand-back below checks it, so nothing comes back on the way out
       if (!was) {
         if (sheetOn()) SheetPane.leave(); // (the Scan side it was opened over stays the one Scan comes back to)
+        else if (oneScreen()) { /* one screen: it goes below (syncOneScreen), its switch's choice kept for the app session */ }
         else if (singlesOn()) { scanSide = 'singles'; SinglesPane.pick('slabs'); }
         else scanSide = 'slabs';
         slabCamerasAway();
+        syncOneScreen();
       }
       if (root && root.classList) root.classList.add('sc-portal-on');
       closeComps(); // a Comps sheet never follows onto another tab
@@ -30182,15 +31458,30 @@ var CompsPane = (function () {
       if (root && root.classList) root.classList.remove('sc-portal-on');
       closeComps();
       try { if (Panes && Panes._sync) Panes._sync(null, portalContext()); } catch (e) { /* hidden by the class anyway */ }
+      if (oneScreen()) { syncOneScreen(); return; } // one screen: back on it, in the mode it was left in, with its camera
       if (scanSide === 'singles' && screenAllowed('singles')) {
         SinglesPane.pick('singles');
         if (singlesOn()) return;
       }
       if (!scannerActive) return;
-      if (bridge.cameraPanelSupported()) showPanelIfReady({ instant: true }); else autoCamera();
+      if (nativePanelWanted()) showPanelIfReady({ instant: true }); else autoCamera();
     }
     function pickTab(id) {
       var cur = tabOn();
+      // One screen: the old side ids (an older page's markup, Collections' IOPScan.openList, a rig step) are the switch's modes: 'slabs' is
+      // Slab, 'singles' is Raw (only while raw cards may be scanned). Scan comes on screen first if it is not; the camera never stops.
+      if (oneScreen() && (id === 'slabs' || id === 'singles')) {
+        if (!screenAllowed(id)) return;
+        tabTapping = true;
+        if (portalPane) leavePortal();
+        if (sheetOn()) SheetPane.leave();
+        syncOneScreen();
+        kindTapped = true;
+        SinglesPane.setKind(id === 'singles' ? 'raw' : 'slab');
+        renderTabs();
+        tabTapping = false;
+        return;
+      }
       // The old screen ids (an older page's markup, the Scan switch, the Admin row): that screen, as it always opened.
       if (id === 'slabs' || id === 'singles' || id === 'sheet') {
         if (!screenAllowed(id)) return;
@@ -30209,7 +31500,7 @@ var CompsPane = (function () {
         if (id === scr) { renderTabs(); tabTapping = false; try { window.scrollTo(0, 0); } catch (e) { /* stays */ } return; }
         tabTapping = true;
         if (dom.tabbar && dom.tabbar.classList) dom.tabbar.classList.add('sc-tab-anim');
-        if (scr === 'singles' && id !== 'singles') SinglesPane.pick('slabs'); // Singles' camera stops and the slab camera comes back (it buzzes)
+        if (scr === 'singles' && id !== 'singles' && !oneScreen()) SinglesPane.pick('slabs'); // Singles' camera stops and the slab camera comes back (it buzzes)
         if (scr === 'sheet' && id !== 'sheet') SheetPane.leave();
         if (id === 'singles') {
           if (!singlesOn()) SinglesPane.pick('singles'); // sends the slab cameras away; Singles opens with its camera off (it buzzes)
@@ -30223,7 +31514,7 @@ var CompsPane = (function () {
         renderTabs();
         tabTapping = false;
         try { window.scrollTo(0, 0); } catch (e) { /* stays */ }
-        animateTabIn();
+        animateTabIn((scr === 'slabs' || scr === 'singles') && (id === 'slabs' || id === 'singles') && screenOn() === id);
         return;
       }
       if (!tabMem || tabsPlan().ids.indexOf(id) < 0) return;
@@ -30233,7 +31524,7 @@ var CompsPane = (function () {
       if (id === 'scan') {
         if (sheetOn()) {
           SheetPane.leave();
-          if (scanSide === 'singles' && screenAllowed('singles') && !singlesOn()) SinglesPane.pick('singles'); // back to the side he left
+          if (!oneScreen() && scanSide === 'singles' && screenAllowed('singles') && !singlesOn()) SinglesPane.pick('singles'); // back to the side he left
         }
         if (portalPane) leavePortal();
       } else {
@@ -30255,6 +31546,9 @@ var CompsPane = (function () {
       var sw = document.getElementById('sc-scanside');
       if (!sw || !sw.addEventListener) return;
       sw.addEventListener('click', function (ev) {
+        // one screen: Auto | Slab | Raw only changes what the screen does (the tray, the hint, the reading); nothing else moves
+        var k = ev.target && ev.target.closest ? ev.target.closest('[data-scan-kind]') : null;
+        if (k) { kindTapped = true; SinglesPane.setKind(k.getAttribute('data-scan-kind'), { tap: true }); return; }
         var b = ev.target && ev.target.closest ? ev.target.closest('[data-scan-mode]') : null;
         if (b) pickTab(b.getAttribute('data-scan-mode'));
       });
@@ -30372,7 +31666,8 @@ var CompsPane = (function () {
       // App 1.10 signed out: a panel the app put back at launch (from memory) is sent away at once, so the sign-in form
       // is never under it (the app does nothing if no panel is up).
       if (bridge.cameraPanelSupported() && !session && !panelShown) panelGate.want(false, { force: true });
-      if (bridge.cameraPanelSupported()) showPanelIfReady(); else autoCamera();
+      if (oneScreen()) { /* one screen: renderTabs below brings it up (syncOneScreen), with its camera */ }
+      else if (nativePanelWanted()) showPanelIfReady(); else autoCamera();
       applyPageHiding();
       applyLockMode();
       SinglesPane.activate();
@@ -30391,6 +31686,7 @@ var CompsPane = (function () {
     function isBusy() { return busy; }
     function deactivate() {
       scannerActive = false;
+      if (oneScreen()) syncOneScreen(); // the one screen goes, its camera with it
       SinglesPane.deactivate();
       SheetPane.deactivate();
       closeCamera();
