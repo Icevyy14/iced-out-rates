@@ -450,12 +450,14 @@ function migrateLegacy(storage) {
 }
 
 function idOrNull(v) { return typeof v === 'number' && isFinite(v) && v >= 0 && Math.floor(v) === v ? v : null; }
-/** Search's own place (SearchPane.place()) cleaned: { view, set, card, from, lang } with numeric ids, or null. */
+/** Search's own place (SearchPane.place()) cleaned: { view, set, card, from, lang, q? } with numeric ids, or null. */
 function cleanSearchPlace(sp) {
   if (!isObj(sp) || SEARCH_VIEWS.indexOf(sp.view) < 0) return null;
   var out = { view: sp.view, set: idOrNull(sp.set), card: idOrNull(sp.card), from: sp.from === 'set' ? 'set' : 'sets', lang: sp.lang === 'ja' ? 'ja' : 'en' };
   if (out.view === 'set' && out.set === null) return null;
   if (out.view === 'card' && out.card === null) return null;
+  // the words typed in Search's box, so Back after a pull-to-refresh lands on the same results (a card name, never a price)
+  if (out.view === 'card' && out.from === 'sets' && typeof sp.q === 'string' && sp.q.trim()) out.q = sp.q.slice(0, 60);
   return out;
 }
 /** The place as stored (a JSON string) -> { who, tab, scan, search } or null when missing or unreadable. */
@@ -3679,12 +3681,13 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   /* the camera: edge to edge, from the top of the page down to the card panel. It takes everything the compact panel leaves above
      the tab bar (DeckTradr's ratio, Penguin 11/26: over 60% of the phone), never under 220 px, at most 760 px. On or off it is the
      same box. 190 px is kept for the compact panel (about 206 px: WE PAY row, one card row, condition / qty / Comps, the dots; it
-     tucks 24 px under the camera's foot and stays 8 px clear of the bar); a taller card (an unsure one with its hint) scrolls
-     inside the panel instead (capDeck). */
+     tucks 24 px under the camera's foot and stays 8 px clear of the bar). A taller card (an unsure one with its hint, a picked
+     version, the flashlight row) takes the extra room from the camera (--sc-sg-give, set by capDeck), so condition / qty / Comps
+     always show whole; only when the camera is already at its 220 px floor does the card scroll inside the panel. */
   #tab-scanner .sc-sg-cam{
     position:relative;min-width:0;box-sizing:border-box;width:100vw;margin-left:calc(50% - 50vw);
-    height:clamp(220px, calc(100vh - var(--sc-tabbar-h) - env(safe-area-inset-bottom) - 190px), 760px);
-    height:clamp(220px, calc(100svh - var(--sc-tabbar-h) - env(safe-area-inset-bottom) - 190px), 760px);
+    height:clamp(220px, calc(100vh - var(--sc-tabbar-h) - env(safe-area-inset-bottom) - 190px - var(--sc-sg-give, 0px)), 760px);
+    height:clamp(220px, calc(100svh - var(--sc-tabbar-h) - env(safe-area-inset-bottom) - 190px - var(--sc-sg-give, 0px)), 760px);
     overflow:hidden;isolation:isolate;border-radius:0;background:var(--sc-cam);box-shadow:none;
     touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
   }
@@ -3769,7 +3772,8 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .sc-sg-sum-row{display:flex;align-items:center;gap:10px;min-width:0;}
   #tab-scanner .sc-sg-sum-val{flex:none;font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.1;color:var(--c-text, var(--sc-ink));font-variant-numeric:tabular-nums;}
   #tab-scanner .sc-sg-sum-val.sc-blank{color:var(--c-dim, var(--sc-muted));}
-  #tab-scanner .sc-sg-sum-check{display:flex;align-items:center;gap:6px;min-width:0;white-space:nowrap;overflow:hidden;font-size:var(--sc-fs-label);font-weight:700;color:var(--c-amber, var(--sc-check));}
+  /* it may wrap to a second line on a small phone, never cut mid-word ("1 not counted, pi", QA 11/26) */
+  #tab-scanner .sc-sg-sum-check{display:flex;align-items:center;gap:6px;min-width:0;white-space:normal;line-height:1.2;overflow-wrap:anywhere;font-size:var(--sc-fs-label);font-weight:700;color:var(--c-amber, var(--sc-check));}
   #tab-scanner .sc-sg-sum-check::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:currentColor;}
   #tab-scanner .sc-sg-sum-check[hidden]{display:none;}
   /* the amber line is a button: a tap goes to the next card that needs a look */
@@ -3965,16 +3969,17 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   /* "Added: X · Undo" floats just above the tab bar */
   #tab-scanner .sc-sg-toast{
     position:fixed;left:50%;z-index:26;bottom:calc(var(--sc-tabbar-h) + env(safe-area-inset-bottom) + 12px);
-    display:flex;align-items:center;gap:6px;max-width:min(92vw, 480px);padding:6px 6px 6px 14px;border-radius:999px;
+    display:flex;align-items:center;gap:6px;width:max-content;max-width:min(92vw, 480px);box-sizing:border-box;padding:6px 6px 6px 14px;border-radius:22px;
     background:var(--sc-surface-bg);box-shadow:var(--sc-sh-card), inset 0 0 0 1px var(--sc-line);
     color:var(--sc-ink);font-size:var(--sc-fs-row);font-weight:700;
     transform:translate(-50%, 0);opacity:1;transition:transform 220ms var(--sc-ease), opacity 220ms var(--sc-ease);
   }
   #tab-scanner .sc-sg-toast[hidden]{display:none;}
   #tab-scanner .sc-sg-toast.sc-sg-in{transform:translate(-50%, 12px);opacity:0;}
-  #tab-scanner .sc-sg-toast-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #tab-scanner .sc-sg-toast-text{min-width:0;overflow-wrap:anywhere;line-height:1.25;} /* wraps rather than cut ": pick varia..." */
   #tab-scanner .sc-sg-toast-text::before{content:"";display:inline-block;width:9px;height:9px;margin-right:8px;border-radius:50%;background:var(--c-green, var(--sc-clv));vertical-align:1px;}
   #tab-scanner .sc-sg-toast.sc-sg-gone .sc-sg-toast-text::before{background:var(--sc-faint);}
+  #tab-scanner .sc-sg-toast.sc-sg-nobuy .sc-sg-toast-text::before{background:var(--c-red, var(--sc-err-ink));}
   #tab-scanner .sc-sg-toast .sc-btn{min-height:36px;padding:0 14px;}
 
   /* the press: everything tappable shrinks a little under the finger (the shell's .iop-press does the same, plus the buzz) */
@@ -4039,7 +4044,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
 
   <form class="sc-sg-find" id="sc-sg-find" autocomplete="off" hidden>
     <input class="sc-input" id="sc-sg-search" type="search" enterkeyhint="search" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
-      placeholder="Type a card: name and number" aria-label="Type a card's name and number, like Pikachu 25">
+      placeholder="Card name and number" aria-label="Type a card's name and number, like Pikachu 25">
     <button type="submit" class="sc-btn sc-btn-primary" id="sc-sg-go">Find</button>
     <button type="button" class="sc-sg-x" id="sc-sg-type-close" aria-label="Close the type box"></button>
   </form>
@@ -4375,6 +4380,10 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   .iop-comps .cp-stat{background:var(--cp-s2);border-radius:16px;padding:12px 12px 11px;min-width:0;}
   .iop-comps .cp-stat .k{font-size:12px;font-weight:600;color:var(--cp-dim);}
   .iop-comps .cp-stat .v{font-size:20px;font-weight:800;letter-spacing:-.01em;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  /* $1,000 and up: all three figures step down together so a four-figure price fits whole on a 390 pt phone (QA 11/26: it was cut short) */
+  .iop-comps .cp-stats.cp-long .cp-stat .v{font-size:15.5px;letter-spacing:-.02em;margin-top:6px;}
+  .iop-comps .cp-stats.cp-longer .cp-stat .v{font-size:13.5px;letter-spacing:-.02em;margin-top:7px;}
+  .iop-comps .cp-stats.cp-longest .cp-stat .v{font-size:12px;letter-spacing:-.02em;margin-top:8px;}
   .iop-comps .cp-stat .s{font-size:11px;color:var(--cp-mute);margin-top:2px;}
   .iop-comps .cp-stat .v.cp-wait{height:22px;width:70%;border-radius:6px;background:var(--cp-s3);animation:cp-pulse 1.1s ease-in-out infinite alternate;}
   @keyframes cp-pulse{from{opacity:.45;}to{opacity:1;}}
@@ -4499,7 +4508,11 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     border-bottom:1px solid var(--c-line);background:none;color:var(--c-text);font:inherit;font-size:15px;font-weight:600;text-align:left;
   }
   #tab-scanner .iop-row:last-child{border-bottom:0;}
+  /* the last row on show has no divider either, when the rows after it are hidden (Home's Admin row for a sourcer) */
+  #tab-scanner .iop-row:not(:has(~ .iop-row:not([hidden]))){border-bottom:0;}
   #tab-scanner .iop-row > span:last-child{color:var(--c-dim);font-weight:500;font-size:14px;}
+  /* a row's value sits at the right, beside its chevron (with the chevron as a third item it landed mid-row: "Sheet  Cert lists  >") */
+  #tab-scanner .iop-row > span + span{margin-left:auto;}
   #tab-scanner button.iop-row::after,#tab-scanner a.iop-row::after{
     content:"";flex:none;width:18px;height:18px;background:var(--c-mute);
     -webkit-mask:var(--i-chev) center / contain no-repeat;mask:var(--i-chev) center / contain no-repeat;
@@ -4591,6 +4604,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner #sc-home .iop-pay b{display:block;font-size:24px;font-weight:800;letter-spacing:-.02em;color:var(--c-text);margin-top:2px;}
   #tab-scanner #sc-home .iop-pay i{display:block;font-style:normal;font-size:13px;font-weight:600;color:var(--c-dim);margin-top:4px;}
   #tab-scanner #sc-home .iop-now .iop-btn{height:48px;width:100%;}
+  #tab-scanner #sc-home .iop-now .iop-btn[hidden]{display:none;}
   /* saved lists */
   #tab-scanner #sc-home .iop-lists{background:var(--c-s1);border-radius:18px;padding:2px 14px;}
   #tab-scanner #sc-home .iop-list{
@@ -4670,7 +4684,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   <div class="iop-rows">
     <button type="button" class="iop-row iop-press" data-home-go="search"><span>Search sets and cards</span></button>
     <button type="button" class="iop-row iop-press" data-home-go="collections"><span>Your saved lists</span></button>
-    <button type="button" class="iop-row iop-press" id="sc-home-admin" data-home-go="account"><span>App accounts and Admin</span></button>
+    <button type="button" class="iop-row iop-press" id="sc-home-admin" data-home-go="account"><span>Account, Sheet and themes</span></button>
   </div>
 </section>
 <!-- PORTAL-PANES:END -->
@@ -4699,7 +4713,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #sc-coll .cl-now{margin:16px 20px 0;border-radius:18px;border:1.5px dashed var(--cl-line2);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
   #sc-coll .cl-now-tx{min-width:0;}
   #sc-coll .cl-now-nm{font-size:16px;font-weight:700;}
-  #sc-coll .cl-now-m{font-size:13.5px;color:var(--cl-dim);margin-top:3px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #sc-coll .cl-now-m{font-size:13.5px;color:var(--cl-dim);margin-top:3px;line-height:1.35;overflow-wrap:anywhere;} /* wraps: the counts are the point */
   #sc-coll .cl-now-l{font-size:14.5px;font-weight:600;color:var(--cl-text);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   #sc-coll .cl-now-l:empty{display:none;}
   #sc-coll .cl-btn,#sc-coll-dialogs .cl-btn{flex:none;height:44px;border-radius:999px;border:0;padding:0 18px;font:inherit;font-size:15px;font-weight:700;
@@ -4740,6 +4754,9 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     background:var(--c-s1,#141416);color:var(--c-text,#F4F5F7);box-shadow:0 -12px 40px -8px rgba(0,0,0,.5);
     border-radius:22px 22px 0 0;padding:18px 20px 20px;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;}
   #sc-coll-dialogs dialog:not([open]){display:none;}
+  /* Rename and Delete open from the list sheet, so they sit above it (both used to share its layer, and Rename came first in the
+     page, so it opened hidden under the sheet) */
+  #sc-coll-dialogs #sc-coll-name,#sc-coll-dialogs #sc-coll-del{z-index:26;}
   #sc-coll-dialogs .cl-shade{position:fixed;inset:0;z-index:23;background:rgba(0,0,0,.55);}
   #sc-coll-dialogs .cl-shade[hidden]{display:none;}
   #sc-coll-dialogs{--cl-s3:var(--c-s3,#27272B);--cl-text:var(--c-text,#F4F5F7);--cl-dim:var(--c-dim,#8E9097);--cl-ice:var(--c-ice,#66D4FF);--cl-ice-ink:var(--c-ice-ink,#04202E);
@@ -4773,9 +4790,11 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #sc-coll-dialogs .cl-card img,#sc-coll-dialogs .cl-card i{flex:none;width:34px;height:48px;border-radius:4px;object-fit:cover;background:var(--cl-s3);display:block;}
   #sc-coll-dialogs .cl-card-w{flex:1;min-width:0;}
   #sc-coll-dialogs .cl-card-n{display:block;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  #sc-coll-dialogs .cl-card-s{display:block;font-size:12.5px;color:var(--cl-dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  /* the set's name may take two lines (it was cut short on a 402 pt phone) */
+  #sc-coll-dialogs .cl-card-s{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;font-size:12.5px;line-height:1.3;color:var(--cl-dim);margin-top:2px;overflow:hidden;}
   #sc-coll-dialogs .cl-card-r{flex:none;font-size:13px;font-weight:700;color:var(--cl-dim);font-variant-numeric:tabular-nums;}
   #sc-coll-dialogs .cl-card.cl-amber .cl-card-r{color:var(--cl-amber);}
+  #sc-coll-dialogs .cl-card.cl-nobuy .cl-card-r{color:var(--cl-red);}
   #sc-coll-dialogs .cl-more{display:block;padding:8px 12px;font-size:13px;color:var(--cl-dim);}
   #sc-coll-dialogs .cl-x{float:right;width:44px;height:44px;margin:-6px -6px 0 0;border-radius:999px;border:0;background:var(--cl-s3);color:var(--cl-dim);font-size:18px;line-height:44px;padding:0;cursor:pointer;}
   @media (prefers-reduced-motion: reduce){
@@ -4984,12 +5003,14 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #sc-search .sr-var[aria-pressed="true"]{border-color:var(--sr-ice);background:var(--sr-ice-soft);}
   #sc-search .sr-var[aria-pressed="true"] .sr-ck{display:flex;}
   #sc-search .sr-var[aria-pressed="true"] .sr-vp{color:var(--sr-green);}
+  #sc-search .sr-var[aria-pressed="true"] .sr-vp.sr-vno{color:var(--sr-red);} /* a picked version we don't buy stays red */
   #sc-search .sr-var[aria-pressed="true"] .sr-vn{color:var(--sr-text);}
   #sc-search .sr-cta{display:flex;gap:10px;padding:20px var(--sr-g) 0;}
   #sc-search .sr-cta{align-items:stretch;}
   #sc-search .sr-btn{height:54px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:700;line-height:1;}
   #sc-search .sr-btn svg{flex:none;display:block;}
   #sc-search .sr-btn.sr-pri.sr-added,#sc-search .sr-btn.sr-pri.sr-added:disabled{background:var(--sr-green-bg);color:var(--sr-green);}
+  #sc-search .sr-btn.sr-pri.sr-added.sr-added-no,#sc-search .sr-btn.sr-pri.sr-added-no:disabled{background:var(--sr-s2);color:var(--sr-red);}
   #sc-search .sr-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
   #sc-search .sr-btn.sr-pri{flex:1;background:var(--sr-ice);color:var(--sr-ice-ink);}
   #sc-search .sr-btn.sr-pri:disabled{background:var(--sr-s2);color:var(--sr-mute);cursor:default;transform:none;filter:none;}
@@ -13918,6 +13939,7 @@ function identify(idx, reading, opts) {
   for (const hit of found.values()) {
     const card = hit.card;
     const nameHits = card.nameWords.filter(w => words.has(w)).length;
+    hit.nameHits = nameHits;
     if (nameHits) {
       hit.score += POINTS.nameWord * nameHits;
       if (nameHits === card.nameWords.length) { hit.score += POINTS.wholeName; if (!hit.why.includes('name')) hit.why.push('name'); }
@@ -13936,8 +13958,11 @@ function identify(idx, reading, opts) {
     if (idx.sets[card.setIndex] && idx.sets[card.setIndex].side) hit.score += POINTS.sideSet;
   }
 
+  // Typed "pikachu 052": once any card carries a typed name word, the cards that only share the number (Snom, Drapion...) go
+  // (QA 11/26: 4 of 6 look-alikes weren't Pikachu). A photo reading keeps them: the camera can misread a name.
+  const someNamed = r.typed && [...found.values()].some(h => h.nameHits > 0);
   const candidates = [...found.values()]
-    .filter(h => h.score > 0)
+    .filter(h => h.score > 0 && (!someNamed || h.nameHits > 0))
     .sort((a, b) => (b.score - a.score) || ((b.card.year || 0) - (a.card.year || 0)) || (a.card.productId - b.card.productId))
     .slice(0, limit);
   const top = candidates[0];
@@ -17245,6 +17270,7 @@ function header(totals, list) {
   const pick = all.filter(s => s.kind === 'line' && s.amber).length;
   let words = '';
   if (toCheck && toCheck === pick) words = toCheck + ' not counted, pick variant';
+  else if (toCheck && pick) words = (toCheck - pick) + ' to check, ' + pick + ' to pick'; // the same counts Collections and Save show
   else if (toCheck) words = toCheck + ' to check';
   return {
     payCents: totals && Number.isInteger(totals.payoutCents) ? totals.payoutCents : null,
@@ -18097,6 +18123,7 @@ window.SinglesPrice = {
     var TICK_MS = 30 * 1000;
     var FETCH_WAIT_MS = 25000;
     var TOAST_MS = 5000;
+    var TOAST_UNDO_MS = 7000;
     var RESUME_CAM_GRACE_MS = 3000;
     var PANEL_RELEASE_MS = 400;
     var MAX_FAILED = 8;
@@ -18805,7 +18832,7 @@ window.SinglesPrice = {
           lastAdded = p;
           lastAddedFrom = null;
           jumpTo = 'l:' + p.lineKey;
-          showToast(flow.addedNote(top) + (p.printing ? '' : ': pick variant'), undoLast, false);
+          addedToast(top, p);
           askLive([top.productId]);
           return;
         }
@@ -19070,7 +19097,7 @@ window.SinglesPrice = {
       commitPile();
       good();
       flash('ok');
-      showToast(flow.addedNote(card), undoLast, false);
+      addedToast(card, p);
       askLive([card.productId]);
     }
 
@@ -19121,7 +19148,7 @@ window.SinglesPrice = {
         if (added.lineKey) {
           lastAdded = added; lastAddedFrom = null; jumpTo = 'l:' + added.lineKey;
           commitPile(); good();
-          showToast(flow.addedNote(top.card) + (added.printing ? '' : ': pick variant'), undoLast, false);
+          addedToast(top.card, added);
           askLive([top.card.productId]);
           render();
           return;
@@ -19129,7 +19156,9 @@ window.SinglesPrice = {
       }
       // not sure (or not one we buy as typed): a To check card with the matches behind its flip
       var id = nextId();
-      queue = queue.concat([flow.matchItem(id, res, null)]);
+      var typedItem = flow.matchItem(id, res, null);
+      typedItem.typed = true; // typed, not a photo: its hint says so
+      queue = queue.concat([typedItem]);
       jumpTo = 'q:' + id;
       saveQueue();
       askLive([top.card.productId]);
@@ -19210,20 +19239,36 @@ window.SinglesPrice = {
         if (slide) deckFit.observe(slide);
       } catch (e) { /* the next draw fits it */ }
     }
-    /** The card's height: the card on show, but never so tall that the panel's foot (the dots) goes under the tab bar (8 px
-        clear of it). A taller card scrolls inside the panel (11/26 critic; the compact panel, Penguin 11/26). */
+    /** The card's height: the card on show, whole. When it is taller than the room left above the tab bar (8 px clear of it),
+        the camera gives up the difference (--sc-sg-give), so NM / qty / Comps are never cut off or covered by the flashlight row
+        (owner + sourcer QA 11/26). Only a card taller than the camera's 220 px floor allows scrolls inside the panel. */
+    var camGive = 0;
+    function deckRoom() {
+      var bar = document.getElementById('sc-tabbar');
+      var barTop = bar && bar.getClientRects().length ? bar.getBoundingClientRect().top : (window.innerHeight || 0);
+      var y = window.scrollY || window.pageYOffset || 0;
+      var deckTop = el.card.getBoundingClientRect().top + y;
+      var curH = el.card.getBoundingClientRect().height;
+      var panelBottom = el.panel.getBoundingClientRect().bottom + y;
+      var below = panelBottom - (deckTop + curH); // the dots (and the flashlight) under the card
+      return barTop > 0 && panelBottom > 0 ? Math.floor(barTop + y - 8 - below - deckTop) : Infinity;
+    }
+    function setGive(px) {
+      px = Math.max(0, Math.round(px) || 0);
+      if (px === camGive || !el.cam || !el.cam.style || typeof el.cam.style.setProperty !== 'function') return false;
+      camGive = px;
+      el.cam.style.setProperty('--sc-sg-give', px + 'px');
+      return true;
+    }
     function capDeck(slideH) {
       var h = Number(slideH) || 0;
       var room = Infinity;
       try {
-        var bar = document.getElementById('sc-tabbar');
-        var barTop = bar && bar.getClientRects().length ? bar.getBoundingClientRect().top : (window.innerHeight || 0);
-        var y = window.scrollY || window.pageYOffset || 0;
-        var deckTop = el.card.getBoundingClientRect().top + y;
-        var curH = el.card.getBoundingClientRect().height;
-        var panelBottom = el.panel.getBoundingClientRect().bottom + y;
-        var below = panelBottom - (deckTop + curH); // the dots under the card
-        if (barTop > 0 && panelBottom > 0) room = Math.floor(barTop + y - 8 - below - deckTop);
+        var had = camGive;
+        setGive(0);
+        room = deckRoom(); // the room with the camera at its full size
+        if (h > 0 && room !== Infinity && h > room) { setGive(h - room); room = deckRoom(); }
+        if (camGive !== had) { try { placeGuide(); } catch (e) { /* placed on the next draw */ } }
       } catch (e) { room = Infinity; }
       var capped = h > 0 && room >= 110 && h > room;
       if (el.track.children.length < 2 && !capped) el.card.style.height = '';
@@ -19384,19 +19429,40 @@ window.SinglesPrice = {
     }
 
     // ── the little notes and the motion ─────────────────────────────────────────────────────────────
-    function showToast(words, undo, gone) {
+    /** A line we don't buy (at its condition and price): it stays on the list, but never reads as a normal add (QA 11/26). */
+    function lineNotBought(key) {
+      try {
+        var line = key ? pile.get(key) : null;
+        if (!line || !line.printing || !settings) return false;
+        var pr = flow.pricePile([line], settings);
+        return !!(pr && pr.rows && pr.rows[0] && pr.rows[0].outcome === 'rejected');
+      } catch (e) { return false; }
+    }
+    /** "Added: X" (green), "Added: X: pick variant", or "Not buying: X" (red) with Undo. */
+    function addedToast(card, p) {
+      if (p && p.printing && lineNotBought(p.lineKey)) { showToast('Not buying: ' + flow.cardLabel(card), undoLast, false, true); return; }
+      showToast(flow.addedNote(card) + (p && p.printing ? '' : ': pick variant'), undoLast, false);
+    }
+    function showToast(words, undo, gone, nobuy) {
       clearTimeout(toastTimer);
       clearTimeout(toastGone);
       el['toast-text'].textContent = words;
       toastUndo = undo || null;
       el['toast-undo'].hidden = !undo;
       el.toast.classList.toggle('sc-sg-gone', !!gone);
+      el.toast.classList.toggle('sc-sg-nobuy', !!nobuy);
+      // it floats just above the card panel, so it never covers WE PAY or the card (QA 11/26); else just above the tab bar
+      try {
+        var pr = on && el.panel && el.panel.getClientRects().length ? el.panel.getBoundingClientRect() : null;
+        var vh = window.innerHeight || 0;
+        el.toast.style.bottom = pr && vh && pr.top > 80 && pr.top < vh ? Math.round(vh - pr.top + 10) + 'px' : '';
+      } catch (e) { el.toast.style.bottom = ''; }
       el.toast.hidden = false;
       if (!reduceMotion()) {
         el.toast.classList.add('sc-sg-in');
         requestFrame(function () { el.toast.classList.remove('sc-sg-in'); });
       }
-      toastTimer = setTimeout(hideToast, TOAST_MS);
+      toastTimer = setTimeout(hideToast, undo ? TOAST_UNDO_MS : TOAST_MS); // with Undo it stays longer, so Undo can be hit
     }
     var toastGone = null;
     function hideToast() {
@@ -19525,8 +19591,10 @@ window.SinglesPrice = {
       if (!row && !settings) pill = pillHtml('', ratesState === 'failed' ? 'No rate sheet' : 'Pricing…');
       else if (lp.pick) {
         // no amber pill: the Select version bar under it is the one thing to do (11/26 critic: don't ask twice)
-        best = settings ? flow.upTo(flow.variantQuotes(lines, card, { skipKey: line.key, condition: line.condition, quantity: 1 }, settings, liveMap)) : null;
-        pill = '';
+        var quotes = settings ? flow.variantQuotes(lines, card, { skipKey: line.key, condition: line.condition, quantity: 1 }, settings, liveMap) : null;
+        best = quotes ? flow.upTo(quotes) : null;
+        // no version of it is bought (at this condition): it says so, instead of a bare amber Select version
+        pill = best == null && quotes && quotes.length && quotes.every(function (q) { return q.outcome === 'rejected'; }) ? pillHtml('no', 'Not buying') : '';
       } else if (lp.buying) pill = pillHtml('pay', 'We pay ' + lp.text);
       else pill = pillHtml('no', lp.text);
       var metaBits = [];
@@ -19560,12 +19628,18 @@ window.SinglesPrice = {
       if (off) pill = pillHtml('no', 'Not buying');
       else {
         // no "Check it" pill: the amber Select version bar under it asks once (11/26 critic)
-        var best = settings ? flow.upTo(flow.variantQuotes(lines, card, { condition: o.condition, quantity: 1 }, settings, liveMap)) : null;
+        var quotes = settings ? flow.variantQuotes(lines, card, { condition: o.condition, quantity: 1 }, settings, liveMap) : null;
+        var best = quotes ? flow.upTo(quotes) : null;
         if (best != null) meta = '<div class="sc-sg-meta">Up to ' + escHtml(flow.fmt(best)) + ' once picked</div>';
+        else if (quotes && quotes.length && quotes.every(function (q) { return q.outcome === 'rejected'; })) {
+          // every version of this look-alike is one we don't buy (at this condition): say so, not a bare amber Select version
+          pill = pillHtml('no', 'Not buying');
+          if (o.condition && o.condition !== 'NM') meta = '<div class="sc-sg-meta">' + escHtml(o.condition) + ' isn\'t bought for this card</div>';
+        }
       }
       var name = card.name ? motion.displayName(card.name, card.num) : flow.langWord(card.lang) + ' card';
-      var hintWords = off ? flow.offHint(card.lang, fo.list.length > 1) : (item.hint ? item.hint + ' ' : 'Not sure it\'s this one. ') +
-        (fo.list.length > 1 ? 'Flip the picture to compare.' : 'Select the version to add it.');
+      var hintWords = off ? flow.offHint(card.lang, fo.list.length > 1) : (item.hint ? item.hint + ' ' : item.typed ? 'More than one card matches. ' : 'Not sure it\'s this one. ') +
+        (fo.list.length > 1 ? (item.typed ? 'Tap ' + fo.f.label + ' to see each.' : 'Flip the picture to compare.') : 'Select the version to add it.');
       return '<div class="sc-sg-top">' +
           '<div class="sc-sg-pic">' + (card.productId ? pic(card.productId, '', name) : '') + langTagHtml(card) +
             (fo.list.length > 1 ? '<button type="button" class="sc-sg-flip iop-press" data-act="flip" aria-label="Show the next look-alike">' + escHtml(fo.f.label) + '</button>' : '') +
@@ -19660,7 +19734,7 @@ window.SinglesPrice = {
       var count = lines.reduce(function (a, l) { return a + l.quantity; }, 0);
       if (el['review-title']) el['review-title'].textContent = 'Review ' + slides.length;
       var t = priced ? priced.totals : null;
-      el.tot.innerHTML = '<div class="sc-sg-tot-box"><small>Market</small><b>' + escHtml(t ? flow.fmt(t.marketCents) : '—') + '</b></div>' +
+      el.tot.innerHTML = '<div class="sc-sg-tot-box"><small>Market</small><b>' + escHtml(t ? flow.fmt(t.acceptedMarketCents) : '—') + '</b></div>' + // (the cards we buy)
         '<div class="sc-sg-tot-box sc-sg-tot-pay"><small>' + escHtml(el['pay-key'].textContent) + '</small><b>' + escHtml(t ? flow.fmt(t.payoutCents) : '—') + '</b></div>';
       var h = deck.header(t, slides);
       var notes = [];
@@ -19751,12 +19825,13 @@ window.SinglesPrice = {
         v: 1, lines: pile.toJSON().lines, toCheck: queue.length, blockers: window.SinglesList.exportBlockers(lines),
         totals: {
           cards: lines.reduce(function (a, l) { return a + l.quantity; }, 0),
-          marketCents: t ? t.marketCents : null, payoutCents: t ? t.payoutCents : null, pickLines: t ? t.pickLines : window.SinglesList.exportBlockers(lines).length,
+          marketCents: t ? t.acceptedMarketCents : null, payoutCents: t ? t.payoutCents : null, pickLines: t ? t.pickLines : window.SinglesList.exportBlockers(lines).length,
         },
       };
     }
     /** Open a saved list (Collections): it becomes the list being scanned and Scan > Singles opens on it, on the first card that
-        needs a version (newest card first when none does). opts.focus: a line key to open on instead (Collections' card list). */
+        needs a version (newest card first when none does). opts.focus: a line key to open on instead (Collections' card list).
+        opts.stay: load it without switching to Scan. */
     function openList(snapshot, opts) {
       if (!host) return false;
       ensureEngine();
@@ -19775,7 +19850,7 @@ window.SinglesPrice = {
       commitPile();
       saveQueue();
       closeSheets(true);
-      showScan();
+      if (!(opts && opts.stay)) showScan(); // opts.stay: emptied from Collections (a delete), which stays on screen
       if (on) { render(); if (liveState === true) refreshStaleLive(); }
       return true;
     }
@@ -19821,8 +19896,12 @@ window.SinglesPrice = {
       if (!host || !settings || !Array.isArray(lines)) return null;
       ensureEngine();
       try {
-        var t = flow.pricePile(flow.pileFrom({ lines: lines }).lines(), settings).totals;
-        return t ? { payoutCents: t.payoutCents, marketCents: t.marketCents, pickLines: t.pickLines } : null;
+        var priced = flow.pricePile(flow.pileFrom({ lines: lines }).lines(), settings);
+        var t = priced.totals;
+        // Market: only the cards we buy (a big card we don't buy beside a small We pay read as a huge gap, QA 11/26);
+        // notBuying: the lines' keys we don't buy, so Collections can say so on the row
+        var notBuying = (priced.rows || []).filter(function (r) { return r.outcome === 'rejected'; }).map(function (r) { return r.key; });
+        return t ? { payoutCents: t.payoutCents, marketCents: t.acceptedMarketCents, pickLines: t.pickLines, notBuying: notBuying } : null;
       } catch (e) { return null; }
     }
     /** Collections' card list, on the list already open in Scan: Scan > Singles comes up on that card. -> false when it isn't there. */
@@ -21079,8 +21158,8 @@ try {
     f.hidden = !flags;
     var pay = d.getElementById('sc-home-now-pay');
     pay.textContent = now.pay == null ? 'Not priced yet' : now.pay;
-    // Review N counts what Scan's Review lists: one row per card, whatever its quantity
-    var rows = now.lines > 0 ? now.lines : cards;
+    // Review N counts what Scan's Review lists: one row per card, whatever its quantity, plus each photo still in To check
+    var rows = (now.lines > 0 ? now.lines : cards) + chk;
     d.getElementById('sc-home-review').textContent = rows ? 'Review ' + rows : 'Review';
     return now.pay == null && cards > now.toPick;
   }
@@ -21110,10 +21189,14 @@ try {
     var tabs = Array.isArray(c.tabs) ? c.tabs : [];
     var sum = tabs.indexOf('collections') >= 0 ? summary() : null;
     var waiting = drawNow(sum && sum.now);
+    // Singles switched off (the flag, or the remote switch): Review would open nothing, so it isn't offered (QA 11/26)
+    var singlesOk = !!c.singles && c.singlesOpen !== false;
+    var revBtn = d.getElementById('sc-home-review');
+    if (revBtn) revBtn.hidden = !singlesOk;
     drawLists(sum && sum.recent, sum && typeof sum.total === 'number' ? sum.total : null);
     var start = d.getElementById('sc-home-start');
     // how it works is about singles (scan, pick a version, save the list): only for a login with Singles
-    if (start) start.hidden = !c.singles || !sum || !d.getElementById('sc-home-now-wrap').hidden || !d.getElementById('sc-home-lists-wrap').hidden;
+    if (start) start.hidden = !singlesOk || !sum || !d.getElementById('sc-home-now-wrap').hidden || !d.getElementById('sc-home-lists-wrap').hidden;
     clearTimeout(retry);
     retry = waiting ? setTimeout(function () { retry = null; if (on) drawMine(window.IOPPanes.context() || {}); }, 1500) : null;
   }
@@ -21125,7 +21208,7 @@ try {
     if (hello) hello.textContent = greet();
     if (name) name.textContent = c.name ? c.name : 'Iced Out Penguin';
     var sub = d.getElementById('sc-home-scan-sub');
-    if (sub) sub.textContent = c.singles ? 'Singles or slabs, see what we pay' : 'Slabs, see what we pay';
+    if (sub) sub.textContent = c.singles && c.singlesOpen !== false ? 'Singles or slabs, see what we pay' : 'Slabs, see what we pay';
     var so = d.getElementById('sc-home-sourcer');
     if (so) so.hidden = owner || c.role !== 'sourcer';
     // shortcuts: only to tabs this login has; App accounts and Admin is the owner's
@@ -21688,7 +21771,7 @@ function matching(keys, map, words) {
 
 /**
  * search(index, query, opts) -> { sets: [tile], cards: [card] }. Every query word must start a word of the set name (sets)
- * or of the card name (cards). A word that is all digits also matches a card's number ("gengar 94"). Sets newest first;
+ * or of the card name or its set's name (cards). A word that is all digits also matches a card's number ("gengar 94"). Sets newest first;
  * cards: names that start with the query first, then newest set, then number. opts.limit caps the cards (default 60).
  */
 function search(index, query, opts) {
@@ -21697,18 +21780,43 @@ function search(index, query, opts) {
   var limit = opts && opts.limit > 0 ? opts.limit : 60;
   var sets = matching(index.setKeys, index.setWords, words).sort(function (a, b) { return a - b; }).map(function (i) { return index.tiles[i]; });
   var nameWords = words.filter(function (w) { return !/^\d+$/.test(w); });
-  var numWords = words.filter(function (w) { return /^\d+$/.test(w); });
-  var hits = nameWords.length ? matching(index.cardKeys, index.cardWords, nameWords) : [];
-  var cards = hits.map(function (i) { return index.cards[i]; });
-  if (numWords.length) {
-    cards = cards.filter(function (c) {
-      var front = numberKey(c.num)[2];
-      return numWords.every(function (n) { return +n === front; });
+  // A word may also name the card's SET ("charizard 151", "gengar scarlet", QA 11/26: these said "Nothing matches"): a word of
+  // 3+ letters, or a number, that starts a word of the set's name or code. At least one word must still start a word of the
+  // card's own name, and cards whose name holds every word come first.
+  var setGroups = function (w) {
+    var g = new Set();
+    if (w.length < 3 && !/^\d+$/.test(w)) return g;
+    keysStarting(index.setKeys, w).forEach(function (k) { index.setWords.get(k).forEach(function (i) { var t = index.tiles[i]; if (t) g.add(t.groupId); }); });
+    return g;
+  };
+  var nameHits = function (w) { var h = new Set(); keysStarting(index.cardKeys, w).forEach(function (k) { index.cardWords.get(k).forEach(function (v) { h.add(v); }); }); return h; };
+  var perWord = words.map(function (w) { return { w: w, num: /^\d+$/.test(w), names: /^\d+$/.test(w) ? null : nameHits(w), sets: setGroups(w) }; });
+  var pool = new Set();
+  perWord.forEach(function (p) { if (p.names) p.names.forEach(function (v) { pool.add(v); }); });
+  var allName = new Set();
+  var hits = Array.from(pool).filter(function (i) {
+    var c = index.cards[i];
+    var byName = true;
+    var ok = perWord.every(function (p) {
+      if (p.num) {
+        if (+p.w === numberKey(c.num)[2]) return true;
+        byName = false;
+        return p.sets.has(c.groupId);
+      }
+      if (p.names.has(i)) return true;
+      byName = false;
+      return p.sets.has(c.groupId);
     });
-  }
+    if (ok && byName) allName.add(i);
+    return ok;
+  });
+  var cards = hits.map(function (i) { return index.cards[i]; });
+  var whole = new Set(Array.from(allName).map(function (i) { return index.cards[i]; }));
   var q = fold(query);
   var rank = function (c) { var r = index.setRank.get(c.groupId); return r == null ? 1e9 : r; };
   cards.sort(function (a, b) {
+    var wa = whole.has(a) ? 0 : 1, wb = whole.has(b) ? 0 : 1;
+    if (wa !== wb) return wa - wb;
     var sa = fold(a.name).lastIndexOf(q, 0) === 0 ? 0 : 1, sb = fold(b.name).lastIndexOf(q, 0) === 0 ? 0 : 1;
     if (sa !== sb) return sa - sb;
     if (rank(a) !== rank(b)) return rank(a) - rank(b);
@@ -22059,6 +22167,10 @@ window.SearchBook = {
     /** How many of these cards show a live figure right now (the set page's line). */
     function liveCountOf(rows) { var n = 0; for (var i = 0; i < rows.length; i++) if (liveAnswer(rows[i].card.productId)) n++; return n; }
     /** 'loading' while asking, 'done' once answered (with or without a price), 'off' when it was never asked (live off). */
+    /** Scan > Singles can open now (the page's context; true when there is no page to ask, as in the tests). */
+    function singlesCan() {
+      try { var c = window.IOPPanes && typeof window.IOPPanes.context === 'function' ? window.IOPPanes.context() : null; return !c || c.singlesOpen !== false; } catch (e) { return true; }
+    }
     function liveState(id) { var e = liveFor.get(id); return e ? e.state : 'off'; }
     /** Ask once per card (again after LIVE_KEEP_MS when `again`). Overlapping asks for one card share the client's request. */
     function askLiveFor(id, again) {
@@ -22133,7 +22245,9 @@ window.SearchBook = {
     /** Where Search is: { view, set, card, from, lang } (ids only). While a reload's place waits for its book, that one. */
     function place() {
       if (pendingPlace) return pendingPlace;
-      return { view: view, set: setId, card: cardId, from: cardFrom === 'set' ? 'set' : 'sets', lang: lang };
+      var p = { view: view, set: setId, card: cardId, from: cardFrom === 'set' ? 'set' : 'sets', lang: lang };
+      if (view === 'card' && p.from === 'sets' && query.trim()) p.q = query.slice(0, 60); // Back returns to these results
+      return p;
     }
     /** After a reload: come back to this set / card (from place()). Opened once its book is in; an id the book no longer has, or
         another language than the one Search is on, leaves Search on its sets. */
@@ -22142,6 +22256,11 @@ window.SearchBook = {
       bindDom(); // (reads the language Search is on)
       if ((p.lang === 'ja' ? 'ja' : 'en') !== lang) return;
       pendingPlace = { view: p.view, set: typeof p.set === 'number' ? p.set : null, card: typeof p.card === 'number' ? p.card : null, from: p.from === 'set' ? 'set' : 'sets', lang: lang };
+      if (typeof p.q === 'string' && p.q.trim()) {
+        pendingPlace.q = p.q.slice(0, 60);
+        query = pendingPlace.q; // Back from the card lands on the same results, not the bare sets list
+        try { if (el.q) el.q.value = query; } catch (e) { /* the box fills on the next draw */ }
+      }
       if (books[lang]) applyPending();
     }
     function applyPending() {
@@ -22344,6 +22463,7 @@ window.SearchBook = {
       var hint;
       if (!priced) hint = '<div class="sr-hint sr-quiet"><i></i>Singles prices aren\'t on for your account.</div>';
       else if (!vs.length) hint = '<div class="sr-hint sr-quiet"><i></i>No price for this card yet.</div>';
+      else if (many && !loading && !vs.some(function (v) { return v.buying; })) hint = '<div class="sr-hint sr-quiet"><i></i>We\'re not buying any version of this card.</div>';
       else if (many && !chosen) hint = '<div class="sr-hint"><i></i>Pick the one you have. Each pays different.</div>';
       else if (many) hint = '<div class="sr-hint sr-ok"><i></i>' + esc(B.printingLabel(chosen.printing)) + ' picked. Tap another to change.</div>';
       else hint = '<div class="sr-hint sr-quiet"><i></i>Only one version of this card.</div>';
@@ -22358,11 +22478,16 @@ window.SearchBook = {
         return '<button type="button" class="sr-var iop-press" data-sr-var="' + esc(v.printing) + '" aria-pressed="' + on + '">' +
           '<span class="sr-ck">' + ICON_CHECK + '</span><span class="sr-vn">' + esc(v.label) + '</span>' + price + '</button>';
       }).join('');
-      var canAdd = !!chosen && !loading;
+      // Scan > Singles switched off (the remote switch): no list to add to or review, so no Add (QA 11/26)
+      var listOff = !singlesCan();
+      var canAdd = !!chosen && !loading && !listOff;
       var justAdded = !!(canAdd && addedFor && addedFor.productId === card.productId && addedFor.printing === chosen.printing);
-      var addLabel = !chosen ? 'Pick a variant first'
+      var notBuying = !!(priced && chosen && !chosen.buying); // goes on the list as "Not buying", never as a normal add
+      var addLabel = listOff ? 'Scan lists are off right now'
+        : !chosen ? 'Pick a variant first'
         : loading ? 'Getting today\'s price...'
-        : justAdded ? 'Added' + (priced && chosen.buying ? ' · ' + B.dollars(chosen.payCents) : '')
+        : justAdded ? 'Added' + (priced && chosen.buying ? ' · ' + B.dollars(chosen.payCents) : notBuying ? ' · not buying' : '')
+        : notBuying ? '+ Add · not buying' // (short: the full words ran off the button on a 390 pt phone)
         : '+ Add to list' + (priced && chosen.buying ? ' · ' + B.dollars(chosen.payCents) : '');
       el.card.innerHTML =
         '<div class="sr-nav"><button type="button" class="sr-icon iop-press" data-sr-back aria-label="Back">' + ICON_BACK + '</button>' +
@@ -22374,7 +22499,7 @@ window.SearchBook = {
         (vs.length ? '<div class="sr-vars' + (vs.length < 3 ? ' sr-n' + vs.length : '') + '">' + chips + '</div>' : '') +
         (priced && vs.length ? srcLine(B.priceNote(offer, chosen, { state: loading ? 'loading' : 'done', bookAsOf: bookAsOf(), nowMs: Date.now() })) : '') +
         '<div class="sr-cta"><button type="button" class="sr-btn sr-alt iop-press" data-sr-comps>' + ICON_COMPS + 'Comps</button>' +
-        '<button type="button" class="sr-btn sr-pri iop-press sr-num' + (justAdded ? ' sr-added' : '') + '" data-sr-add' + (canAdd && !justAdded ? '' : ' disabled') +
+        '<button type="button" class="sr-btn sr-pri iop-press sr-num' + (justAdded ? (notBuying ? ' sr-added sr-added-no' : ' sr-added') : '') + '" data-sr-add' + (canAdd && !justAdded ? '' : ' disabled') +
           (justAdded ? ' aria-live="polite"' : '') + '>' + esc(addLabel) + '</button></div>';
       pressAll(el.card);
     }
@@ -22403,6 +22528,7 @@ window.SearchBook = {
       var offer = offerOf(card);
       var chosen = B.pickedVariant(offer, picked);
       if (!chosen) return; // 2+ printings and nothing tapped: never guessed
+      if (!singlesCan()) return; // Scan's lists are switched off: nowhere to review it
       if (offer.status !== 'hidden' && liveState(card.productId) === 'loading') return; // today's price first
       // the price the page showed, and where it came from (live: priceSource 'live' + priceAsOf; else the book's)
       // fill: a 'hidden' offer carries no figures; the line still gets the card's market and low (as on master)
@@ -22637,6 +22763,8 @@ function summarize(lines, priced, fallbackPayout) {
     if (thumbs.length < THUMBS && !seen[l.productId]) { seen[l.productId] = true; thumbs.push(l.productId); }
   });
   var payout = priced && isCents(priced.payoutCents) ? priced.payoutCents : (isCents(fallbackPayout) ? fallbackPayout : null);
+  // Scan's own Market when it priced the list (the cards we buy only); else every picked card's
+  if (priced && isCents(priced.marketCents)) market = priced.marketCents;
   return { cards: cards, lines: list.length, toPick: toPick, pickedCards: picked, marketCents: market, payoutCents: payout, thumbs: thumbs };
 }
 
@@ -23062,11 +23190,21 @@ window.Collections = {
       try {
         var api = scanApi();
         var p = typeof api.price === 'function' ? api.price(picked) : null;
-        return p && typeof p.payoutCents === 'number' ? { payoutCents: p.payoutCents } : null;
+        if (!p || typeof p.payoutCents !== 'number') return null;
+        var out = { payoutCents: p.payoutCents };
+        if (typeof p.marketCents === 'number') out.marketCents = p.marketCents; // Scan's Market: the cards we buy only
+        if (Array.isArray(p.notBuying)) out.notBuying = p.notBuying;
+        return out;
       } catch (e) { return null; }
     }
     /** Scan > Singles (a list is singles: never the Slabs side Scan was last left on). */
+    /** Scan > Singles can open now (the page's context; true when there is no page to ask). */
+    function singlesCan() {
+      try { var c = window.IOPPanes && typeof window.IOPPanes.context === 'function' ? window.IOPPanes.context() : null; return !c || c.singlesOpen !== false; } catch (e) { return true; }
+    }
+    var SINGLES_OFF = 'Scanning singles is off right now, so lists can\'t open in Scan. They stay saved here.';
     function goScan() {
+      if (!singlesCan()) { toast(SINGLES_OFF); return; } // (it used to do nothing at all, QA 11/26)
       try { if (window.IOPPanes && typeof window.IOPPanes.show === 'function') { window.IOPPanes.show('singles'); return; } } catch (e) { /* the tab below */ }
       var tab = document.querySelector('#sc-tabbar [data-tab="scan"]') || document.querySelector('#sc-tabbar [data-tab="singles"]');
       if (tab) tab.click();
@@ -23111,7 +23249,7 @@ window.Collections = {
       var dirty = cols.isDirty(cur);
       var btn = el.nowBtn;
       var chk = toCheckNow();
-      var post = chk ? ' · ' + chk + ' to check' : '';
+      var post = (chk ? ' · ' + chk + ' to check' : '') + (sum.toPick ? ' · ' + sum.toPick + ' to pick' : ''); // Scan's and Save's counts
       el.nowNm.textContent = 'Scanning now';
       // the list's name on a line of its own, the counts under it (11/26 critic: "saved" was left alone on a third line)
       el.nowL.textContent = open ? open.name : '';
@@ -23219,7 +23357,8 @@ window.Collections = {
     function fillSheet(id) {
       var e = cols.get(id);
       if (!e) { closeDialog(el.sheet); return null; }
-      var sum = C.summarize(e.lines, priceOf(e.lines), e.payoutCents);
+      var priced = priceOf(e.lines);
+      var sum = C.summarize(e.lines, priced, e.payoutCents);
       el.sheetH.textContent = e.name;
       el.sheetSub.textContent = 'Saved ' + dayOf(e.updatedAt) + ' · ' + plural(sum.cards, 'card', 'cards');
       el.sheetPay.textContent = money(sum.payoutCents);
@@ -23231,7 +23370,7 @@ window.Collections = {
       el.exp.disabled = !!sum.toPick || !sum.cards;
       el.exp.textContent = sum.toPick ? 'Export CSV · pick ' + plural(sum.toPick, 'version', 'versions') + ' first' : 'Export CSV';
       el.open.textContent = cols.openId() === id ? 'Back to Scan' : 'Open in Scan';
-      el.sheetCards.innerHTML = cardsHtml(e.lines);
+      el.sheetCards.innerHTML = cardsHtml(e.lines, priced && priced.notBuying);
       Array.prototype.forEach.call(el.sheetCards.querySelectorAll('img'), function (img) {
         img.addEventListener('error', function () { img.style.visibility = 'hidden'; }, { once: true });
       });
@@ -23248,16 +23387,22 @@ window.Collections = {
     }
     function lineKeyOf(l) { return String(l.productId) + '|' + (l.printing ? String(l.printing) : '?') + '|' + String(l.condition || 'NM'); }
     /** The list's cards with pictures, the ones that need a version first: a tap opens the list in Scan on that card. */
-    function cardsHtml(lines) {
+    function cardsHtml(lines, notBuying) {
+      var no = {};
+      (Array.isArray(notBuying) ? notBuying : []).forEach(function (k) { no[k] = true; });
       var list = C.readLines(lines).slice().sort(function (a, b) { return (C.hasVariant(a) ? 1 : 0) - (C.hasVariant(b) ? 1 : 0) || b.addedAt - a.addedAt; });
       var rows = list.slice(0, SHEET_CARDS).map(function (l) {
         var need = !C.hasVariant(l);
         var name = String(l.name || 'Card').replace(/\s+-\s+\S+$/, '');
         var sub = [setWords(l.setName), l.num, need ? '' : printingWords(l.printing), l.condition].filter(Boolean).join(' · ');
-        return '<li><button type="button" class="cl-card iop-press' + (need ? ' cl-amber' : '') + '" data-card="' + esc(lineKeyOf(l)) + '">' +
+        var nb = !need && !!no[lineKeyOf(l)];
+        var qty = l.quantity > 1 ? 'x' + l.quantity : '';
+        // the quantity always shows (a card waiting for its version too), and a card we don't buy says so in red
+        var right = need ? 'Pick version' + (qty ? ' · ' + qty : '') : nb ? 'Not buying' + (qty ? ' · ' + qty : '') : qty;
+        return '<li><button type="button" class="cl-card iop-press' + (need ? ' cl-amber' : '') + (nb ? ' cl-nobuy' : '') + '" data-card="' + esc(lineKeyOf(l)) + '">' +
           '<img alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" src="' + esc(imgUrl(l.productId)) + '">' +
           '<span class="cl-card-w"><span class="cl-card-n">' + esc(name) + '</span><span class="cl-card-s">' + esc(sub) + '</span></span>' +
-          '<span class="cl-card-r">' + (need ? 'Pick version' : (l.quantity > 1 ? 'x' + l.quantity : '')) + '</span></button></li>';
+          '<span class="cl-card-r">' + esc(right) + '</span></button></li>';
       });
       if (list.length > SHEET_CARDS) rows.push('<li class="cl-more">and ' + plural(list.length - SHEET_CARDS, 'more card', 'more cards') + ' (open it in Scan to see every one)</li>');
       return rows.join('');
@@ -23277,6 +23422,7 @@ window.Collections = {
       var focus = typeof focusKey === 'string' ? focusKey : null;
       var e = cols.get(sheetId);
       if (!e) { closeDialog(el.sheet); render(); return; }
+      if (!singlesCan()) { sheetNote(SINGLES_OFF, 'warn'); return; }
       if (cols.openId() !== e.id) {
         var chk = toCheckNow();
         if (chk) { sheetNote(toCheckWhy(chk), 'warn'); return; }
@@ -23392,7 +23538,8 @@ window.Collections = {
     function doDelete() {
       var clear = clearsScan(delId);
       var r = cols.remove(delId);
-      if (r.ok && clear) { try { scanApi().openList({ v: 1, lines: [] }); } catch (e) { /* Scan keeps them, unsaved */ } }
+      // emptied in place: the "Deleted" note shows here, on Collections (it used to jump to Scan and lose it)
+      if (r.ok && clear) { try { scanApi().openList({ v: 1, lines: [] }, { stay: true }); } catch (e) { /* Scan keeps them, unsaved */ } }
       closeDialog(el.del);
       if (sheetId === delId) closeDialog(el.sheet);
       delId = null;
@@ -23949,13 +24096,15 @@ var CompsPane = (function () {
     var lang = q('[data-cp="lang"]');
     lang.hidden = !(c.lang === 'en' || c.lang === 'ja');
     lang.textContent = c.lang === 'ja' ? 'JP' : 'EN';
-    q('[data-cp="sub"]').textContent = [c.number, c.setName].filter(Boolean).join(' · ');
+    // the set by its name alone, as Search shows it ("Vivid Voltage", not "SWSH04: Vivid Voltage" from Scan)
+    q('[data-cp="sub"]').textContent = [c.number, String(c.setName || '').replace(/^[A-Za-z0-9]{1,6}:\s+/, '')].filter(Boolean).join(' · ');
     var h = '';
     if (m.needsVariant) {
       h += '<div class="cp-state pick" data-cp-state="pick"><div class="ic">' + ICON_PICK + '</div><b>' + esc(m.title) + '</b><p>' + esc(m.sub) + '</p></div>';
     } else {
       h += '<div class="cp-chip">' + esc(m.printingLabel) + '</div>';
-      h += '<div class="cp-stats">' +
+      var longest = Math.max(String(m.market || '').length, String(m.low || '').length, String(m.median || '').length);
+      h += '<div class="cp-stats' + (longest >= 11 ? ' cp-longest' : longest >= 10 ? ' cp-longer' : longest >= 9 ? ' cp-long' : '') + '">' +
         '<div class="cp-stat"><div class="k">Market</div><div class="v' + (m.priceLoading ? ' cp-wait' : '') + '" data-cp="market">' + esc(m.market) + '</div><div class="s">TCGplayer</div></div>' +
         '<div class="cp-stat"><div class="k">Low</div><div class="v' + (m.priceLoading ? ' cp-wait' : '') + '" data-cp="low">' + esc(m.low) + '</div><div class="s">TCGplayer</div></div>' +
         '<div class="cp-stat"><div class="k">Median sale</div><div class="v" data-cp="median">' + esc(m.median || '--') + '</div><div class="s">' + (m.count ? 'of ' + m.count + ' sales' : 'Recent') + '</div></div>' +
@@ -29776,6 +29925,8 @@ var CompsPane = (function () {
       var email = session && typeof session.email === 'string' ? session.email : '';
       return {
         role: role, signedIn: !!session, singles: !!flags.singles, sheet: !!flags.sheet, admin: role !== 'none' && adminAllowed(),
+        // Scan > Singles can open (the flag AND singles-live's remote switch on, or its answer still out): Review / Add to list only then
+        singlesOpen: role !== 'none' && tabStates(role).some(function (t) { return t.id === 'singles' && t.state !== 'no'; }),
         name: email ? email.split('@')[0] : '', tabs: tabsPlan().ids.slice(),
       };
     }
@@ -29935,9 +30086,14 @@ var CompsPane = (function () {
         if (!screenAllowed(id)) return;
         if (portalPane) {
           // from a pane: back on Scan first (on the side tapped; the Sheet sits over Slabs, as it always did), cameras with it
-          scanSide = id === 'singles' ? 'singles' : 'slabs';
+          // the Sheet opens over Slabs, but Scan's own side stays the one it was (Account > Admin > Sheet used to turn a Singles
+          // Scan into Slabs for good, QA 11/26)
+          if (id !== 'sheet') scanSide = id === 'singles' ? 'singles' : 'slabs';
+          var sideKept = scanSide;
+          if (id === 'sheet') scanSide = 'slabs';
           tabTapping = true;
           leavePortal();
+          scanSide = sideKept;
         }
         var scr = screenOn();
         if (id === scr) { renderTabs(); tabTapping = false; try { window.scrollTo(0, 0); } catch (e) { /* stays */ } return; }
@@ -29965,7 +30121,10 @@ var CompsPane = (function () {
       tabTapping = true;
       if (dom.tabbar && dom.tabbar.classList) dom.tabbar.classList.add('sc-tab-anim'); // the pill glides to the new tab
       if (id === 'scan') {
-        if (sheetOn()) SheetPane.leave();
+        if (sheetOn()) {
+          SheetPane.leave();
+          if (scanSide === 'singles' && screenAllowed('singles') && !singlesOn()) SinglesPane.pick('singles'); // back to the side he left
+        }
         if (portalPane) leavePortal();
       } else {
         enterPortal(id);
