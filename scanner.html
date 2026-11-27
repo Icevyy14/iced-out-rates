@@ -293,6 +293,14 @@ var LEGACY_IDS = ['slabs', 'singles', 'sheet'];
 var LEGACY_MAP = { slabs: 'scan', singles: 'scan', sheet: 'account' };
 var SCAN_MODES = ['slabs', 'singles'];
 /**
+ * Where he was in THIS app session (Penguin, 11/26: pulling down to refresh in the app sent him back to Home). Kept in
+ * sessionStorage, which survives the app's pull-to-refresh (a reload of the same web view) and is gone when the app is closed, so a
+ * fresh launch still opens on Home. Ids only, for one identity ('u:<user id>'): the tab, the Scan switch's side, and Search's set /
+ * card. Never a token, never a price.
+ */
+var PLACE_KEY = 'iopPlace';
+var SEARCH_VIEWS = ['sets', 'set', 'card'];
+/**
  * Who sees which tab (Portal build plan, "Who sees what tab"). A function of the role and the account's flags only.
  *   - owner: all five;
  *   - sourcer: Home, Scan, Collections, Account; Search only with the Singles flag (Search shows singles prices: open question 1,
@@ -441,11 +449,54 @@ function migrateLegacy(storage) {
   return moved;
 }
 
+function idOrNull(v) { return typeof v === 'number' && isFinite(v) && v >= 0 && Math.floor(v) === v ? v : null; }
+/** Search's own place (SearchPane.place()) cleaned: { view, set, card, from, lang } with numeric ids, or null. */
+function cleanSearchPlace(sp) {
+  if (!isObj(sp) || SEARCH_VIEWS.indexOf(sp.view) < 0) return null;
+  var out = { view: sp.view, set: idOrNull(sp.set), card: idOrNull(sp.card), from: sp.from === 'set' ? 'set' : 'sets', lang: sp.lang === 'ja' ? 'ja' : 'en' };
+  if (out.view === 'set' && out.set === null) return null;
+  if (out.view === 'card' && out.card === null) return null;
+  return out;
+}
+/** The place as stored (a JSON string) -> { who, tab, scan, search } or null when missing or unreadable. */
+function parsePlace(raw) {
+  var r;
+  try { r = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { return null; }
+  if (!isObj(r) || r.v !== 1 || typeof r.who !== 'string' || !r.who || TAB_IDS.indexOf(r.tab) < 0) return null;
+  return { who: r.who, tab: r.tab, scan: SCAN_MODES.indexOf(r.scan) >= 0 ? r.scan : 'slabs', search: cleanSearchPlace(r.search) };
+}
+/** The place to come back to for exactly this identity, on a bar that still has its tab; else null (a fresh launch, another login,
+ *  a tab this login can no longer see: the app opens on Home). */
+function placeFor(raw, who, ids) {
+  var p = parsePlace(raw);
+  if (!p || !who || p.who !== who || !Array.isArray(ids) || ids.indexOf(p.tab) < 0) return null;
+  return p;
+}
+/** Remember where he is (sessionStorage). Writes only when it changed. Never throws. */
+function writePlace(storage, who, tab, scan, search) {
+  if (!storage || typeof who !== 'string' || !who || TAB_IDS.indexOf(tab) < 0) return false;
+  var rec = { v: 1, who: who, tab: tab, scan: SCAN_MODES.indexOf(scan) >= 0 ? scan : 'slabs' };
+  var sp = cleanSearchPlace(search);
+  if (sp) rec.search = sp;
+  var text = JSON.stringify(rec);
+  try {
+    if (storage.getItem(PLACE_KEY) === text) return false;
+    storage.setItem(PLACE_KEY, text);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+function clearPlace(storage) {
+  try { if (storage && storage.getItem(PLACE_KEY) !== null) storage.removeItem(PLACE_KEY); } catch (e) { /* nothing to forget */ }
+}
+
 /**
  * The very first frame's bar, from storage alone (run in the page head, before anything is drawn).
- * `o`: { session (iopScannerAuth, raw), roleRaw (iopViewerRole, raw), cacheRaw (iopTabBar, raw, unused now), ownerIds, decode }.
- * -> { ids, cur } (the bar for this login's role and flags as this phone knows them; cur is Home when the bar has it: the app opens on
- *    Home, Penguin 11/26) or null (draw nothing: the Scanner module draws the bar when it knows).
+ * `o`: { session (iopScannerAuth, raw), roleRaw (iopViewerRole, raw), cacheRaw (iopTabBar, raw, unused now), ownerIds, decode,
+ *        placeRaw (iopPlace from sessionStorage, raw), startScan }.
+ * -> { ids, cur } (the bar for this login's role and flags as this phone knows them; cur is the tab he was on when this is a reload
+ *    in the same app session (placeRaw, for this login), else Home when the bar has it: the app opens on Home, Penguin 11/26) or null (draw nothing: the Scanner module draws the bar when it knows).
  * The login's role is decided here exactly as the Scanner does it (PileRates.roleOf): this phone's saved answer for THAT user id,
  * else an owner's own user id; anyone else is not known yet, and gets nothing early.
  */
@@ -464,7 +515,9 @@ function earlyTabs(o) {
   if (role !== 'owner' && role !== 'sourcer') return null;
   var ids = tabsFor(role, role === 'sourcer' ? flagsOf(known) : null);
   if (ids.length < 2) return null;
-  return { ids: ids, cur: !o.startScan && ids.indexOf('home') >= 0 ? 'home' : 'scan' };
+  if (o.startScan) return { ids: ids, cur: 'scan' };
+  var back = placeFor(o.placeRaw, who, ids);
+  return { ids: ids, cur: back ? back.tab : ids.indexOf('home') >= 0 ? 'home' : 'scan' };
 }
 
 /**
@@ -503,6 +556,7 @@ function buttonsHtml(items, cur) {
 window.TabCache = {
   KEY: KEY,
   SCAN_KEY: SCAN_KEY,
+  PLACE_KEY: PLACE_KEY,
   LEGACY_KIND_KEY: LEGACY_KIND_KEY,
   CAP_MS: CAP_MS,
   TAB_IDS: TAB_IDS,
@@ -525,6 +579,10 @@ window.TabCache = {
   readScanMode: readScanMode,
   writeScanMode: writeScanMode,
   migrateLegacy: migrateLegacy,
+  parsePlace: parsePlace,
+  placeFor: placeFor,
+  writePlace: writePlace,
+  clearPlace: clearPlace,
   earlyTabs: earlyTabs,
   morph: morph,
   buttonsHtml: buttonsHtml,
@@ -538,11 +596,15 @@ window.TabCache = {
     try { ls = window.localStorage; } catch (e) { ls = null; }
     if (!ls || !window.TabCache) return;
     var get = function (k) { try { return ls.getItem(k); } catch (e) { return null; } };
+    // where he was in this app session (sessionStorage: kept by the app's pull-to-refresh, gone when the app is closed)
+    var place = null;
+    try { place = window.sessionStorage ? window.sessionStorage.getItem(window.TabCache.PLACE_KEY) : null; } catch (e) { place = null; }
     // portal shell (Stage 1): the old bar's memory (Slabs / Singles / Sheet) and iopKind moved over once, before the first frame
     try { window.TabCache.migrateLegacy(ls); } catch (e) { /* the bar is drawn from the role anyway */ }
     var early = window.TabCache.earlyTabs({
       session: get('iopScannerAuth'), roleRaw: get('iopViewerRole'), cacheRaw: get(window.TabCache.KEY),
       ownerIds: /* TABCACHE-OWNERS */["d3214c2a-4222-4171-9153-fe7ec466fc24"]/* /TABCACHE-OWNERS */, decode: typeof atob === 'function' ? function (s) { return atob(s); } : null,
+      placeRaw: place, // a reload in the same app session comes back to that tab (Penguin 11/26); a fresh launch opens on Home
       startScan: !!window.IOP_TEST_START_SCAN, // (tests of Scan itself start there; the app opens on Home)
     });
     window.TabCache.early = early;
@@ -3614,21 +3676,25 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
 <style>
   /* no dock under Singles any more (the search row sits in the page): the layout keeps only the tab bar's room */
   #tab-scanner .scanner-layout.sc-singles-mode{--sc-dock-h:0px;}
+  /* the Slabs / Singles switch floats on the camera's top bar, between the search and camera buttons (DeckTradr's "Scan" pill), so
+     the camera starts at the very top: the switch's own row (its margin, 38 px and the layout's 10 px gap) goes to the camera */
+  #tab-scanner .scanner-layout.sc-singles-mode .sc-scanside{margin-bottom:calc(-54px - env(safe-area-inset-top));}
 
   /* ── the pane ── */
-  #tab-scanner .sc-sg{display:flex;flex-direction:column;gap:10px;min-width:0;}
+  #tab-scanner .sc-sg{position:relative;display:flex;flex-direction:column;gap:10px;min-width:0;}
   #tab-scanner .sc-sg[hidden]{display:none;}
   #tab-scanner .sc-sg-info{margin:0 4px;font-size:var(--sc-fs-label);line-height:1.35;color:var(--sc-muted);}
   #tab-scanner .sc-sg-info[hidden]{display:none;}
 
-  /* the camera: edge to edge, from the top of the page down to the card panel. It shrinks so the panel, the dots and the search
-     row fit above the tab bar, never under 220 px, at most 520 px. On or off it is the same box. 550 px is kept for the panel (11/26
-     critic): the tallest card (an unsure one: flip, hint, Select version) fits on a 402x874 phone with the type box 8 px clear of the
-     bar; a smaller phone scrolls the card inside the panel instead (capDeck). */
+  /* the camera: edge to edge, from the top of the page down to the card panel. It takes everything the compact panel leaves above
+     the tab bar (DeckTradr's ratio, Penguin 11/26: over 60% of the phone), never under 220 px, at most 760 px. On or off it is the
+     same box. 190 px is kept for the compact panel (about 206 px: WE PAY row, one card row, condition / qty / Comps, the dots; it
+     tucks 24 px under the camera's foot and stays 8 px clear of the bar); a taller card (an unsure one with its hint) scrolls
+     inside the panel instead (capDeck). */
   #tab-scanner .sc-sg-cam{
     position:relative;min-width:0;box-sizing:border-box;width:100vw;margin-left:calc(50% - 50vw);
-    height:clamp(220px, calc(100vh - var(--sc-tabbar-h) - env(safe-area-inset-bottom) - 550px), 520px);
-    height:clamp(220px, calc(100svh - var(--sc-tabbar-h) - env(safe-area-inset-bottom) - 550px), 520px);
+    height:clamp(220px, calc(100vh - var(--sc-tabbar-h) - env(safe-area-inset-bottom) - 190px), 760px);
+    height:clamp(220px, calc(100svh - var(--sc-tabbar-h) - env(safe-area-inset-bottom) - 190px), 760px);
     overflow:hidden;isolation:isolate;border-radius:0;background:var(--sc-cam);box-shadow:none;
     touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
   }
@@ -3649,7 +3715,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   @keyframes sc-sg-spin{to{transform:rotate(360deg);}}
   @keyframes sc-sg-appear{from{opacity:0;}to{opacity:1;}}
   @keyframes sc-sg-breathe{from{opacity:.35;}to{opacity:1;}}
-  #tab-scanner .sc-sg-bottom,#tab-scanner #sc-sg-cam-stop,#tab-scanner #sc-sg-cam-on,#tab-scanner .sc-sg-guide{animation:sc-sg-appear 240ms var(--sc-ease) both;}
+  #tab-scanner .sc-sg-bottom,#tab-scanner #sc-sg-cam-stop,#tab-scanner #sc-sg-cam-on,#tab-scanner #sc-sg-type-open,#tab-scanner .sc-sg-guide{animation:sc-sg-appear 240ms var(--sc-ease) both;}
   #tab-scanner .sc-sg-guide{
     position:absolute;left:50%;top:50%;width:40%;aspect-ratio:63/88;transform:translate(-50%,-50%);border-radius:16px;pointer-events:none;
     box-shadow:0 0 0 2px var(--sc-danger-ink), 0 0 0 9999px color-mix(in srgb, var(--sc-cam) 34%, transparent);
@@ -3686,7 +3752,10 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner #sc-sg-cam-on,#tab-scanner #sc-sg-cam-stop{position:absolute;top:calc(8px + env(safe-area-inset-top));right:14px;left:auto;box-shadow:inset 0 0 0 1px var(--sc-line);}
   #tab-scanner #sc-sg-cam-on{--sc-i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 6h3.5a2.5 2.5 0 0 1 2.5 2.5V12'/%3E%3Cpath d='M16 18H4.5A2.5 2.5 0 0 1 2 15.5v-7A2.5 2.5 0 0 1 4.5 6'/%3E%3Cpath d='M17 10.4l4.2-2.6c.4-.3.8 0 .8.4v7.6c0 .4-.4.7-.8.4L17 13.6'/%3E%3Cpath d='M2.5 3.5l17 17'/%3E%3C/svg%3E");}
   #tab-scanner #sc-sg-cam-stop{--sc-i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='1.5' y='5.5' width='14' height='13' rx='3' fill='black'/%3E%3Cpath d='M17 10.2l4.6-2.9c.6-.4 1.4 0 1.4.8v7.8c0 .8-.8 1.2-1.4.8L17 13.8z' fill='black'/%3E%3C/svg%3E");}
-  #tab-scanner .sc-sg-matching{position:absolute;top:calc(12px + env(safe-area-inset-top));left:14px;max-width:none;font-weight:800;}
+  /* "Or type a card": the round search button at the camera's top left (DeckTradr's top bar); it opens the type box over the camera */
+  #tab-scanner #sc-sg-type-open{position:absolute;top:calc(8px + env(safe-area-inset-top));left:14px;right:auto;box-shadow:inset 0 0 0 1px var(--sc-line);
+    --sc-i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5L21 21'/%3E%3C/svg%3E");}
+  #tab-scanner .sc-sg-matching{position:absolute;top:calc(18px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);max-width:calc(100% - 140px);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   #tab-scanner .sc-sg-matching[hidden]{display:none;}
 
   /* "That's a slab" */
@@ -3700,22 +3769,24 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
 
   /* the panel under the camera: WE PAY + Review, then the card, then the dots (mockup 5) */
   #tab-scanner .sc-sg-panel{
-    margin-top:-24px;position:relative;z-index:1;border-radius:22px;overflow:hidden;
+    margin-top:-34px;position:relative;z-index:1;border-radius:20px;overflow:hidden;
     background:var(--c-s1, var(--sc-card-bg));box-shadow:var(--sc-sh-card), inset 0 0 0 1px var(--sc-line);
   }
-  #tab-scanner .sc-sg-sum{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px 12px;box-shadow:inset 0 -1px 0 var(--sc-line);}
+  #tab-scanner .sc-sg-sum{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:3px 10px 3px 16px;box-shadow:inset 0 -1px 0 var(--sc-line);}
   #tab-scanner .sc-sg-sum-l{min-width:0;}
-  #tab-scanner .sc-sg-sum-key{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--c-dim, var(--sc-muted));}
-  #tab-scanner .sc-sg-sum-val{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.15;color:var(--c-text, var(--sc-ink));font-variant-numeric:tabular-nums;}
+  #tab-scanner .sc-sg-sum-key{font-size:11px;font-weight:700;letter-spacing:.06em;line-height:1.3;text-transform:uppercase;color:var(--c-dim, var(--sc-muted));}
+  /* the figure and the amber "N to check" share one line, so the row stays one row (DeckTradr's "Total $X ... Add N") */
+  #tab-scanner .sc-sg-sum-row{display:flex;align-items:center;gap:10px;min-width:0;}
+  #tab-scanner .sc-sg-sum-val{flex:none;font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.1;color:var(--c-text, var(--sc-ink));font-variant-numeric:tabular-nums;}
   #tab-scanner .sc-sg-sum-val.sc-blank{color:var(--c-dim, var(--sc-muted));}
-  #tab-scanner .sc-sg-sum-check{display:flex;align-items:center;gap:6px;margin-top:2px;font-size:var(--sc-fs-label);font-weight:700;color:var(--c-amber, var(--sc-check));}
+  #tab-scanner .sc-sg-sum-check{display:flex;align-items:center;gap:6px;min-width:0;white-space:nowrap;overflow:hidden;font-size:var(--sc-fs-label);font-weight:700;color:var(--c-amber, var(--sc-check));}
   #tab-scanner .sc-sg-sum-check::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:currentColor;}
   #tab-scanner .sc-sg-sum-check[hidden]{display:none;}
   /* the amber line is a button: a tap goes to the next card that needs a look */
-  #tab-scanner button.sc-sg-sum-check{padding:4px 0;margin:0;border:0;background:none;font:inherit;font-size:var(--sc-fs-label);font-weight:700;color:var(--c-amber, var(--sc-check));cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent;}
+  #tab-scanner button.sc-sg-sum-check{padding:2px 0;margin:0;border:0;background:none;font:inherit;font-size:var(--sc-fs-label);font-weight:700;color:var(--c-amber, var(--sc-check));cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent;}
   #tab-scanner button.sc-sg-sum-check::after{content:"";flex:none;width:12px;height:12px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center/contain no-repeat;}
   #tab-scanner .sc-sg-review-btn{
-    flex:none;display:inline-flex;align-items:center;gap:4px;height:46px;padding:0 16px 0 20px;border:0;border-radius:999px;cursor:pointer;
+    flex:none;display:inline-flex;align-items:center;gap:4px;height:36px;padding:0 12px 0 16px;border:0;border-radius:999px;cursor:pointer;
     font:inherit;font-size:var(--sc-fs-body);font-weight:800;background:var(--c-ice, var(--sc-blue));color:var(--c-ice-ink, var(--sc-on-accent));
   }
   #tab-scanner .sc-sg-review-btn::after{content:"";width:16px;height:16px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center/contain no-repeat;}
@@ -3723,92 +3794,105 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
 
   /* the deck: one card at a time, the neighbours just off either side; the track follows the finger */
   #tab-scanner .sc-sg-deck{position:relative;overflow:hidden;touch-action:pan-y;user-select:none;-webkit-user-select:none;}
-  /* a card taller than the room left above the tab bar scrolls inside the panel, so "Or type a card" always stays above the bar */
+  /* a card taller than the room left above the tab bar scrolls inside the panel, so the dots always stay above the bar */
   #tab-scanner .sc-sg-deck.sc-sg-capped{overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
   #tab-scanner .sc-sg-track{display:flex;align-items:flex-start;width:100%;transition:transform 260ms var(--sc-ease);will-change:transform;}
   #tab-scanner .sc-sg-track.sc-sg-drag{transition:none;}
-  #tab-scanner .sc-sg-slide{flex:0 0 100%;min-width:0;box-sizing:border-box;padding:14px 16px 4px;}
-  #tab-scanner .sc-sg-empty{padding:22px 16px 18px;font-size:var(--sc-fs-row);font-weight:700;line-height:1.4;color:var(--c-dim, var(--sc-muted));text-align:center;}
-  #tab-scanner .sc-sg-top{display:flex;gap:14px;align-items:flex-start;}
-  #tab-scanner .sc-sg-pic{position:relative;flex:none;width:86px;aspect-ratio:63/88;border-radius:8px;overflow:hidden;background:var(--sc-fill);box-shadow:var(--sc-ring);}
+  #tab-scanner .sc-sg-slide{flex:0 0 100%;min-width:0;box-sizing:border-box;padding:6px 12px 0 16px;}
+  #tab-scanner .sc-sg-empty{padding:18px 16px 14px;font-size:var(--sc-fs-row);font-weight:700;line-height:1.4;color:var(--c-dim, var(--sc-muted));text-align:center;}
+  #tab-scanner .sc-sg-top{display:flex;gap:12px;align-items:flex-start;}
+  /* one compact card row (DeckTradr): the picture 64 px wide, the words beside it */
+  #tab-scanner .sc-sg-pic{position:relative;flex:none;width:64px;aspect-ratio:63/88;border-radius:8px;overflow:hidden;background:var(--sc-fill);box-shadow:var(--sc-ring);}
   #tab-scanner .sc-sg-pic img{display:block;width:100%;height:100%;object-fit:cover;}
-  #tab-scanner .sc-sg-pic .sc-sg-lang{position:absolute;top:5px;right:5px;margin:0;border:0;background:color-mix(in srgb, var(--sc-cam) 72%, transparent);color:var(--sc-danger-ink);}
+  #tab-scanner .sc-sg-pic .sc-sg-lang{position:absolute;top:4px;right:4px;margin:0;padding:0 4px;font-size:10px;margin:0;border:0;background:color-mix(in srgb, var(--sc-cam) 72%, transparent);color:var(--sc-danger-ink);}
   #tab-scanner .sc-sg-flip{
-    position:absolute;right:5px;bottom:5px;display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:999px;cursor:pointer;
+    position:absolute;right:4px;bottom:4px;display:inline-flex;align-items:center;gap:3px;height:22px;padding:0 6px;border-radius:999px;cursor:pointer;
     border:1px solid var(--c-amber, var(--sc-check));background:color-mix(in srgb, var(--sc-cam) 70%, transparent);color:var(--sc-danger-ink);
     font:inherit;font-size:12px;font-weight:800;
   }
   #tab-scanner .sc-sg-flip::after{content:"";width:11px;height:11px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12a9 9 0 1 1-3-6.7L21 8'/%3E%3Cpath d='M21 3v5h-5'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12a9 9 0 1 1-3-6.7L21 8'/%3E%3Cpath d='M21 3v5h-5'/%3E%3C/svg%3E") center/contain no-repeat;}
   #tab-scanner .sc-sg-words{flex:1 1 auto;min-width:0;}
   #tab-scanner .sc-sg-t{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
-  #tab-scanner .sc-sg-name{min-width:0;font-size:18px;font-weight:800;line-height:1.25;letter-spacing:-.01em;color:var(--c-text, var(--sc-ink));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #tab-scanner .sc-sg-name{min-width:0;font-size:16px;font-weight:800;line-height:1.25;letter-spacing:-.01em;color:var(--c-text, var(--sc-ink));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   #tab-scanner .sc-sg-name .sc-sg-lang{display:none;} /* the badge on the picture says it on the card panel */
-  /* the set's whole name (two lines at most, never cut short mid-line), then its code and the card number under it */
-  #tab-scanner .sc-sg-sub{margin-top:2px;font-size:var(--sc-fs-label);font-weight:600;line-height:1.3;color:var(--c-dim, var(--sc-muted));
-    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere;}
-  #tab-scanner .sc-sg-code{margin-top:1px;font-size:12px;font-weight:600;line-height:1.3;color:var(--c-mute, var(--sc-faint));font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  /* the card number and the set's name on one line (the compact panel; Review and Select version show the set whole) */
+  #tab-scanner .sc-sg-sub{margin-top:1px;font-size:13px;font-weight:600;line-height:1.3;color:var(--c-dim, var(--sc-muted));
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #tab-scanner .sc-sg-code{font-variant-numeric:tabular-nums;color:var(--c-text, var(--sc-ink));opacity:.8;}
   #tab-scanner .sc-sg-x{
-    flex:none;display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:50%;cursor:pointer;
+    flex:none;display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:50%;cursor:pointer;
     background:var(--c-s3, var(--sc-fill));color:var(--c-dim, var(--sc-muted));
   }
   #tab-scanner .sc-sg-x::before{content:"";width:12px;height:12px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M5 5l14 14M19 5L5 19'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M5 5l14 14M19 5L5 19'/%3E%3C/svg%3E") center/contain no-repeat;}
   /* the pill: green We pay, red Not buying, amber Pick variant / Check it, grey while the price is on its way */
-  #tab-scanner .sc-sg-pill{display:inline-flex;align-items:center;gap:6px;max-width:100%;min-height:32px;margin-top:10px;padding:0 12px;border-radius:999px;
+  #tab-scanner .sc-sg-pill{display:inline-flex;align-items:center;gap:6px;max-width:100%;min-height:28px;margin-top:4px;padding:0 11px;border-radius:999px;
     font-size:var(--sc-fs-row);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;
     background:var(--sc-fill);color:var(--c-dim, var(--sc-muted));}
   #tab-scanner .sc-sg-pill.sc-sg-pay{background:color-mix(in srgb, var(--c-green, var(--sc-clv)) 14%, transparent);color:var(--c-green, var(--sc-clv));}
   #tab-scanner .sc-sg-pill.sc-sg-no{background:transparent;padding-left:2px;color:var(--c-red, var(--sc-err-ink));}
   #tab-scanner .sc-sg-pill.sc-sg-no::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:currentColor;}
   #tab-scanner .sc-sg-pill.sc-sg-chk{background:color-mix(in srgb, var(--c-amber, var(--sc-check)) 15%, transparent);color:var(--c-amber, var(--sc-check));}
-  #tab-scanner .sc-sg-meta{margin-top:6px;font-size:12px;font-weight:600;line-height:1.3;color:var(--c-dim, var(--sc-muted));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  #tab-scanner .sc-sg-hint-line{margin-top:10px;font-size:var(--sc-fs-label);font-weight:600;line-height:1.35;color:var(--c-dim, var(--sc-muted));}
-  /* Select version: amber until picked; a quiet row to change a picked one */
+  #tab-scanner .sc-sg-acts{display:flex;flex-wrap:wrap;align-items:center;gap:0 8px;min-width:0;}
+  #tab-scanner .sc-sg-meta{margin-top:2px;font-size:12px;font-weight:600;line-height:1.3;color:var(--c-dim, var(--sc-muted));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  /* an unsure card's hint: one line on the compact panel so condition / qty / Comps stay in view; a tap shows it whole */
+  #tab-scanner .sc-sg-hint-line{margin-top:3px;font-size:12px;font-weight:600;line-height:1.3;color:var(--c-dim, var(--sc-muted));
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
+  #tab-scanner .sc-sg-hint-line.sc-sg-open{white-space:normal;overflow-wrap:anywhere;}
+  /* Select version: a small amber button beside the words until picked (DeckTradr's "Select variant"); quiet to change a picked one */
   #tab-scanner .sc-sg-selver{
-    display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:46px;margin-top:12px;padding:0 12px 0 14px;
-    border:1px solid color-mix(in srgb, var(--c-amber, var(--sc-check)) 30%, transparent);border-radius:12px;cursor:pointer;text-align:left;font:inherit;
-    background:color-mix(in srgb, var(--c-amber, var(--sc-check)) 14%, transparent);color:var(--c-amber, var(--sc-check));font-size:var(--sc-fs-row);font-weight:800;
+    display:inline-flex;align-items:center;gap:6px;max-width:100%;min-height:28px;margin-top:4px;padding:0 8px 0 11px;box-sizing:border-box;
+    border:1px solid color-mix(in srgb, var(--c-amber, var(--sc-check)) 30%, transparent);border-radius:999px;cursor:pointer;text-align:left;font:inherit;
+    background:color-mix(in srgb, var(--c-amber, var(--sc-check)) 14%, transparent);color:var(--c-amber, var(--sc-check));font-size:14px;font-weight:800;white-space:nowrap;
   }
-  #tab-scanner .sc-sg-selver span{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;font-size:var(--sc-fs-label);opacity:.85;}
-  #tab-scanner .sc-sg-selver::after{content:"";flex:none;width:16px;height:16px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center/contain no-repeat;}
+  #tab-scanner .sc-sg-selver span{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;font-size:12px;opacity:.85;}
+  #tab-scanner .sc-sg-selver::after{content:"";flex:none;width:14px;height:14px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center/contain no-repeat;}
   #tab-scanner .sc-sg-selver.sc-sg-quiet{border-color:var(--sc-line);background:var(--c-s2, var(--sc-fill));color:var(--c-text, var(--sc-ink));}
-  #tab-scanner .sc-sg-failed-pic{flex:none;width:86px;aspect-ratio:63/88;border-radius:8px;object-fit:cover;background:var(--sc-fill);}
-  #tab-scanner .sc-sg-reason{margin-top:8px;font-size:var(--sc-fs-label);font-weight:600;line-height:1.4;color:var(--c-text, var(--sc-ink));}
+  #tab-scanner .sc-sg-failed-pic{flex:none;width:64px;aspect-ratio:63/88;border-radius:8px;object-fit:cover;background:var(--sc-fill);}
+  #tab-scanner .sc-sg-reason{margin-top:6px;font-size:13px;font-weight:600;line-height:1.35;color:var(--c-text, var(--sc-ink));
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;}
   /* condition, how many, Comps */
-  #tab-scanner .sc-sg-ctl{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;padding-bottom:4px;}
+  #tab-scanner .sc-sg-ctl{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px;padding-bottom:0;}
   #tab-scanner .sc-sg-ctl-l{display:flex;gap:8px;min-width:0;}
   #tab-scanner .sc-sg-cond{
-    height:38px;min-width:76px;padding:0 30px 0 14px;border:0;border-radius:999px;cursor:pointer;appearance:none;-webkit-appearance:none;
+    height:36px;min-width:72px;padding:0 28px 0 14px;border:0;border-radius:999px;cursor:pointer;appearance:none;-webkit-appearance:none;
     font:inherit;font-size:var(--sc-fs-row);font-weight:800;color:var(--c-text, var(--sc-ink));
     background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") right 11px center/13px no-repeat, var(--c-s3, var(--sc-fill-card-bg));
   }
-  #tab-scanner .sc-sg-qty{display:inline-flex;align-items:center;gap:0;height:38px;padding:0 4px;border-radius:999px;background:var(--c-s3, var(--sc-fill-card-bg));}
+  #tab-scanner .sc-sg-qty{display:inline-flex;align-items:center;gap:0;height:36px;padding:0 4px;border-radius:999px;background:var(--c-s3, var(--sc-fill-card-bg));}
   #tab-scanner .sc-sg-step{
-    width:34px;height:36px;padding:0;border:0;border-radius:50%;cursor:pointer;background:transparent;
+    width:34px;height:34px;padding:0;border:0;border-radius:50%;cursor:pointer;background:transparent;
     color:var(--c-dim, var(--sc-muted));font-size:20px;font-weight:600;line-height:1;
   }
   #tab-scanner .sc-sg-step:active{background:var(--sc-fill);}
   #tab-scanner .sc-sg-qty-n{min-width:2ch;text-align:center;font-size:var(--sc-fs-row);font-weight:800;font-variant-numeric:tabular-nums;color:var(--c-text, var(--sc-ink));}
   #tab-scanner .sc-sg-comps{
-    flex:none;display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 14px;border:0;border-radius:999px;cursor:pointer;
+    flex:none;display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 14px;border:0;border-radius:999px;cursor:pointer;
     font:inherit;font-size:var(--sc-fs-row);font-weight:700;background:var(--c-s3, var(--sc-fill-card-bg));color:var(--c-dim, var(--sc-muted));
   }
   #tab-scanner .sc-sg-comps::before{content:"";width:15px;height:15px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 17l6-6 4 4 8-8'/%3E%3Cpath d='M15 7h6v6'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 17l6-6 4 4 8-8'/%3E%3Cpath d='M15 7h6v6'/%3E%3C/svg%3E") center/contain no-repeat;}
-  #tab-scanner .sc-sg-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+  #tab-scanner .sc-sg-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
   /* the dots and the flashlight */
-  #tab-scanner .sc-sg-foot{display:flex;align-items:center;gap:10px;min-height:30px;padding:0 12px 10px;}
-  #tab-scanner .sc-sg-dots{flex:1 1 auto;display:flex;justify-content:center;align-items:center;gap:6px;min-height:20px;}
+  #tab-scanner .sc-sg-foot{display:flex;align-items:center;gap:10px;min-height:16px;padding:0 12px 2px;}
+  #tab-scanner .sc-sg-dots{flex:1 1 auto;display:flex;justify-content:center;align-items:center;gap:6px;min-height:16px;}
   #tab-scanner .sc-sg-dots i{display:block;width:7px;height:7px;border-radius:50%;background:var(--c-s4, var(--sc-faint));transition:width 200ms var(--sc-ease), background-color 200ms var(--sc-ease);}
   #tab-scanner .sc-sg-dots i.sc-sg-amb{background:var(--c-amber, var(--sc-check));}
   #tab-scanner .sc-sg-dots i.sc-sg-on{width:20px;border-radius:4px;background:var(--c-text, var(--sc-ink));}
   #tab-scanner .sc-sg-dots i.sc-sg-on.sc-sg-amb{background:var(--c-amber, var(--sc-check));}
   #tab-scanner .sc-sg-dots i.sc-sg-small{width:4px;height:4px;}
-  #tab-scanner .sc-sg-foot-side{flex:none;width:46px;}
-  #tab-scanner #sc-sg-torch{flex:none;width:46px;height:46px;--sc-i:var(--i-torch);background:var(--c-s3, var(--sc-fill-card-bg));color:var(--c-text, var(--sc-ink));-webkit-backdrop-filter:none;backdrop-filter:none;}
+  #tab-scanner .sc-sg-foot-side{flex:none;width:30px;}
+  #tab-scanner #sc-sg-torch{flex:none;width:30px;height:30px;--sc-i:var(--i-torch);background:var(--c-s3, var(--sc-fill-card-bg));color:var(--c-text, var(--sc-ink));-webkit-backdrop-filter:none;backdrop-filter:none;}
   #tab-scanner #sc-sg-torch.on{background:var(--c-text, var(--sc-ink));color:var(--sc-cam);}
   #tab-scanner #sc-sg-torch[hidden]{display:none;}
 
-  /* typing a card */
-  #tab-scanner .sc-sg-find{display:flex;gap:8px;}
+  /* typing a card: a box over the camera's top bar, opened by the round search button (it no longer takes room under the panel) */
+  #tab-scanner .sc-sg-find{
+    position:absolute;z-index:6;top:calc(6px + env(safe-area-inset-top));left:10px;right:10px;display:flex;align-items:center;gap:8px;
+    padding:6px;border-radius:999px;background:var(--c-s1, var(--sc-card-bg));box-shadow:var(--sc-sh-card), inset 0 0 0 1px var(--sc-line);
+    animation:sc-sg-appear 160ms var(--sc-ease) both;
+  }
+  #tab-scanner .sc-sg-find[hidden]{display:none;}
+  #tab-scanner .sc-sg-find .sc-input{flex:1 1 auto;min-width:0;border-radius:999px;}
+  #tab-scanner .sc-sg-find .sc-sg-x{width:36px;height:36px;}
   #tab-scanner .sc-sg-find .sc-input{height:var(--sc-field-h);}
   #tab-scanner .sc-sg-find .sc-btn{flex:none;min-height:var(--sc-field-h);}
 
@@ -3914,6 +3998,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     #tab-scanner .sc-sg-guide,#tab-scanner .sc-sg-cam.sc-sg-reading .sc-sg-guide,#tab-scanner .sc-sg-sheet,#tab-scanner .sc-sg-shade{animation:none;}
     #tab-scanner .sc-sg-video{transition:opacity 120ms linear;}
     #tab-scanner #sc-sg-cam-on,#tab-scanner #sc-sg-cam-stop,#tab-scanner .sc-sg-cam.sc-sg-cam-is-off.sc-sg-off-fade .sc-sg-cam-off{animation:none;}
+    #tab-scanner .sc-sg-find{animation:none;}
     #tab-scanner .sc-sg-spin{animation:sc-sg-breathe 900ms ease-in-out infinite alternate;}
     #tab-scanner .sc-sg-review-btn:active,#tab-scanner .sc-sg-x:active,#tab-scanner .sc-sg-flip:active,#tab-scanner .sc-sg-selver:active,
     #tab-scanner .sc-sg-comps:active,#tab-scanner .sc-sg-ver:active{transform:none;}
@@ -3926,6 +4011,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     <div class="sc-sg-cam-wait" id="sc-sg-cam-wait" role="status" hidden><span class="sc-sg-spin" aria-hidden="true"></span><span>Starting the camera…</span></div>
     <div class="sc-sg-guide" id="sc-sg-guide" aria-hidden="true"></div>
     <div class="sc-sg-cam-off" id="sc-sg-cam-off"><p class="sc-sg-cam-off-text" id="sc-sg-cam-text">Camera off</p></div>
+    <button type="button" class="sc-vf-round" id="sc-sg-type-open" aria-label="Type a card" title="Type a card" aria-controls="sc-sg-find" aria-expanded="false"></button>
     <button type="button" class="sc-vf-round" id="sc-sg-cam-on" aria-label="Turn camera on" title="Turn camera on"></button>
     <button type="button" class="sc-vf-round" id="sc-sg-cam-stop" aria-label="Turn camera off" title="Turn camera off" hidden></button>
     <span class="sc-vf-hint sc-sg-matching" id="sc-sg-matching" role="status" hidden></span>
@@ -3944,8 +4030,10 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     <div class="sc-sg-sum">
       <div class="sc-sg-sum-l">
         <div class="sc-sg-sum-key" id="sc-sg-pay-key">We pay</div>
-        <div class="sc-sg-sum-val sc-blank" id="sc-sg-pay">-</div>
-        <button type="button" class="sc-sg-sum-check" id="sc-sg-sum-check" hidden></button>
+        <div class="sc-sg-sum-row">
+          <div class="sc-sg-sum-val sc-blank" id="sc-sg-pay">-</div>
+          <button type="button" class="sc-sg-sum-check" id="sc-sg-sum-check" hidden></button>
+        </div>
       </div>
       <button type="button" class="sc-sg-review-btn" id="sc-sg-review-open" disabled>Review 0</button>
     </div>
@@ -3959,10 +4047,11 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     </div>
   </section>
 
-  <form class="sc-sg-find" id="sc-sg-find" autocomplete="off">
+  <form class="sc-sg-find" id="sc-sg-find" autocomplete="off" hidden>
     <input class="sc-input" id="sc-sg-search" type="search" enterkeyhint="search" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
-      placeholder="Or type a card: name and number" aria-label="Type a card's name and number, like Pikachu 25">
+      placeholder="Type a card: name and number" aria-label="Type a card's name and number, like Pikachu 25">
     <button type="submit" class="sc-btn sc-btn-primary" id="sc-sg-go">Find</button>
+    <button type="button" class="sc-sg-x" id="sc-sg-type-close" aria-label="Close the type box"></button>
   </form>
 
   <p class="sc-sg-info" id="sc-sg-info">Loading the card list…</p>
@@ -4297,6 +4386,12 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   .iop-comps .cp-stat .k{font-size:12px;font-weight:600;color:var(--cp-dim);}
   .iop-comps .cp-stat .v{font-size:20px;font-weight:800;letter-spacing:-.01em;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .iop-comps .cp-stat .s{font-size:11px;color:var(--cp-mute);margin-top:2px;}
+  .iop-comps .cp-stat .v.cp-wait{height:22px;width:70%;border-radius:6px;background:var(--cp-s3);animation:cp-pulse 1.1s ease-in-out infinite alternate;}
+  @keyframes cp-pulse{from{opacity:.45;}to{opacity:1;}}
+  @media (prefers-reduced-motion:reduce){.iop-comps .cp-stat .v.cp-wait{animation:none;}}
+  .iop-comps .cp-src{margin-top:8px;font-size:12px;color:var(--cp-mute);display:flex;align-items:center;gap:6px;}
+  .iop-comps .cp-src i{width:6px;height:6px;border-radius:50%;background:currentColor;display:block;flex:none;}
+  .iop-comps .cp-src.cp-src-live i{background:var(--c-green,#3DDC84);}
   .iop-comps .cp-mix{margin-top:10px;font-size:13px;font-weight:600;color:var(--cp-dim);line-height:1.35;}
   .iop-comps .cp-sec{display:flex;align-items:baseline;justify-content:space-between;margin:20px 0 8px;}
   .iop-comps .cp-sec b{font-size:12px;font-weight:600;color:var(--cp-dim);letter-spacing:.06em;text-transform:uppercase;}
@@ -4886,6 +4981,14 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #sc-search .sr-var .sr-vp{display:block;font-size:18px;font-weight:800;margin-top:4px;letter-spacing:-.02em;}
   #sc-search .sr-var .sr-vp.sr-vno{font-size:13px;font-weight:700;color:var(--sr-red);margin-top:8px;}
   #sc-search .sr-var .sr-vm{display:block;font-size:10.5px;color:var(--sr-mute);margin-top:2px;font-weight:500;}
+  /* while today's price loads: a calm bar where the figure goes (never the old figure) */
+  #sc-search .sr-var .sr-vload{display:block;height:18px;width:64%;margin-top:6px;border-radius:6px;background:var(--sr-s3);animation:sr-pulse 1.1s ease-in-out infinite alternate;}
+  @keyframes sr-pulse{from{opacity:.45;}to{opacity:1;}}
+  @media (prefers-reduced-motion:reduce){#sc-search .sr-var .sr-vload{animation:none;}}
+  /* where the prices come from: "Live TCGplayer price" / "Price list from Nov 12" / "Getting today's price..." */
+  #sc-search .sr-src{padding:9px var(--sr-g) 0;font-size:12px;line-height:1.35;color:var(--sr-mute);display:flex;align-items:center;gap:6px;}
+  #sc-search .sr-src i{width:6px;height:6px;border-radius:50%;background:currentColor;display:block;flex:none;}
+  #sc-search .sr-src.sr-src-live i{background:var(--sr-green);}
   #sc-search .sr-var .sr-ck{position:absolute;top:-7px;right:-7px;width:20px;height:20px;box-shadow:0 0 0 3px var(--sr-bg);border-radius:50%;background:var(--sr-ice);display:none;align-items:center;justify-content:center;}
   #sc-search .sr-var .sr-ck svg{width:11px;height:11px;stroke:var(--sr-ice-ink);stroke-width:3.2;fill:none;stroke-linecap:round;stroke-linejoin:round;}
   #sc-search .sr-var[aria-pressed="true"]{border-color:var(--sr-ice);background:var(--sr-ice-soft);}
@@ -16809,12 +16912,12 @@ function cameraGuide(guideRect, width, height, safeTop) {
 
 /** A trading card is 2.5 x 3.5 inches: the guide's height over its width. */
 var CARD_ASPECT = 3.5 / 2.5;
-/** How much of the camera's width the guide takes when the height allows (iPhone feedback 11/25: 70-80%). */
-var GUIDE_WIDTH_SHARE = 0.75;
+/** How much of the camera's width the guide takes when the height allows (DeckTradr's frame, Penguin 11/26: about 80%). */
+var GUIDE_WIDTH_SHARE = 0.8;
 
 /**
  * The Singles viewfinder's card guide in a camera `width` x `height` (the same numbers inline and full screen): a 2.5 x 3.5 card,
- * 75% of the camera's width wide, shrunk (never stretched) to fit between `top` (the round buttons) and `bottom` (the hint and
+ * 80% of the camera's width wide, shrunk (never stretched) to fit between `top` (the round buttons) and `bottom` (the hint and
  * the shutter), centred in what is left. Null when the room is too small to use. A bigger viewport gives a bigger guide.
  */
 function viewfinderGuide(width, height, top, bottom) {
@@ -18096,7 +18199,7 @@ window.SinglesPrice = {
       ['sc-sg', 'sc-sg-cam', 'sc-sg-video', 'sc-sg-guide', 'sc-sg-cam-wait', 'sc-sg-cam-off', 'sc-sg-cam-text', 'sc-sg-cam-on', 'sc-sg-cam-stop',
         'sc-sg-torch', 'sc-sg-matching', 'sc-sg-bottom', 'sc-sg-hint', 'sc-sg-slab', 'sc-sg-slab-text', 'sc-sg-slab-yes', 'sc-sg-slab-no',
         'sc-sg-panel', 'sc-sg-pay', 'sc-sg-pay-key', 'sc-sg-sum-check', 'sc-sg-review-open', 'sc-sg-card', 'sc-sg-track', 'sc-sg-dots',
-        'sc-sg-find', 'sc-sg-search', 'sc-sg-go', 'sc-sg-info', 'sc-sg-shade', 'sc-sg-review', 'sc-sg-review-title', 'sc-sg-review-close', 'sc-sg-tot', 'sc-sg-totals',
+        'sc-sg-find', 'sc-sg-search', 'sc-sg-go', 'sc-sg-type-open', 'sc-sg-type-close', 'sc-sg-info', 'sc-sg-shade', 'sc-sg-review', 'sc-sg-review-title', 'sc-sg-review-close', 'sc-sg-tot', 'sc-sg-totals',
         'sc-sg-rows', 'sc-sg-pile-empty', 'sc-sg-confirm', 'sc-sg-confirm-text', 'sc-sg-clear-yes', 'sc-sg-clear-no', 'sc-sg-pile-btns',
         'sc-sg-copy', 'sc-sg-clear', 'sc-sg-ver', 'sc-sg-ver-close', 'sc-sg-vers', 'sc-sg-toast', 'sc-sg-toast-text', 'sc-sg-toast-undo'
       ].forEach(function (id) { el[id.replace(/^sc-(sg-)?/, '')] = document.getElementById(id); });
@@ -18110,7 +18213,7 @@ window.SinglesPrice = {
     function pressAll() {
       var P = window.IOPPress;
       if (!P || typeof P.bind !== 'function') return;
-      ['review-open', 'review-close', 'ver-close', 'torch', 'copy', 'clear', 'go', 'card', 'rows', 'vers'].forEach(function (k) {
+      ['review-open', 'review-close', 'ver-close', 'torch', 'copy', 'clear', 'go', 'type-open', 'type-close', 'card', 'rows', 'vers'].forEach(function (k) {
         try { if (el[k]) P.bind(el[k]); } catch (e) { /* the CSS press stays */ }
       });
     }
@@ -18133,6 +18236,8 @@ window.SinglesPrice = {
       on_(el['slab-yes'], 'click', function () { el.slab.hidden = true; pickKind('slabs'); });
       on_(el['slab-no'], 'click', function () { el.slab.hidden = true; });
       on_(el.find, 'submit', function (ev) { if (ev && ev.preventDefault) ev.preventDefault(); find(); });
+      on_(el['type-open'], 'click', function () { if (typeShown()) closeType(); else openType(''); });
+      on_(el['type-close'], 'click', function () { closeType(); });
       on_(el['toast-undo'], 'click', function () { var f = toastUndo; hideToast(); if (f) f(); });
       on_(el['review-open'], 'click', function () { openReview(); });
       on_(el['sum-check'], 'click', function () { goNextAmber(); });
@@ -18163,7 +18268,11 @@ window.SinglesPrice = {
       on_(window, 'resize', placeGuide);
       on_(window, 'resize', fitDeck);
       on_(el.video, 'loadedmetadata', placeGuide);
-      on_(document, 'keydown', function (ev) { if (ev && ev.key === 'Escape' && (reviewOpen || verFor)) closeSheets(); });
+      on_(document, 'keydown', function (ev) {
+        if (!ev || ev.key !== 'Escape') return;
+        if (reviewOpen || verFor) closeSheets();
+        else if (typeShown()) closeType();
+      });
       // Back to the app: Slabs (resumed), however short the trip away (Penguin, 11/25: "always Slabs"). Only the camera's own
       // permission sheet keeps Singles: a camera still starting, or one that answered in the last RESUME_CAM_GRACE_MS.
       on_(document, 'visibilitychange', function () {
@@ -18186,7 +18295,7 @@ window.SinglesPrice = {
     /** singles-live's GET /status: { enabled }. Anything but enabled:true (or no answer) keeps Singles hidden. */
     function askStatus() {
       var api = liveApi();
-      if (!api) { liveState = false; statusAt = now(); return; }
+      if (!api) { liveState = false; statusAt = now(); flushLiveWaiters(); return; }
       statusAsking = true;
       var authed = null;
       try { authed = host && host.getToken ? host.getToken() : null; } catch (e) { authed = null; }
@@ -18201,6 +18310,7 @@ window.SinglesPrice = {
         statusAsking = false;
         statusAt = now();
         refresh();
+        flushLiveWaiters();
       });
     }
     function statusDue() {
@@ -18239,12 +18349,12 @@ window.SinglesPrice = {
 
     function claimsCamera() { return on; }
 
-    /** The Slabs / Singles choice (and "That's a slab: switch to Slabs?"). Remembered under iopKind. */
-    function pickKind(kind) {
+    /** The Slabs / Singles choice (and "That's a slab: switch to Slabs?"). Remembered under iopKind. opts.quiet: no buzz. */
+    function pickKind(kind, opts) {
       if (kind === 'singles') {
         if (on || !allowed() || !mayBeOn()) return;
         setKey(KIND_KEY, 'singles');
-        buzz();
+        if (!(opts && opts.quiet)) buzz(); // (quiet: the page bringing Singles back after a reload, not a tap)
         enter(true);
       } else {
         if (!on) return;
@@ -18358,7 +18468,7 @@ window.SinglesPrice = {
           return wait ? new Promise(function (r) { setTimeout(function () { r(raw); }, wait); }) : raw;
         }).then(function (raw) {
           idx = window.SinglesMatch.indexBook(raw);
-          bookInfo = { cards: raw.cards.length, date: shortDate(raw.syncedAt || raw.build) || 'unknown' };
+          bookInfo = { cards: raw.cards.length, date: shortDate(raw.syncedAt || raw.build) || 'unknown', asOf: raw.syncedAt || raw.build || null };
           bookFailed = false;
         }).catch(function () {
           bookFailed = true;
@@ -18408,6 +18518,38 @@ window.SinglesPrice = {
       var ids = flow.staleLiveIds(pile.lines(), now());
       if (ids.length) askLive(ids);
     }
+    /** Search's card page and the Comps sheet (11/26): may they ask for live prices at all right now? false = show the book's,
+        labelled, straight away (no "loading" for a login or a phone that will never get a live answer). */
+    function liveOn() {
+      if (!host || !allowed() || liveState === false) return false;
+      try { return !live || live.enabled(); } catch (e) { return false; }
+    }
+    var liveWaiters = [];
+    /** Live prices for Search / Comps through THIS pane's singles-live client: one client, one cache (a card already priced live
+        here or on the Scan tab costs nothing), the same token and device. -> Promise<{ [productId]: LivePrice | null }>, never
+        rejects; {} when live is off, not allowed for this login, or stopped. Answers also go in liveMap, as the Scan tab's do.
+        Before singles-live's /status has answered it waits for that answer (it has its own time limit). */
+    function livePrices(ids) {
+      var list = Array.isArray(ids) ? ids : [ids];
+      if (!liveOn()) return Promise.resolve({});
+      if (liveState === null) {
+        return new Promise(function (resolve) {
+          liveWaiters.push(function () { resolve(livePrices(list)); });
+          if (!statusAsking) askStatus();
+        });
+      }
+      try { ensureEngine(); } catch (e) { return Promise.resolve({}); }
+      return live.pricesFor(list).then(function (map) {
+        var out = {};
+        map.forEach(function (price, id) { out[id] = price || null; if (price) liveMap[id] = price; });
+        return out;
+      }, function () { return {}; });
+    }
+    function flushLiveWaiters() {
+      var w = liveWaiters;
+      liveWaiters = [];
+      w.forEach(function (fn) { try { fn(); } catch (e) { /* that caller shows the book */ } });
+    }
 
     // ── the camera (the page's own; never at the same time as a slab camera) ─────────────────────────
     function hasPermissionsApi() {
@@ -18425,7 +18567,7 @@ window.SinglesPrice = {
     function startCamera() {
       if (!on || !active || stream || camStarting) return;
       if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
-        camMsg = "This browser can't use the camera here. Type the card's name or number below.";
+        camMsg = "This browser can't use the camera here. Tap search to type the card's name or number.";
         camWhy = 'unsupported';
         render();
         return;
@@ -18463,8 +18605,8 @@ window.SinglesPrice = {
         if (e && e.name === 'NotAllowedError') camPerm = 'denied';
         camWhy = e && e.name === 'NotAllowedError' ? 'blocked' : 'failed';
         camMsg = e && e.name === 'NotAllowedError'
-          ? "The camera is blocked for this page. Allow it in the browser's settings, or type the card below."
-          : "The camera didn't start. Tap the camera to try again, or type the card below.";
+          ? "The camera is blocked for this page. Allow it in the browser's settings, or tap search to type the card."
+          : "The camera didn't start. Tap the camera to try again, or tap search to type the card.";
         render();
       });
     }
@@ -18522,15 +18664,16 @@ window.SinglesPrice = {
       if (!on || !el.cam || !el.cam.getBoundingClientRect || !flow) return;
       var r = el.cam.getBoundingClientRect();
       if (!r.width || !r.height) return;
-      // A 2.5 x 3.5 card about 75% of the camera's width, as tall as the camera allows (look C: the outline is the card, the
-      // hint pill sits inside it). The card panel overlaps the camera's foot (its round top edge): the outline stays clear of it.
-      // Only the round camera button can push it down, and only when the two would touch side by side (a narrow phone).
+      // DeckTradr's frame (Penguin 11/26): a 2.5 x 3.5 card about 80% of the camera's width, as tall as the camera allows,
+      // between the top bar (the round search and camera buttons) and the card panel's round top edge (look C: the outline is
+      // the card, the hint pill sits at its foot). The photo sent to the matcher is exactly this frame (grabPhoto: guideCrop).
       var top = 12, bottom = 12 + 24;
       try {
-        var btn = el['cam-stop'] && el['cam-stop'].getClientRects().length ? el['cam-stop'] : el['cam-on'];
-        var cs = btn && btn.getClientRects().length ? btn.getBoundingClientRect() : null;
-        var first = motion.viewfinderGuide(r.width, r.height, top, bottom);
-        if (cs && first && cs.bottom > r.top + first.y && cs.left - r.left < first.x + first.width + 8) top = Math.round(cs.bottom - r.top) + 8;
+        ['type-open', 'cam-stop', 'cam-on'].forEach(function (k) {
+          var b = el[k];
+          if (!b || !b.getClientRects || !b.getClientRects().length) return;
+          top = Math.max(top, Math.round(b.getBoundingClientRect().bottom - r.top) + 8);
+        });
       } catch (e) { top = 12; }
       guide = motion.viewfinderGuide(r.width, r.height, top, bottom) || flow.guideRect(r.width, r.height, 12, 72);
       var s = el.guide.style;
@@ -18751,7 +18894,8 @@ window.SinglesPrice = {
       else if (act === 'ver') openVersions(sid);
       else if (act === 'comps') openComps(sid);
       else if (act === 'retry') retrySlide(sid);
-      else if (act === 'type') { try { el.search.focus(); } catch (e) { /* fine */ } }
+      else if (act === 'type') openType(null);
+      else if (act === 'hint') { t.classList.toggle('sc-sg-open'); fitDeck(); }
     }
     function cardChange(ev) {
       var t = ev.target;
@@ -18850,7 +18994,7 @@ window.SinglesPrice = {
       var b = c && c.prices ? c : cardOfLine(c);
       var prices = b && b.prices && typeof b.prices === 'object' ? b.prices : {};
       return { name: b.name || c.name, number: b.num || c.num, setName: b.setName || c.setName, lang: (b.lang || c.lang) === 'ja' ? 'ja' : 'en',
-        printings: Object.keys(prices), prices: prices };
+        printings: Object.keys(prices), prices: prices, bookAsOf: bookInfo && bookInfo.asOf ? bookInfo.asOf : null };
     }
 
     // ── Select version ─────────────────────────────────────────────────────────────────────────────
@@ -18894,10 +19038,7 @@ window.SinglesPrice = {
         if (c && c.name) words = motion.displayName(c.name, c.num) + ' ';
       } catch (e) { words = ''; }
       closeSheets();
-      if (el.search) {
-        el.search.value = words;
-        try { el.search.focus(); el.search.setSelectionRange(words.length, words.length); } catch (e) { /* no keyboard */ }
-      }
+      openType(words);
     }
     /** The amber "N not counted" line: to the next card that needs a look. */
     function goNextAmber() {
@@ -18955,6 +19096,24 @@ window.SinglesPrice = {
       render();
     }
 
+    // ── "Or type a card": the box over the camera, opened by the round search button on the top bar ─────
+    function typeShown() { return !!el.find && !el.find.hidden; }
+    /** Opens the type box (with `words` in it, the cursor at the end) and brings the keyboard up. */
+    function openType(words) {
+      if (!el.find || !el.search) return;
+      el.find.hidden = false;
+      if (el['type-open'] && el['type-open'].setAttribute) el['type-open'].setAttribute('aria-expanded', 'true');
+      if (words != null) el.search.value = words;
+      var n = String(el.search.value || '').length;
+      try { el.search.focus(); el.search.setSelectionRange(n, n); } catch (e) { /* no keyboard */ }
+    }
+    function closeType() {
+      if (!el.find) return;
+      el.find.hidden = true;
+      if (el['type-open'] && el['type-open'].setAttribute) el['type-open'].setAttribute('aria-expanded', 'false');
+      try { if (el.search) el.search.blur(); } catch (e) { /* fine */ }
+    }
+
     function find() {
       var q = String(el.search.value || '').trim();
       if (!q) { el.search.focus(); return; }
@@ -18965,6 +19124,7 @@ window.SinglesPrice = {
       if (!top) { bad(); showToast('No card found for "' + q + '". Try the name and the number, like Pikachu 25.', null, true); return; }
       el.search.value = '';
       try { el.search.blur(); } catch (e) { /* fine */ }
+      closeType();
       if (res.sure && flow.buysCard(buyLanguages(), top.card)) {
         var p0 = flow.newPick(top.card);
         var added = flow.addPick(pile, p0, flow.priceFor(top.card, p0.printing, liveMap), now());
@@ -19045,7 +19205,7 @@ window.SinglesPrice = {
       render();
       requestFrame(function () { el.track.classList.remove('sc-sg-drag'); });
     }
-    // The panel is as tall as the card on show (not the tallest card next to it), so "Or type a card" stays above the tab bar.
+    // The panel is as tall as the card on show (not the tallest card next to it), so the dots stay above the tab bar.
     var deckFit = null, deckFitOn = null;
     function fitDeck() { try { fitDeckNow(); } catch (e) { /* the card keeps the height it had */ } }
     function fitDeckNow() {
@@ -19060,8 +19220,8 @@ window.SinglesPrice = {
         if (slide) deckFit.observe(slide);
       } catch (e) { /* the next draw fits it */ }
     }
-    /** The card's height: the card on show, but never so tall that "Or type a card" goes under the tab bar (8 px clear of it).
-        A taller card scrolls inside the panel (11/26 critic: tall unsure / pick-variant cards hid the Find button). */
+    /** The card's height: the card on show, but never so tall that the panel's foot (the dots) goes under the tab bar (8 px
+        clear of it). A taller card scrolls inside the panel (11/26 critic; the compact panel, Penguin 11/26). */
     function capDeck(slideH) {
       var h = Number(slideH) || 0;
       var room = Infinity;
@@ -19071,11 +19231,11 @@ window.SinglesPrice = {
         var y = window.scrollY || window.pageYOffset || 0;
         var deckTop = el.card.getBoundingClientRect().top + y;
         var curH = el.card.getBoundingClientRect().height;
-        var findBottom = el.find.getBoundingClientRect().bottom + y;
-        var below = findBottom - (deckTop + curH); // the dots, the gap and the type box under the card
-        if (barTop > 0 && findBottom > 0) room = Math.floor(barTop - 8 - below - deckTop);
+        var panelBottom = el.panel.getBoundingClientRect().bottom + y;
+        var below = panelBottom - (deckTop + curH); // the dots under the card
+        if (barTop > 0 && panelBottom > 0) room = Math.floor(barTop + y - 8 - below - deckTop);
       } catch (e) { room = Infinity; }
-      var capped = h > 0 && room >= 140 && h > room;
+      var capped = h > 0 && room >= 110 && h > room;
       if (el.track.children.length < 2 && !capped) el.card.style.height = '';
       else el.card.style.height = (capped ? room : h) + 'px';
       el.card.classList.toggle('sc-sg-capped', capped);
@@ -19316,7 +19476,7 @@ window.SinglesPrice = {
       el.guide.hidden = false;
       el['cam-on'].disabled = camStarting;
       el['cam-text'].textContent = (view.off && camMsg) || 'Camera off';
-      el.hint.textContent = view.off ? (camWhy === 'failed' ? 'Tap the camera to try again' : (camWhy && camMsg) ? 'Type the card below' : 'Tap the camera to scan cards')
+      el.hint.textContent = view.off ? (camWhy === 'failed' ? 'Tap the camera to try again' : (camWhy && camMsg) ? 'Tap search to type the card' : 'Tap the camera to scan cards')
         : (note || capturing || matching ? flow.cameraHint({ capturing: capturing, note: note, matching: matching, ready: ready }) : 'Fill the frame with one card, then tap');
       el.matching.hidden = !matching;
       el.matching.textContent = matching ? 'Matching ' + matching + '…' : '';
@@ -19331,12 +19491,13 @@ window.SinglesPrice = {
     function pic(productId, cls, alt) {
       return '<img class="' + (cls || '') + '" src="' + escHtml(flow.imageUrl(productId)) + '" alt="' + escHtml(alt || '') + '" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.visibility=\'hidden\'">';
     }
-    /** Under a card's name: its set's whole name (TCGplayer's code prefix off), then the set code and the card number. */
-    function subLine(card) { return flow.setTitle(card.setName); }
-    function codeLine(card) { return [card.setAbbr, card.num].filter(Boolean).join(' · '); }
+    /** Under a card's name, ONE line on the compact panel (DeckTradr's "22 · Through the Ages"): the card number, then the set's
+        name (TCGplayer's code prefix off; the set code when it has no name). Review and Select version show the set whole. */
     function setLinesHtml(card) {
-      var a = subLine(card), b = codeLine(card);
-      return (a ? '<div class="sc-sg-sub">' + escHtml(a) + '</div>' : '') + (b ? '<div class="sc-sg-code">' + escHtml(b) + '</div>' : '');
+      var num = card.num ? String(card.num) : '';
+      var set = flow.setTitle(card.setName) || card.setAbbr || '';
+      if (!num && !set) return '';
+      return '<div class="sc-sg-sub">' + (num ? '<span class="sc-sg-code">' + escHtml(num) + '</span>' : '') + (num && set ? ' · ' : '') + escHtml(set) + '</div>';
     }
     function condSelect(cond) {
       return '<select class="sc-sg-cond iop-press" data-act="cond" aria-label="Condition">' + flow.CONDITIONS.map(function (k) {
@@ -19387,13 +19548,15 @@ window.SinglesPrice = {
           '<div class="sc-sg-pic">' + pic(line.productId, '', line.name) + langTagHtml(line) + '</div>' +
           '<div class="sc-sg-words"><div class="sc-sg-t"><div class="sc-sg-name">' + langTagHtml(line) + escHtml(motion.displayName(line.name, line.num)) + '</div>' +
             '<button type="button" class="sc-sg-x iop-press" data-act="remove" aria-label="Take it off the list"></button></div>' +
-            setLinesHtml(line) + pill +
+            setLinesHtml(line) +
+            // one compact row (DeckTradr): the pill and Select version side by side with the words, not a bar of their own
+            '<div class="sc-sg-acts">' + pill +
+            (multi ? (line.printing
+              ? '<button type="button" class="sc-sg-selver sc-sg-quiet iop-press" data-act="ver">Version<span>' + escHtml(flow.printingLabel(line.printing)) + '</span></button>'
+              : selectVersionHtml(printingsWords(card))) : '') + '</div>' +
             (metaBits.length ? '<div class="sc-sg-meta">' + escHtml(metaBits.join(' · ')) + '</div>' : '') +
           '</div>' +
         '</div>' +
-        (multi ? (line.printing
-          ? '<button type="button" class="sc-sg-selver sc-sg-quiet iop-press" data-act="ver">Version<span>' + escHtml(flow.printingLabel(line.printing)) + '</span></button>'
-          : selectVersionHtml(printingsWords(card))) : '') +
         ctlHtml(line.condition, line.quantity, true);
     }
 
@@ -19419,11 +19582,11 @@ window.SinglesPrice = {
           '</div>' +
           '<div class="sc-sg-words"><div class="sc-sg-t"><div class="sc-sg-name">' + langTagHtml(card) + escHtml(name) + '</div>' +
             '<button type="button" class="sc-sg-x iop-press" data-act="remove" aria-label="Remove this scan"></button></div>' +
-            setLinesHtml(card) + pill + meta +
+            setLinesHtml(card) +
+            '<div class="sc-sg-acts">' + pill + selectVersionHtml(off ? flow.offAltsLabel(card.lang) : printingsWords(card)) + '</div>' + meta +
+            '<div class="sc-sg-hint-line" data-act="hint" role="button" tabindex="0" aria-label="' + escHtml(hintWords) + '">' + escHtml(hintWords) + '</div>' +
           '</div>' +
         '</div>' +
-        '<div class="sc-sg-hint-line">' + escHtml(hintWords) + '</div>' +
-        selectVersionHtml(off ? flow.offAltsLabel(card.lang) : printingsWords(card)) +
         ctlHtml(o.condition, o.quantity, !off);
     }
 
@@ -19475,7 +19638,7 @@ window.SinglesPrice = {
       if (!slides.length) {
         trackFrom = 0;
         el.track.innerHTML = '<div class="sc-sg-slide"><div class="sc-sg-empty">' +
-          escHtml(stream ? 'Fill the frame with one card and tap the camera. Each card shows up here.' : 'Turn the camera on and tap it to scan a card, or type one below.') + '</div></div>';
+          escHtml(stream ? 'Fill the frame with one card and tap the camera. Each card shows up here.' : 'Turn the camera on and tap it to scan a card, or tap search to type one.') + '</div></div>';
         setTrack(0, 0);
       } else {
         trackFrom = Math.max(0, at - 1);
@@ -19712,6 +19875,8 @@ window.SinglesPrice = {
       S.price = priceLines;
       S.listInfo = listInfo;
       S.focusLine = focusLine;
+      S.livePrices = livePrices;
+      S.liveOn = liveOn;
     } catch (e) { /* not a page with a window */ }
 
     return {
@@ -21352,6 +21517,13 @@ window.SetLogos = {
 //     NEVER priced on its own (Penguin's rule: the variant is never guessed): "Pick variant, up to $X", no price, until the
 //     person picks one on the card page.
 //
+// Prices (11/26 fix): a card page prices from the LIVE TCGplayer price (singles-live /prices, the Scan tab's own client and
+// cache) whenever it has one, exactly as the Scan tab does (SinglesLive.liveOrBook: the live figure when tcgapis listed THAT
+// printing, else the book's). Until the live answer is in, the page shows no figure at all (never the book's as if current);
+// with no live answer (off, failed, not allowed for this login) it shows the book's, labelled "Price list from <date>"
+// (priceNote). The set grid and the "Buying N" counts stay on the book (labelled on the set page) unless a card's live answer
+// is already in.
+//
 // Money: every We pay figure comes from scanner/singlesList.js priceLines (the same code the Scan tab prices a pile with,
 // which runs the bot's own singles/rules.js priceCard + lot tiers), on a one-card pile in Near Mint. This file never
 // multiplies a price by a rate itself. The rate sheet it is handed is OUR PUBLIC SELLER SHEET (slab-rates GET /singles,
@@ -21569,27 +21741,48 @@ var SHORT = { 'Holofoil': 'Holo', 'Reverse Holofoil': 'Reverse Holo', '1st Editi
 function printingLabel(p) { return Object.prototype.hasOwnProperty.call(SHORT, p) ? SHORT[p] : String(p || ''); }
 
 /**
+ * The TCGplayer market and low this card shows for one printing: the live answer when kit.live has THAT printing (kit.liveOrBook
+ * is scanner/singlesLive.js liveOrBook, the Scan tab's own rule), else the book's. -> { market, low, source: 'live'|'book', asOf }.
+ */
+function priceOf(card, printing, kit) {
+  var book = card && card.prices ? card.prices : {};
+  if (kit && kit.live && typeof kit.liveOrBook === 'function') {
+    try {
+      var r = kit.liveOrBook(book, kit.live, printing);
+      if (r && (r.source === 'live' || r.source === 'book')) {
+        return { market: Number.isInteger(r.market) ? r.market : null, low: Number.isInteger(r.low) ? r.low : null, source: r.source, asOf: r.source === 'live' && r.asOf ? String(r.asOf) : null };
+      }
+    } catch (e) { /* the book below */ }
+  }
+  var p = Object.prototype.hasOwnProperty.call(book, printing) ? book[printing] : null;
+  return { market: p && Number.isInteger(p.market) ? p.market : null, low: p && Number.isInteger(p.low) ? p.low : null, source: 'book', asOf: null };
+}
+
+/**
  * What we pay for ONE copy of this card in this printing, Near Mint, priced as a one-card pile by the Scan tab's own code.
- *   kit = { settings, price (window.SinglesPrice), money (window.Money), list (window.SinglesList) }
- * Returns { buying: true, payCents, marketCents } or { buying: false, why, marketCents }.
+ *   kit = { settings, price (window.SinglesPrice), money (window.Money), list (window.SinglesList),
+ *           live (this card's LivePrice from singles-live, or null), liveOrBook (window.SinglesLive.liveOrBook) }
+ * Returns { buying: true, payCents, marketCents, lowCents, source, asOf } or { buying: false, why, marketCents, lowCents, source, asOf }.
  */
 function offerFor(card, printing, kit) {
-  var p = card && card.prices ? card.prices[printing] : null;
-  var marketCents = p && Number.isInteger(p.market) ? p.market : null;
-  if (!kit || !kit.settings || !kit.price || !kit.money || !kit.list) return { buying: false, why: 'no rates', marketCents: marketCents };
+  var pr = priceOf(card, printing, kit);
+  var marketCents = pr.market;
+  var facts = { marketCents: marketCents, lowCents: pr.low, source: pr.source, asOf: pr.asOf };
+  var out = function (o) { return Object.assign(o, facts); };
+  if (!kit || !kit.settings || !kit.price || !kit.money || !kit.list) return out({ buying: false, why: 'no rates' });
   var line = {
     key: 'search', productId: card.productId, name: card.name, num: card.num, setName: card.setName, setAbbr: card.setAbbr,
     groupId: card.groupId, year: card.year, era: card.era, kind: card.kind, rarity: card.rarity,
     printing: printing, condition: 'NM', quantity: 1,
-    marketCents: marketCents, lowCents: p && Number.isInteger(p.low) ? p.low : null, priceSource: 'book', priceAsOf: null, addedAt: 0,
+    marketCents: marketCents, lowCents: pr.low, priceSource: pr.source, priceAsOf: pr.asOf, addedAt: 0,
   };
   if (card.lang === 'ja') line.lang = 'ja';
   var priced = kit.list.priceLines([line], kit.settings, kit.price, kit.money);
   var row = priced && priced.rows && priced.rows[0];
   if (row && row.outcome === 'priced' && Number.isInteger(row.payoutCents) && row.payoutCents > 0) {
-    return { buying: true, payCents: row.payoutCents, marketCents: marketCents };
+    return out({ buying: true, payCents: row.payoutCents });
   }
-  return { buying: false, why: row && row.why ? String(row.why) : 'not buying', marketCents: marketCents };
+  return out({ buying: false, why: row && row.why ? String(row.why) : 'not buying' });
 }
 
 /**
@@ -21598,16 +21791,17 @@ function offerFor(card, printing, kit) {
  *   { status: 'not' }                           nothing we buy: red "Not buying"
  *   { status: 'pick', upToCents }               2+ printings: amber "Pick variant, up to $X" - NO price of its own, ever
  *   { status: 'hidden' }                        prices are not shown to this login (kit.showPrices false)
- * plus variants: [{ printing, label, marketCents, buying, payCents }] for the card page. Nothing in it is "picked".
+ * plus variants: [{ printing, label, marketCents, lowCents, source, asOf, buying, payCents }] for the card page. Nothing in it is
+ * "picked". kit.live (with kit.liveOrBook): the card's live answer, used per printing as the Scan tab uses it.
  */
 function cardOffer(card, kit) {
   var printings = printingsOf(card);
   if (kit && kit.showPrices === false) {
-    return { status: 'hidden', variants: printings.map(function (pr) { return { printing: pr, label: printingLabel(pr), marketCents: null, buying: false, payCents: null }; }) };
+    return { status: 'hidden', variants: printings.map(function (pr) { return { printing: pr, label: printingLabel(pr), marketCents: null, lowCents: null, source: null, asOf: null, buying: false, payCents: null }; }) };
   }
   var variants = printings.map(function (pr) {
     var o = offerFor(card, pr, kit);
-    return { printing: pr, label: printingLabel(pr), marketCents: o.marketCents, buying: o.buying, payCents: o.buying ? o.payCents : null };
+    return { printing: pr, label: printingLabel(pr), marketCents: o.marketCents, lowCents: o.lowCents, source: o.source, asOf: o.asOf, buying: o.buying, payCents: o.buying ? o.payCents : null };
   });
   var buying = variants.filter(function (v) { return v.buying; });
   if (variants.length >= 2) {
@@ -21642,14 +21836,84 @@ function buyingCount(rows) { return rows.filter(function (r) { return r.offer.st
 /**
  * The variant a card page has picked, checked: only one of the card's own printings, and only by a tap (pickedPrinting is
  * what the person tapped; null until then). With 2+ printings nothing is picked first; with exactly one printing that one is
- * the card (there is nothing to guess). Returns { printing, payCents, buying } or null.
+ * the card (there is nothing to guess). Returns { printing, payCents, buying, marketCents, lowCents, source, asOf } or null.
  */
 function pickedVariant(offer, pickedPrinting) {
   var vs = offer && offer.variants ? offer.variants : [];
   var v = null;
   if (pickedPrinting) v = vs.filter(function (x) { return x.printing === pickedPrinting; })[0] || null;
   else if (vs.length === 1) v = vs[0];
-  return v ? { printing: v.printing, payCents: v.payCents, buying: !!v.buying } : null;
+  return v ? {
+    printing: v.printing, payCents: v.payCents, buying: !!v.buying,
+    marketCents: Number.isInteger(v.marketCents) ? v.marketCents : null, lowCents: Number.isInteger(v.lowCents) ? v.lowCents : null,
+    source: v.source === 'live' ? 'live' : 'book', asOf: v.source === 'live' && v.asOf ? String(v.asOf) : null,
+  } : null;
+}
+
+/**
+ * What "Add to list" puts on the list for the picked variant: the price the page showed, with where it came from, so a live
+ * price goes on as live (priceSource 'live' + priceAsOf) and a book price as book. -> the SinglesList add options, or null.
+ */
+function addOptions(chosen, nowMs, fill) {
+  if (!chosen || !chosen.printing) return null;
+  var c = chosen;
+  // A login that doesn't see prices (or an owner whose rate sheet hasn't loaded) gets a 'hidden' offer with no figures in it.
+  // The line still goes on with the card's market and low (fill = { card, kit }: the live answer when it listed THAT printing,
+  // else the book's, as priceOf). Never for a live variant: a printing live lists with no market stays without one.
+  if (fill && fill.card && c.source !== 'live' && !Number.isInteger(c.marketCents) && !Number.isInteger(c.lowCents)) {
+    var pr = priceOf(fill.card, c.printing, fill.kit);
+    c = { printing: c.printing, marketCents: pr.market, lowCents: pr.low, source: pr.source, asOf: pr.asOf };
+  }
+  var live = c.source === 'live';
+  return {
+    printing: c.printing, condition: 'NM', quantity: 1,
+    marketCents: Number.isInteger(c.marketCents) ? c.marketCents : null, lowCents: Number.isInteger(c.lowCents) ? c.lowCents : null,
+    priceSource: live ? 'live' : 'book', priceAsOf: live && c.asOf ? String(c.asOf) : null, now: nowMs,
+  };
+}
+
+/** An ISO time -> "Nov 12" (its UTC day; the year too when it isn't nowMs's year). '' when it doesn't read. */
+function dayLabel(iso, nowMs) {
+  var t = Date.parse(String(iso || ''));
+  if (!isFinite(t)) return '';
+  var d = new Date(t);
+  var y = new Date(typeof nowMs === 'number' && isFinite(nowMs) ? nowMs : t).getUTCFullYear();
+  return MONTHS[d.getUTCMonth()] + ' ' + d.getUTCDate() + (d.getUTCFullYear() !== y ? ', ' + d.getUTCFullYear() : '');
+}
+
+/**
+ * The small grey line under a card's prices: where they come from. It describes EVERY figure on the page (each variant button
+ * shows its own We pay), not only the picked one.
+ *   state 'loading'  -> { kind: 'loading', text: "Getting today's price..." }   (no figure is shown meanwhile)
+ *   all live         -> { kind: 'live', text: 'Live TCGplayer price' }
+ *   all the book's   -> { kind: 'book', text: 'Price list from Nov 12' }        (the daily book's sync date)
+ *   some of each     -> { kind: 'mixed', text: 'Live TCGplayer price, except Reverse Holo: price list from Nov 12' }
+ * chosen is kept for callers; with no variants at all it decides on its own. opts = { state, bookAsOf (syncedAt), nowMs }.
+ */
+function priceNote(offer, chosen, opts) {
+  var o = opts || {};
+  if (o.state === 'loading') return { kind: 'loading', text: 'Getting today\'s price...' };
+  var vs = offer && offer.variants && offer.variants.length ? offer.variants : chosen ? [chosen] : [];
+  var day = dayLabel(o.bookAsOf, o.nowMs);
+  var bookText = day ? 'price list from ' + day : 'price list (not live)';
+  var book = vs.filter(function (v) { return v.source !== 'live'; });
+  if (vs.length && !book.length) return { kind: 'live', text: 'Live TCGplayer price' };
+  if (book.length && book.length < vs.length) {
+    return { kind: 'mixed', text: 'Live TCGplayer price, except ' + book.map(function (v) { return v.label || printingLabel(v.printing); }).join(', ') + ': ' + bookText };
+  }
+  return { kind: 'book', text: bookText.charAt(0).toUpperCase() + bookText.slice(1) };
+}
+
+/**
+ * The set page's line about its grid. The grid is the book's, except cards whose live answer is already in (opened this
+ * session): liveCount of them. "Open a card for today's price." only when this login can get one (liveAllowed).
+ */
+function setNote(opts) {
+  var o = opts || {};
+  var day = dayLabel(o.bookAsOf, o.nowMs);
+  var text = day ? 'Price list from ' + day : 'Price list (not live)';
+  if (o.liveCount > 0) text += ', live for ' + (o.liveCount === 1 ? 'the card' : 'the ' + o.liveCount + ' cards') + ' you opened';
+  return { kind: 'book', text: text + '.' + (o.liveAllowed ? ' Open a card for today\'s price.' : '') };
 }
 
 /** The Japanese tab shows only when the Japanese card list loaded AND our sheet buys Japanese. */
@@ -21680,11 +21944,16 @@ window.SearchBook = {
   search: search,
   printingsOf: printingsOf,
   printingLabel: printingLabel,
+  priceOf: priceOf,
   offerFor: offerFor,
   cardOffer: cardOffer,
   setCards: setCards,
   buyingCount: buyingCount,
   pickedVariant: pickedVariant,
+  addOptions: addOptions,
+  dayLabel: dayLabel,
+  priceNote: priceNote,
+  setNote: setNote,
   showJapanese: showJapanese,
   dollars: dollars,
 };
@@ -21716,7 +21985,7 @@ window.SearchBook = {
     var loading = { en: null, ja: null };
     var failed = { en: false, ja: false };
     var settings = null, ratesState = 'idle', ratesAt = 0, ratesAsking = false;
-    var offers = new Map();   // productId -> SearchBook.cardOffer (cleared when the sheet or who may see prices changes)
+    var offers = new Map();   // productId -> { offer: SearchBook.cardOffer, live: the answer it used } (cleared when the sheet or who may see prices changes)
     var offerKey = '';
 
     var view = 'sets';        // 'sets' | 'set' | 'card'
@@ -21726,7 +21995,11 @@ window.SearchBook = {
     var cardId = null, picked = null, cardFrom = 'sets', resultsShown = PAGE;
     var toastTimer = null, addedTimer = null, addedFor = null;
     var scrollBack = { sets: 0, set: 0 };
+    var pendingPlace = null;  // a set / card to come back to after a reload (restore), opened once its book is in
     var buyCounts = new Map(), buyKey = '', buyTimer = null; // groupId -> how many of the set's cards we buy (for offerKey)
+    // live prices (singles-live /prices through the Scan tab's own client): productId -> { state: 'loading'|'done', price, at }
+    var liveFor = new Map();
+    var LIVE_KEEP_MS = 10 * 60 * 1000; // the same 10 minutes the live client keeps an answer
 
     // ── small helpers ──
     function esc(s) {
@@ -21764,10 +22037,11 @@ window.SearchBook = {
     // ── who may see prices ──
     /** Only when ScannerTab says this login may see singles prices (owners; sourcers an owner turned Singles on for). */
     function pricesAllowed() { try { return !!(host && typeof host.showPrices === 'function' && host.showPrices()); } catch (e) { return false; } }
-    function kit() {
+    function kit(live) {
       return {
         settings: settings, price: window.SinglesPrice, money: window.Money, list: window.SinglesList,
         showPrices: pricesAllowed() && !!settings,
+        live: live || null, liveOrBook: window.SinglesLive && typeof window.SinglesLive.liveOrBook === 'function' ? window.SinglesLive.liveOrBook : null,
       };
     }
     function currentOfferKey() { return (kit().showPrices ? 'p' : 'h') + '|' + ratesAt; }
@@ -21775,9 +22049,49 @@ window.SearchBook = {
       var k = kit();
       var key = currentOfferKey();
       if (key !== offerKey) { offers = new Map(); offerKey = key; }
-      var o = offers.get(card.productId);
-      if (!o) { o = B.cardOffer(card, k); offers.set(card.productId, o); }
-      return o;
+      var live = liveAnswer(card.productId);
+      var m = offers.get(card.productId);
+      // rebuilt when the live answer it was priced with changed or aged out (then the book's, labelled as such)
+      if (!m || m.live !== live) { m = { offer: B.cardOffer(card, kit(live)), live: live }; offers.set(card.productId, m); }
+      return m.offer;
+    }
+
+    // ── live prices (a card page, and what it hands Comps) ──
+    function scanApi() { return window.IOPScan && typeof window.IOPScan.livePrices === 'function' ? window.IOPScan : null; }
+    /** May this card page ask for a live price at all: a login that sees prices, and the Scan tab's live client on and allowed. */
+    function liveAllowed() {
+      var S = scanApi();
+      if (!S || !pricesAllowed()) return false;
+      try { return typeof S.liveOn !== 'function' || !!S.liveOn(); } catch (e) { return false; }
+    }
+    /** The card's live answer once it is in and still under LIVE_KEEP_MS old (null: none, still loading, or aged out). */
+    function liveAnswer(id) { var e = liveFor.get(id); return e && e.state === 'done' && e.price && Date.now() - e.at < LIVE_KEEP_MS ? e.price : null; }
+    /** How many of these cards show a live figure right now (the set page's line). */
+    function liveCountOf(rows) { var n = 0; for (var i = 0; i < rows.length; i++) if (liveAnswer(rows[i].card.productId)) n++; return n; }
+    /** 'loading' while asking, 'done' once answered (with or without a price), 'off' when it was never asked (live off). */
+    function liveState(id) { var e = liveFor.get(id); return e ? e.state : 'off'; }
+    /** Ask once per card (again after LIVE_KEEP_MS when `again`). Overlapping asks for one card share the client's request. */
+    function askLiveFor(id, again) {
+      if (!liveAllowed()) return;
+      var e = liveFor.get(id);
+      if (e && (e.state === 'loading' || !again || Date.now() - e.at < LIVE_KEEP_MS)) return;
+      liveFor.set(id, { state: 'loading', price: null, at: Date.now() });
+      offers.delete(id);
+      var done = function (price) {
+        liveFor.set(id, { state: 'done', price: price || null, at: Date.now() });
+        offers.delete(id);
+        if (active && view === 'card' && cardId === id) renderCard();
+      };
+      var S = scanApi();
+      var asked;
+      try { asked = Promise.resolve(S.livePrices([id])); } catch (e) { asked = Promise.resolve(null); }
+      asked.then(function (map) {
+        done(map && typeof map === 'object' ? map[String(id)] : null);
+      }, function () { done(null); }).catch(function () { /* never an unhandled rejection */ });
+    }
+    function bookAsOf() { var b = books[lang]; return b && b.raw ? b.raw.syncedAt || b.raw.build || null : null; }
+    function srcLine(note) {
+      return '<div class="sr-src sr-src-' + esc(note.kind) + '" data-sr-src="' + esc(note.kind) + '"' + (note.kind === 'loading' ? ' aria-live="polite"' : '') + '><i></i>' + esc(note.text) + '</div>';
     }
 
     // ── data ──
@@ -21818,12 +22132,50 @@ window.SearchBook = {
     function go(next, opts) {
       if (view === 'sets' || view === 'set') scrollBack[view] = scroller().scrollTop;
       view = next;
+      pendingPlace = null; // he moved on: a reload's set / card no longer applies
       render();
       var top = opts && opts.restore ? scrollBack[next] || 0 : 0;
       try { scroller().scrollTop = top; } catch (e) { /* fine */ }
+      moved();
+    }
+    /** The page keeps where Search is (ids only) for the app's pull-to-refresh (host.moved). */
+    function moved() { try { if (host && typeof host.moved === 'function') host.moved(); } catch (e) { /* kept next time */ } }
+    /** Where Search is: { view, set, card, from, lang } (ids only). While a reload's place waits for its book, that one. */
+    function place() {
+      if (pendingPlace) return pendingPlace;
+      return { view: view, set: setId, card: cardId, from: cardFrom === 'set' ? 'set' : 'sets', lang: lang };
+    }
+    /** After a reload: come back to this set / card (from place()). Opened once its book is in; an id the book no longer has, or
+        another language than the one Search is on, leaves Search on its sets. */
+    function restore(p) {
+      if (!p || typeof p !== 'object' || (p.view !== 'set' && p.view !== 'card')) return;
+      bindDom(); // (reads the language Search is on)
+      if ((p.lang === 'ja' ? 'ja' : 'en') !== lang) return;
+      pendingPlace = { view: p.view, set: typeof p.set === 'number' ? p.set : null, card: typeof p.card === 'number' ? p.card : null, from: p.from === 'set' ? 'set' : 'sets', lang: lang };
+      if (books[lang]) applyPending();
+    }
+    function applyPending() {
+      var p = pendingPlace;
+      pendingPlace = null;
+      if (!p || p.lang !== lang || !books[lang]) return;
+      var b = books[lang];
+      if (p.set !== null && b.byGroup.get(p.set)) setId = p.set;
+      if (p.view === 'card' && p.card !== null && cardById(p.card)) {
+        cardId = p.card; picked = null; addedFor = null;
+        cardFrom = p.from === 'set' && setId === p.set ? 'set' : 'sets';
+        view = 'card';
+        if (pricesAllowed()) askLiveFor(cardId, true);
+      } else if (p.view === 'set' && setId === p.set && p.set !== null) {
+        sort = 'number'; shown = SET_PAGE;
+        view = 'set';
+      }
     }
     function openSet(groupId) { setId = groupId; sort = 'number'; shown = SET_PAGE; go('set'); }
-    function openCard(productId, from) { cardId = productId; picked = null; cardFrom = from; addedFor = null; go('card'); }
+    function openCard(productId, from) {
+      cardId = productId; picked = null; cardFrom = from; addedFor = null;
+      if (pricesAllowed()) askLiveFor(productId, true);
+      go('card');
+    }
     function back() {
       if (view === 'card') go(cardFrom === 'set' ? 'set' : 'sets', { restore: true });
       else if (view === 'set') go('sets', { restore: true });
@@ -21980,6 +22332,7 @@ window.SearchBook = {
             '<button type="button" class="sr-chip iop-press" data-sr-sort="buying" aria-pressed="' + (sort === 'buying') + '">Buying only <b class="sr-num">' + B.buyingCount(all) + '</b></button></div>'
           : '') +
         priceNote() +
+        (priced ? srcLine(B.setNote({ bookAsOf: bookAsOf(), nowMs: Date.now(), liveAllowed: liveAllowed(), liveCount: liveCountOf(all) })) : '') +
         (rows.length ? '<div class="sr-grid">' + rows.slice(0, shown).map(function (r) { return cardTile(r.card, 'set', false); }).join('') + '</div>'
           : '<div class="sr-msg">We aren\'t buying any card in this set right now.</div>') +
         (rows.length > shown ? '<button type="button" class="sr-more iop-press" data-sr-more="set">Show more (' + (rows.length - shown) + ')</button>' : '');
@@ -21989,8 +22342,11 @@ window.SearchBook = {
     function renderCard() {
       var card = cardById(cardId);
       if (!card) { view = 'sets'; return renderSets(); }
+      if (pricesAllowed()) askLiveFor(card.productId, true); // again once the answer is LIVE_KEEP_MS old, so it never ages on screen
       var offer = offerOf(card);
       var priced = offer.status !== 'hidden';
+      // today's price still on its way: no figure anywhere on the page (the book's is not shown as if it were today's)
+      var loading = priced && liveState(card.productId) === 'loading';
       var vs = offer.variants;
       var chosen = B.pickedVariant(offer, picked);
       var many = vs.length >= 2;
@@ -22002,18 +22358,20 @@ window.SearchBook = {
       else if (many) hint = '<div class="sr-hint sr-ok"><i></i>' + esc(B.printingLabel(chosen.printing)) + ' picked. Tap another to change.</div>';
       else hint = '<div class="sr-hint sr-quiet"><i></i>Only one version of this card.</div>';
       var pill = '';
-      if (priced && chosen) pill = chosen.buying ? '<span class="sr-pill sr-pay sr-num">We pay ' + esc(B.dollars(chosen.payCents)) + '</span>' : '<span class="sr-pill sr-no">Not buying</span>';
+      if (loading && (chosen || many)) pill = '<span class="sr-pill sr-hold" aria-hidden="true">&nbsp;</span>';
+      else if (priced && chosen) pill = chosen.buying ? '<span class="sr-pill sr-pay sr-num">We pay ' + esc(B.dollars(chosen.payCents)) + '</span>' : '<span class="sr-pill sr-no">Not buying</span>';
       else if (priced && many) pill = '<span class="sr-pill sr-hold" aria-hidden="true">&nbsp;</span>'; // its place, kept (no figure in it)
       var chips = vs.map(function (v) {
         var on = !!(chosen && chosen.printing === v.printing && (many ? picked === v.printing : true));
-        var price = !priced ? '' : v.buying ? '<span class="sr-vp sr-num">' + esc(B.dollars(v.payCents)) + '</span><span class="sr-vm">We pay</span>'
+        var price = !priced ? '' : loading ? '<span class="sr-vload" aria-hidden="true"></span><span class="sr-vm">We pay</span>' : v.buying ? '<span class="sr-vp sr-num">' + esc(B.dollars(v.payCents)) + '</span><span class="sr-vm">We pay</span>'
           : '<span class="sr-vp sr-vno">Not buying</span>';
         return '<button type="button" class="sr-var iop-press" data-sr-var="' + esc(v.printing) + '" aria-pressed="' + on + '">' +
           '<span class="sr-ck">' + ICON_CHECK + '</span><span class="sr-vn">' + esc(v.label) + '</span>' + price + '</button>';
       }).join('');
-      var canAdd = !!chosen;
+      var canAdd = !!chosen && !loading;
       var justAdded = !!(canAdd && addedFor && addedFor.productId === card.productId && addedFor.printing === chosen.printing);
-      var addLabel = !canAdd ? 'Pick a variant first'
+      var addLabel = !chosen ? 'Pick a variant first'
+        : loading ? 'Getting today\'s price...'
         : justAdded ? 'Added' + (priced && chosen.buying ? ' · ' + B.dollars(chosen.payCents) : '')
         : '+ Add to list' + (priced && chosen.buying ? ' · ' + B.dollars(chosen.payCents) : '');
       el.card.innerHTML =
@@ -22024,6 +22382,7 @@ window.SearchBook = {
         '<div class="sr-sub sr-num">' + esc([card.num, B.setTitle(card.setName), card.rarity].filter(Boolean).join(' · ')) + '</div>' + pill + '</div>' +
         '<div class="sr-vhead"><div class="sr-label">Variant</div>' + hint + '</div>' +
         (vs.length ? '<div class="sr-vars' + (vs.length < 3 ? ' sr-n' + vs.length : '') + '">' + chips + '</div>' : '') +
+        (priced && vs.length ? srcLine(B.priceNote(offer, chosen, { state: loading ? 'loading' : 'done', bookAsOf: bookAsOf(), nowMs: Date.now() })) : '') +
         '<div class="sr-cta"><button type="button" class="sr-btn sr-alt iop-press" data-sr-comps>' + ICON_COMPS + 'Comps</button>' +
         '<button type="button" class="sr-btn sr-pri iop-press sr-num' + (justAdded ? ' sr-added' : '') + '" data-sr-add' + (canAdd && !justAdded ? '' : ' disabled') +
           (justAdded ? ' aria-live="polite"' : '') + '>' + esc(addLabel) + '</button></div>';
@@ -22032,6 +22391,8 @@ window.SearchBook = {
 
     function render() {
       if (!root) return;
+      if (pendingPlace && books[lang]) applyPending();
+      else if (pendingPlace && failed[lang]) pendingPlace = null;
       el.setsView.hidden = view !== 'sets';
       el.set.hidden = view !== 'set';
       el.card.hidden = view !== 'card';
@@ -22052,9 +22413,10 @@ window.SearchBook = {
       var offer = offerOf(card);
       var chosen = B.pickedVariant(offer, picked);
       if (!chosen) return; // 2+ printings and nothing tapped: never guessed
-      var p = card.prices && card.prices[chosen.printing] ? card.prices[chosen.printing] : {};
-      var opts = { printing: chosen.printing, condition: 'NM', quantity: 1, marketCents: p.market == null ? null : p.market,
-        lowCents: p.low == null ? null : p.low, priceSource: 'book', priceAsOf: null, now: Date.now() };
+      if (offer.status !== 'hidden' && liveState(card.productId) === 'loading') return; // today's price first
+      // the price the page showed, and where it came from (live: priceSource 'live' + priceAsOf; else the book's)
+      // fill: a 'hidden' offer carries no figures; the line still gets the card's market and low (as on master)
+      var opts = B.addOptions(chosen, Date.now(), { card: card, kit: kit(liveAnswer(card.productId)) });
       var ok = false;
       try {
         if (window.IOPScan && typeof window.IOPScan.addSingle === 'function') ok = window.IOPScan.addSingle(card, opts) !== false;
@@ -22085,8 +22447,9 @@ window.SearchBook = {
       if (!card) return;
       var chosen = B.pickedVariant(offerOf(card), picked);
       var prices = card.prices && typeof card.prices === 'object' ? card.prices : {};
+      // the book's market / low per printing; Comps asks for today's itself (the same client and cache: free once this page has it)
       var info = { name: B.cardName(card.name), number: card.num, setName: B.setTitle(card.setName), lang: card.lang === 'ja' || lang === 'ja' ? 'ja' : 'en',
-        printings: Object.keys(prices), prices: prices };
+        printings: Object.keys(prices), prices: prices, bookAsOf: bookAsOf() };
       if (window.IOPComps && typeof window.IOPComps.open === 'function') window.IOPComps.open(card.productId, chosen ? chosen.printing : null, info);
       else toast('Comps are coming soon.');
     }
@@ -22107,7 +22470,9 @@ window.SearchBook = {
         lang = t.getAttribute('data-sr-lang') === 'ja' ? 'ja' : 'en'; setKey(LANG_KEY, lang);
         if (lang === 'en' || B.showJapanese(true, settings)) loadBook(lang);
         if (view !== 'sets') view = 'sets';
-        return render();
+        pendingPlace = null;
+        render();
+        return moved();
       }
       if (t.hasAttribute('data-sr-retry')) { if (t.getAttribute('data-sr-retry') === 'rates') loadSheet(true); else loadBook(lang); return render(); }
       if (t === el.clearBtn) { query = ''; el.q.value = ''; resultsShown = PAGE; return renderSets(); }
@@ -22155,9 +22520,9 @@ window.SearchBook = {
       if (root) root.hidden = true;
       if (el.toast) el.toast.hidden = true;
     }
-    /** ScannerTab's ties: { showPrices() }. Called again when who is signed in may have changed (refresh). */
+    /** ScannerTab's ties: { showPrices(), moved() }. Called again when who is signed in may have changed (refresh). */
     function attach(h) { host = h || null; refresh(); }
-    function refresh() { offerKey = ''; if (active) { loadSheet(false); render(); } }
+    function refresh() { offerKey = ''; liveFor = new Map(); if (active) { loadSheet(false); render(); } }
 
     function register() {
       if (registered || !window.IOPPanes || typeof window.IOPPanes.register !== 'function' || !bindDom()) return;
@@ -22168,7 +22533,7 @@ window.SearchBook = {
     document.addEventListener('iop:panes-ready', register);
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', register);
 
-    return { attach: attach, refresh: refresh, enter: enter, leave: leave, register: register, isActive: function () { return active; } };
+    return { attach: attach, refresh: refresh, enter: enter, leave: leave, register: register, isActive: function () { return active; }, place: place, restore: restore };
   })();
 /* SEARCH-PANE-JS:END */
 </script>
@@ -23323,22 +23688,39 @@ function compsSalesFor(sales, printing, max) {
 }
 
 /**
+ * Where Market and Low come from, for the small grey line under them (11/26: they showed the 11/12 book as if current).
+ *   'loading' -> "Getting today's price..." (and no figure shown)   'live' -> "Live TCGplayer price"
+ *   'book'    -> "Price list from Nov 12" (the daily book's sync date, bookAsOf), or "Price list (not live)" with no date
+ */
+function compsPriceNote(source, bookAsOf, nowMs) {
+  if (source === 'loading') return { kind: 'loading', text: 'Getting today\'s price...' };
+  if (source === 'live') return { kind: 'live', text: 'Live TCGplayer price' };
+  var day = bookAsOf ? compsDate(bookAsOf, nowMs) : '';
+  return { kind: 'book', text: day ? 'Price list from ' + day : 'Price list (not live)' };
+}
+
+/**
  * Everything the panel draws, from what it knows. input = {
  *   printings: [names], printing: picked name|null, market, low (cents|null, for that printing),
+ *   priceSource: 'loading' | 'live' | 'book' (default 'book'), bookAsOf (the daily book's syncedAt),
  *   result: null (still loading) | { state, sales, asOf, message }, now
- * } -> { needsVariant, printing, printingLabel, market, low, loading, state, title, sub, rows: [{ date, price, ship, cond, qty, lang }],
- *        count, newest, oldest, median, mix }
+ * } -> { needsVariant, printing, printingLabel, market, low, priceLoading, priceNote: { kind, text }, loading, state, title, sub,
+ *        rows: [{ date, price, ship, cond, qty, lang }], count, newest, oldest, median, mix }
+ *   priceLoading: today's market / low are on their way: market and low are '' (no figure, never the book's as if current)
  *   mix: the conditions of the sales shown, most first ("8 NM · 5 LP · 2 MP"), so a median next to Market reads right
  */
 function compsModel(input) {
   var i = input || {};
   var printing = compsPrintingFor(i.printings, i.printing);
+  var source = i.priceSource === 'loading' || i.priceSource === 'live' ? i.priceSource : 'book';
   var base = {
     needsVariant: !printing, printing: printing, printingLabel: compsPrintingLabel(printing),
     market: printing && compsIsCents(i.market) ? compsMoney(i.market) : '--',
     low: printing && compsIsCents(i.low) ? compsMoney(i.low) : '--',
+    priceLoading: !!printing && source === 'loading', priceNote: compsPriceNote(source, i.bookAsOf, i.now),
     loading: false, state: null, title: '', sub: '', rows: [], count: 0, median: null, mix: '',
   };
+  if (base.priceLoading) { base.market = ''; base.low = ''; }
   if (!printing) {
     base.state = 'pick'; base.title = COMPS_TEXT.pick; base.sub = COMPS_TEXT.pickSub; base.market = '--'; base.low = '--';
     return base;
@@ -23461,6 +23843,7 @@ function createCompsClient(opts) {
 window.CompsCore = {
   createCompsClient: createCompsClient,
   compsModel: compsModel,
+  compsPriceNote: compsPriceNote,
   compsSalesFor: compsSalesFor,
   compsPrintingFor: compsPrintingFor,
   compsReadSale: compsReadSale,
@@ -23564,6 +23947,7 @@ var CompsPane = (function () {
     if (!cur) return null;
     return Core.compsModel({
       printings: cur.card.printings, printing: cur.printing, market: cur.market, low: cur.low, result: cur.result, now: Date.now(),
+      priceSource: cur.priceSource, bookAsOf: cur.bookAsOf,
     });
   }
 
@@ -23582,10 +23966,11 @@ var CompsPane = (function () {
     } else {
       h += '<div class="cp-chip">' + esc(m.printingLabel) + '</div>';
       h += '<div class="cp-stats">' +
-        '<div class="cp-stat"><div class="k">Market</div><div class="v" data-cp="market">' + esc(m.market) + '</div><div class="s">TCGplayer</div></div>' +
-        '<div class="cp-stat"><div class="k">Low</div><div class="v" data-cp="low">' + esc(m.low) + '</div><div class="s">TCGplayer</div></div>' +
+        '<div class="cp-stat"><div class="k">Market</div><div class="v' + (m.priceLoading ? ' cp-wait' : '') + '" data-cp="market">' + esc(m.market) + '</div><div class="s">TCGplayer</div></div>' +
+        '<div class="cp-stat"><div class="k">Low</div><div class="v' + (m.priceLoading ? ' cp-wait' : '') + '" data-cp="low">' + esc(m.low) + '</div><div class="s">TCGplayer</div></div>' +
         '<div class="cp-stat"><div class="k">Median sale</div><div class="v" data-cp="median">' + esc(m.median || '--') + '</div><div class="s">' + (m.count ? 'of ' + m.count + ' sales' : 'Recent') + '</div></div>' +
         '</div>' +
+        '<div class="cp-src cp-src-' + esc(m.priceNote.kind) + '" data-cp-src="' + esc(m.priceNote.kind) + '"><i></i>' + esc(m.priceNote.text) + '</div>' +
         // what the sales were (11/26 critic: a median above Market with every sale LP read wrong without it)
         (m.mix ? '<div class="cp-mix" data-cp="mix">Sales by condition: ' + esc(m.mix) + '</div>' : '');
       h += '<div class="cp-sec"><b>Recent sales</b><span>' + (m.state === 'ok' ? m.count + (m.count === 1 ? ' sale' : ' sales') : '') + '</span></div>';
@@ -23626,6 +24011,32 @@ var CompsPane = (function () {
     });
   }
 
+  /** The Scan tab's live client (the Singles pane's), when it may be asked right now. */
+  function liveScan() {
+    var S = window.IOPScan;
+    if (!S || typeof S.livePrices !== 'function') return null;
+    try { return typeof S.liveOn !== 'function' || S.liveOn() ? S : null; } catch (e) { return null; }
+  }
+  /** Today's market / low for the open card's printing (see the header). Book figures stay as they are until a live one is in. */
+  function askLive() {
+    var S = liveScan();
+    if (!cur || !cur.printing || !cur.productId || !S) { if (cur) cur.priceSource = 'book'; return; }
+    var mine = cur.seq, printing = cur.printing, book = cur.bookPrices;
+    cur.priceSource = 'loading';
+    var done = function (price) {
+      if (!cur || cur.seq !== mine) return;
+      var L = window.SinglesLive;
+      var r = price && L && typeof L.liveOrBook === 'function' ? L.liveOrBook(book, price, printing) : null;
+      if (r && r.source === 'live') { cur.market = cents(r.market); cur.low = cents(r.low); cur.priceSource = 'live'; }
+      else cur.priceSource = 'book';
+      try { draw(); } catch (e) { /* the next draw shows it */ }
+    };
+    var id = cur.productId, asked;
+    try { asked = Promise.resolve(S.livePrices([id])); } catch (e) { asked = Promise.resolve(null); }
+    asked.then(function (map) { done(map && typeof map === 'object' ? map[String(id)] : null); }, function () { done(null); })
+      .catch(function () { /* never an unhandled rejection */ });
+  }
+
   function open(productId, printing, card) {
     if (!Core || !ensureRoot()) return false;
     var c = card && typeof card === 'object' ? card : {};
@@ -23636,11 +24047,14 @@ var CompsPane = (function () {
       productId: Core.compsProductId(productId), printing: picked,
       card: { name: c.name, number: c.number, setName: c.setName, lang: c.lang, printings: printings },
       market: pr.market, low: pr.low, result: null, seq: ++seq, needsVariant: !picked,
+      priceSource: 'book', bookAsOf: typeof c.bookAsOf === 'string' ? c.bookAsOf : null,
+      bookPrices: c.prices && typeof c.prices === 'object' ? c.prices : {},
     };
+    askLive();
     if (picked && (pr.market === null || pr.low === null) && typeof deps.priceOf === 'function' && cur.productId) {
       var mine = cur.seq;
       Promise.resolve().then(function () { return deps.priceOf(cur.productId, picked); }).then(function (p) {
-        if (!cur || cur.seq !== mine || !p) return;
+        if (!cur || cur.seq !== mine || !p || cur.priceSource === 'live') return; // a live figure is never replaced by the book's
         if (cur.market === null) cur.market = cents(p.market);
         if (cur.low === null) cur.low = cents(p.low);
         draw();
@@ -29297,7 +29711,8 @@ var CompsPane = (function () {
     // sourcer accounts an owner turned Singles on for). Prices there are only our public singles sheet. A guard: no pane, nothing.
     try {
       if (window.SearchPane) SearchPane.attach({
-        showPrices: function () { if (!session) return false; var r = roleState(); return r === 'owner' || (r === 'sourcer' && acctSingles()); }
+        showPrices: function () { if (!session) return false; var r = roleState(); return r === 'owner' || (r === 'sourcer' && acctSingles()); },
+        moved: function () { try { savePlace(); } catch (e) { /* the next tab change saves it */ } } // a set / card opened: kept for a reload
       });
     } catch (e) { /* Search shows cards without prices */ }
     // ── /PORTAL: Search pane
@@ -29330,7 +29745,8 @@ var CompsPane = (function () {
     }
     var tabMem = window.TabCache || null;
     var Panes = window.IOPPanes || null; // rates-portal/portal-shell.html; without it the bar still switches the Scanner's own screens
-    var openedHome = false;              // the launch's one jump to Home has happened (Penguin 11/26: the app opens on Home)
+    var openedHome = false;              // the launch's one jump to Home (or back to where he was) has happened (Penguin 11/26)
+    var placeSingles = false;            // a reload is bringing Scan > Singles back: Singles may open before /status answers
     var portalPane = null;               // 'home' | 'search' | 'collections' | 'account' while one is on; null on Scan (or the Sheet)
     function portalOn() { return !!portalPane; } // (hoisted: the camera code above asks it)
     var scanSide = 'slabs';              // the Scan switch's side, for coming back to Scan (this visit; the app opens on Slabs)
@@ -29338,8 +29754,39 @@ var CompsPane = (function () {
       if (!tabMem || !session) return null;
       return tabMem.identityOf(session, typeof atob === 'function' ? function (x) { return atob(x); } : null);
     }
-    /** The memory never brings Singles back by itself any more (the app opens on Slabs): Singles waits for /status like any open. */
-    function tabRemembers() { return false; }
+    /** The memory never brings Singles back by itself on a launch (the app opens on Home): only a reload in the same app session that
+        was on Scan > Singles (placeSingles) lets it open before /status answers; /status saying off still closes it. */
+    function tabRemembers(kind) { return kind === 'singles' && placeSingles; }
+    // ── Where he was, for the app's pull-to-refresh (Penguin, 11/26: pulling down sent him back to Home). The tab, the Scan switch's
+    // side and Search's set / card, for this login, in sessionStorage (TabCache.writePlace): a reload of the same web view keeps it,
+    // closing the app forgets it, so only a fresh launch opens on Home. Ids only, never a token.
+    function safeSessionStorage() { try { return window.sessionStorage || null; } catch (e) { return null; } }
+    function searchPlace() { try { return window.SearchPane && typeof SearchPane.place === 'function' ? SearchPane.place() : null; } catch (e) { return null; } }
+    function savePlace() {
+      if (!tabMem || !openedHome || !tabMem.writePlace) return;
+      var who = tabWho();
+      if (!who) return;
+      var ids = tabsPlan().ids;
+      var tab = tabOn();
+      if (ids.indexOf(tab) < 0) return;
+      var scan = portalPane || sheetOn() ? scanSide : (singlesOn() ? 'singles' : 'slabs');
+      tabMem.writePlace(safeSessionStorage(), who, tab, scan, searchPlace());
+    }
+    /** At the launch's first settled bar: back to where he was (a reload) -> true; or false (a fresh launch, another login). */
+    function restorePlace(ids, who) {
+      var back = tabMem && tabMem.placeFor ? tabMem.placeFor((function () { try { var ss = safeSessionStorage(); return ss ? ss.getItem(tabMem.PLACE_KEY) : null; } catch (e) { return null; } })(), who, ids) : null;
+      if (!back) return false;
+      if (back.search) { try { if (window.SearchPane && typeof SearchPane.restore === 'function') SearchPane.restore(back.search); } catch (e) { /* Search starts on its sets */ } }
+      if (back.scan === 'singles') placeSingles = true;
+      if (back.tab === 'scan') {
+        scanSide = back.scan;
+        if (back.scan === 'singles' && screenAllowed('singles')) SinglesPane.pick('singles', { quiet: true }); // camera off, as a tap opens it
+      } else {
+        enterPortal(back.tab);
+        scanSide = back.scan; // (for coming back to Scan: enterPortal starts it on Slabs)
+      }
+      return true;
+    }
     function acctFlags() { return { singles: acctSingles(), sheet: acctSheet() }; }
     /** Each screen's answer right now: 'yes', 'no', or 'pending' (Singles, for a login that may have it, while /status is still out). */
     function tabStates(role) {
@@ -29386,6 +29833,7 @@ var CompsPane = (function () {
       try { var s = safeLocalStorage(); if (s) s.setItem(KIND_KEY, kind); } catch (e) { /* this visit only */ }
       if (kind !== 'slabs' && kind !== 'singles') return;
       scanSide = kind;
+      if (kind === 'slabs') placeSingles = false;
       try { if (tabMem) tabMem.writeScanMode(safeLocalStorage(), kind); } catch (e) { /* this visit only */ }
     }
     // What the bar holds: its ids and the tab on show ('home,search,scan,collections,account|scan'), null while it was never drawn. A
@@ -29495,18 +29943,22 @@ var CompsPane = (function () {
       // The memory: this login's bar and the Scan switch's side (ids only, never a token); dropped when nobody is signed in.
       if (tabMem) {
         var mem = safeLocalStorage();
-        if (!session) tabMem.clearCache(mem);
+        if (!session) { tabMem.clearCache(mem); if (tabMem.clearPlace) tabMem.clearPlace(safeSessionStorage()); }
         else if (plan.settled && plan.who && (plan.role === 'owner' || plan.role === 'sourcer')) tabMem.writeCache(mem, plan.who, plan.role, ids, scanSide);
       }
-      // The app opens on Home (Penguin, 11/26), once per launch, the first time this login's bar is known (never after a tap)
-      if (!openedHome && plan.settled && ids.indexOf('home') >= 0 && !window.IOP_TEST_START_SCAN) { // (tests of Scan itself start there)
+      // The app opens on Home (Penguin, 11/26), once per launch, the first time this login's bar is known (never after a tap); a
+      // reload in the same app session (the app's pull-to-refresh) comes back to where he was instead, for the same login only
+      if (!openedHome && plan.settled && ids.indexOf('home') >= 0) {
         openedHome = true;
-        if (!portalPane && !tabTapping && !sheetOn() && !singlesOn()) enterPortal('home');
+        if (!window.IOP_TEST_START_SCAN && !portalPane && !tabTapping && !sheetOn() && !singlesOn()) { // (tests of Scan itself start there)
+          if (!restorePlace(ids, plan.who)) enterPortal('home');
+        }
       }
       renderScanSwitch();
       var cur = tabOn();
       if (ids.indexOf(cur) < 0) cur = ids.indexOf('scan') >= 0 ? 'scan' : (ids.length ? ids[0] : 'scan'); // never a tab that is not on the bar
       try { if (Panes && Panes._sync) Panes._sync(portalPane, portalContext()); } catch (e) { /* the panes keep what they show */ }
+      savePlace();
       if (!ids.length && tabsDrawn === null) return; // never shown: nothing to take away
       // the header's word under the logo says which screen this is: "Sheet" on the Sheet (it is not pricing anything)
       try {
