@@ -3701,6 +3701,9 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
      that (starting, off, refused) the box keeps its own opaque colour and covers, so it never flashes see-through or black. */
   html.iop-native-cam,html.iop-native-cam body,html.iop-native-cam :has(#sc-sg-cam),html.iop-native-cam #tab-scanner .sc-sg-cam{background:transparent !important;background-image:none !important;}
   html.iop-native-cam #tab-scanner .sc-sg-video{display:none !important;}
+  /* the barcode box (Josh, 11/28: "hard to tell if it can see the barcode"): the old Slabs camera's teal outline round every code the page's
+     camera sees, drawn over the one screen's camera in Auto and Slab. Never over the app's own camera (1.14 draws its own there). */
+  html.iop-native-cam #tab-scanner .sc-sg-marks{display:none !important;}
   #tab-scanner .sc-sg-cam-wait{
     position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;pointer-events:none;
     color:color-mix(in srgb, var(--sc-danger-ink) 78%, transparent);font-size:var(--sc-fs-label);font-weight:700;line-height:1.35;
@@ -4073,6 +4076,7 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
     <video class="sc-sg-video" id="sc-sg-video" autoplay playsinline muted hidden></video>
     <div class="sc-sg-cam-wait" id="sc-sg-cam-wait" role="status" hidden><span class="sc-sg-spin" aria-hidden="true"></span><span>Starting the camera…</span></div>
     <div class="sc-sg-guide" id="sc-sg-guide" aria-hidden="true"></div>
+    <svg class="sc-vf-marks sc-sg-marks" id="sc-sg-marks" aria-hidden="true"></svg>
     <div class="sc-sg-cam-off" id="sc-sg-cam-off"><p class="sc-sg-cam-off-text" id="sc-sg-cam-text">Camera off</p></div>
     <button type="button" class="sc-vf-round" id="sc-sg-type-open" aria-label="Type a card" title="Type a card" aria-controls="sc-sg-find" aria-expanded="false"></button>
     <button type="button" class="sc-vf-round" id="sc-sg-cam-on" aria-label="Turn camera on" title="Turn camera on"></button>
@@ -26067,6 +26071,7 @@ var CompsPane = (function () {
       vf: document.getElementById('sc-vf'),
       video: document.getElementById('sc-video'),
       marks: document.getElementById('sc-marks'),
+      sgMarks: document.getElementById('sc-sg-marks'),
       vfStatus: document.getElementById('sc-vf-status'),
       shutter: document.getElementById('sc-shutter'),
       torch: document.getElementById('sc-torch'),
@@ -30845,6 +30850,7 @@ var CompsPane = (function () {
       surfaceSoon(); // the app's camera: the tray up / a sheet over it is 'watched: false'
       // one screen, Raw: no barcode is read at all, so the camera is only looked at slowly (the photo is taken from the same stream on a tap)
       if (cam) cam.setWatchGap(oneCamHere() && !SinglesPane.readsBarcodes() ? AutoScan.OFFSCREEN_GAP_MS : AutoScan.watchGapFor(liveScan(), camOnScreen));
+      if (cam && !marksWanted()) clearMarks(); // a flip to Raw takes the barcode boxes off at once
     }
     /** Starts watching whether the camera view is on screen; stopWatchingOnScreen() ends it (the camera went off). */
     function watchOnScreen() {
@@ -31007,15 +31013,31 @@ var CompsPane = (function () {
       dom.zoom.value = String(cam.getZoom());
     }
 
+    /** The teal box round every barcode the camera sees (seen within ScanCamera.SEEN_MS, so a code that blinks out for a frame keeps its box).
+        The old flow: on the old camera box. The one screen (Josh, 11/28: "hard to tell if it can see the barcode"): the same box, the same
+        look, on the one camera's box in Auto and Slab; none in Raw (no barcode is read there) and none in app 1.14, whose own camera draws it. */
+    var marksDrawn = { old: '', one: '' };
+    function marksWanted() { return !!cam && (!oneCamHere() || (singlesOn() && SinglesPane.readsBarcodes() && !nativeSurfaceHere())); }
+    function putMarks(which, html, w, h) {
+      var svg = which === 'one' ? dom.sgMarks : dom.marks;
+      if (!svg) return;
+      if (!marksDrawn) marksDrawn = { old: '', one: '' }; // safe before this part of the page has run
+      var key = w + 'x' + h + '|' + html;
+      if (marksDrawn[which] === key) return; // the same boxes as last frame: nothing to redraw
+      marksDrawn[which] = key;
+      if (w && h) svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+      svg.innerHTML = html;
+    }
+    function clearMarks() { putMarks('old', '', 0, 0); putMarks('one', '', 0, 0); }
     function drawMarks(seenList) {
-      if (oneCamHere()) return; // the one screen draws no outlines (yet): the old camera box they belong to is not on show
+      if (!marksWanted()) { clearMarks(); return; }
+      var one = oneCamHere();
       var m = cam.mapping();
-      var b = dom.vf.getBoundingClientRect();
-      dom.marks.setAttribute('viewBox', '0 0 ' + b.width + ' ' + b.height);
-      dom.marks.innerHTML = (seenList || []).map(function (s) {
+      var b = camBoxEl().getBoundingClientRect();
+      putMarks(one ? 'one' : 'old', (seenList || []).map(function (s) {
         var pts = cam.onScreen(s, m);
         return '<polygon class="sc-mark" points="' + pts.map(function (p) { return p.x + ',' + p.y; }).join(' ') + '"></polygon>';
-      }).join('');
+      }).join(''), b.width, b.height);
     }
 
     function closeCamera() {
@@ -31030,6 +31052,7 @@ var CompsPane = (function () {
       dom.aim.hidden = true;
       dom.flash.hidden = true;
       dom.vf.classList.remove('sc-auto');
+      clearMarks();
       auto.reset();
       if (camBoxObserver) { camBoxObserver.disconnect(); camBoxObserver = null; }
       stopWatchingOnScreen();
