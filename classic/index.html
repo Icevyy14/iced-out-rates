@@ -1,0 +1,3164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex, nofollow">
+<meta name="rates-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/slab-rates">
+<meta name="ledger-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/slab-ledger">
+<meta name="triumph-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/triumph-sourcer">
+<meta name="sourcer-api" content="https://ppfhgrurquvlyabtymbq.supabase.co/functions/v1/sourcer-accounts">
+<meta name="supabase-url" content="https://ppfhgrurquvlyabtymbq.supabase.co">
+<meta name="supabase-anon-key" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwZmhncnVycXV2bHlhYnR5bWJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MjYyNjcsImV4cCI6MjA5MTEwMjI2N30.ZcEPKRHI3kb3aA6iXmf1Mo42Dyqj9fx1I9ZMT2xk0fg">
+<title>Iced Out Penguin · Pricing Rules</title>
+<meta name="theme-color" content="#040308">
+<!-- Our Discord logo (the penguin), copied next to every page by build-portal.js (vendor/brand/). -->
+<link rel="icon" type="image/png" href="vendor/brand/penguin-icon-180.png">
+<link rel="apple-touch-icon" href="vendor/brand/penguin-icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/* Two quick taps never zoom the page (owner, 11/16: deleting certs fast on the iPhone zoomed in). Safari and Chrome
+   treat a fast second tap as "double-tap to zoom"; manipulation keeps taps, scrolling and pinch-zoom and drops only
+   that, for every element (an element's touch-action is limited by its ancestors'). The camera's own touch-action:none
+   areas stay as they are. */
+html{touch-action:manipulation}
+/* Opened from the home screen (the app page's head adds the class): no browser bar, so keep clear of the notch and the rounded corners. The black status bar sits above the page
+   (the page starts below it), so the top inset is 0 there; it is here in case a phone draws the page under it. Bottom: the dock pads itself. */
+html.iop-standalone body{padding-top:env(safe-area-inset-top);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);}
+/* ═══════════════════════════════════════════════════════════════════════════
+   Iced Out Penguin rates — skinned to match the owner app's 💰 Pricing tab.
+   Theme: Synthwave, re-coloured blue / black / red (owner's call, 2026-11-04)
+   — same techniques (gradient-clipped numbers, glow, diagonal card
+   gradients) as icevyy-tcg.html's Synthwave, different palette. Dark only.
+   Everything between the two "PORTED" banners started lifted verbatim from
+   icevyy-tcg.html; selectors still match, colors now diverge on purpose.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root{
+  /* Synthwave — blue / black / red */
+  --bg:#040308;
+  --s1:#0a0912;
+  --s2:#100e1c;
+  --s3:#171428;
+  --border:#2a2447;
+  --buy:#3fa9ff;
+  --sell:#ff2a55;
+  --text:#eef3ff;
+  --dim:#8d97c4;
+  --muted:#5a6191;
+  --red:#ff2a55;
+  --yellow:#ff4d6d;
+  --purple:#7c5cff;
+
+  --font-ui:'Rajdhani','Segoe UI',system-ui,-apple-system,sans-serif;
+  --font-display:'Orbitron','Rajdhani','Segoe UI',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
+
+  /* Radius scale (DESIGN.md §3) — deliberately varied, NOT one value everywhere. */
+  --r-slab: 3px;    /* cert chips, stat cells — crisp graded-slab feel */
+  --r: 8px;         /* buttons, inputs, small cards */
+  --r-lg: 14px;     /* large panels */
+  --r-pill: 999px;  /* status pills / segmented controls only */
+
+  /* Micro-label ink, one step dimmer than --dim; derived so it tracks the theme. */
+  --faint: color-mix(in srgb, var(--dim) 62%, var(--bg));
+  --hairline: color-mix(in srgb, var(--border) 70%, var(--bg));
+}
+
+/* ── PORTED from icevyy-tcg.html — same selectors, same values ──────────── */
+
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-ui);min-height:100vh;overflow-x:hidden;}
+::-webkit-scrollbar{width:6px;} ::-webkit-scrollbar-track{background:var(--s1);} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* page glow */
+html::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(120% 60% at 12% -10%, rgba(63,169,255,.18), transparent 62%),
+    radial-gradient(110% 70% at 100% 112%, rgba(255,42,85,.16), transparent 60%);
+  animation:bgDrift 12s ease-in-out infinite alternate;
+}
+html::after{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:repeating-linear-gradient(0deg, transparent 0 28px, rgba(63,169,255,.05) 28px 29px);
+  -webkit-mask-image:linear-gradient(180deg, transparent 0 60%, #000 100%);
+  mask-image:linear-gradient(180deg, transparent 0 60%, #000 100%);
+}
+@keyframes bgDrift{from{background-position:0 0, 0 0;}to{background-position:-3% -2%, 3% 2%;}}
+
+/* NAV */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--s1);position:sticky;top:0;z-index:100;backdrop-filter:blur(10px);}
+.logo{font-size:22px;font-weight:800;letter-spacing:-0.5px;}
+.logo span{color:var(--sell);}
+.logo em{font-style:normal;}
+
+/* WTB rules — grouped tiers, styled to look like a printed price chart */
+.wtb-group{background:linear-gradient(165deg, var(--s2), var(--s1));border:1px solid color-mix(in srgb, var(--buy) 28%, var(--border));border-radius:14px;padding:18px 22px;margin-bottom:14px;position:relative;box-shadow:inset 0 1px 0 rgba(63,169,255,.10);}
+.wtb-group-header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:10px;}
+.wtb-group-header h3{font-size:15px;font-weight:900;color:var(--text);letter-spacing:1px;display:flex;align-items:center;gap:8px;}
+.wtb-group-header h3::before{content:'';width:4px;height:18px;background:var(--yellow);border-radius:2px;}
+.wtb-group-header .right{font-size:10px;color:color-mix(in srgb, var(--buy) 45%, var(--dim));font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;}
+.wtb-group .desc{font-size:12px;color:var(--dim);margin-bottom:10px;}
+.wtb-group .desc input{background:transparent;border:none;color:var(--dim);width:100%;font-size:12px;outline:none;}
+.wtb-tier{display:grid;grid-template-columns:170px 1fr 50px 110px 30px;gap:14px;align-items:center;padding:11px 6px;border-bottom:1px solid var(--border);font-size:14px;font-weight:600;color:var(--text);}
+.wtb-tier:last-child{border-bottom:none;}
+.wtb-tier .range input{background:transparent;border:none;color:var(--text);font-weight:600;font-size:14px;width:65px;outline:none;text-align:left;}
+.wtb-tier .range .dash{color:var(--dim);}
+.wtb-tier .meta{font-size:11px;color:var(--dim);display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.wtb-tier .meta select{background:transparent;border:1px solid transparent;color:var(--dim);font-size:11px;padding:2px 4px;border-radius:4px;outline:none;}
+.wtb-tier .meta select:focus,.wtb-tier .meta select:hover{border-color:var(--border);background:var(--s1);}
+.wtb-tier .pct{font-size:24px;font-weight:900;color:var(--yellow);text-align:right;font-family:var(--font-ui);letter-spacing:-0.5px;}
+.wtb-tier .pct input{background:transparent;border:none;background-image:linear-gradient(90deg, var(--buy), var(--red));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;caret-color:var(--buy);filter:drop-shadow(0 0 6px rgba(255,42,85,.4));font-size:22px;font-weight:900;width:65px;text-align:right;outline:none;font-family:var(--font-ui);}
+.wtb-tier .pct input:focus{background-image:none;-webkit-text-fill-color:var(--buy);color:var(--buy);filter:none;}
+.wtb-tier .pct .pct-sign{background-image:linear-gradient(90deg, var(--buy), var(--red));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;filter:drop-shadow(0 0 4px rgba(255,42,85,.35));}
+.wtb-tier .label-input{background:transparent;border:none;color:var(--dim);font-size:11px;width:100%;outline:none;font-style:italic;}
+.wtb-tier .del{background:transparent;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:4px;opacity:0.4;transition:opacity .15s,text-shadow .15s;}
+.wtb-tier:hover .del{opacity:1;}
+.wtb-tier .del:hover{text-shadow:0 0 8px color-mix(in srgb, var(--red) 70%, transparent);}
+.wtb-tier .sort{background:transparent;border:none;color:var(--dim);font-size:10px;width:40px;text-align:center;font-family:var(--font-mono);outline:none;}
+.wtb-tier .sort:focus{border:1px solid var(--border);border-radius:3px;}
+.wtb-add-tier{display:flex;align-items:center;gap:6px;background:transparent;border:1.5px dashed color-mix(in srgb, var(--buy) 45%, var(--border));color:var(--dim);cursor:pointer;font-size:12px;padding:9px 14px;border-radius:9px;width:100%;margin-top:10px;font-family:var(--font-ui);font-weight:700;transition:all 0.15s;}
+.wtb-add-tier:hover{border-color:var(--red);color:var(--red);}
+
+/* HELPER PILL */
+.helper-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid var(--border);background:var(--s2);color:var(--dim);font-family:var(--font-mono);letter-spacing:0.3px;}
+.helper-pill.up{border-color:var(--buy);color:var(--buy);background:var(--s2);}
+.helper-pill.down{border-color:var(--red);color:var(--red);background:#1a0808;}
+
+/* LAYOUT */
+.main{padding:24px 28px;max-width:1400px;margin:0 auto;}
+.tab{display:none;animation:fadeUp 0.25s ease;}
+.tab.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* CARDS */
+.card{background:linear-gradient(165deg, var(--s2), var(--s1));border:1px solid color-mix(in srgb, var(--buy) 24%, var(--border));border-radius:16px;padding:20px;box-shadow:inset 0 1px 0 rgba(63,169,255,.08);}
+
+/* BUTTONS */
+.btn{padding:11px 22px;border-radius:10px;border:none;cursor:pointer;font-family:var(--font-ui);font-weight:700;font-size:13px;transition:all 0.15s;white-space:nowrap;}
+.btn-buy{background:var(--buy);color:var(--bg);box-shadow:0 0 14px rgba(63,169,255,.4);}
+.btn-buy:hover{opacity:0.85;transform:translateY(-1px);}
+.btn-sell{background:var(--sell);color:#fff;}
+.btn-sell:hover{opacity:0.85;transform:translateY(-1px);}
+.btn-ghost{background:transparent;border:1.5px solid color-mix(in srgb, var(--buy) 35%, var(--border));color:var(--dim);}
+.btn-ghost:hover{border-color:var(--dim);color:var(--text);}
+.btn-danger{background:transparent;border:1.5px solid var(--red);color:var(--red);}
+.btn-danger:hover{background:var(--red);color:#fff;}
+.btn-sm{padding:6px 14px;font-size:12px;}
+
+/* FORM */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.form-group{margin-bottom:14px;}
+.ovl-wrap{display:flex;align-items:center;gap:8px;}
+.ovl-wrap .form-input{flex:0 1 110px;min-width:0;}
+.ovl-suffix{font-size:13px;color:var(--dim);}
+.form-label{font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);display:block;margin-bottom:7px;}
+.form-input,.form-select,.form-textarea{width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:var(--font-ui);font-size:13px;outline:none;transition:border-color 0.2s;}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--buy);}
+.form-input::placeholder{color:var(--muted);}
+.form-textarea{resize:vertical;min-height:70px;}
+.form-select{cursor:pointer;}
+
+/* FILTER CHIPS / language filter — global toggle + per-rule override */
+.filter-group{display:flex;background:var(--s2);border-radius:10px;padding:3px;gap:2px;}
+.lang-toggle{display:inline-flex;gap:5px}
+.lang-chip{padding:4px 10px;border-radius:7px;border:1px solid var(--border);background:var(--s2);color:var(--dim);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-ui);letter-spacing:.4px;transition:all .12s}
+.lang-chip:hover{color:var(--text)}
+.lang-chip.on{background:var(--buy);color:var(--bg);border-color:var(--buy)}
+.rule-lang{display:inline-flex;gap:3px;align-items:center;margin-left:2px;vertical-align:middle}
+.rule-lang .rl{padding:2px 6px;border-radius:5px;font-size:10px;font-weight:800;cursor:pointer;font-family:var(--font-mono);border:1px solid var(--border);color:var(--dim);background:transparent;letter-spacing:.5px}
+.rule-lang .rl.on{background:var(--buy);color:var(--bg);border-color:var(--buy)}
+.rule-lang.inherit .rl{opacity:.65}
+.rule-lang.inherit .rl.on{background:transparent;color:var(--buy);border-color:var(--buy);border-style:dashed}
+.rule-lang .rl-reset{cursor:pointer;color:var(--dim);font-size:11px;padding:0 2px}
+.rule-lang .rl-reset:hover{color:var(--text)}
+
+/* ── END PORTED ─────────────────────────────────────────────────────────── */
+
+
+/* ── PORTED from the owner app's nav — same selectors, same values ──────── */
+.nav-tabs{display:flex;flex-wrap:wrap;gap:4px;background:var(--bg);padding:4px;border-radius:12px}
+.nav-tab{padding:8px 20px;border:none;border-radius:9px;cursor:pointer;font-family:var(--font-ui);font-size:13px;font-weight:700;transition:all .2s;background:transparent;color:var(--dim)}
+.nav-tab:hover{color:var(--red)}
+.nav-tab.active{background:var(--buy);color:var(--bg);box-shadow:0 0 18px rgba(63,169,255,.45)}
+.nav-tab.active:hover{color:var(--bg)}
+/* ── END PORTED ─────────────────────────────────────────────────────────── */
+
+/* ── PORTED from ledger-portal/page.html — same selectors, same values, now the Consignors tab ── */
+.wtb-table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--font-ui);table-layout:fixed;}
+.wtb-table td, .wtb-table th{overflow:hidden;}
+.wtb-table td.wtb-name{white-space:nowrap;text-overflow:ellipsis;}
+.wtb-table th{text-align:left;padding:9px 10px;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:color-mix(in srgb, var(--buy) 40%, var(--dim));}
+.wtb-table td{padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px;}
+.wtb-table td.cert{font-family:var(--font-mono);font-weight:700;}
+.wtb-table td.num{text-align:right;font-family:var(--font-mono);font-weight:700;}
+.wtb-table .bucket{display:inline-block;padding:3px 9px;border-radius:6px;font-weight:800;font-size:11px;color:#000;}
+.wtb-totals{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;}
+.wtb-total-card{background:linear-gradient(165deg, var(--s2), var(--s1));border:1px solid color-mix(in srgb, var(--buy) 24%, var(--border));border-radius:12px;padding:16px 18px;text-align:center;box-shadow:inset 0 1px 0 rgba(63,169,255,.08);}
+.wtb-total-card .lbl{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:6px;}
+.wtb-total-card .val{font-size:22px;font-weight:900;text-shadow:0 0 12px color-mix(in srgb, var(--buy) 40%, transparent);}
+.filter-chip{padding:6px 12px;border-radius:8px;border:none;background:transparent;color:var(--dim);font-family:var(--font-ui);font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;}
+.filter-chip:hover{color:var(--text);}
+.filter-chip.active{background:var(--buy);color:var(--bg);}
+/* ── END PORTED ─────────────────────────────────────────────────────────── */
+
+/* ── CONSIGNORS TAB — page additions on top of the ported table/pill rules ── */
+.stat-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:18px;}
+.stat-strip .wtb-total-card.owed{border-color:var(--red);box-shadow:0 0 16px rgba(255,42,85,.3), inset 0 1px 0 rgba(63,169,255,.08);}
+.stat-strip .wtb-total-card.owed .val{color:var(--red);text-shadow:0 0 12px color-mix(in srgb, var(--red) 55%, transparent);}
+.partner-strip{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
+.partner-card{background:linear-gradient(165deg, var(--s2), var(--s1));border:1px solid var(--border);border-top:3px solid var(--border);border-radius:14px;padding:16px 18px;box-shadow:inset 0 1px 0 rgba(63,169,255,.08);}
+.partner-card.p-josh{border-top-color:var(--buy);box-shadow:0 -2px 16px rgba(63,169,255,.18), inset 0 1px 0 rgba(63,169,255,.08);}
+.partner-card.p-penguin{border-top-color:var(--sell);box-shadow:0 -2px 16px rgba(255,42,85,.18), inset 0 1px 0 rgba(63,169,255,.08);}
+.partner-card h4{font-size:14px;font-weight:800;margin-bottom:12px;}
+.partner-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.pg-cell{text-align:center;}
+.pg-lbl{font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-bottom:4px;}
+.pg-val{font-size:16px;font-weight:800;}
+.unknown-warning{font-size:11px;color:var(--yellow);margin:0 4px 14px;}
+.table-wrap{overflow-x:auto;}
+.wtb-table.owed-tbl{min-width:860px;}
+.wtb-table.sellers-tbl{min-width:980px;}
+.wtb-table.master-tbl{min-width:1120px;}
+.status-pill{display:inline-block;padding:3px 10px;border-radius:var(--r-pill);font-size:10px;font-weight:800;font-family:var(--font-mono);letter-spacing:.5px;text-transform:uppercase;border:1px solid var(--border);color:var(--dim);white-space:nowrap;background:transparent;}
+.status-pill.st-quoted{border-color:var(--border);color:var(--dim);}
+.status-pill.st-accepted{border-color:var(--buy);color:var(--buy);}
+.status-pill.st-shipped{background:color-mix(in srgb, #16476A 55%, transparent);border-color:#3f7fa8;color:#b9dcf2;}
+/* st-received is the stored status; staff read it as "Arrived". It is the one state waiting on a
+   person, so it is the only filled pill before Locked and the only one with a mark (a box), in
+   teal so it cannot be read as Paid's green. Dark text on #3B9797 is 5.9:1. */
+.status-pill.st-received{--i-arrived:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l8 4.5v9L12 21l-8-4.5v-9z'/%3E%3Cpath d='M4 7.5l8 4.5 8-4.5M12 12v9'/%3E%3C/svg%3E");display:inline-flex;align-items:center;gap:5px;vertical-align:middle;padding-left:8px;background:#3B9797;border-color:#3B9797;color:var(--bg);}
+.status-pill.st-received::before{content:"";flex:none;width:11px;height:11px;background:currentColor;-webkit-mask:var(--i-arrived) center / contain no-repeat;mask:var(--i-arrived) center / contain no-repeat;}
+.status-pill.st-locked{background:color-mix(in srgb, var(--purple) 45%, transparent);border-color:var(--purple);color:var(--text);}
+.status-pill.st-paid{background:#2fd38a;border-color:#2fd38a;color:var(--bg);}
+.status-pill.st-cancelled{background:color-mix(in srgb, var(--red) 18%, transparent);border-color:var(--red);color:var(--red);}
+.status-pill.st-unknown{border-color:var(--border);color:var(--muted);}
+.src-pill{display:inline-block;padding:3px 9px;border-radius:var(--r-pill);font-size:10px;font-weight:800;font-family:var(--font-mono);letter-spacing:.5px;border:1px solid var(--border);white-space:nowrap;background:transparent;}
+.src-pill.src-josh{border-color:var(--buy);color:var(--buy);background:color-mix(in srgb, var(--buy) 12%, transparent);}
+.src-pill.src-penguin{border-color:var(--sell);color:var(--sell);background:color-mix(in srgb, var(--sell) 12%, transparent);}
+.src-pill.src-unknown{border-color:var(--border);color:var(--muted);}
+.wtb-table th.sortable{cursor:pointer;user-select:none;}
+.wtb-table th.sortable:hover{color:var(--text);}
+.wtb-table th.sortable:focus-visible{outline:2px solid var(--purple);outline-offset:-2px;}
+.wtb-table th .arrow{margin-left:4px;color:var(--buy);}
+.exp-toggle{background:transparent;border:1px solid var(--border);color:var(--dim);border-radius:6px;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;margin-right:8px;padding:0;vertical-align:middle;}
+.exp-toggle:hover{border-color:var(--buy);color:var(--buy);}
+.owed-row{cursor:pointer;}
+.owed-row:hover{background:var(--s2);}
+.owed-row .handle{color:var(--dim);font-size:11px;display:inline-block;margin-left:6px;}
+.owed-detail td{background:var(--s2);padding:14px;}
+.cons-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 0;border-bottom:1px solid var(--border);font-size:12px;}
+.cons-row:last-child{border-bottom:none;}
+.cons-row .cr-pay{font-family:var(--font-mono);font-weight:700;}
+.cr-links a{color:var(--buy);text-decoration:none;font-size:11px;margin-right:10px;}
+.cr-links a:hover{text-decoration:underline;}
+.cons-actions{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;}
+.cons-actions .btn{padding:4px 10px;font-size:11px;}
+.recent-list{display:flex;flex-direction:column;margin-bottom:18px;}
+.recent-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 4px;border-bottom:1px solid var(--border);font-size:12px;}
+.recent-row:last-child{border-bottom:none;}
+.rr-ticket{font-weight:700;min-width:140px;}
+.rr-seller{color:var(--dim);min-width:110px;}
+.rr-pay{font-family:var(--font-mono);font-weight:700;margin-left:auto;}
+.rr-links a{color:var(--buy);text-decoration:none;font-size:11px;margin-left:8px;}
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+.toolbar .form-input{max-width:240px;}
+.count-line{font-size:11px;color:var(--dim);margin:4px 4px 10px;font-family:var(--font-mono);}
+.loading-row td, .empty-row td{color:var(--dim);text-align:center;padding:18px;font-style:italic;}
+.wtb-table tbody tr:not(.loading-row):not(.empty-row):hover{background:linear-gradient(90deg, color-mix(in srgb, var(--buy) 10%, transparent), transparent);}
+
+/* ── SINGLES TAB — reuses .tgl (the slab tab's vintage/special toggle) for era/kind/printing chips ── */
+.chipgroup{display:inline-flex;gap:3px;align-items:center;flex-wrap:wrap;}
+
+/* ── SINGLES TAB — per-row exclusions (NOT-taking conditions) ───────────── */
+.wtb-tier .wtb-excl{grid-column:1 / -1;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);}
+.excl-toggle{background:transparent;border:1px solid var(--border);color:var(--dim);border-radius:6px;padding:4px 10px;font-size:11px;font-family:var(--font-mono);letter-spacing:.5px;cursor:pointer;}
+.excl-toggle:hover{border-color:var(--red);color:var(--red);}
+.excl-list{margin-top:10px;display:flex;flex-direction:column;gap:10px;}
+.excl-item{position:relative;background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:8px;padding:10px 34px 10px 12px;}
+.excl-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.excl-field{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.excl-field.wide{grid-column:1 / -1;}
+.excl-field label{font-family:var(--font-mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);}
+.excl-input{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-family:var(--font-ui);font-size:12px;outline:none;width:100%;}
+.excl-input:focus{border-color:var(--buy);}
+.excl-textarea{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-family:var(--font-ui);font-size:12px;outline:none;resize:vertical;min-height:46px;width:100%;line-height:1.45;white-space:pre-wrap;}
+.excl-textarea:focus{border-color:var(--buy);}
+.excl-item .del{position:absolute;top:8px;right:8px;background:transparent;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:4px;opacity:.55;}
+.excl-item .del:hover{opacity:1;}
+.excl-empty{font-size:11px;color:var(--muted);font-style:italic;padding:4px 0 2px;}
+.excl-add{margin-top:2px;}
+
+/* ── SINGLES TAB — the exclude-group LIBRARY (sheet-level, named + toggleable) ───────── */
+.xg-list{display:flex;flex-direction:column;gap:10px;margin-bottom:10px;}
+.xg-item{position:relative;background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--border);border-radius:8px;padding:10px 34px 10px 12px;}
+.xg-item.on{border-left-color:var(--red);}
+.xg-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.xg-head .check{flex:none;}
+.xg-name{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-family:var(--font-ui);font-size:13px;font-weight:700;outline:none;flex:1 1 160px;min-width:120px;}
+.xg-name:focus{border-color:var(--buy);}
+.xg-id{font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:.5px;}
+.xg-toggle{background:transparent;border:none;color:var(--dim);font-size:11px;cursor:pointer;text-align:left;flex:1 1 100%;padding:2px 0 0;}
+.xg-toggle:hover{color:var(--text);}
+.xg-body{margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);}
+.xg-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.xg-item .del{position:absolute;top:8px;right:8px;background:transparent;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:4px;opacity:.55;}
+.xg-item .del:hover{opacity:1;}
+.xg-empty{text-align:center;color:var(--muted);font-size:12px;padding:10px 0;}
+.xg-add{margin-top:2px;}
+.xg-item.bad{box-shadow:inset 3px 0 0 var(--red);background:color-mix(in srgb, var(--red) 8%, transparent);}
+
+/* ── SINGLES TAB — banned cards (flat, always-applied, no toggle) ───────────────────── */
+.banned-box textarea{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--font-mono);font-size:12px;outline:none;resize:vertical;min-height:70px;width:100%;line-height:1.5;}
+.banned-box textarea:focus{border-color:var(--buy);}
+.banned-count{font-size:11px;color:var(--dim);margin-top:6px;font-family:var(--font-mono);}
+
+/* ── PAGE ADDITIONS — only what this standalone editor needs on top ──────── */
+
+/* keep everything above the html::before glow */
+body>*{position:relative;z-index:1;}
+
+/* the app's own comment calls flex-wrap on the nav a bug fix, not styling */
+.nav{flex-wrap:wrap;gap:12px 16px;}
+.logo{font-family:var(--font-display);font-size:17px;background:linear-gradient(90deg, var(--buy), var(--red));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;filter:drop-shadow(0 0 10px rgba(255,42,85,.35));display:inline-block;}
+.logo-sub{font-size:11px;color:var(--dim);margin-top:3px;}
+.nav-left{min-width:0;}
+.nav-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
+.saved{font-size:11px;color:var(--dim);font-family:var(--font-mono);}
+.msg{font-size:11px;color:var(--dim);max-width:300px;}
+.msg.ok{color:var(--buy);}
+.msg.err{color:var(--red);}
+.btn-save{background:var(--buy);color:var(--bg);box-shadow:0 0 14px rgba(63,169,255,.4);}
+.btn:disabled{opacity:.5;cursor:default;transform:none;}
+.btn:disabled:hover{opacity:.5;transform:none;}
+
+/* section header, matching the app's "⚙️ Pricing Rules" block */
+.sec-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;padding:0 4px;}
+.sec-title{font-size:16px;font-weight:800;}
+.sec-sub{font-size:11px;color:var(--dim);}
+.dirty-hint{font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--yellow);white-space:nowrap;padding-top:4px;}
+code{font-family:var(--font-mono);font-size:.92em;}
+
+/* global buy-language row */
+#wtb-buylang,#sg-buylang{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:2px 4px 14px;}
+/* the Singles tab's Buy languages toggle: a choice held back (Japanese pricing not live yet) shows, greyed, and can't be picked */
+.lang-chip:disabled{opacity:.45;cursor:not-allowed;}
+.lang-chip:disabled:hover{color:var(--dim);}
+/* the Japanese % box while only English is bought: still editable (set it ahead of time), greyed */
+.sg-jp-idle .form-input{opacity:.6;}
+.sg-jp-hint{font-size:11px;color:var(--dim);margin-top:4px;}
+.buylang-label{font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);}
+.buylang-hint{font-size:11px;color:var(--dim);}
+
+/* VINTAGE / SPECIAL toggles — same chip treatment as .rule-lang .rl */
+.wtb-tier .tgl{padding:2px 6px;border-radius:5px;font-size:10px;font-weight:800;cursor:pointer;font-family:var(--font-mono);border:1px solid var(--border);color:var(--dim);background:transparent;letter-spacing:.5px;}
+.wtb-tier .tgl:hover{color:var(--text);}
+.wtb-tier .tgl.on{background:var(--red);color:var(--bg);border-color:var(--red);}
+
+/* a row the server or the validator named in an error */
+.wtb-tier.bad{box-shadow:inset 3px 0 0 var(--red);background:color-mix(in srgb, var(--red) 8%, transparent);}
+.wtb-tier .del:focus-visible{opacity:1;}
+.wtb-tier .meta .sep{color:var(--muted);}
+
+.new-group-row{display:flex;gap:8px;justify-content:center;margin-top:6px;margin-bottom:18px;}
+.btn.new-group{background:var(--buy);color:var(--bg);}
+.empty-rules{text-align:center;color:var(--muted);font-size:13px;margin-bottom:12px;}
+
+/* sheet-settings card */
+.card-head{margin-bottom:14px;}
+.card-title{font-size:16px;font-weight:800;}
+.card-sub{font-size:11px;color:var(--dim);}
+.form-group.wide{grid-column:1 / -1;}
+.form-group:last-child{margin-bottom:0;}
+.pause-row{padding:12px 14px;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;margin-bottom:14px;}
+.check{display:inline-flex;align-items:center;gap:9px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;}
+.check input{width:17px;height:17px;accent-color:var(--buy);cursor:pointer;flex:none;}
+
+/* errors panel */
+.errors-card{border-color:var(--red);margin-top:16px;}
+.errors-card .card-title{color:var(--red);}
+.errors-card ul{margin:10px 0 0;padding-left:18px;font-size:12px;line-height:1.55;}
+.errors-card li{margin-bottom:4px;}
+
+/* edit-key lock card */
+#lock-card{margin-bottom:18px;border-color:var(--red);box-shadow:0 0 22px rgba(255,42,85,.3), inset 0 1px 0 rgba(63,169,255,.08);}
+.lock-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;}
+.lock-row .form-input{max-width:260px;}
+.lock-hint{font-size:11px;color:var(--dim);margin-top:10px;}
+.lock-err{font-size:12px;color:var(--red);margin-top:8px;}
+.change-key{font-size:11px;color:var(--dim);text-decoration:underline;cursor:pointer;}
+.change-key:hover{color:var(--text);}
+.editor-fieldset{display:block;border:0;margin:0;padding:0;min-width:0;}
+/* A class rule that sets `display` outbeats the browser's own `[hidden]{display:none}`, so a
+   fieldset carrying the hidden attribute still rendered: the locked Consignors page leaked every
+   seller name, partner name and column header to anyone with the URL. Caught live 2026-11-05 after
+   a source-only test passed. This wins for every element on the page, not just that fieldset. */
+[hidden]{display:none !important;}
+
+.foot{margin:18px 4px 40px;font-size:11px;color:var(--muted);font-family:var(--font-mono);}
+
+:focus-visible{outline:2px solid var(--purple);outline-offset:2px;}
+
+@media (max-width:768px){
+  .main{padding:16px;}
+  .nav{padding:12px 16px;}
+  .nav-right{justify-content:flex-start;}
+  .wtb-group{padding:14px 15px;}
+  /* collapse the 5-column grid into: range / meta / sort+pct+del on one line */
+  .wtb-tier{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 2px;}
+  .wtb-tier .range{flex:1 1 100%;}
+  .wtb-tier .meta{flex:1 1 100%;}
+  .wtb-tier .sort{flex:0 0 auto;text-align:left;}
+  .wtb-tier .pct{flex:0 0 auto;}
+  .wtb-tier .del{flex:0 0 auto;margin-left:auto;opacity:1;}
+  .wtb-tier .wtb-excl{flex:1 1 100%;}
+  .excl-grid{grid-template-columns:1fr;}
+  .form-row{grid-template-columns:1fr;}
+  .msg{max-width:100%;}
+  .nav-tabs{order:3;flex-basis:100%;justify-content:center;margin-top:4px;}
+  .stat-strip{grid-template-columns:repeat(2,1fr);}
+  .partner-strip{grid-template-columns:1fr;}
+  .partner-grid{grid-template-columns:repeat(2,1fr);}
+  .toolbar{flex-direction:column;align-items:stretch;}
+  .toolbar .form-input{max-width:none;}
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   2026-11-24 restyle (owner: "clean and sleek", keep the theme).
+   Look only: no markup id, data-k or data-act changes behind it. Dark navy, brand red
+   #E3263F and blue #2F7CF6, one body font (the system UI font) and one mono for numbers.
+   Scoped to html:not([data-iop-theme]) = the three editor pages (Pricing Rules, Singles,
+   Consignors). The Scanner pages set data-iop-theme before paint and keep their own themed
+   look, so the phone app and scanner.html are untouched by this block.
+   ═══════════════════════════════════════════════════════════════════════════ */
+html:not([data-iop-theme]){
+  --bg:#070b16;
+  --s1:#0c1221;
+  --s2:#111a2e;
+  --s3:#17223a;
+  --border:#1f2a44;
+  --line-strong:#2b3858;
+  --buy:#2F7CF6;
+  --sell:#E3263F;
+  --red:#E3263F;
+  --yellow:#ff5a70;
+  --text:#eef2fb;
+  --dim:#a3aec8;
+  --muted:#6f7b98;
+  --font-ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-display:var(--font-ui);
+  --faint:var(--muted);
+  --hairline:var(--border);
+  --soft-blue:rgba(47,124,246,.14);
+  --soft-red:rgba(227,38,63,.14);
+}
+html:not([data-iop-theme])::before{animation:none;background:radial-gradient(1100px 520px at 100% -10%, rgba(47,124,246,.10), transparent 62%),radial-gradient(900px 500px at -10% 110%, rgba(227,38,63,.07), transparent 60%);}
+html:not([data-iop-theme])::after{display:none;}
+html:not([data-iop-theme]) body{font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased;}
+html:not([data-iop-theme]) a{color:inherit;}
+
+/* header */
+html:not([data-iop-theme]) .nav{padding:14px 28px;background:rgba(7,11,22,.82);border-bottom:1px solid var(--border);}
+html:not([data-iop-theme]) .logo{font-family:var(--font-ui);font-size:17px;font-weight:700;letter-spacing:-.01em;background:none;-webkit-text-fill-color:currentColor;color:var(--text);filter:none;display:inline-flex;align-items:center;gap:10px;}
+html:not([data-iop-theme]) .logo::before{content:"";width:26px;height:26px;border-radius:8px;flex:none;background:url("vendor/brand/penguin-icon-180.png") center / cover no-repeat, linear-gradient(135deg, var(--buy), var(--red));box-shadow:0 4px 14px rgba(47,124,246,.25);}
+html:not([data-iop-theme]) .logo em{color:var(--red);}
+html:not([data-iop-theme]) .logo-sub{font-size:12px;color:var(--muted);margin:3px 0 0 36px;}
+html:not([data-iop-theme]) .nav-tabs{background:var(--s1);border:1px solid var(--border);border-radius:11px;padding:3px;gap:2px;}
+html:not([data-iop-theme]) .nav-tab{padding:7px 16px;border-radius:8px;font-family:var(--font-ui);font-size:13px;font-weight:600;color:var(--dim);text-decoration:none;box-shadow:none;}
+html:not([data-iop-theme]) .nav-tab:hover{color:var(--text);background:rgba(255,255,255,.04);}
+html:not([data-iop-theme]) .nav-tab.active,html:not([data-iop-theme]) .nav-tab.active:hover{background:var(--soft-blue);color:#fff;box-shadow:inset 0 0 0 1px rgba(47,124,246,.45);}
+html:not([data-iop-theme]) .saved{font-family:var(--font-ui);font-size:12px;color:var(--muted);}
+html:not([data-iop-theme]) .msg{font-size:12px;}
+html:not([data-iop-theme]) .change-key{font-size:12px;color:var(--muted);text-decoration:none;}
+html:not([data-iop-theme]) .change-key:hover{color:var(--text);text-decoration:underline;}
+html:not([data-iop-theme]) .helper-pill{font-family:var(--font-ui);font-size:12px;font-weight:600;letter-spacing:0;padding:5px 11px;background:var(--s1);border-color:var(--border);color:var(--dim);}
+html:not([data-iop-theme]) .helper-pill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--muted);flex:none;}
+html:not([data-iop-theme]) .helper-pill.up{border-color:rgba(47,214,138,.35);color:var(--text);background:var(--s1);}
+html:not([data-iop-theme]) .helper-pill.up::before{background:#2fd68a;box-shadow:0 0 0 3px rgba(47,214,138,.15);}
+html:not([data-iop-theme]) .helper-pill.down{border-color:rgba(227,38,63,.5);color:var(--red);background:var(--s1);}
+html:not([data-iop-theme]) .helper-pill.down::before{background:var(--red);}
+
+/* buttons */
+html:not([data-iop-theme]) .btn{border-radius:9px;font-family:var(--font-ui);font-weight:600;font-size:13px;padding:9px 18px;box-shadow:none;transition:background-color .15s,border-color .15s,color .15s,filter .15s;}
+html:not([data-iop-theme]) .btn-sm{padding:6px 13px;font-size:13px;}
+html:not([data-iop-theme]) .btn-buy,html:not([data-iop-theme]) .btn-save,html:not([data-iop-theme]) .btn.new-group{background:var(--buy);color:#fff;box-shadow:none;}
+html:not([data-iop-theme]) .btn-buy:hover,html:not([data-iop-theme]) .btn-save:hover,html:not([data-iop-theme]) .btn.new-group:hover{opacity:1;transform:none;filter:brightness(1.12);}
+html:not([data-iop-theme]) .btn-sell{background:var(--red);}
+html:not([data-iop-theme]) .btn-sell:hover{opacity:1;transform:none;filter:brightness(1.1);}
+html:not([data-iop-theme]) .btn-ghost{background:transparent;border:1px solid var(--line-strong);color:var(--dim);}
+html:not([data-iop-theme]) .btn-ghost:hover{border-color:var(--dim);color:var(--text);background:rgba(255,255,255,.03);}
+html:not([data-iop-theme]) .btn-danger{border:1px solid rgba(227,38,63,.6);}
+
+/* layout, cards, section heads */
+html:not([data-iop-theme]) .main{padding:28px 32px;max-width:1240px;}
+html:not([data-iop-theme]) .card,
+html:not([data-iop-theme]) .wtb-group,
+html:not([data-iop-theme]) .wtb-total-card,
+html:not([data-iop-theme]) .partner-card{background:var(--s1);border:1px solid var(--border);box-shadow:0 1px 0 rgba(255,255,255,.02) inset, 0 10px 30px rgba(0,0,0,.25);}
+html:not([data-iop-theme]) .card{border-radius:14px;padding:20px 22px;}
+html:not([data-iop-theme]) .wtb-group{border-radius:14px;padding:6px 20px 16px;margin-bottom:16px;}
+html:not([data-iop-theme]) .wtb-group-header{padding:14px 0 12px;margin-bottom:0;border-bottom:1px solid var(--border);align-items:center;}
+html:not([data-iop-theme]) .wtb-group-header h3{font-size:15px;font-weight:650;letter-spacing:0;gap:10px;}
+html:not([data-iop-theme]) .wtb-group-header h3::before{width:3px;height:16px;background:var(--red);}
+html:not([data-iop-theme]) .wtb-group-header .right{font-family:var(--font-ui);font-size:12px;letter-spacing:0;text-transform:none;color:var(--muted);}
+html:not([data-iop-theme]) .sec-head{margin:4px 0 16px;padding:0 2px;}
+html:not([data-iop-theme]) .sec-title{font-size:20px;font-weight:700;letter-spacing:-.01em;margin-bottom:4px;}
+html:not([data-iop-theme]) .sec-sub,html:not([data-iop-theme]) .card-sub{font-size:13px;color:var(--dim);max-width:820px;line-height:1.5;}
+html:not([data-iop-theme]) .card-title{font-size:16px;font-weight:650;margin-bottom:2px;}
+html:not([data-iop-theme]) .card-head{margin-bottom:18px;}
+html:not([data-iop-theme]) .dirty-hint{font-family:var(--font-ui);font-size:12px;letter-spacing:0;text-transform:none;font-weight:600;color:var(--red);background:var(--soft-red);border-radius:999px;padding:3px 10px;}
+html:not([data-iop-theme]) code{font-family:var(--font-mono);font-size:.88em;color:var(--text);}
+html:not([data-iop-theme]) .foot{font-family:var(--font-ui);font-size:12px;}
+html:not([data-iop-theme]) #lock-card{border-color:rgba(227,38,63,.45);box-shadow:0 10px 30px rgba(0,0,0,.25);}
+html:not([data-iop-theme]) .errors-card{border-color:rgba(227,38,63,.6);}
+
+/* form fields */
+html:not([data-iop-theme]) .form-row{gap:16px 20px;}
+html:not([data-iop-theme]) .form-label,html:not([data-iop-theme]) .buylang-label,html:not([data-iop-theme]) .excl-field label{font-family:var(--font-ui);font-size:12px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--dim);margin-bottom:6px;}
+html:not([data-iop-theme]) .form-input,html:not([data-iop-theme]) .form-select,html:not([data-iop-theme]) .form-textarea,
+html:not([data-iop-theme]) .excl-input,html:not([data-iop-theme]) .excl-textarea,html:not([data-iop-theme]) .xg-name,
+html:not([data-iop-theme]) .banned-box textarea,html:not([data-iop-theme]) .tw-time{background:var(--bg);border:1px solid var(--line-strong);border-radius:9px;padding:9px 12px;font-family:var(--font-ui);font-size:14px;color:var(--text);}
+html:not([data-iop-theme]) .banned-box textarea{font-family:var(--font-mono);font-size:13px;}
+html:not([data-iop-theme]) .form-input:focus,html:not([data-iop-theme]) .form-select:focus,html:not([data-iop-theme]) .form-textarea:focus,
+html:not([data-iop-theme]) .excl-input:focus,html:not([data-iop-theme]) .excl-textarea:focus,html:not([data-iop-theme]) .xg-name:focus,
+html:not([data-iop-theme]) .banned-box textarea:focus,html:not([data-iop-theme]) .tw-time:focus{border-color:var(--buy);box-shadow:0 0 0 3px rgba(47,124,246,.18);}
+html:not([data-iop-theme]) input[type="number"]{font-family:var(--font-mono);}
+html:not([data-iop-theme]) .pause-row,html:not([data-iop-theme]) .tw-row{background:var(--s2);border:1px solid var(--border);border-radius:10px;}
+html:not([data-iop-theme]) .check{font-weight:500;}
+html:not([data-iop-theme]) .tw-day{font-family:var(--font-ui);font-size:12px;letter-spacing:0;border-radius:7px;background:var(--bg);}
+html:not([data-iop-theme]) .tw-day.on{border-color:var(--buy);background:var(--soft-blue);box-shadow:none;}
+html:not([data-iop-theme]) .tw-empty{border:1px dashed var(--line-strong);}
+html:not([data-iop-theme]) .ticket-hours{border-top:1px solid var(--border);margin-top:22px;padding-top:20px;}
+html:not([data-iop-theme]) .ticket-hours .tw-note{color:var(--yellow);font-size:12px;}
+html:not([data-iop-theme]) #ticket-summary{font-size:13px;}
+
+/* chips and toggles: one calm style */
+html:not([data-iop-theme]) .lang-chip,html:not([data-iop-theme]) .rule-lang .rl,html:not([data-iop-theme]) .wtb-tier .tgl,html:not([data-iop-theme]) .tgl,
+html:not([data-iop-theme]) .filter-chip,html:not([data-iop-theme]) .excl-toggle{font-family:var(--font-ui);font-size:12px;font-weight:600;letter-spacing:0;text-transform:none;padding:4px 10px;border-radius:7px;border:1px solid var(--line-strong);background:transparent;color:var(--dim);}
+html:not([data-iop-theme]) .lang-chip:hover,html:not([data-iop-theme]) .rule-lang .rl:hover,html:not([data-iop-theme]) .tgl:hover,html:not([data-iop-theme]) .excl-toggle:hover{color:var(--text);border-color:var(--dim);}
+html:not([data-iop-theme]) .lang-chip.on,html:not([data-iop-theme]) .rule-lang .rl.on{background:var(--soft-blue);border-color:rgba(47,124,246,.6);color:#fff;}
+html:not([data-iop-theme]) .rule-lang.inherit .rl{opacity:.75;}
+html:not([data-iop-theme]) .rule-lang.inherit .rl.on{background:transparent;border-style:dashed;color:var(--buy);}
+html:not([data-iop-theme]) .wtb-tier .tgl.on,html:not([data-iop-theme]) .tgl.on{background:var(--soft-red);border-color:rgba(227,38,63,.6);color:#fff;}
+html:not([data-iop-theme]) .filter-group{background:var(--s1);border:1px solid var(--border);border-radius:10px;}
+html:not([data-iop-theme]) .filter-chip{border:none;padding:6px 12px;}
+html:not([data-iop-theme]) .filter-chip.active{background:var(--soft-blue);color:#fff;box-shadow:inset 0 0 0 1px rgba(47,124,246,.45);}
+html:not([data-iop-theme]) #wtb-buylang,html:not([data-iop-theme]) #sg-buylang{margin:0 2px 16px;gap:10px;}
+html:not([data-iop-theme]) .buylang-label{margin:0;}
+html:not([data-iop-theme]) .buylang-hint{font-size:12px;color:var(--muted);}
+html:not([data-iop-theme]) .wtb-add-tier{border:1px dashed var(--line-strong);border-radius:10px;color:var(--dim);font-family:var(--font-ui);font-weight:600;font-size:13px;margin-top:12px;justify-content:center;}
+html:not([data-iop-theme]) .wtb-add-tier:hover{border-color:var(--buy);color:var(--text);background:var(--soft-blue);}
+
+/* singles: exclude groups / exclusions */
+html:not([data-iop-theme]) .xg-item,html:not([data-iop-theme]) .excl-item{background:var(--s2);border:1px solid var(--border);border-left:3px solid var(--line-strong);border-radius:10px;}
+html:not([data-iop-theme]) .xg-item.on,html:not([data-iop-theme]) .excl-item{border-left-color:var(--red);}
+html:not([data-iop-theme]) .xg-id{font-size:11px;}
+html:not([data-iop-theme]) .xg-toggle{font-size:12px;color:var(--dim);}
+html:not([data-iop-theme]) .xg-body{border-top:1px solid var(--border);}
+html:not([data-iop-theme]) .banned-count{font-family:var(--font-ui);font-size:12px;}
+
+/* consignors: stat cards, tables, pills */
+html:not([data-iop-theme]) .wtb-total-card{border-radius:12px;text-align:left;padding:16px 18px;}
+html:not([data-iop-theme]) .wtb-total-card .lbl,html:not([data-iop-theme]) .pg-lbl{font-family:var(--font-ui);font-size:12px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--dim);}
+html:not([data-iop-theme]) .wtb-total-card .val,html:not([data-iop-theme]) .pg-val{font-family:var(--font-mono);font-weight:700;letter-spacing:-.02em;text-shadow:none;}
+html:not([data-iop-theme]) .wtb-total-card .val{font-size:22px;}
+html:not([data-iop-theme]) .stat-strip .wtb-total-card.owed{border-color:rgba(227,38,63,.55);box-shadow:0 10px 30px rgba(0,0,0,.25);background:linear-gradient(160deg, rgba(227,38,63,.12), var(--s1) 70%);}
+html:not([data-iop-theme]) .stat-strip .wtb-total-card.owed .val{text-shadow:none;}
+html:not([data-iop-theme]) .partner-card{border-radius:14px;border-top:1px solid var(--border);}
+html:not([data-iop-theme]) .partner-card.p-josh{border-top:2px solid var(--buy);box-shadow:0 10px 30px rgba(0,0,0,.25);}
+html:not([data-iop-theme]) .partner-card.p-penguin{border-top:2px solid var(--red);box-shadow:0 10px 30px rgba(0,0,0,.25);}
+html:not([data-iop-theme]) .pg-cell{text-align:left;}
+html:not([data-iop-theme]) .wtb-table{font-family:var(--font-ui);font-size:13px;}
+html:not([data-iop-theme]) .wtb-table th{font-family:var(--font-ui);font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--muted);padding:10px;}
+html:not([data-iop-theme]) .wtb-table td{font-size:13px;padding:10px;border-bottom-color:var(--border);}
+html:not([data-iop-theme]) .wtb-table tbody tr:not(.loading-row):not(.empty-row):hover{background:rgba(255,255,255,.025);}
+html:not([data-iop-theme]) .status-pill,html:not([data-iop-theme]) .src-pill{font-family:var(--font-ui);font-size:11px;font-weight:600;letter-spacing:.02em;}
+html:not([data-iop-theme]) .count-line{font-family:var(--font-ui);font-size:12px;}
+html:not([data-iop-theme]) .exp-toggle{border-color:var(--line-strong);border-radius:7px;}
+html:not([data-iop-theme]) .owed-row:hover,html:not([data-iop-theme]) .owed-detail td{background:var(--s2);}
+html:not([data-iop-theme]) .cr-links a,html:not([data-iop-theme]) .rr-links a{color:var(--buy);}
+html:not([data-iop-theme]) .status-pill{text-transform:none;}
+html:not([data-iop-theme]) #tab-consignors .week-range{font-family:var(--font-ui);font-size:13px;}
+html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui);font-size:12px;}
+
+/* ── a tier / singles row: one summary line + an Edit panel (classes only the new rows carry) ── */
+.wtb-tier.tier-v2{display:block;padding:0;border-bottom:1px solid var(--border);font-weight:400;}
+.wtb-tier.tier-v2:last-of-type{border-bottom:none;}
+.tier-v2 .tier-line{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:14px;align-items:center;padding:12px 2px;}
+.tier-v2 .tier-sum{display:flex;align-items:center;gap:18px;min-width:0;background:none;border:0;padding:6px 8px;margin:-6px -8px;border-radius:9px;color:var(--text);font:inherit;text-align:left;cursor:pointer;}
+.tier-v2 .tier-sum:hover{background:rgba(255,255,255,.035);}
+.tier-v2 .tier-band{flex:none;width:150px;font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;}
+.tier-v2 .tier-what{display:flex;align-items:center;flex-wrap:wrap;gap:4px 0;font-size:14px;color:var(--dim);min-width:0;}
+.tier-v2 .tier-what b{color:var(--text);font-weight:600;}
+.tier-v2 .tier-dot{color:var(--muted);margin:0 8px;}
+.tier-v2 .tier-tag{margin-left:10px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;color:var(--dim);background:rgba(255,255,255,.05);border:1px solid var(--border);white-space:nowrap;}
+.tier-v2 .tier-tag.hot{color:#ffd0d7;background:rgba(227,38,63,.14);border-color:rgba(227,38,63,.4);}
+.tier-v2 .tier-note{flex:1 1 0;min-width:0;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;}
+.tier-v2 .pct{display:flex;align-items:baseline;gap:2px;font-size:20px;}
+.wtb-tier.tier-v2 .pct input{width:62px;padding:4px 6px;margin:0;border:1px solid transparent;border-radius:8px;background:none;-webkit-text-fill-color:currentColor;color:var(--text);filter:none;font-family:var(--font-mono);font-size:20px;font-weight:700;text-align:right;outline:none;}
+.wtb-tier.tier-v2 .pct input:hover{border-color:var(--border);}
+.wtb-tier.tier-v2 .pct input:focus{border-color:var(--buy);background:var(--bg);box-shadow:0 0 0 3px rgba(47,124,246,.18);}
+.wtb-tier.tier-v2 .pct .pct-sign{background:none;-webkit-text-fill-color:currentColor;color:var(--muted);filter:none;font-family:var(--font-mono);font-size:15px;font-weight:600;}
+.tier-v2 .tier-edit{font-family:var(--font-ui);font-size:12px;font-weight:600;color:var(--dim);background:transparent;border:1px solid var(--line-strong, var(--border));border-radius:8px;padding:5px 12px;min-width:56px;cursor:pointer;}
+.tier-v2 .tier-edit:hover,.tier-v2.open .tier-edit{color:#fff;border-color:rgba(47,124,246,.6);background:rgba(47,124,246,.14);}
+.wtb-tier.tier-v2 .del{opacity:1;color:var(--muted);font-size:13px;padding:4px 6px;border-radius:7px;}
+.wtb-tier.tier-v2 .del:hover{color:var(--red);background:rgba(227,38,63,.12);text-shadow:none;}
+.tier-v2 .tier-body{display:none;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px 18px;margin:0 0 14px;padding:16px;background:var(--s2);border:1px solid var(--border);border-radius:12px;}
+.tier-v2.open .tier-body,.tier-v2.bad .tier-body{display:grid;}
+.tier-v2 .tier-field{display:flex;flex-direction:column;gap:6px;min-width:0;}
+.tier-v2 .tier-field.wide{grid-column:span 2;}
+.tier-v2 .tier-label{font-size:12px;font-weight:500;color:var(--dim);}
+.tier-v2 .tier-ctl{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;min-width:0;}
+.tier-v2 .tier-ctl .dash{color:var(--muted);font-size:12px;}
+.tier-v2 .tier-body select,
+.wtb-tier.tier-v2 .tier-body input[type="number"],
+.wtb-tier.tier-v2 .tier-body input[type="text"]{background:var(--bg);border:1px solid var(--line-strong, var(--border));border-radius:8px;padding:7px 10px;color:var(--text);font-family:var(--font-ui);font-size:13px;font-style:normal;outline:none;min-width:0;text-align:left;}
+.wtb-tier.tier-v2 .tier-body input[type="number"]{font-family:var(--font-mono);width:84px;}
+.wtb-tier.tier-v2 .tier-body input[type="text"]{width:100%;}
+.tier-v2 .tier-body select{flex:1 1 auto;max-width:100%;cursor:pointer;}
+.tier-v2 .tier-body select:focus,.wtb-tier.tier-v2 .tier-body input:focus{border-color:var(--buy);box-shadow:0 0 0 3px rgba(47,124,246,.18);}
+.tier-v2 .money-in{position:relative;display:inline-flex;align-items:center;}
+.tier-v2 .money-in .cur{position:absolute;left:10px;color:var(--muted);font-family:var(--font-mono);font-size:13px;pointer-events:none;}
+.wtb-tier.tier-v2 .money-in input[type="number"]{padding-left:22px;width:104px;}
+.tier-v2 .tier-body .wtb-excl{grid-column:1 / -1;margin-top:0;padding-top:14px;border-top:1px solid var(--border);}
+.tier-v2.bad{box-shadow:inset 3px 0 0 var(--red);background:rgba(227,38,63,.06);}
+@media (max-width:900px){
+  .tier-v2 .tier-body{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .tier-v2 .tier-sum{flex-wrap:wrap;gap:4px 12px;}
+  .tier-v2 .tier-band{width:auto;}
+  .tier-v2 .tier-note{flex-basis:100%;text-align:left;}
+}
+@media (max-width:560px){
+  .tier-v2 .tier-body{grid-template-columns:1fr;}
+  .tier-v2 .tier-field.wide{grid-column:auto;}
+  .tier-v2 .tier-line{grid-template-columns:minmax(0,1fr) auto auto;}
+  .tier-v2 .tier-line .del{grid-column:3;}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+    scroll-behavior:auto!important;
+  }
+}
+</style>
+</head>
+<body>
+<script>if (location.hash === '#consignors') location.href = 'consignors.html';</script>
+<header class="nav">
+  <div class="nav-left">
+    <div class="logo">Iced Out <em>Penguin</em></div>
+    <div class="logo-sub">Pricing Rules · what the bot pays for a slab</div>
+  </div>
+<nav class="nav-tabs" aria-label="Sections">
+    <a class="nav-tab active" href="index.html">Pricing Rules</a>
+    <a class="nav-tab" href="singles.html">Singles</a>
+    <a class="nav-tab" href="consignors.html">Consignors</a>
+    <a class="nav-tab" href="scanner.html">Scanner</a>
+  </nav>
+  <div class="nav-right">
+    <span class="msg" id="msg" role="status" aria-live="polite"></span>
+
+    <span class="helper-pill" id="bot-pill" title="When the bot last read these rates">Bot: not seen yet</span>
+
+    <span class="saved" id="st-saved">Loading the sheet…</span>
+    <a href="#" class="change-key" id="change-key" hidden title="Forget the saved edit key on this browser">Change key</a>
+
+    <button type="button" class="btn btn-ghost btn-sm" id="reload" title="Throw away unsaved edits and reload the saved sheet">Reload</button>
+    <button type="button" class="btn btn-sm btn-save" id="save" title="Save the sheet. Asks for the edit key the first time.">Save</button>
+
+  </div>
+</header>
+
+<main class="main">
+
+<section class="card" id="lock-card" hidden>
+  <div class="card-title">Enter the edit key to edit the bands</div>
+  <div class="lock-row">
+    <input class="form-input" id="lock-key" type="password" autocomplete="off" placeholder="Edit key" aria-label="Edit key" title="The shared edit key">
+    <button type="button" class="btn btn-buy btn-sm" id="lock-unlock">Unlock</button>
+  </div>
+  <div class="lock-hint">Ask Josh for the key; this browser will remember it.</div>
+  <div class="lock-err" id="lock-err" hidden></div>
+</section>
+
+<div class="tab active" id="tab-rules">
+<fieldset class="editor-fieldset">
+
+  <div class="sec-head">
+    <div>
+      <div class="sec-title">Pricing Rules</div>
+      <div class="sec-sub">Every tier a slab fits is priced and the one that pays the least in dollars is quoted (the first match, top → bottom, if the buy-side lowest-overlap switch is off). Click a tier to see and change all of its settings. Lower sort order = checked first.</div>
+    </div>
+    <span class="dirty-hint" id="dirty-hint" hidden>unsaved</span>
+  </div>
+
+  <div id="wtb-buylang"></div>
+
+  <div id="wtb-rules-list"></div>
+
+  <section class="card" id="sheet-settings">
+    <div class="card-head">
+      <div class="card-title">Sheet settings</div>
+      <div class="card-sub">These apply to every band.</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="maxSlabsPerComp">Max slabs per comp</label>
+        <input class="form-input" id="maxSlabsPerComp" type="number" inputmode="numeric" min="1" step="1" placeholder="200" title="How many slabs the bot will price in one comp">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="vintageMaxYear">Vintage year</label>
+        <input class="form-input" id="vintageMaxYear" type="number" inputmode="numeric" step="1" placeholder="2010" title="A card at or under this year counts as vintage">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="specialKeywords">Special keywords (comma separated)</label>
+        <input class="form-input" id="specialKeywords" type="text" placeholder="Expedition, Aquapolis, Skyridge" title="A card whose name contains one of these counts as special">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="minLotMarket">Minimum lot market value $ (0 = off)</label>
+        <input class="form-input" id="minLotMarket" type="number" inputmode="decimal" min="0" step="0.01" placeholder="2000" title="A comp whose accepted market value falls under this is declined to the seller. 0 turns this off.">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="overlapPoints">Higher row wins when rates differ by at least</label>
+        <div class="ovl-wrap"><input class="form-input" id="overlapPoints" type="number" inputmode="numeric" min="0" max="100" step="1" placeholder="5" title="When a card fits more than one rate row and their rates differ by at least this many points, the higher-rate row pays. 0 = always the higher row; 100 = always the lowest payout."><span class="ovl-suffix">points</span></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="clvCapPct">Price on recent sales when CL value is more than</label>
+        <div class="ovl-wrap"><input class="form-input" id="clvCapPct" type="number" inputmode="numeric" min="0" max="500" step="1" placeholder="30" title="When a CL-value rate row would pay on a CL value more than this many percent above the card's recent sales (the avg of its last 3, else its last sale), it pays its rate on those sales instead. 0 = off."><span class="ovl-suffix">% above them (0 = off)</span></div>
+      </div>
+    </div>
+    <div class="pause-row">
+      <label class="check" for="paused">
+        <input type="checkbox" id="paused" title="Stop the bot quoting anything at all">
+        <span>Paused, stop quoting</span>
+      </label>
+    </div>
+    <div class="form-group wide" id="pausedWrap" hidden>
+      <label class="form-label" for="pausedMessage">Paused message</label>
+      <input class="form-input" id="pausedMessage" type="text" maxlength="300" placeholder="We are closed for buying until Monday." title="What the seller is told while quoting is paused">
+    </div>
+
+    <!-- Ticket opening hours. ticketHours.js owns the gate itself; these are only the settings it
+         reads, lifted off its hardcoded Fri-Sun 7pm-11pm Eastern so Josh can change them here.
+         Same { days, from, to } shape that module takes, no translation anywhere in between.
+         The styles are scoped to this panel, the way PANEL:consignors does its own. -->
+    <style>
+    .ticket-hours{margin-top:18px;padding-top:16px;border-top:1px solid var(--hairline);}
+    .ticket-hours .card-title{font-size:14px;}
+    .ticket-hours .tw-note{color:var(--yellow);font-size:11px;margin-top:4px;}
+    #ticket-summary{margin:10px 0 14px;font-size:12px;color:var(--text);}
+    .tw-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;margin-bottom:10px;}
+    .tw-days{display:flex;flex-wrap:wrap;gap:5px;}
+    .tw-day{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--s1);color:var(--dim);font-family:var(--font-mono);font-size:11px;letter-spacing:.5px;cursor:pointer;transition:border-color .15s,color .15s;}
+    .tw-day:hover{border-color:var(--dim);}
+    .tw-day.on{color:var(--text);border-color:var(--buy);box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--buy) 25%, transparent);}
+    .tw-day input{width:13px;height:13px;accent-color:var(--buy);cursor:pointer;flex:none;}
+    .tw-time{background:var(--s1);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-ui);font-size:13px;padding:6px 9px;outline:none;transition:border-color .2s;}
+    .tw-time:focus{border-color:var(--buy);}
+    .tw-sep{color:var(--dim);font-size:12px;}
+    .tw-del{margin-left:auto;background:transparent;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:4px 6px;opacity:.5;transition:opacity .15s;}
+    .tw-row:hover .tw-del,.tw-del:focus{opacity:1;}
+    .ticket-hours .closed-msg{margin-top:14px;}
+    .tw-empty{color:var(--dim);font-size:12px;padding:10px 12px;border:1.5px dashed var(--border);border-radius:10px;margin-bottom:10px;}
+    .tw-row.bad{box-shadow:inset 3px 0 0 var(--red);background:color-mix(in srgb, var(--red) 8%, transparent);}
+    </style>
+
+    <div class="ticket-hours">
+      <div class="card-head">
+        <div class="card-title">Ticket opening hours</div>
+        <div class="card-sub">When a seller is allowed to OPEN a new ticket. An already open ticket is never touched by this.</div>
+        <div class="tw-note">Heads up: this gates Singles tickets as well as Slabs, not just the rules on this tab.</div>
+      </div>
+
+      <div class="card-sub" id="ticket-summary" aria-live="polite"></div>
+
+      <div class="pause-row">
+        <label class="check" for="ticketsOpen">
+          <input type="checkbox" id="ticketsOpen" title="Master switch. Off means nobody can open a new ticket at any hour.">
+          <span>Allow sellers to open new tickets</span>
+        </label>
+      </div>
+
+      <div class="form-group wide">
+        <label class="form-label" for="ticketTimeZone">Time zone (type any zone, for example America/New_York)</label>
+        <input class="form-input" id="ticketTimeZone" type="text" list="ticket-zones" autocomplete="off" spellcheck="false" placeholder="America/New_York" title="The zone the hours below are read in. Any IANA zone name works.">
+        <datalist id="ticket-zones">
+          <option value="America/New_York">Eastern</option>
+          <option value="America/Chicago">Central</option>
+          <option value="America/Denver">Mountain</option>
+          <option value="America/Los_Angeles">Pacific</option>
+        </datalist>
+      </div>
+
+      <div id="ticket-windows-list"></div>
+      <button type="button" class="btn btn-ghost btn-sm" id="add-ticket-window" title="Add another block of days and hours">＋ Add window</button>
+
+      <div class="form-group wide closed-msg">
+        <label class="form-label" for="ticketsClosedMessage">Message shown while tickets are closed (optional, blank uses the automatic message)</label>
+        <input class="form-input" id="ticketsClosedMessage" type="text" maxlength="300" placeholder="Tickets open Friday at 7pm Eastern." title="Shown both when the switch above is off and when it is simply outside the hours">
+      </div>
+    </div>
+  </section>
+
+  <section class="card errors-card" id="errors" hidden tabindex="-1">
+    <div class="card-title" id="errors-head">Nothing was saved. Fix these first:</div>
+    <ul id="errors-list"></ul>
+  </section>
+
+  <p class="foot" id="foot"></p>
+
+</fieldset>
+</div>
+
+</main>
+
+<script>
+/* VALIDATE-CORE:START - generated from validate.ts by build-portal.js, do not edit by hand */
+(function () {
+'use strict';
+/**
+ * Iced Out Penguin rates - the schema and its validator.
+ *
+ * Pure TypeScript. No Deno, no Node, no DOM, no imports. It runs in three places:
+ *   1. the edge function   (index.ts imports it),
+ *   2. the test runner     (validate.test.js imports it),
+ *   3. the editor page     (build-portal.js strips the types and inlines the JS into page.html).
+ *
+ * Because of (3), keep every export at the top of a line and in the form
+ * `export function` / `export const` / `export type` / `export interface`.
+ * build-portal.js drops the `export ` keyword with a line-anchored regex, and
+ * Node/Deno erase the type-only ones outright.
+ *
+ * Money is in dollars here (the bot converts to cents itself). Two decimals max.
+ *
+ * v2 mirrors the owner's app "Pricing Rules" tab: every row says which Sport, which Grader, which
+ * Grade range and which languages it takes, and the rows are tried in `sort` order with the FIRST
+ * match winning. v1 sheets still load: normalize() migrates them (see the table in migrateRow).
+ *
+ * Basis (what a payout is a percentage OF) is REQUIRED on every row as of this version — there is no
+ * sheet-wide `defaultBasis` any more and no "use default" option. This did not need a v3: it is
+ * additive-compatible, so a sheet saved under the old rules (a sheet-wide `defaultBasis`, rows with
+ * `basis: null`) still LOADS — normalize() fills every such row from the sheet's old `defaultBasis`
+ * (else 'clv') and drops the sheet-wide field — but a sheet cannot be SAVED again with a missing or
+ * null row basis: validateSettings rejects it outright. schema stays 'iced-out-rates-v2'.
+ */
+
+// ── vocabulary ───────────────────────────────────────────────────────────────
+
+const SCHEMA = 'iced-out-rates-v2';
+
+/** Every sport/game a row can ask for. '*' is "any sport" and takes a slab we could not classify. */
+const SPORT_KEYS = [
+  'pokemon', 'one_piece', 'dragon_ball',
+  'nba', 'nfl', 'mlb', 'nhl', 'soccer', 'racing', 'fighting', 'golf',
+  'sports', 'other', '*',
+];
+
+/** The order the page groups its rows in. Same list, kept separate so the page can't reorder SPORT_KEYS. */
+const SPORT_ORDER = SPORT_KEYS.slice();
+
+/** The page's own headings, emoji and all. Staff read these; nothing matches on them. */
+const SPORT_LABEL                         = {
+  pokemon: '⚡ Pokémon Slabs',
+  one_piece: '🏴‍☠️ One Piece Slabs',
+  dragon_ball: '🐉 Dragon Ball Slabs',
+  nba: '🏀 NBA Slabs',
+  nfl: '🏈 NFL Slabs',
+  mlb: '⚾ MLB Slabs',
+  nhl: '🏒 NHL Slabs',
+  soccer: '⚽ Soccer Slabs',
+  racing: '🏎️ Racing Slabs',
+  fighting: '🥊 Fighting Slabs',
+  golf: '⛳ Golf Slabs',
+  sports: '🏆 Sports (any league)',
+  other: '🃏 Other Slabs',
+  '*': '✨ Any Sport',
+};
+
+/** The same names with no emoji, for a narrow column, a Discord line or an error message. */
+const SPORT_SHORT                         = {
+  pokemon: 'Pokemon',
+  one_piece: 'One Piece',
+  dragon_ball: 'Dragon Ball',
+  nba: 'NBA',
+  nfl: 'NFL',
+  mlb: 'MLB',
+  nhl: 'NHL',
+  soccer: 'Soccer',
+  racing: 'Racing',
+  fighting: 'Fighting',
+  golf: 'Golf',
+  sports: 'Sports',
+  other: 'Other',
+  '*': 'Any sport',
+};
+
+/** What a row with sport 'sports' covers: every league, so one row can price all of them at once. */
+const SPORT_LEAGUES = ['nba', 'nfl', 'mlb', 'nhl', 'soccer', 'racing', 'fighting', 'golf', 'sports'];
+
+/**
+ * The graders a row can name. SGC and TAG are not offered. '*' (the default, and what every sheet saved
+ * before BGS existed uses) takes PSA and CGC and NEVER BGS: a BGS slab is quoted only by a row that names
+ * BGS, so an old sheet quotes exactly what it always did.
+ */
+const GRADER_KEYS = ['*', 'PSA', 'CGC', 'BGS'];
+
+/** The specific graders (no '*'): what a row's list is made of, in the order a list is stored. */
+const GRADER_LIST_KEYS = ['PSA', 'CGC', 'BGS'];
+
+const GRADER_LABEL                         = {
+  '*': 'PSA or CGC',
+  PSA: 'PSA',
+  CGC: 'CGC',
+  BGS: 'BGS',
+  'PSA+BGS': 'PSA / BGS',
+  'CGC+BGS': 'CGC / BGS',
+  'PSA+CGC+BGS': 'PSA / CGC / BGS',
+};
+
+/** What the editors' grader dropdown offers: one grader, or a list joined with '+' ('CGC+BGS' = one row for both). */
+const GRADER_CHOICES = ['*', 'PSA', 'CGC', 'BGS', 'PSA+BGS', 'CGC+BGS', 'PSA+CGC+BGS'];
+
+/** Every grade a dropdown offers: whole and half steps, 1 through 10. */
+const GRADE_STEPS = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
+
+/** The four languages we buy. A row's list is a subset; all four means the row does not gate on language. */
+const LANGUAGE_KEYS = ['english', 'japanese', 'korean', 'chinese'];
+
+/** [short, long] per language: the short one fits a chip on the page, the long one a sentence. */
+const LANGUAGE_LABEL                           = {
+  english: ['EN', 'English'],
+  japanese: ['JP', 'Japanese'],
+  korean: ['KR', 'Korean'],
+  chinese: ['CN', 'Chinese'],
+};
+
+/** Payout basis keys. Same four the bot uses: rules.js BASIS_KEYS. 'last' = the newest Card Ladder sale. */
+const BASIS_KEYS = ['clv', 'avg3', 'lowest', 'last'];
+
+/** Plain-English name per basis, used in both the page and the error messages. */
+const BASIS_LABEL                         = {
+  clv: 'CL Value',
+  avg3: 'Avg 3',
+  lowest: 'Lowest of 2',
+  last: 'Last sale',
+};
+
+const CERT_RULES = ['any', 'new'];
+
+const CERT_RULE_LABEL                         = {
+  any: 'Any cert',
+  new: 'New certs (7+)',
+};
+
+/** The confidence dropdown, blank meaning "don't care". */
+const CONFIDENCE_LABEL                         = {
+  '': 'Any conf',
+  1: '1+',
+  2: '2+',
+  3: '3+',
+  4: '4+',
+  5: '5',
+};
+
+/** Every hard limit in one place, so the page and the function cannot drift apart. */
+const LIMITS = {
+  minRows: 1,
+  maxRows: 60,
+  maxLabel: 100,
+  maxMoney: 1000000,
+  moneyDecimals: 2,
+  minPct: 1,
+  maxPct: 100,
+  pctDecimals: 2,
+  minGrade: 1,
+  maxGrade: 10,
+  minConfidence: 1,
+  maxConfidence: 5,
+  minSort: 0,
+  maxSort: 100000,
+  minYear: 1990,
+  maxYear: 2100,
+  minSlabs: 1,
+  // Raised from 300 on Josh's instruction 2026-11-05 ("Set the block for both at like 2k"), to match
+  // the singles side's maxCardsPerComp. This is only the ceiling the portal will SAVE; whether a comp
+  // that size can actually finish is a separate question, governed by COMP_TIMEOUT_MS and by how long
+  // Triumph and Card Ladder take per cert.
+  maxSlabs: 2000,
+  maxKeywords: 50,
+  maxKeywordLength: 60,
+  maxPausedMessage: 300,
+  maxTicketWindows: 10,
+  maxTicketsClosedMessage: 300,
+};
+
+const DEFAULT_VINTAGE_YEAR = 2010;
+const DEFAULT_MAX_SLABS = 200;
+/** The minimum total MARKET VALUE, across ACCEPTED rows only, a comp must reach before we buy it at
+ *  all (owner's rule 2026-11-05: "the market has to be 2K, the payout doesn't matter"). 0 turns the
+ *  floor off entirely. Dollars, same as a row's own from/to — not cents, unlike validate-singles.ts's
+ *  unrelated minMarketCents. */
+const DEFAULT_MIN_LOT_MARKET = 2000;
+/** When rows overlap and the highest fitting rate is at least this many percent points above the lowest, the
+ *  higher-rate row wins (owner 2026-11). 0 = always the higher row; 100 = never (the old lowest-payout rule). */
+const DEFAULT_OVERLAP_POINTS = 5;
+/** A CL-value row is paid on the card's recent sales (avg of last 3, else the last sale) instead when its CL value is
+ *  more than this many percent above them (owner 2026-11-14: "if CLV is waaay over last sale / avg price it there").
+ *  A whole number 0-500; 0 = off. rules.js's DEFAULT_CLV_CAP_PCT is the bot's copy of the same number. */
+const DEFAULT_CLV_CAP_PCT = 30;
+
+// KEEP IN SYNC BY HAND with ticketHours.js's DEFAULT_WINDOWS / DEFAULT_TIMEZONE — this file can't
+// import that module (see file header), so the literal is duplicated here on purpose.
+const DEFAULT_TICKET_WINDOWS = [{ days: [5, 6, 0], from: '19:00', to: '23:00' }];
+const DEFAULT_TICKET_TIMEZONE = 'America/New_York';
+
+// ── shapes ───────────────────────────────────────────────────────────────────
+
+                                                             
+
+       
+
+// ── small helpers (no exports the page does not need) ────────────────────────
+
+function isObject(x         )          {
+  return !!x && typeof x === 'object' && !Array.isArray(x);
+}
+
+/** A finite number, or null when the input is not one. Strings are NOT coerced here. */
+function num(x         )                {
+  return typeof x === 'number' && Number.isFinite(x) ? x : null;
+}
+
+/** True when `n` has at most `places` decimal places (float-safe). */
+function decimalsOk(n        , places        )          {
+  const scaled = n * Math.pow(10, places);
+  return Math.abs(scaled - Math.round(scaled)) < 1e-6;
+}
+
+/** True when `n` is one of the grade steps a dropdown offers (a whole or half step inside 1..10). */
+function gradeStepOk(n        )          {
+  return GRADE_STEPS.some((g) => Math.abs(g - n) < 1e-9);
+}
+
+function listNames(keys          , labels                        )         {
+  const names = keys.map((k) => labels[k] || k);
+  if (names.length < 2) return names.join('');
+  return names.slice(0, -1).join(', ') + ' or ' + names[names.length - 1];
+}
+
+/** "$1,000,000" for the limit messages. */
+function money(n        )         {
+  return '$' + n.toLocaleString('en-US');
+}
+
+/** The long name of every language we buy, for one error message. */
+function languageNames()         {
+  return listNames(LANGUAGE_KEYS, {
+    english: 'English',
+    japanese: 'Japanese',
+    korean: 'Korean',
+    chinese: 'Chinese',
+  });
+}
+
+// ── defaults ─────────────────────────────────────────────────────────────────
+
+/** A valid, deliberately bare settings object. The page starts here when nothing is saved. */
+function defaults()           {
+  return {
+    schema: SCHEMA,
+    rates: [
+      {
+        sort: 0,
+        sport: '*',
+        grader: '*',
+        gradeMin: 1,
+        gradeMax: 10,
+        from: 0,
+        to: 100,
+        pct: 90,
+        basis: 'clv',
+        label: 'Every slab, up to $100',
+        languages: null,
+        minConfidence: null,
+        certRule: 'any',
+        vintage: false,
+        special: false,
+      },
+    ],
+    buyLanguages: LANGUAGE_KEYS.slice(),
+    vintageMaxYear: DEFAULT_VINTAGE_YEAR,
+    specialKeywords: [],
+    maxSlabsPerComp: DEFAULT_MAX_SLABS,
+    minLotMarket: DEFAULT_MIN_LOT_MARKET,
+    overlapPoints: DEFAULT_OVERLAP_POINTS,
+    clvCapPct: DEFAULT_CLV_CAP_PCT,
+    paused: false,
+    pausedMessage: '',
+    ticketsOpen: true,
+    ticketWindows: DEFAULT_TICKET_WINDOWS.map((w) => ({ ...w, days: w.days.slice() })),
+    ticketTimeZone: DEFAULT_TICKET_TIMEZONE,
+    ticketsClosedMessage: '',
+  };
+}
+
+// ── normalize ────────────────────────────────────────────────────────────────
+
+/**
+ * Coerce whatever arrived into the v2 shape validateSettings wants. Three kinds of input, detected
+ * in this order:
+ *   1. a v2 object, or a v2 form post (strings for numbers, "on" for booleans, a comma line for
+ *      keywords and languages),
+ *   2. a v1 object (schema 'iced-out-rates-v1', or no schema and rows carrying category/minGrade/
+ *      language) -> migrated row by row, see migrateRow,
+ *   3. anything else -> passed through, so validateSettings can complain about it by name.
+ * A `{ settings: {...} }` wrapper (what the function answers a GET with) is unwrapped either way.
+ *
+ * It only changes TYPES, never values: "abc" in a number field stays "abc".
+ *
+ * Basis is required on every row now (see the file header), so this is also where a sheet saved
+ * under the old rules gets fixed up: a row with no basis of its own inherits the sheet's old
+ * `defaultBasis` when it had one, else plain 'clv' — the same rule a brand new form post with a
+ * blank basis field falls under, since it has no `defaultBasis` to inherit either. Either way the
+ * sheet-wide field itself is dropped; it is never part of the v2 shape this returns.
+ */
+function normalize(raw         )          {
+  if (!isObject(raw)) return raw;
+  const r = raw                           ;
+  const src = isObject(r.settings) ? (r.settings                           ) : r;
+
+  if (looksV1(src)) return migrateV1(src);
+
+  const legacyDefault = (normBasis(src.defaultBasis)         ) || 'clv';
+  const out                          = {
+    schema: SCHEMA,
+    rates: Array.isArray(src.rates) ? src.rates.map((row) => normalizeRow(row, legacyDefault)) : src.rates,
+    buyLanguages: normLanguages(src.buyLanguages) ?? LANGUAGE_KEYS.slice(),
+    vintageMaxYear: normNumber(src.vintageMaxYear, DEFAULT_VINTAGE_YEAR),
+    specialKeywords: normKeywords(src.specialKeywords),
+    maxSlabsPerComp: normNumber(src.maxSlabsPerComp, DEFAULT_MAX_SLABS),
+    minLotMarket: normMoney(src.minLotMarket, DEFAULT_MIN_LOT_MARKET),
+    overlapPoints: normNumber(src.overlapPoints, DEFAULT_OVERLAP_POINTS),
+    clvCapPct: normNumber(src.clvCapPct, DEFAULT_CLV_CAP_PCT),
+    paused: normBool(src.paused),
+    pausedMessage: src.pausedMessage == null ? '' : String(src.pausedMessage),
+    ticketsOpen: src.ticketsOpen == null || src.ticketsOpen === '' ? true : normBool(src.ticketsOpen),
+    ticketWindows: Array.isArray(src.ticketWindows)
+      ? src.ticketWindows
+      : (src.ticketWindows == null ? DEFAULT_TICKET_WINDOWS.map((w) => ({ ...w, days: w.days.slice() })) : src.ticketWindows),
+    ticketTimeZone: src.ticketTimeZone == null ? DEFAULT_TICKET_TIMEZONE : src.ticketTimeZone,
+    ticketsClosedMessage: src.ticketsClosedMessage == null ? '' : String(src.ticketsClosedMessage),
+  };
+  return out;
+}
+
+/**
+ * Is this a v1 sheet? Its own schema string says so, and so does a row carrying a field only v1 had
+ * (`category`, `minGrade`, `language`) when no schema was saved at all. A v2 sheet, or a form post
+ * from the v2 page, says neither.
+ */
+function looksV1(src                         )          {
+  if (src.schema === SCHEMA) return false;
+  if (src.schema === 'iced-out-rates-v1') return true;
+  if (src.schema != null && src.schema !== '') return false;
+  if (!Array.isArray(src.rates)) return false;
+  return src.rates.some(
+    (row) =>
+      isObject(row) &&
+      ('category' in (row                           ) ||
+        'minGrade' in (row                           ) ||
+        'language' in (row                           )),
+  );
+}
+
+/** v1 `category` -> v2 sport + grader. "any" (null) meant any PSA game and never CGC. */
+const V1_CATEGORY                           = {
+  pokemon: ['pokemon', 'PSA'],
+  sports: ['sports', 'PSA'],
+  onepiece: ['one_piece', 'PSA'],
+  cgc: ['*', 'CGC'],
+};
+
+/** v1 `language` -> v2 `languages`. 'any' and 'Other' both mean "do not gate on language" (null). */
+const V1_LANGUAGE                                  = {
+  any: null,
+  Other: null,
+  English: ['english'],
+  Japanese: ['japanese'],
+  Korean: ['korean'],
+  Chinese: ['chinese'],
+};
+
+/**
+ * One v1 row as a v2 row. `sort` is filled in by migrateV1, which is where the ordering lives:
+ * v1 picked the highest-% matching row, v2 takes the first match, so the rows have to come out in
+ * descending pct for the prices to stay exactly the same. `legacyDefault` is the v1 sheet's own
+ * `defaultBasis` (already resolved to a live key, or 'clv'): a row with no basis of its own inherits
+ * it, since basis is required on every v2 row now.
+ */
+function migrateRow(raw         , legacyDefault       )          {
+  if (!isObject(raw)) return raw;
+  const r = raw                           ;
+  const cat = r.category == null || r.category === '' || r.category === 'any' ? null : String(r.category);
+  const mapped = cat != null && V1_CATEGORY[cat] ? V1_CATEGORY[cat] : ['*', 'PSA'];
+  const lang = r.language == null || r.language === '' ? 'any' : String(r.language);
+  const minGrade = r.minGrade === '' || r.minGrade == null ? null : normNumber(r.minGrade, r.minGrade);
+  return {
+    sort: 0,
+    sport: mapped[0],
+    grader: mapped[1],
+    gradeMin: minGrade == null ? LIMITS.minGrade : minGrade,
+    gradeMax: LIMITS.maxGrade,
+    from: normMoney(r.from, 0),
+    to: r.to === '' || r.to == null ? null : normMoney(r.to, r.to),
+    pct: normMoney(r.pct, r.pct),
+    basis: r.basis === '' || r.basis == null ? legacyDefault : normBasis(r.basis) || r.basis,
+    label: r.label == null ? '' : String(r.label),
+    languages: Object.prototype.hasOwnProperty.call(V1_LANGUAGE, lang) ? V1_LANGUAGE[lang] : [lang],
+    minConfidence:
+      r.minConfidence === '' || r.minConfidence == null ? null : normNumber(r.minConfidence, r.minConfidence),
+    certRule: r.certRule === 'new' ? 'new' : r.certRule == null || r.certRule === '' ? 'any' : r.certRule,
+    vintage: normBool(r.vintage),
+    special: normBool(r.special),
+  };
+}
+
+/**
+ * A whole v1 sheet as v2. The rows come back ordered by pct DESCENDING (stable, so two rows on the
+ * same pct keep the order they were saved in) with sort 10, 20, 30..., because first-match on that
+ * order is exactly what "highest matching pct wins" used to do. buyLanguages starts as all four:
+ * v1 had no such setting and gated language per row.
+ */
+function migrateV1(src                         )          {
+  const legacyDefault = (normBasis(src.defaultBasis)         ) || 'clv';
+  const rows = Array.isArray(src.rates) ? src.rates.map((row) => migrateRow(row, legacyDefault)) : src.rates;
+  if (Array.isArray(rows)) {
+    const withIndex = rows.map((row, i) => ({ row, i }));
+    withIndex.sort((a, b) => {
+      const pa = num((a.row                                  )?.pct);
+      const pb = num((b.row                                  )?.pct);
+      // a row whose pct is not a number keeps its place at the back; validateSettings names it
+      if (pa === null && pb === null) return a.i - b.i;
+      if (pa === null) return 1;
+      if (pb === null) return -1;
+      return pb === pa ? a.i - b.i : pb - pa;
+    });
+    for (let i = 0; i < withIndex.length; i++) {
+      const row = withIndex[i].row;
+      if (isObject(row)) (row                           ).sort = (i + 1) * 10;
+    }
+    rows.length = 0;
+    for (const entry of withIndex) rows.push(entry.row);
+  }
+  return {
+    schema: SCHEMA,
+    rates: rows,
+    buyLanguages: LANGUAGE_KEYS.slice(),
+    vintageMaxYear: normNumber(src.vintageMaxYear, DEFAULT_VINTAGE_YEAR),
+    specialKeywords: normKeywords(src.specialKeywords),
+    maxSlabsPerComp: normNumber(src.maxSlabsPerComp, DEFAULT_MAX_SLABS),
+    minLotMarket: normMoney(src.minLotMarket, DEFAULT_MIN_LOT_MARKET),
+    overlapPoints: normNumber(src.overlapPoints, DEFAULT_OVERLAP_POINTS),
+    clvCapPct: normNumber(src.clvCapPct, DEFAULT_CLV_CAP_PCT),
+    paused: normBool(src.paused),
+    pausedMessage: src.pausedMessage == null ? '' : String(src.pausedMessage),
+    ticketsOpen: src.ticketsOpen == null || src.ticketsOpen === '' ? true : normBool(src.ticketsOpen),
+    ticketWindows: Array.isArray(src.ticketWindows)
+      ? src.ticketWindows
+      : (src.ticketWindows == null ? DEFAULT_TICKET_WINDOWS.map((w) => ({ ...w, days: w.days.slice() })) : src.ticketWindows),
+    ticketTimeZone: src.ticketTimeZone == null ? DEFAULT_TICKET_TIMEZONE : src.ticketTimeZone,
+    ticketsClosedMessage: src.ticketsClosedMessage == null ? '' : String(src.ticketsClosedMessage),
+  };
+}
+
+/** `legacyDefault` is the sheet's old `defaultBasis` (already resolved), used only when this row has none of its own. */
+function normalizeRow(raw         , legacyDefault       )          {
+  if (!isObject(raw)) return raw;
+  const r = raw                           ;
+  return {
+    sort: normNumber(r.sort, 0),
+    sport: r.sport == null || r.sport === '' ? '*' : normKey(r.sport),
+    grader: r.grader == null || r.grader === '' ? '*' : normGrader(r.grader),
+    gradeMin: r.gradeMin === '' || r.gradeMin == null ? LIMITS.minGrade : normNumber(r.gradeMin, r.gradeMin),
+    gradeMax: r.gradeMax === '' || r.gradeMax == null ? LIMITS.maxGrade : normNumber(r.gradeMax, r.gradeMax),
+    from: normMoney(r.from, 0),
+    to: r.to === '' || r.to == null ? null : normMoney(r.to, r.to),
+    pct: normMoney(r.pct, r.pct),
+    basis: r.basis === '' || r.basis == null ? legacyDefault : normBasis(r.basis) || r.basis,
+    label: r.label == null ? '' : String(r.label),
+    languages: normLanguages(r.languages),
+    minConfidence:
+      r.minConfidence === '' || r.minConfidence == null ? null : normNumber(r.minConfidence, r.minConfidence),
+    certRule: r.certRule === 'new' ? 'new' : r.certRule == null || r.certRule === '' ? 'any' : r.certRule,
+    vintage: normBool(r.vintage),
+    special: normBool(r.special),
+  };
+}
+
+/** A vocabulary key as the schema spells it: trimmed and lower case ('Pokemon' -> 'pokemon'). */
+function normKey(x         )          {
+  return typeof x === 'string' ? x.trim().toLowerCase() : x;
+}
+
+/**
+ * The grader keys are the only upper-case vocabulary, so 'psa' typed by hand still lands on 'PSA'. A list
+ * ('CGC+BGS' from the editor's dropdown, 'cgc, bgs', or an array) becomes an array of keys in stored order
+ * with the duplicates dropped; a one-grader list is that grader, PSA + CGC is '*' (the same takers), and a
+ * list with '*' in it is '*'. An unknown word is left as typed so the validator can name it.
+ */
+function normGrader(x         )          {
+  const parts = Array.isArray(x) ? x : typeof x === 'string' && /[+,/|]/.test(x) ? x.split(/[+,/|]/) : null;
+  if (!parts) {
+    if (typeof x !== 'string') return x;
+    const s = x.trim();
+    const hit = GRADER_KEYS.find((k) => k.toLowerCase() === s.toLowerCase());
+    return hit || s;
+  }
+  const keys           = [];
+  for (const p of parts) {
+    if (typeof p !== 'string') return x;
+    const s = p.trim();
+    if (!s) continue;
+    const hit = GRADER_KEYS.find((k) => k.toLowerCase() === s.toLowerCase());
+    if (!hit) return x;
+    if (hit === '*') return '*';
+    if (keys.indexOf(hit) < 0) keys.push(hit);
+  }
+  if (!keys.length) return '*';
+  const ordered = GRADER_LIST_KEYS.filter((k) => keys.indexOf(k) >= 0);
+  if (ordered.length === 1) return ordered[0];
+  if (ordered.length === 2 && ordered[0] === 'PSA' && ordered[1] === 'CGC') return '*';
+  return ordered;
+}
+
+/**
+ * A row's (or the sheet's) language list: null when nothing was picked (the row inherits), else an
+ * array of trimmed lower-case keys with the duplicates dropped. A comma line is what a plain form
+ * posts; an array is what the page and the JSON API send.
+ */
+function normLanguages(x         )                  {
+  let list           ;
+  if (x == null || x === '') return null;
+  if (typeof x === 'string') list = x.split(',');
+  else if (Array.isArray(x)) list = x;
+  else return null;
+  const out           = [];
+  for (const item of list) {
+    const key = typeof item === 'string' ? item.trim().toLowerCase() : String(item);
+    if (key !== '' && out.indexOf(key) < 0) out.push(key);
+  }
+  return out.length ? out : null;
+}
+
+/** Numbers that may arrive as "$1,200.50" or "85%" from a text input. */
+function normMoney(x         , fallback         )          {
+  if (typeof x === 'number') return x;
+  if (typeof x !== 'string') return x == null ? fallback : x;
+  const cleaned = x.trim().replace(/[$,%\s]/g, '');
+  if (cleaned === '') return fallback;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : x;
+}
+
+function normNumber(x         , fallback         )          {
+  if (typeof x === 'number') return x;
+  if (typeof x !== 'string') return x == null ? fallback : x;
+  const cleaned = x.trim();
+  if (cleaned === '') return fallback;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : x;
+}
+
+/** Checkboxes post "on"/"true"/"1"; absent means off. */
+function normBool(x         )          {
+  if (typeof x === 'boolean') return x;
+  if (x == null || x === '') return false;
+  if (typeof x === 'number') return x !== 0;
+  if (typeof x === 'string') {
+    const s = x.trim().toLowerCase();
+    if (s === 'true' || s === 'on' || s === 'yes' || s === '1') return true;
+    if (s === 'false' || s === 'off' || s === 'no' || s === '0') return false;
+  }
+  return x;
+}
+
+function normBasis(x         )                {
+  if (typeof x !== 'string') return null;
+  const s = x.trim();
+  // 'cl' is the key Penguin's own page uses for the same number.
+  if (s === 'cl') return 'clv';
+  return BASIS_KEYS.indexOf(s) >= 0 ? s : null;
+}
+
+/** The page edits keywords as one comma-separated line. */
+function normKeywords(x         )          {
+  if (typeof x === 'string') {
+    return x
+      .split(',')
+      .map((w) => w.trim())
+      .filter((w) => w !== '');
+  }
+  if (Array.isArray(x)) return x.map((w) => (typeof w === 'string' ? w.trim() : w)).filter((w) => w !== '');
+  if (x == null) return [];
+  return x;
+}
+
+// ── validate ─────────────────────────────────────────────────────────────────
+
+/**
+ * Check `raw` against the schema. On success the returned settings are a fresh,
+ * fully-populated object (never the caller's), with the rows ordered by `sort`; on failure every
+ * problem is listed in plain English, rows prefixed "Row N: ".
+ */
+function validateSettings(raw         )                 {
+  const errors           = [];
+
+  if (!isObject(raw)) {
+    return { ok: false, errors: ['The settings must be an object.'] };
+  }
+  const s = raw                           ;
+
+  if (!Array.isArray(s.rates)) {
+    return { ok: false, errors: ['The rate table is missing.'] };
+  }
+  if (s.rates.length < LIMITS.minRows) {
+    errors.push('Add at least one rate row.');
+  }
+  if (s.rates.length > LIMITS.maxRows) {
+    errors.push(
+      'Too many rate rows: ' + LIMITS.maxRows + ' is the limit, you have ' + s.rates.length + '.',
+    );
+  }
+
+  const rates            = [];
+  const rowCount = Math.min(s.rates.length, LIMITS.maxRows);
+  for (let i = 0; i < rowCount; i++) {
+    const row = validateRow(s.rates[i], i + 1, errors);
+    if (row) rates.push(row);
+  }
+  // Pricing reads the rows in this order and stops at the first match, so the stored sheet is stored
+  // in that order too: what staff see on the page is what the bot walks.
+  sortRows(rates);
+
+  // buyLanguages — the sheet-wide default every row inherits unless it names its own
+  let buyLanguages           = LANGUAGE_KEYS.slice();
+  if (s.buyLanguages != null && s.buyLanguages !== '') {
+    if (!Array.isArray(s.buyLanguages)) {
+      errors.push('Languages must be a list.');
+    } else {
+      const picked = checkLanguages(s.buyLanguages, '', errors);
+      if (picked) buyLanguages = picked;
+    }
+  }
+
+  // vintageMaxYear
+  let vintageMaxYear = DEFAULT_VINTAGE_YEAR;
+  if (s.vintageMaxYear != null && s.vintageMaxYear !== '') {
+    const y = num(s.vintageMaxYear);
+    if (y === null || !Number.isInteger(y) || y < LIMITS.minYear || y > LIMITS.maxYear) {
+      errors.push(
+        'Vintage year must be a whole year between ' + LIMITS.minYear + ' and ' + LIMITS.maxYear + '.',
+      );
+    } else {
+      vintageMaxYear = y;
+    }
+  }
+
+  // specialKeywords
+  let specialKeywords           = [];
+  if (s.specialKeywords != null && s.specialKeywords !== '') {
+    if (!Array.isArray(s.specialKeywords)) {
+      errors.push('Special keywords must be a list.');
+    } else {
+      if (s.specialKeywords.length > LIMITS.maxKeywords) {
+        errors.push('Too many special keywords: ' + LIMITS.maxKeywords + ' is the limit.');
+      }
+      s.specialKeywords.slice(0, LIMITS.maxKeywords).forEach((w         , i        ) => {
+        if (typeof w !== 'string') {
+          errors.push('Special keyword ' + (i + 1) + ' must be text.');
+          return;
+        }
+        if (w.length > LIMITS.maxKeywordLength) {
+          errors.push(
+            'Special keyword ' + (i + 1) + ' is longer than ' + LIMITS.maxKeywordLength + ' characters.',
+          );
+          return;
+        }
+        if (w.trim() !== '') specialKeywords.push(w.trim());
+      });
+    }
+  }
+
+  // maxSlabsPerComp
+  let maxSlabsPerComp = DEFAULT_MAX_SLABS;
+  if (s.maxSlabsPerComp != null && s.maxSlabsPerComp !== '') {
+    const m = num(s.maxSlabsPerComp);
+    if (m === null || !Number.isInteger(m) || m < LIMITS.minSlabs || m > LIMITS.maxSlabs) {
+      errors.push(
+        'Max slabs per comp must be a whole number between ' + LIMITS.minSlabs + ' and ' + LIMITS.maxSlabs + '.',
+      );
+    } else {
+      maxSlabsPerComp = m;
+    }
+  }
+
+  // minLotMarket — the minimum total MARKET VALUE, across ACCEPTED rows only, a comp must reach before
+  // we buy it at all (owner's rule 2026-11-05: "the market has to be 2K, the payout doesn't matter" —
+  // this gates on what the cards are worth, never on what we'd actually pay). Same dollar bounds as a
+  // row's own from/to (LIMITS.maxMoney / LIMITS.moneyDecimals): this is the same kind of value, just
+  // sheet-wide instead of per-row. 0 is a valid, deliberate value — it means the floor is off, not "use
+  // the default" — so it is checked the same way every other optional-but-zero-is-meaningful field here
+  // is (only null/'' fall back).
+  let minLotMarket = DEFAULT_MIN_LOT_MARKET;
+  if (s.minLotMarket != null && s.minLotMarket !== '') {
+    const m = num(s.minLotMarket);
+    if (m === null || m < 0 || m > LIMITS.maxMoney) {
+      errors.push('Minimum lot market value must be a number between $0 and ' + money(LIMITS.maxMoney) + '.');
+    } else if (!decimalsOk(m, LIMITS.moneyDecimals)) {
+      errors.push('Minimum lot market value can have at most ' + LIMITS.moneyDecimals + ' decimal places.');
+    } else {
+      minLotMarket = m;
+    }
+  }
+
+  // overlapPoints: a whole number of percent points, 0-100. 0 is deliberate ("always the higher row"), so only
+  // null/'' fall back to the default.
+  let overlapPoints = DEFAULT_OVERLAP_POINTS;
+  if (s.overlapPoints != null && s.overlapPoints !== '') {
+    const o = num(s.overlapPoints);
+    if (o === null || !Number.isInteger(o) || o < 0 || o > 100) {
+      errors.push('Higher row wins when rates differ by at least must be a whole number of points between 0 and 100.');
+    } else {
+      overlapPoints = o;
+    }
+  }
+
+  // clvCapPct: a whole number of percent, 0-500. 0 is deliberate ("never cap"), so only null/'' fall back to the default.
+  let clvCapPct = DEFAULT_CLV_CAP_PCT;
+  if (s.clvCapPct != null && s.clvCapPct !== '') {
+    const c = num(s.clvCapPct);
+    if (c === null || !Number.isInteger(c) || c < 0 || c > 500) {
+      errors.push('Price on recent sales when CL value is more than a percent above them must be a whole number between 0 and 500.');
+    } else {
+      clvCapPct = c;
+    }
+  }
+
+  // paused
+  let paused = false;
+  if (s.paused != null && s.paused !== '') {
+    if (typeof s.paused !== 'boolean') errors.push('Paused must be on or off.');
+    else paused = s.paused;
+  }
+
+  // pausedMessage
+  let pausedMessage = '';
+  if (s.pausedMessage != null && s.pausedMessage !== '') {
+    if (typeof s.pausedMessage !== 'string') {
+      errors.push('Paused message must be text.');
+    } else if (s.pausedMessage.length > LIMITS.maxPausedMessage) {
+      errors.push('Paused message is longer than ' + LIMITS.maxPausedMessage + ' characters.');
+    } else {
+      pausedMessage = s.pausedMessage;
+    }
+  }
+
+  // ticketsOpen — master switch. Absent means "on" (today's hardcoded Fri-Sun hours), so a sheet
+  // that has never set this keeps behaving exactly as it always has.
+  let ticketsOpen = true;
+  if (s.ticketsOpen != null && s.ticketsOpen !== '') {
+    if (typeof s.ticketsOpen !== 'boolean') errors.push('Tickets open must be on or off.');
+    else ticketsOpen = s.ticketsOpen;
+  }
+
+  // ticketWindows — same shape ticketHours.js's isOpen({ windows }) takes directly, no translation.
+  let ticketWindows                 = DEFAULT_TICKET_WINDOWS.map((w) => ({ ...w, days: w.days.slice() }));
+  if (s.ticketWindows != null && s.ticketWindows !== '') {
+    if (!Array.isArray(s.ticketWindows) || s.ticketWindows.length === 0) {
+      errors.push('Add at least one ticket window, or turn ticket opening off.');
+    } else if (s.ticketWindows.length > LIMITS.maxTicketWindows) {
+      errors.push(
+        'Too many ticket windows: ' + LIMITS.maxTicketWindows + ' is the limit, you have ' + s.ticketWindows.length + '.',
+      );
+    } else {
+      const windows                 = [];
+      s.ticketWindows.forEach((w         , i        ) => {
+        const win = validateTicketWindow(w, i + 1, errors);
+        if (win) windows.push(win);
+      });
+      if (!errors.length) ticketWindows = windows;
+    }
+  }
+
+  // ticketTimeZone — must be a zone Intl actually recognizes. Unlike ticketHours.js's own runtime
+  // fallback, a typo here must not silently pass through: this is the admin SAVING the sheet.
+  let ticketTimeZone = DEFAULT_TICKET_TIMEZONE;
+  if (s.ticketTimeZone != null && s.ticketTimeZone !== '') {
+    if (typeof s.ticketTimeZone !== 'string') {
+      errors.push('Ticket time zone must be text.');
+    } else {
+      try {
+        new Intl.DateTimeFormat('en-US', { timeZone: s.ticketTimeZone });
+        ticketTimeZone = s.ticketTimeZone;
+      } catch {
+        errors.push('Ticket time zone must be a real time zone name (for example America/New_York).');
+      }
+    }
+  }
+
+  // ticketsClosedMessage — mirrors pausedMessage exactly: empty means "use the generated message".
+  let ticketsClosedMessage = '';
+  if (s.ticketsClosedMessage != null && s.ticketsClosedMessage !== '') {
+    if (typeof s.ticketsClosedMessage !== 'string') {
+      errors.push('Ticket closed message must be text.');
+    } else if (s.ticketsClosedMessage.length > LIMITS.maxTicketsClosedMessage) {
+      errors.push('Ticket closed message is longer than ' + LIMITS.maxTicketsClosedMessage + ' characters.');
+    } else {
+      ticketsClosedMessage = s.ticketsClosedMessage;
+    }
+  }
+
+  if (errors.length) return { ok: false, errors };
+
+  return {
+    ok: true,
+    settings: {
+      schema: SCHEMA,
+      rates,
+      buyLanguages,
+      vintageMaxYear,
+      specialKeywords,
+      maxSlabsPerComp,
+      minLotMarket,
+      overlapPoints,
+      clvCapPct,
+      paused,
+      pausedMessage,
+      ticketsOpen,
+      ticketWindows,
+      ticketTimeZone,
+      ticketsClosedMessage,
+    },
+  };
+}
+
+/** Ascending `sort`, stable on a tie, so two rows on the same number keep the order they were saved in. */
+function sortRows(rows           )            {
+  const withIndex = rows.map((row, i) => ({ row, i }));
+  withIndex.sort((a, b) => (a.row.sort === b.row.sort ? a.i - b.i : a.row.sort - b.row.sort));
+  for (let i = 0; i < withIndex.length; i++) rows[i] = withIndex[i].row;
+  return rows;
+}
+
+/** A list of language keys, or null when one of them is not a language we buy. `at` prefixes the error. */
+function checkLanguages(list           , at        , errors          )                  {
+  const out           = [];
+  for (const item of list) {
+    if (typeof item !== 'string' || LANGUAGE_KEYS.indexOf(item.trim().toLowerCase()) < 0) {
+      errors.push(at + 'Language must be ' + languageNames() + '.');
+      return null;
+    }
+    const key = item.trim().toLowerCase();
+    if (out.indexOf(key) < 0) out.push(key);
+  }
+  if (!out.length) {
+    errors.push(at + 'Pick at least one language.');
+    return null;
+  }
+  return out;
+}
+
+const TICKET_TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/; // KEEP IN SYNC with ticketHours.js's TIME_RE
+
+function ticketMinutes(hhmm        )         {
+  const parts = hhmm.split(':').map(Number);
+  return parts[0] * 60 + parts[1];
+}
+
+/** One entry of `ticketWindows` — same shape and same rules ticketHours.js's isValidWindow checks
+ *  (days 0-6, HH:MM times, to strictly after from / no midnight-crossing) so a window either module
+ *  accepts is a window the other accepts too. Unlike ticketHours.js's runtime fallback (which drops
+ *  a bad window silently and keeps serving on the default schedule), this REJECTS the whole save —
+ *  the person here is the admin configuring the sheet, not a seller mid-comp. */
+function validateTicketWindow(raw         , i        , errors          )                      {
+  const at = 'Ticket window ' + i + ': ';
+  const before = errors.length;
+  if (!isObject(raw)) {
+    errors.push(at + 'must be an object.');
+    return null;
+  }
+  const w = raw                           ;
+
+  let days           = [];
+  if (!Array.isArray(w.days) || w.days.length === 0) {
+    errors.push(at + 'Pick at least one day.');
+  } else if (!w.days.every((d) => Number.isInteger(d) && (d          ) >= 0 && (d          ) <= 6)) {
+    errors.push(at + 'Days must be valid weekdays.');
+  } else {
+    days = (w.days            ).slice();
+  }
+
+  let from = '';
+  if (typeof w.from !== 'string' || !TICKET_TIME_RE.test(w.from)) {
+    errors.push(at + 'From must be a time like 19:00.');
+  } else {
+    from = w.from;
+  }
+
+  let to = '';
+  if (typeof w.to !== 'string' || !TICKET_TIME_RE.test(w.to)) {
+    errors.push(at + 'To must be a time like 23:00.');
+  } else {
+    to = w.to;
+  }
+
+  if (from && to && !(ticketMinutes(to) > ticketMinutes(from))) {
+    errors.push(at + 'To must be after From (ticket windows cannot cross midnight, same as ticketHours.js).');
+  }
+
+  if (errors.length > before) return null;
+  return { days, from, to };
+}
+
+function validateRow(raw         , n        , errors          )                 {
+  const at = 'Row ' + n + ': ';
+  if (!isObject(raw)) {
+    errors.push(at + 'this row is not filled in.');
+    return null;
+  }
+  const r = raw                           ;
+  const before = errors.length;
+
+  // sort — the order the bot tries the rows in, first match wins
+  let sort = 0;
+  if (r.sort != null && r.sort !== '') {
+    const o = num(r.sort);
+    if (o === null || !Number.isInteger(o) || o < LIMITS.minSort || o > LIMITS.maxSort) {
+      errors.push(
+        at + 'Sort order must be a whole number between ' + LIMITS.minSort + ' and ' + LIMITS.maxSort + '.',
+      );
+    } else sort = o;
+  }
+
+  // label
+  let label = '';
+  if (r.label != null && r.label !== '') {
+    if (typeof r.label !== 'string') errors.push(at + 'Label must be text.');
+    else if (r.label.length > LIMITS.maxLabel) {
+      errors.push(at + 'Label must be ' + LIMITS.maxLabel + ' characters or less.');
+    } else label = r.label;
+  }
+
+  // sport
+  let sport = '*';
+  if (r.sport != null && r.sport !== '') {
+    if (typeof r.sport !== 'string' || SPORT_KEYS.indexOf(r.sport) < 0) {
+      errors.push(at + 'Sport must be one of: ' + SPORT_KEYS.map((k) => SPORT_SHORT[k]).join(', ') + '.');
+    } else sport = r.sport;
+  }
+
+  // grader
+  let grader                    = '*';
+  if (r.grader != null && r.grader !== '') {
+    const g = r.grader;
+    const listOk =
+      Array.isArray(g) &&
+      g.length >= 2 &&
+      g.every((k) => typeof k === 'string' && GRADER_LIST_KEYS.indexOf(k) >= 0) &&
+      new Set(g).size === g.length &&
+      // stored order, and never PSA + CGC alone (that is '*'): one spelling per meaning
+      g.join('+') === GRADER_LIST_KEYS.filter((k) => g.indexOf(k) >= 0).join('+') &&
+      g.join('+') !== 'PSA+CGC';
+    if (typeof g === 'string' && GRADER_KEYS.indexOf(g) >= 0) grader = g;
+    else if (listOk) grader = (g            ).slice();
+    else errors.push(at + 'Grader must be PSA, CGC, BGS, a list of them (like CGC and BGS), or PSA or CGC.');
+  }
+
+  // gradeMin / gradeMax
+  let gradeMin = LIMITS.minGrade;
+  if (r.gradeMin != null && r.gradeMin !== '') {
+    const g = num(r.gradeMin);
+    if (g === null || !gradeStepOk(g)) {
+      errors.push(
+        at + 'Grade min must be between ' + LIMITS.minGrade + ' and ' + LIMITS.maxGrade +
+          ', in halves like 8 or 8.5.',
+      );
+    } else gradeMin = g;
+  }
+  let gradeMax = LIMITS.maxGrade;
+  if (r.gradeMax != null && r.gradeMax !== '') {
+    const g = num(r.gradeMax);
+    if (g === null || !gradeStepOk(g)) {
+      errors.push(
+        at + 'Grade max must be between ' + LIMITS.minGrade + ' and ' + LIMITS.maxGrade +
+          ', in halves like 8 or 8.5.',
+      );
+    } else if (g < gradeMin) {
+      errors.push(at + 'Grade max must be at least the grade min.');
+    } else gradeMax = g;
+  }
+
+  // from
+  let from = 0;
+  const f = num(r.from);
+  if (r.from == null || r.from === '') {
+    from = 0;
+  } else if (f === null) {
+    errors.push(at + 'From $ must be a number.');
+  } else if (f < 0) {
+    errors.push(at + 'From $ cannot be negative.');
+  } else if (f > LIMITS.maxMoney) {
+    errors.push(at + 'From $ cannot be more than ' + money(LIMITS.maxMoney) + '.');
+  } else if (!decimalsOk(f, LIMITS.moneyDecimals)) {
+    errors.push(at + 'From $ can have at most ' + LIMITS.moneyDecimals + ' decimal places.');
+  } else {
+    from = f;
+  }
+
+  // to
+  let to                = null;
+  if (r.to != null && r.to !== '') {
+    const t = num(r.to);
+    if (t === null) {
+      errors.push(at + 'To $ must be a number, or blank for no limit.');
+    } else if (t < 0) {
+      errors.push(at + 'To $ cannot be negative.');
+    } else if (t > LIMITS.maxMoney) {
+      errors.push(at + 'To $ cannot be more than ' + money(LIMITS.maxMoney) + '.');
+    } else if (!decimalsOk(t, LIMITS.moneyDecimals)) {
+      errors.push(at + 'To $ can have at most ' + LIMITS.moneyDecimals + ' decimal places.');
+    } else if (f !== null && t <= f) {
+      errors.push(at + 'To $ must be more than From $.');
+    } else {
+      to = t;
+    }
+  }
+
+  // pct
+  let pct = 0;
+  const p = num(r.pct);
+  if (p === null) {
+    errors.push(at + 'Pays % must be a number.');
+  } else if (p < LIMITS.minPct || p > LIMITS.maxPct) {
+    errors.push(at + 'Pays % must be between ' + LIMITS.minPct + ' and ' + LIMITS.maxPct + '.');
+  } else if (!decimalsOk(p, LIMITS.pctDecimals)) {
+    errors.push(at + 'Pays % can have at most ' + LIMITS.pctDecimals + ' decimal places.');
+  } else {
+    pct = p;
+  }
+
+  // basis — required: every row says what it pays on, there is no sheet-wide default any more
+  let basis        = 'clv';
+  if (r.basis == null || r.basis === '') {
+    errors.push(at + 'Basis must be ' + listNames(BASIS_KEYS, BASIS_LABEL) + '.');
+  } else {
+    const b = normBasis(r.basis);
+    if (!b) errors.push(at + 'Basis must be ' + listNames(BASIS_KEYS, BASIS_LABEL) + '.');
+    else basis = b         ;
+  }
+
+  // languages — null means "inherit the sheet's buyLanguages"
+  let languages                  = null;
+  if (r.languages != null && r.languages !== '') {
+    if (!Array.isArray(r.languages)) {
+      errors.push(at + 'Languages must be a list.');
+    } else {
+      languages = checkLanguages(r.languages, at, errors);
+    }
+  }
+
+  // minConfidence
+  let minConfidence                = null;
+  if (r.minConfidence != null && r.minConfidence !== '') {
+    const c = num(r.minConfidence);
+    if (c === null || !Number.isInteger(c) || c < LIMITS.minConfidence || c > LIMITS.maxConfidence) {
+      errors.push(
+        at + 'Min confidence must be a whole number between ' + LIMITS.minConfidence + ' and ' +
+          LIMITS.maxConfidence + '.',
+      );
+    } else minConfidence = c;
+  }
+
+  // certRule
+  let certRule           = 'any';
+  if (r.certRule != null && r.certRule !== '') {
+    if (typeof r.certRule !== 'string' || CERT_RULES.indexOf(r.certRule) < 0) {
+      errors.push(at + 'Cert rule must be Any or New certs.');
+    } else certRule = r.certRule            ;
+  }
+
+  // vintage / special
+  let vintage = false;
+  if (r.vintage != null && r.vintage !== '') {
+    if (typeof r.vintage !== 'boolean') errors.push(at + 'Vintage holo only must be on or off.');
+    else vintage = r.vintage;
+  }
+  let special = false;
+  if (r.special != null && r.special !== '') {
+    if (typeof r.special !== 'boolean') errors.push(at + 'Special or WOTC only must be on or off.');
+    else special = r.special;
+  }
+
+  if (errors.length > before) return null;
+
+  return {
+    sort,
+    sport,
+    grader,
+    gradeMin,
+    gradeMax,
+    from,
+    to,
+    pct,
+    basis,
+    label,
+    languages,
+    minConfidence,
+    certRule,
+    vintage,
+    special,
+  };
+}
+
+window.RatesValidate = {
+  SCHEMA: SCHEMA,
+  SPORT_KEYS: SPORT_KEYS,
+  SPORT_ORDER: SPORT_ORDER,
+  SPORT_LABEL: SPORT_LABEL,
+  SPORT_SHORT: SPORT_SHORT,
+  SPORT_LEAGUES: SPORT_LEAGUES,
+  GRADER_KEYS: GRADER_KEYS,
+  GRADER_LIST_KEYS: GRADER_LIST_KEYS,
+  GRADER_LABEL: GRADER_LABEL,
+  GRADER_CHOICES: GRADER_CHOICES,
+  GRADE_STEPS: GRADE_STEPS,
+  LANGUAGE_KEYS: LANGUAGE_KEYS,
+  LANGUAGE_LABEL: LANGUAGE_LABEL,
+  BASIS_KEYS: BASIS_KEYS,
+  BASIS_LABEL: BASIS_LABEL,
+  CERT_RULES: CERT_RULES,
+  CERT_RULE_LABEL: CERT_RULE_LABEL,
+  CONFIDENCE_LABEL: CONFIDENCE_LABEL,
+  LIMITS: LIMITS,
+  DEFAULT_VINTAGE_YEAR: DEFAULT_VINTAGE_YEAR,
+  DEFAULT_MAX_SLABS: DEFAULT_MAX_SLABS,
+  DEFAULT_MIN_LOT_MARKET: DEFAULT_MIN_LOT_MARKET,
+  DEFAULT_OVERLAP_POINTS: DEFAULT_OVERLAP_POINTS,
+  DEFAULT_CLV_CAP_PCT: DEFAULT_CLV_CAP_PCT,
+  DEFAULT_TICKET_WINDOWS: DEFAULT_TICKET_WINDOWS,
+  DEFAULT_TICKET_TIMEZONE: DEFAULT_TICKET_TIMEZONE,
+  defaults: defaults,
+  normalize: normalize,
+  validateSettings: validateSettings,
+  sortRows: sortRows,
+};
+})();
+/* VALIDATE-CORE:END */
+</script>
+
+<script>
+(function () {
+'use strict';
+
+
+  // ── tabs ─────────────────────────────────────────────────────────────────
+  var activeTab = 'rules';   // 'rules' | 'singles' | 'consignors' - which tab owns the shared header
+
+  var V = window.RatesValidate || {};
+  var KEY_STORE = 'iopRatesEditKey';
+
+  // ── vocabulary ─────────────────────────────────────────────────────────────
+  // Schema v2 publishes all of this on window.RatesValidate. The fallbacks below
+  // only matter in the window between editing this page and re-running
+  // build-portal.js (the generated block above is still schema v1 until then):
+  // without them the page would not render at all.
+  var FALLBACK = {
+    SPORT_ORDER: ['pokemon','one_piece','dragon_ball','nba','nfl','mlb','nhl','soccer','racing','fighting','golf','sports','other','*'],
+    SPORT_LABEL: {
+      pokemon:'⚡ Pokémon Slabs', one_piece:'🏴‍☠️ One Piece Slabs', dragon_ball:'🐉 Dragon Ball Slabs',
+      nba:'🏀 NBA Slabs', nfl:'🏈 NFL Slabs', mlb:'⚾ MLB Slabs', nhl:'🏒 NHL Slabs',
+      soccer:'⚽ Soccer Slabs', racing:'🏎️ Racing Slabs', fighting:'🥊 Fighting Slabs',
+      golf:'⛳ Golf Slabs', sports:'🏆 Other Sports', other:'🃏 Other Slabs', '*':'✨ Any Sport'
+    },
+    GRADER_KEYS: ['*','PSA','CGC','BGS'],
+    GRADER_CHOICES: ['*','PSA','CGC','BGS','PSA+BGS','CGC+BGS','PSA+CGC+BGS'],
+    GRADER_LABEL: { '*':'PSA or CGC', PSA:'PSA', CGC:'CGC', BGS:'BGS', 'PSA+BGS':'PSA / BGS', 'CGC+BGS':'CGC / BGS', 'PSA+CGC+BGS':'PSA / CGC / BGS' },
+    GRADE_STEPS: [1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,8.5,9,9.5,10],
+    LANGUAGE_KEYS: ['english','japanese','korean','chinese'],
+    LANGUAGE_LABEL: { english:['EN','English'], japanese:['JP','Japanese'], korean:['KR','Korean'], chinese:['CN','Chinese'] },
+    BASIS_KEYS: ['clv','avg3','lowest','last'],
+    BASIS_LABEL: { clv:'CL Value', avg3:'Avg 3', lowest:'Lowest of 2', last:'Last sale' },
+    CERT_RULES: ['any','new'],
+    CERT_RULE_LABEL: { any:'Any cert', 'new':'New certs (7+)' },
+    CONFIDENCE_LABEL: { '1':'1+', '2':'2+', '3':'3+', '4':'4+', '5':'5' },
+    LIMITS: { maxRows: 60 }
+  };
+  function vocab(name) {
+    var v = V[name];
+    if (v == null) return FALLBACK[name];
+    if (Array.isArray(v)) return v.length ? v : FALLBACK[name];
+    if (typeof v === 'object') return Object.keys(v).length ? v : FALLBACK[name];
+    return v;
+  }
+  var SPORT_LABEL  = vocab('SPORT_LABEL');
+  var SPORT_SHORT  = V.SPORT_SHORT || null;
+  var SPORT_ORDER  = vocab('SPORT_ORDER');
+  var SPORT_KEYS   = (V.SPORT_KEYS && V.SPORT_KEYS.length) ? V.SPORT_KEYS : Object.keys(SPORT_LABEL);
+  var GRADER_KEYS  = vocab('GRADER_CHOICES'); // one grader, or a '+' list ('CGC+BGS'): the dropdown's values
+  var GRADER_LABEL = vocab('GRADER_LABEL');
+  var GRADE_STEPS  = vocab('GRADE_STEPS');
+  var LANG_KEYS    = vocab('LANGUAGE_KEYS');
+  var LANG_LABEL   = vocab('LANGUAGE_LABEL');
+  var BASIS_KEYS   = vocab('BASIS_KEYS');
+  var BASIS_LABEL  = vocab('BASIS_LABEL');
+  var CERT_RULES   = vocab('CERT_RULES');
+  var CERT_LABEL   = vocab('CERT_RULE_LABEL');
+  var CONF_LABEL   = vocab('CONFIDENCE_LABEL');
+  var MAX_ROWS     = (V.LIMITS && V.LIMITS.maxRows) || FALLBACK.LIMITS.maxRows;
+
+  // The sports a row may be moved to, in the app's display order first.
+  var SPORTS = (function () {
+    var out = [];
+    SPORT_ORDER.forEach(function (k) { if (SPORT_KEYS.indexOf(k) >= 0 && out.indexOf(k) < 0) out.push(k); });
+    SPORT_KEYS.forEach(function (k) { if (out.indexOf(k) < 0) out.push(k); });
+    return out;
+  })();
+  function sportRank(k) { var i = SPORTS.indexOf(k); return i < 0 ? SPORTS.length + 1 : i; }
+  function sportLabel(k) { return SPORT_LABEL[k] || String(k).toUpperCase(); }
+  function sportShort(k) {
+    if (SPORT_SHORT && SPORT_SHORT[k]) return SPORT_SHORT[k];
+    return sportLabel(k).replace(/^\S+\s/, '');
+  }
+  function langPair(k) {
+    var l = LANG_LABEL[k];
+    if (Array.isArray(l)) return [l[0] || k, l[1] || k];
+    if (typeof l === 'string') return [l, l];
+    return [String(k).slice(0, 2).toUpperCase(), String(k)];
+  }
+  function langAb(k) { return langPair(k)[0]; }
+  function langFull(k) { return langPair(k)[1]; }
+
+  // ── api ────────────────────────────────────────────────────────────────────
+  // The function is served at .../functions/v1/slab-rates with no trailing slash, so a
+  // literal "./settings" would resolve one level too high. Build the sibling path from
+  // whatever path this page was loaded at; still host-relative, works behind any domain.
+  function api(name) {
+    var meta = document.querySelector('meta[name="rates-api"]');
+    var base = meta && meta.content ? meta.content : location.pathname;
+    return base.replace(new RegExp('[/]+$'), '') + '/' + name;
+  }
+  // An older slab-rates answers a save with 200 and a sheet built from the keys IT knows, so a setting added since is
+  // dropped without a word. False when the saved sheet in the answer has no CLV cap; true when it does, or when the
+  // answer carries no sheet to look at.
+  function keptClvCap(body) {
+    var s = body && body.settings;
+    return !s || typeof s !== 'object' || s.clvCapPct != null;
+  }
+
+  // ── state ──────────────────────────────────────────────────────────────────
+  var state = null;        // form values (strings), never coerced until save time
+  var baseline = null;     // snapshot of the last loaded/saved sheet, for the dirty count
+  var savedAt = null;      // ISO string of the last save
+  var botSeenAt = null;    // ISO string of the bot's last check in
+  var apiUp = true;
+  var busy = false;
+  var justSaved = false;
+  var uidSeq = 0;
+
+  // el mixes the rules-only body elements with the handful of header elements every
+  // tab shares (msg/save/reload/stSaved/botPill) — those live in their own literal so
+  // build-portal.js can lift just that part into the singles/consignors pages, which
+  // have no rules body to query.
+  var el = Object.assign({
+    rulesList: document.getElementById('wtb-rules-list'),
+    buyLang: document.getElementById('wtb-buylang'),
+    errors: document.getElementById('errors'),
+    errorsList: document.getElementById('errors-list'),
+    dirtyHint: document.getElementById('dirty-hint'),
+    paused: document.getElementById('paused'),
+    pausedWrap: document.getElementById('pausedWrap'),
+    ticketsOpen: document.getElementById('ticketsOpen'),
+    ticketWindows: document.getElementById('ticket-windows-list'),
+    addTicketWindow: document.getElementById('add-ticket-window'),
+    ticketSummary: document.getElementById('ticket-summary'),
+    foot: document.getElementById('foot')
+  },{
+    msg: document.getElementById('msg'),
+    save: document.getElementById('save'),
+    reload: document.getElementById('reload'),
+    stSaved: document.getElementById('st-saved'),
+    botPill: document.getElementById('bot-pill')
+  });
+
+  var TOP_FIELDS = ['vintageMaxYear', 'maxSlabsPerComp', 'minLotMarket', 'overlapPoints', 'clvCapPct', 'specialKeywords', 'pausedMessage',
+    'ticketTimeZone', 'ticketsClosedMessage'];
+
+  // ── ticket opening ─────────────────────────────────────────────────────────
+  // The gate itself is ticketHours.js's isOpen({ windows, timeZone }) and the real validation is
+  // validate.ts; what lives here is only the editor plus a plain-English preview of it. The day
+  // names, the "Friday to Sunday" contiguous-range phrasing, the 12 hour clock and the four zone
+  // labels below are a THIRD hand-synced copy of the describeDays / formatTime12 / zoneLabel in
+  // ticketHours.js (validate.ts holds the second copy of the RULES, this one holds the wording).
+  // Kept deliberately dumb because it is cosmetic: this summary gates nothing, it only tells Josh
+  // what he just picked.
+  var TICKET_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  var TICKET_DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var TICKET_ZONE_LABEL = {
+    'America/New_York': 'Eastern', 'America/Chicago': 'Central',
+    'America/Denver': 'Mountain', 'America/Los_Angeles': 'Pacific'
+  };
+  var TW_TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
+  var DEFAULT_TICKET_WINDOW = (V.DEFAULT_TICKET_WINDOWS && V.DEFAULT_TICKET_WINDOWS[0]) || { days: [5, 6, 0], from: '19:00', to: '23:00' };
+  var DEFAULT_TICKET_ZONE = V.DEFAULT_TICKET_TIMEZONE || 'America/New_York';
+  var MAX_TICKET_WINDOWS = (V.LIMITS && V.LIMITS.maxTicketWindows) || 10;
+
+  function newTicketWindow() {
+    return { days: DEFAULT_TICKET_WINDOW.days.slice(), from: DEFAULT_TICKET_WINDOW.from, to: DEFAULT_TICKET_WINDOW.to };
+  }
+
+  function twMinutes(hhmm) {
+    var parts = String(hhmm).split(':');
+    return Number(parts[0]) * 60 + Number(parts[1]);
+  }
+
+  /** Mirrors validate.ts's validateTicketWindow, minus the messages: used only to word the summary. */
+  function twOk(w) {
+    if (!w || !Array.isArray(w.days) || !w.days.length) return false;
+    if (!TW_TIME_RE.test(w.from) || !TW_TIME_RE.test(w.to)) return false;
+    return twMinutes(w.to) > twMinutes(w.from);
+  }
+
+  function twTime12(hhmm) {
+    var parts = String(hhmm).split(':');
+    var h = Number(parts[0]), m = Number(parts[1]);
+    var period = h >= 12 ? 'pm' : 'am';
+    var h12 = h % 12;
+    if (h12 === 0) h12 = 12;
+    return m === 0 ? h12 + period : h12 + ':' + (m < 10 ? '0' + m : m) + period;
+  }
+
+  /** Sun=0 sorts last so a Fri/Sat/Sun run reads as one contiguous range. */
+  function twRotated(d) { return d === 0 ? 7 : d; }
+
+  function twDays(days) {
+    var seen = {};
+    var sorted = days.filter(function (d) {
+      if (seen[d]) return false;
+      seen[d] = true;
+      return true;
+    }).sort(function (a, b) { return twRotated(a) - twRotated(b); });
+    if (!sorted.length) return '';
+    if (sorted.length === 1) return TICKET_DAY_NAMES[sorted[0]];
+    var contiguous = sorted.every(function (d, i) {
+      return i === 0 || twRotated(d) === twRotated(sorted[i - 1]) + 1;
+    });
+    if (contiguous) return TICKET_DAY_NAMES[sorted[0]] + ' to ' + TICKET_DAY_NAMES[sorted[sorted.length - 1]];
+    var names = sorted.map(function (d) { return TICKET_DAY_NAMES[d]; });
+    return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+  }
+
+  function twZoneLabel(zone) { return TICKET_ZONE_LABEL[zone] || zone; }
+
+  // ── settings <-> form values ───────────────────────────────────────────────
+  function str(v) { return v === null || v === undefined ? '' : String(v); }
+
+  function toFormRow(r) {
+    r = r || {};
+    return {
+      _uid: 'r' + (++uidSeq),
+      sort: str(r.sort == null ? 0 : r.sort),
+      sport: str(r.sport || '*'),
+      grader: Array.isArray(r.grader) ? r.grader.join('+') : str(r.grader || '*'),
+      gradeMin: str(r.gradeMin == null ? 1 : r.gradeMin),
+      gradeMax: str(r.gradeMax == null ? 10 : r.gradeMax),
+      from: str(r.from == null ? 0 : r.from),
+      to: r.to == null ? '' : str(r.to),
+      pct: str(r.pct == null ? '' : r.pct),
+      basis: r.basis == null ? 'clv' : str(r.basis),
+      label: str(r.label),
+      languages: (Array.isArray(r.languages) && r.languages.length) ? r.languages.slice() : null,
+      minConfidence: r.minConfidence == null ? '' : str(r.minConfidence),
+      certRule: r.certRule === 'new' ? 'new' : 'any',
+      vintage: !!r.vintage,
+      special: !!r.special
+    };
+  }
+
+  function toForm(settings) {
+    settings = settings || {};
+    var langs = (Array.isArray(settings.buyLanguages) && settings.buyLanguages.length)
+      ? settings.buyLanguages.filter(function (k) { return LANG_KEYS.indexOf(k) >= 0; })
+      : [];
+    return {
+      buyLanguages: langs.length ? langs : LANG_KEYS.slice(),
+      vintageMaxYear: str(settings.vintageMaxYear),
+      specialKeywords: (settings.specialKeywords || []).join(', '),
+      maxSlabsPerComp: str(settings.maxSlabsPerComp),
+      minLotMarket: str(settings.minLotMarket),
+      overlapPoints: settings.overlapPoints == null ? '5' : str(settings.overlapPoints),
+      clvCapPct: settings.clvCapPct == null ? '30' : str(settings.clvCapPct),
+      paused: !!settings.paused,
+      pausedMessage: str(settings.pausedMessage),
+      ticketsOpen: settings.ticketsOpen !== false,
+      ticketWindows: toFormWindows(settings.ticketWindows),
+      ticketTimeZone: settings.ticketTimeZone ? str(settings.ticketTimeZone) : DEFAULT_TICKET_ZONE,
+      ticketsClosedMessage: str(settings.ticketsClosedMessage),
+      rates: (settings.rates || []).map(toFormRow)
+    };
+  }
+
+  /** A sheet saved before this feature has no windows at all, so start it on the old hardcoded one. */
+  function toFormWindows(list) {
+    var out = [];
+    (Array.isArray(list) ? list : []).forEach(function (w) {
+      if (!w || typeof w !== 'object') return;
+      out.push({
+        days: (Array.isArray(w.days) ? w.days : []).map(Number).filter(function (d) { return d >= 0 && d <= 6; }),
+        from: w.from == null ? DEFAULT_TICKET_WINDOW.from : str(w.from),
+        to: w.to == null ? DEFAULT_TICKET_WINDOW.to : str(w.to)
+      });
+    });
+    return out.length ? out : [newTicketWindow()];
+  }
+
+  /** The row as the schema wants it: no _uid, strings left for normalize() to coerce. */
+  function plainRow(r) {
+    return {
+      sort: r.sort,
+      sport: r.sport,
+      grader: r.grader,
+      gradeMin: r.gradeMin,
+      gradeMax: r.gradeMax,
+      from: r.from,
+      to: r.to,
+      pct: r.pct,
+      basis: r.basis,
+      label: r.label,
+      languages: r.languages ? r.languages.slice() : null,
+      minConfidence: r.minConfidence,
+      certRule: r.certRule,
+      vintage: r.vintage,
+      special: r.special
+    };
+  }
+
+  function fromForm() {
+    return {
+      schema: V.SCHEMA,
+      buyLanguages: state.buyLanguages.slice(),
+      vintageMaxYear: state.vintageMaxYear,
+      specialKeywords: state.specialKeywords,
+      maxSlabsPerComp: state.maxSlabsPerComp,
+      minLotMarket: state.minLotMarket,
+      overlapPoints: state.overlapPoints,
+      clvCapPct: state.clvCapPct,
+      paused: state.paused,
+      pausedMessage: state.paused ? state.pausedMessage : '',
+      ticketsOpen: !!state.ticketsOpen,
+      // Sent whatever the switch says: unlike pausedMessage this one is also what a seller sees
+      // when tickets are simply outside the hours, so it is never blanked on the way out.
+      ticketWindows: state.ticketWindows.map(function (w) {
+        return { days: w.days.slice(), from: w.from, to: w.to };
+      }),
+      ticketTimeZone: state.ticketTimeZone,
+      ticketsClosedMessage: state.ticketsClosedMessage,
+      rates: state.rates.map(plainRow)
+    };
+  }
+
+  function blankRow(sport, sort) {
+    return toFormRow({
+      sort: sort, sport: sport || '*', grader: '*',
+      gradeMin: 1, gradeMax: 10, from: 0, to: null,
+      pct: '', basis: 'clv', label: '', languages: null,
+      minConfidence: null, certRule: 'any', vintage: false, special: false
+    });
+  }
+
+  // ── dirty tracking ─────────────────────────────────────────────────────────
+  function captureBaseline() {
+    var rows = {};
+    state.rates.forEach(function (r) { rows[r._uid] = JSON.stringify(plainRow(r)); });
+    baseline = {
+      rows: rows,
+      top: {
+        vintageMaxYear: state.vintageMaxYear,
+        specialKeywords: state.specialKeywords,
+        maxSlabsPerComp: state.maxSlabsPerComp,
+        minLotMarket: state.minLotMarket,
+        overlapPoints: state.overlapPoints,
+        clvCapPct: state.clvCapPct,
+        pausedMessage: state.pausedMessage,
+        paused: !!state.paused,
+        ticketTimeZone: state.ticketTimeZone,
+        ticketsClosedMessage: state.ticketsClosedMessage,
+        ticketsOpen: !!state.ticketsOpen,
+        ticketWindows: JSON.stringify(state.ticketWindows),
+        buyLanguages: state.buyLanguages.slice().sort().join(',')
+      }
+    };
+  }
+
+  function countChanges() {
+    if (!baseline || !state) return 0;
+    var n = 0;
+    ['vintageMaxYear', 'specialKeywords', 'maxSlabsPerComp', 'minLotMarket', 'overlapPoints', 'clvCapPct', 'pausedMessage',
+      'ticketTimeZone', 'ticketsClosedMessage'].forEach(function (k) {
+      if (str(state[k]) !== str(baseline.top[k])) n++;
+    });
+    if (!!state.paused !== !!baseline.top.paused) n++;
+    if (!!state.ticketsOpen !== !!baseline.top.ticketsOpen) n++;
+    if (JSON.stringify(state.ticketWindows) !== baseline.top.ticketWindows) n++;
+    if (state.buyLanguages.slice().sort().join(',') !== baseline.top.buyLanguages) n++;
+    var seen = {};
+    state.rates.forEach(function (r) {
+      seen[r._uid] = true;
+      var was = baseline.rows[r._uid];
+      if (was === undefined || was !== JSON.stringify(plainRow(r))) n++;
+    });
+    Object.keys(baseline.rows).forEach(function (uid) { if (!seen[uid]) n++; });
+    return n;
+  }
+
+  function markDirty() { justSaved = false; updateDirty(); }
+
+  function updateDirty() {
+    var n = countChanges();
+    el.dirtyHint.hidden = n === 0;
+    if (activeTab !== 'rules') return;
+    if (busy) { el.save.disabled = true; el.save.textContent = 'Saving…'; return; }
+    if (n > 0) {
+      el.save.disabled = false;
+      el.save.textContent = 'Save (' + n + ' change' + (n === 1 ? '' : 's') + ')';
+    } else if (justSaved) {
+      el.save.disabled = true;
+      el.save.textContent = '✓ Saved';
+    } else {
+      el.save.disabled = false;
+      el.save.textContent = 'Save';
+    }
+  }
+
+  // ── html helpers ───────────────────────────────────────────────────────────
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function opts(pairs, value) {
+    return pairs.map(function (p) {
+      return '<option value="' + esc(p[0]) + '"' + (String(p[0]) === String(value) ? ' selected' : '') + '>' + esc(p[1]) + '</option>';
+    }).join('');
+  }
+
+  function sportOptions(sel) {
+    return opts(SPORTS.map(function (k) { return [k, sportShort(k)]; }), sel);
+  }
+  // BGS prices from Card Ladder sales like PSA and CGC (the helper searches Beckett certs with grader=bgs), so no row is skipped for want of sales.
+  function bgsNoSalesNote(r) {
+    return '';
+  }
+  function graderOptions(sel) {
+    return opts(GRADER_KEYS.map(function (k) { return [k, GRADER_LABEL[k] || k]; }), sel || '*');
+  }
+  function gradeOptions(sel) {
+    return GRADE_STEPS.map(function (g) {
+      return '<option value="' + g + '"' + (Number(sel) === g ? ' selected' : '') + '>' + g + '</option>';
+    }).join('');
+  }
+  function basisOptions(sel) {
+    return opts(BASIS_KEYS.map(function (k) { return [k, BASIS_LABEL[k] || k]; }), sel);
+  }
+  function certOptions(sel) {
+    return opts(CERT_RULES.map(function (k) { return [k, CERT_LABEL[k] || k]; }), sel || 'any');
+  }
+  function confOptions(sel) {
+    var pairs = [['', CONF_LABEL[''] || 'Any conf']];
+    ['1', '2', '3', '4', '5'].forEach(function (k) { pairs.push([k, CONF_LABEL[k] || (k === '5' ? '5' : k + '+')]); });
+    return opts(pairs, sel);
+  }
+
+  /** Per-tier language chips. Dashed + dim while the tier inherits the global list. */
+  function langChips(r) {
+    var overridden = Array.isArray(r.languages) && r.languages.length > 0;
+    var eff = overridden ? r.languages : state.buyLanguages;
+    var chips = LANG_KEYS.map(function (k) {
+      var tip = langFull(k) + (overridden ? '' : ' (global default; click to customize this tier)');
+      return '<button type="button" class="rl' + (eff.indexOf(k) >= 0 ? ' on' : '') + '"' +
+        ' data-act="lang" data-lang="' + esc(k) + '" title="' + esc(tip) + '"' +
+        ' aria-pressed="' + (eff.indexOf(k) >= 0) + '">' + esc(langAb(k)) + '</button>';
+    }).join('');
+    var reset = overridden
+      ? '<button type="button" class="rl-reset" data-act="lang-reset" title="Reset to the global default" aria-label="Reset this tier to the global buy languages">↺</button>'
+      : '';
+    var tip = 'Languages this tier buys' + (overridden ? '' : ' (following your global default)');
+    return '<span class="rule-lang' + (overridden ? '' : ' inherit') + '" title="' + esc(tip) + '">' + chips + reset + '</span>';
+  }
+
+  // ── rendering: the global buy-language toggle ──────────────────────────────
+  function renderBuyLangToggle() {
+    var chips = LANG_KEYS.map(function (k) {
+      var on = state.buyLanguages.indexOf(k) >= 0;
+      return '<button type="button" class="lang-chip' + (on ? ' on' : '') + '"' +
+        ' data-act="buylang" data-lang="' + esc(k) + '" title="' + esc(langFull(k)) + '"' +
+        ' aria-pressed="' + on + '">' + esc(langAb(k)) + '</button>';
+    }).join('');
+    var off = LANG_KEYS.filter(function (k) { return state.buyLanguages.indexOf(k) < 0; }).map(langFull);
+    var hint = off.length ? off.join(' & ') + ' skipped' : 'all languages bought';
+    el.buyLang.innerHTML =
+      '<span class="buylang-label" id="buylang-label">Buy languages:</span>' +
+      '<div class="lang-toggle" role="group" aria-labelledby="buylang-label">' + chips + '</div>' +
+      '<span class="buylang-hint">· ' + esc(hint) + '</span>';
+  }
+
+  // ── rendering: the tier table ──────────────────────────────────────────────
+  /** Keep state.rates in display order, so "Row N" in an error is the row you see. */
+  function reorder() {
+    state.rates = state.rates
+      .map(function (r, i) { return { r: r, i: i }; })
+      .sort(function (a, b) {
+        var sa = sportRank(a.r.sport), sb = sportRank(b.r.sport);
+        if (sa !== sb) return sa - sb;
+        var oa = Number(a.r.sort) || 0, ob = Number(b.r.sort) || 0;
+        if (oa !== ob) return oa - ob;
+        return a.i - b.i;
+      })
+      .map(function (x) { return x.r; });
+  }
+
+  // ── one tier = one summary line (what it buys, the band, the %) + an Edit panel with every field ──
+  // Look only (owner 11/24: "each rule row is a stack of tiny dropdowns"): every input below keeps
+  // the data-k / data-act it always had, so the listeners, the dirty count and the save are unchanged.
+  // r._open is UI-only, like the Singles rows' _exclOpen: plainRow() never copies it.
+  function tierMoney(v) {
+    var s = String(v == null ? '' : v).trim();
+    if (s === '' || !isFinite(Number(s))) return null;
+    var n = Number(s);
+    var whole = Math.abs(n - Math.round(n)) < 1e-9;
+    return '$' + n.toLocaleString('en-US', { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 });
+  }
+  function tierBand(from, to) {
+    var a = tierMoney(from) || '$0', b = tierMoney(to);
+    return b ? a + ' – ' + b : a + ' and up';
+  }
+  function tierGrades(r) {
+    var a = String(r.gradeMin), b = String(r.gradeMax);
+    if (a === b) return a;
+    if (a === '1' && b === '10') return 'any grade';
+    return a + '–' + b;
+  }
+  function tierSummaryHtml(r) {
+    var bits = [];
+    bits.push('<b>' + esc(GRADER_LABEL[r.grader] || r.grader) + ' ' + esc(tierGrades(r)) + '</b>');
+    bits.push(esc(BASIS_LABEL[r.basis] || r.basis));
+    if (r.minConfidence !== '' && r.minConfidence != null) bits.push('conf ' + esc(CONF_LABEL[r.minConfidence] || r.minConfidence));
+    if (r.certRule && r.certRule !== 'any') bits.push(esc(CERT_LABEL[r.certRule] || r.certRule));
+    var overridden = Array.isArray(r.languages) && r.languages.length > 0;
+    var langs = (overridden ? r.languages : state.buyLanguages).map(langAb).join(' ');
+    var tags = '';
+    if (r.vintage) tags += '<span class="tier-tag hot">Vintage</span>';
+    if (r.special) tags += '<span class="tier-tag hot">Special</span>';
+    if (overridden) tags += '<span class="tier-tag" title="This tier has its own languages">' + esc(langs) + '</span>';
+    return '' +
+      '<span class="tier-band">' + esc(tierBand(r.from, r.to)) + '</span>' +
+      '<span class="tier-what">' + bits.join('<span class="tier-dot">·</span>') + tags + '</span>' +
+      (r.label ? '<span class="tier-note" title="' + esc(r.label) + '">' + esc(r.label) + '</span>' : '<span class="tier-note"></span>');
+  }
+  function tierField(label, inner, wide) {
+    return '<div class="tier-field' + (wide ? ' wide' : '') + '"><span class="tier-label">' + label + '</span><div class="tier-ctl">' + inner + '</div></div>';
+  }
+
+  function tierHtml(r, idx) {
+    var open = !!r._open;
+    return '' +
+      '<div class="wtb-tier tier-v2' + (open ? ' open' : '') + '" data-row="' + (idx + 1) + '" data-uid="' + esc(r._uid) + '">' +
+        '<div class="tier-line">' +
+          '<button type="button" class="tier-sum" data-act="tier-edit" aria-expanded="' + open + '" title="Show or hide every setting of this tier">' + tierSummaryHtml(r) + '</button>' +
+          '<div class="pct">' +
+            '<input type="number" step="0.01" min="0" max="100" data-k="pct" value="' + esc(r.pct) + '" title="Percent of market value this tier pays" aria-label="Percent of market value paid"><span class="pct-sign">%</span>' +
+          '</div>' +
+          '<button type="button" class="tier-edit" data-act="tier-edit" aria-expanded="' + open + '">' + (open ? 'Done' : 'Edit') + '</button>' +
+          '<button type="button" class="del" data-act="del" title="Delete tier" aria-label="Delete this tier">✕</button>' +
+        '</div>' +
+        '<div class="tier-body">' +
+          tierField('Market value',
+            '<span class="money-in"><span class="cur">$</span><input type="number" step="0.01" min="0" data-k="from" value="' + esc(r.from) + '" placeholder="0" title="Min market $" aria-label="Min market dollars"></span>' +
+            '<span class="dash">to</span>' +
+            '<span class="money-in"><span class="cur">$</span><input type="number" step="0.01" min="0" data-k="to" value="' + esc(r.to) + '" placeholder="no cap" title="Max market $ (blank = no cap)" aria-label="Max market dollars, blank for no cap"></span>') +
+          tierField('Sport', '<select data-k="sport" title="Sport" aria-label="Sport">' + sportOptions(r.sport) + '</select>') +
+          tierField('Grading company', '<select data-k="grader" title="Grading company this tier applies to. Lets you pay a different % for CGC than PSA" aria-label="Grading company">' + graderOptions(r.grader) + '</select>') +
+          tierField('Grades',
+            '<select data-k="gradeMin" title="Min grade" aria-label="Min grade">' + gradeOptions(r.gradeMin) + '</select>' +
+            '<span class="dash">to</span>' +
+            '<select data-k="gradeMax" title="Max grade" aria-label="Max grade">' + gradeOptions(r.gradeMax) + '</select>') +
+          tierField('Pays on', '<select data-k="basis" title="What this tier\'s percent is taken from." aria-label="Basis">' + basisOptions(r.basis) + '</select>' + bgsNoSalesNote(r)) +
+          tierField('Confidence', '<select data-k="minConfidence" title="Lowest read confidence this tier accepts" aria-label="Min confidence">' + confOptions(r.minConfidence) + '</select>') +
+          tierField('Certs', '<select data-k="certRule" title="Which cert numbers this tier takes. New certs means a PSA cert of 70,000,000 or higher." aria-label="Cert rule">' + certOptions(r.certRule) + '</select>') +
+          tierField('Languages', langChips(r)) +
+          tierField('Only',
+            '<button type="button" class="tgl' + (r.vintage ? ' on' : '') + '" data-act="vintage" aria-pressed="' + !!r.vintage + '"' +
+              ' title="Vintage only: WOTC-era holo. The card year is at or under the vintage year below and the name contains holo.">Vintage</button>' +
+            '<button type="button" class="tgl' + (r.special ? ' on' : '') + '" data-act="special" aria-pressed="' + !!r.special + '"' +
+              ' title="Special only: a special set or WOTC era. The card year is at or under the vintage year below, or the name contains one of the special keywords.">Special</button>') +
+          tierField('Sort order', '<input class="sort" type="number" step="1" data-k="sort" value="' + esc(r.sort) + '" title="Sort order: lower = checked first" aria-label="Sort order, lower is checked first">') +
+          tierField('Note', '<input class="label-input" type="text" data-k="label" maxlength="100" placeholder="optional, staff and sellers see this" value="' + esc(r.label) + '" title="Note (optional). Staff and sellers see this." aria-label="Note">', true) +
+        '</div>' +
+      '</div>';
+  }
+
+  /** Keeps a tier's summary line in step with its fields. Runs after the editing listeners below. */
+  function refreshTierSummary(node) {
+    var tier = node && node.closest ? node.closest('.wtb-tier') : null;
+    if (!tier || !tier.isConnected) return;
+    var r = rowOf(tier);
+    var sum = tier.querySelector('.tier-sum');
+    if (r && sum) sum.innerHTML = tierSummaryHtml(r);
+  }
+
+  function renderRules() {
+    reorder();
+    var sports = [];
+    state.rates.forEach(function (r) { if (sports.indexOf(r.sport) < 0) sports.push(r.sport); });
+
+    var html = sports.map(function (sport) {
+      var rows = '';
+      state.rates.forEach(function (r, idx) { if (r.sport === sport) rows += tierHtml(r, idx); });
+      return '' +
+        '<section class="wtb-group" data-sport="' + esc(sport) + '">' +
+          '<div class="wtb-group-header">' +
+            '<h3>' + esc(sportLabel(sport).replace(/^[^A-Za-z0-9]+\s*/, '')) + '</h3>' +
+            '<div class="right">% of market value</div>' +
+          '</div>' +
+          rows +
+          '<button type="button" class="wtb-add-tier" data-act="add-tier" data-sport="' + esc(sport) + '"' +
+            ' title="Add another tier to ' + esc(sportShort(sport)) + '">＋ Add tier</button>' +
+        '</section>';
+    }).join('');
+
+    if (!state.rates.length) {
+      html = '<div class="card empty-rules">No tiers yet. Add one below and the bot starts quoting it.</div>';
+    }
+
+    html += '<div class="new-group-row">' +
+      '<button type="button" class="btn btn-sm new-group" data-act="add-group" title="Add a tier that matches any sport">＋ New group / rule</button>' +
+      '</div>';
+
+    el.rulesList.innerHTML = html;
+  }
+
+  // ── rendering: the ticket windows + their plain-English summary ───────────
+  function ticketWindowHtml(w, idx) {
+    var days = TICKET_DAY_SHORT.map(function (short, d) {
+      var on = w.days.indexOf(d) >= 0;
+      return '<label class="tw-day' + (on ? ' on' : '') + '" title="' + esc(TICKET_DAY_NAMES[d]) + '">' +
+        '<input type="checkbox" data-act="tw-day" data-day="' + d + '"' + (on ? ' checked' : '') +
+        ' aria-label="' + esc(TICKET_DAY_NAMES[d]) + '">' + esc(short) + '</label>';
+    }).join('');
+    return '' +
+      '<div class="tw-row" data-tw="' + idx + '">' +
+        '<div class="tw-days" role="group" aria-label="Days this window is open">' + days + '</div>' +
+        '<input class="tw-time" type="time" data-act="tw-from" value="' + esc(w.from) + '" title="Opens at" aria-label="Opens at">' +
+        '<span class="tw-sep">to</span>' +
+        '<input class="tw-time" type="time" data-act="tw-to" value="' + esc(w.to) + '" title="Closes at" aria-label="Closes at">' +
+        '<button type="button" class="tw-del" data-act="tw-del" title="Remove this window" aria-label="Remove this window">✕</button>' +
+      '</div>';
+  }
+
+  function renderTicketWindows() {
+    var rows = state.ticketWindows.map(ticketWindowHtml).join('');
+    el.ticketWindows.innerHTML = rows ||
+      '<div class="tw-empty">No window set, so no ticket can be opened. Add one, or turn the switch above off on purpose.</div>';
+    renderTicketSummary();
+  }
+
+  function ticketSummaryText() {
+    if (!state.ticketsOpen) return 'Off. Sellers cannot open new tickets at any hour.';
+    var ok = state.ticketWindows.filter(twOk);
+    if (!ok.length) return 'On, but no valid window is set yet. Nobody can open a ticket until one is.';
+    var parts = ok.map(function (w) {
+      return twDays(w.days) + ', ' + twTime12(w.from) + ' to ' + twTime12(w.to);
+    });
+    var text = 'Open ' + parts.join('; ') + ' ' + twZoneLabel(state.ticketTimeZone) + '.';
+    var bad = state.ticketWindows.length - ok.length;
+    if (bad > 0) text += ' ' + bad + ' window' + (bad === 1 ? ' is' : 's are') + ' not filled in yet.';
+    return text;
+  }
+
+  function renderTicketSummary() {
+    el.ticketSummary.textContent = ticketSummaryText();
+  }
+
+  function renderTop() {
+    TOP_FIELDS.forEach(function (k) {
+      var node = document.getElementById(k);
+      if (node) node.value = state[k];
+    });
+    el.paused.checked = !!state.paused;
+    el.pausedWrap.hidden = !state.paused;
+    el.ticketsOpen.checked = !!state.ticketsOpen;
+    renderTicketWindows();
+  }
+
+  // ── status line ────────────────────────────────────────────────────────────
+  function fmtTime(iso) {
+    if (!iso) return null;
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    var now = new Date();
+    var sameDay = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+    return d.toLocaleString(undefined, sameDay
+      ? { hour: 'numeric', minute: '2-digit' }
+      : { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  }
+
+  function renderStatus() {
+    if (activeTab !== 'rules') return;
+    var saved = fmtTime(savedAt);
+    el.stSaved.textContent = saved ? 'Last saved ' + saved : 'Nothing saved yet';
+
+    var seen = fmtTime(botSeenAt);
+    if (!apiUp) {
+      el.botPill.className = 'helper-pill down';
+      el.botPill.textContent = 'Rates API unreachable';
+      el.botPill.title = 'The page could not reach the rates API';
+    } else if (seen) {
+      el.botPill.className = 'helper-pill up';
+      el.botPill.textContent = 'Bot checked in ' + seen;
+      el.botPill.title = 'When the bot last read these rates';
+    } else {
+      el.botPill.className = 'helper-pill';
+      el.botPill.textContent = 'Bot: not seen yet';
+      el.botPill.title = 'The bot has not read these rates yet';
+    }
+  }
+
+  var rulesMsgCache = { text: '', kind: '' };
+  function setMsg(text, kind) {
+    rulesMsgCache = { text: text || '', kind: kind || '' };
+    if (activeTab !== 'rules') return;
+    el.msg.textContent = rulesMsgCache.text;
+    el.msg.className = 'msg' + (kind ? ' ' + kind : '');
+  }
+
+  function showErrors(list) {
+    Array.prototype.forEach.call(el.rulesList.querySelectorAll('.wtb-tier.bad'), function (t) {
+      t.classList.remove('bad');
+    });
+    Array.prototype.forEach.call(el.ticketWindows.querySelectorAll('.tw-row.bad'), function (t) {
+      t.classList.remove('bad');
+    });
+    if (!list || !list.length) {
+      el.errors.hidden = true;
+      el.errorsList.innerHTML = '';
+      return;
+    }
+    el.errorsList.innerHTML = list.map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('');
+    el.errors.hidden = false;
+    list.forEach(function (e) {
+      var m = /^Row (\d+)[:.]/.exec(e);
+      if (m) {
+        var tier = el.rulesList.querySelector('.wtb-tier[data-row="' + m[1] + '"]');
+        if (tier) tier.classList.add('bad');
+        return;
+      }
+      // validate.ts numbers these 1-based ("Ticket window 1: ..."); data-tw is the 0-based array index.
+      var tw = /^Ticket window (\d+)[:.]/.exec(e);
+      if (tw) {
+        var row = el.ticketWindows.querySelector('.tw-row[data-tw="' + (Number(tw[1]) - 1) + '"]');
+        if (row) row.classList.add('bad');
+      }
+    });
+    el.errors.scrollIntoView({ block: 'nearest' });
+  }
+
+  // ── row editing ────────────────────────────────────────────────────────────
+  function rowOf(node) {
+    var tier = node.closest ? node.closest('.wtb-tier') : null;
+    if (!tier) return null;
+    var uid = tier.getAttribute('data-uid');
+    for (var i = 0; i < state.rates.length; i++) if (state.rates[i]._uid === uid) return state.rates[i];
+    return null;
+  }
+
+  function readField(t) {
+    var r = rowOf(t);
+    if (!r || !t.dataset.k) return null;
+    r[t.dataset.k] = t.value;
+    markDirty();
+    return r;
+  }
+
+  el.rulesList.addEventListener('input', function (ev) {
+    var t = ev.target;
+    if (!t.dataset || !t.dataset.k) return;
+    readField(t);
+  });
+
+  // Structural fields only re-group / re-order once the edit is committed, so a
+  // half-typed sort order does not yank the row out from under the cursor.
+  el.rulesList.addEventListener('change', function (ev) {
+    var t = ev.target;
+    if (!t.dataset || !t.dataset.k) return;
+    var r = readField(t);
+    if (!r) return;
+    if (t.dataset.k === 'sport' || t.dataset.k === 'sort' || t.dataset.k === 'grader' || t.dataset.k === 'basis') renderRules();
+  });
+
+  el.rulesList.addEventListener('click', function (ev) {
+    var btn = ev.target.closest('[data-act]');
+    if (!btn) return;
+    var act = btn.dataset.act;
+
+    if (act === 'add-tier' || act === 'add-group') {
+      if (state.rates.length >= MAX_ROWS) { setMsg(MAX_ROWS + ' tiers is the limit.', 'err'); return; }
+      var sport = act === 'add-tier' ? btn.dataset.sport : '*';
+      var peers = state.rates.filter(function (r) { return r.sport === sport; });
+      var pool = (act === 'add-tier' && peers.length) ? peers : state.rates;
+      var max = 0;
+      pool.forEach(function (r) { max = Math.max(max, Number(r.sort) || 0); });
+      state.rates.push(blankRow(sport, max + 10));
+      markDirty();
+      renderRules();
+      setMsg('Tier added. Not saved yet.');
+      return;
+    }
+
+    var row = rowOf(btn);
+    if (!row) return;
+
+    if (act === 'del') {
+      if (!window.confirm('Delete this tier?')) return;
+      state.rates = state.rates.filter(function (r) { return r !== row; });
+      markDirty();
+      renderRules();
+      setMsg('Tier deleted. Not saved yet.');
+      return;
+    }
+
+    if (act === 'vintage' || act === 'special') {
+      row[act] = !row[act];
+      btn.classList.toggle('on', row[act]);
+      btn.setAttribute('aria-pressed', String(!!row[act]));
+      markDirty();
+      return;
+    }
+
+    if (act === 'lang' || act === 'lang-reset') {
+      if (act === 'lang-reset') {
+        row.languages = null;
+      } else {
+        var key = btn.dataset.lang;
+        var base = (Array.isArray(row.languages) && row.languages.length) ? row.languages.slice() : state.buyLanguages.slice();
+        var at = base.indexOf(key);
+        if (at >= 0) base.splice(at, 1); else base.push(key);
+        // Emptied → back to inheriting the global default.
+        row.languages = base.length ? LANG_KEYS.filter(function (k) { return base.indexOf(k) >= 0; }) : null;
+      }
+      var span = btn.closest('.rule-lang');
+      if (span) span.outerHTML = langChips(row);
+      markDirty();
+      return;
+    }
+  });
+
+  // ── the Edit panel and the summary line (look only; registered after the editing listeners
+  // above, so by the time these run the row already holds the new value) ──────────────────
+  el.rulesList.addEventListener('input', function (ev) { refreshTierSummary(ev.target); });
+  el.rulesList.addEventListener('change', function (ev) { refreshTierSummary(ev.target); });
+  // The language chips replace their own markup on a click, so note the tier before that happens.
+  var clickedTier = null;
+  el.rulesList.addEventListener('click', function (ev) {
+    clickedTier = ev.target.closest ? ev.target.closest('.wtb-tier') : null;
+  }, true);
+  el.rulesList.addEventListener('click', function (ev) {
+    var btn = ev.target.closest('[data-act]');
+    if (!btn) return;
+    var act = btn.dataset.act;
+    if (act === 'add-tier' || act === 'add-group') {
+      // a new tier opens with its Edit panel showing (blankRow just took the newest uid)
+      var fresh = el.rulesList.querySelector('.wtb-tier[data-uid="r' + uidSeq + '"]');
+      var r0 = fresh && rowOf(fresh);
+      if (r0 && r0.pct === '') { r0._open = true; fresh.classList.add('open'); setTierButtons(fresh, true); }
+      return;
+    }
+    if (act === 'tier-edit') {
+      var tier = btn.closest('.wtb-tier');
+      var r = tier && rowOf(tier);
+      if (!r) return;
+      r._open = !r._open;
+      tier.classList.toggle('open', r._open);
+      setTierButtons(tier, r._open);
+      return;
+    }
+    if (clickedTier) refreshTierSummary(clickedTier);
+  });
+  function setTierButtons(tier, open) {
+    Array.prototype.forEach.call(tier.querySelectorAll('[data-act="tier-edit"]'), function (b) { b.setAttribute('aria-expanded', String(open)); });
+    var e = tier.querySelector('.tier-edit');
+    if (e) e.textContent = open ? 'Done' : 'Edit';
+  }
+
+  // ── global buy languages ───────────────────────────────────────────────────
+  el.buyLang.addEventListener('click', function (ev) {
+    var btn = ev.target.closest('[data-act="buylang"]');
+    if (!btn) return;
+    var key = btn.dataset.lang;
+    var next = state.buyLanguages.slice();
+    var at = next.indexOf(key);
+    if (at >= 0) {
+      if (next.length === 1) { setMsg('Keep at least one buy language.', 'err'); return; }
+      next.splice(at, 1);
+    } else {
+      next.push(key);
+    }
+    state.buyLanguages = LANG_KEYS.filter(function (k) { return next.indexOf(k) >= 0; });
+    setMsg('');
+    markDirty();
+    renderBuyLangToggle();
+    renderRules();   // inheriting tiers show the new default
+  });
+
+  // ── sheet settings ─────────────────────────────────────────────────────────
+  TOP_FIELDS.forEach(function (k) {
+    var node = document.getElementById(k);
+    if (!node) return;
+    node.addEventListener('input', function () { state[k] = node.value; markDirty(); });
+    node.addEventListener('change', function () { state[k] = node.value; markDirty(); });
+  });
+  el.paused.addEventListener('change', function () {
+    state.paused = el.paused.checked;
+    el.pausedWrap.hidden = !state.paused;
+    markDirty();
+  });
+
+  // ── ticket opening ─────────────────────────────────────────────────────────
+  el.ticketsOpen.addEventListener('change', function () {
+    state.ticketsOpen = el.ticketsOpen.checked;
+    markDirty();
+    renderTicketSummary();
+  });
+
+  // The zone rides TOP_FIELDS for its value and dirty count; it only needs the summary redrawn.
+  (function () {
+    var tz = document.getElementById('ticketTimeZone');
+    if (!tz) return;
+    tz.addEventListener('input', function () { renderTicketSummary(); });
+    tz.addEventListener('change', function () { renderTicketSummary(); });
+  })();
+
+  function ticketWindowOf(node) {
+    var rowEl = node.closest ? node.closest('.tw-row') : null;
+    if (!rowEl) return null;
+    return state.ticketWindows[Number(rowEl.getAttribute('data-tw'))] || null;
+  }
+
+  /** A checkbox fires input AND change, a time input fires input on every keystroke: `fromInput`
+   *  keeps the day toggle off the input pass so it cannot flip twice on one click. */
+  function onTicketWindowEdit(ev, fromInput) {
+    var t = ev.target;
+    if (!t || !t.dataset || !t.dataset.act) return;
+    var w = ticketWindowOf(t);
+    if (!w) return;
+    if (t.dataset.act === 'tw-day') {
+      if (fromInput) return;
+      var d = Number(t.dataset.day);
+      var at = w.days.indexOf(d);
+      if (t.checked) { if (at < 0) w.days.push(d); } else if (at >= 0) w.days.splice(at, 1);
+      w.days.sort(function (a, b) { return a - b; });
+      var lab = t.closest('.tw-day');
+      if (lab) lab.classList.toggle('on', t.checked);
+    } else if (t.dataset.act === 'tw-from') {
+      w.from = t.value;
+    } else if (t.dataset.act === 'tw-to') {
+      w.to = t.value;
+    } else {
+      return;
+    }
+    markDirty();
+    renderTicketSummary();
+  }
+
+  el.ticketWindows.addEventListener('input', function (ev) { onTicketWindowEdit(ev, true); });
+  el.ticketWindows.addEventListener('change', function (ev) { onTicketWindowEdit(ev, false); });
+
+  el.ticketWindows.addEventListener('click', function (ev) {
+    var btn = ev.target.closest('[data-act="tw-del"]');
+    if (!btn) return;
+    var w = ticketWindowOf(btn);
+    if (!w) return;
+    state.ticketWindows = state.ticketWindows.filter(function (x) { return x !== w; });
+    markDirty();
+    renderTicketWindows();
+    setMsg('Ticket window removed. Not saved yet.');
+  });
+
+  el.addTicketWindow.addEventListener('click', function () {
+    if (state.ticketWindows.length >= MAX_TICKET_WINDOWS) {
+      setMsg(MAX_TICKET_WINDOWS + ' ticket windows is the limit.', 'err');
+      return;
+    }
+    var last = state.ticketWindows[state.ticketWindows.length - 1];
+    state.ticketWindows.push(last ? { days: last.days.slice(), from: last.from, to: last.to } : newTicketWindow());
+    markDirty();
+    renderTicketWindows();
+    setMsg('Ticket window added. Not saved yet.');
+  });
+
+  // ── load ───────────────────────────────────────────────────────────────────
+  function applySettings(settings) {
+    state = toForm(settings);
+    captureBaseline();
+    renderTop();
+    renderBuyLangToggle();
+    renderRules();
+    updateDirty();
+  }
+
+  function load(announce) {
+    if (announce && countChanges() > 0 && !window.confirm('Throw away your unsaved edits and reload the saved sheet?')) return;
+    setBusy(true);
+    setMsg(announce ? 'Reloading…' : '');
+    Promise.all([
+      fetch(api('settings'), { headers: { accept: 'application/json' } })
+        .then(function (res) {
+          if (res.status === 404) return null;
+          if (!res.ok) throw new Error('settings ' + res.status);
+          return res.json();
+        }),
+      fetch(api('status'), { headers: { accept: 'application/json' } })
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .catch(function () { return null; })
+    ]).then(function (out) {
+      var body = out[0];
+      var status = out[1];
+      apiUp = true;
+      savedAt = body ? body.updatedAt : null;
+      botSeenAt = status ? status.botSeenAt : null;
+      // The saved sheet may still be a v1 one. normalize() migrates it.
+      applySettings(V.normalize(body && body.settings ? body.settings : V.defaults()));
+      justSaved = false;
+      updateDirty();
+      renderStatus();
+      showErrors(null);
+      setMsg(body ? (announce ? 'Reloaded.' : '') : 'Nothing saved yet. This is a starter sheet.');
+    }).catch(function (err) {
+      apiUp = false;
+      if (!state) applySettings(V.normalize(V.defaults()));
+      renderStatus();
+      setMsg('Could not load the saved sheet: ' + err.message, 'err');
+    }).then(function () { setBusy(false); });
+  }
+
+  // ── save ───────────────────────────────────────────────────────────────────
+  function getStoredKey() {
+    try { return localStorage.getItem(KEY_STORE); } catch (e) { return null; }
+  }
+
+  function storeKey(k) {
+    try { localStorage.setItem(KEY_STORE, k); } catch (e) { /* private mode: key lives for this load only */ }
+  }
+
+  function forgetKey() {
+    try { localStorage.removeItem(KEY_STORE); } catch (e) { /* nothing to forget */ }
+  }
+
+  // ── lock card: the key gate every page shows before it will let you edit or
+  // read anything that needs the key. Verifies against the ledger API (the
+  // rates API's own GET routes are public and cannot check a key), and once a
+  // key passes it is remembered in this browser (KEY_STORE) so the lock does
+  // not come back until the key stops working or "Change key" is used.
+  var lockEl = {
+    card: document.getElementById('lock-card'),
+    input: document.getElementById('lock-key'),
+    unlock: document.getElementById('lock-unlock'),
+    err: document.getElementById('lock-err'),
+    changeKey: document.getElementById('change-key')
+  };
+  var keyUnlocked = false;
+  var unlockWaiters = [];
+
+  function ledgerApiBase() {
+    var meta = document.querySelector('meta[name="ledger-api"]');
+    return meta && meta.content ? meta.content.replace(/\/+$/, '') : '';
+  }
+
+  /** Checks a key against the ledger API without writing anything: 'ok' | 'bad' | 'error'. */
+  function checkKey(key) {
+    return fetch(ledgerApiBase() + '/consignments?limit=1', {
+      headers: { accept: 'application/json', 'x-edit-key': key }
+    }).then(function (res) {
+      if (res.status === 200) return 'ok';
+      if (res.status === 401) return 'bad';
+      return 'error';
+    }, function () { return 'error'; });
+  }
+
+  function setFormDisabled(disabled) {
+    var list = document.querySelectorAll('.editor-fieldset');
+    for (var i = 0; i < list.length; i++) list[i].disabled = disabled;
+  }
+
+  function updateSaveReloadVisibility() {
+    var hide = !keyUnlocked || activeTab === 'consignors' || activeTab === 'scanner';
+    if (el.save) el.save.hidden = hide;
+    if (el.reload) el.reload.hidden = !keyUnlocked;
+  }
+
+  function showLock(message) {
+    keyUnlocked = false;
+    if (lockEl.card) lockEl.card.hidden = false;
+    if (lockEl.err) { lockEl.err.textContent = message || ''; lockEl.err.hidden = !message; }
+    if (lockEl.changeKey) lockEl.changeKey.hidden = true;
+    setFormDisabled(true);
+    updateSaveReloadVisibility();
+  }
+
+  function hideLock() {
+    keyUnlocked = true;
+    if (lockEl.card) lockEl.card.hidden = true;
+    if (lockEl.err) { lockEl.err.textContent = ''; lockEl.err.hidden = true; }
+    if (lockEl.changeKey) lockEl.changeKey.hidden = false;
+    setFormDisabled(false);
+    updateSaveReloadVisibility();
+    var waiters = unlockWaiters;
+    unlockWaiters = [];
+    waiters.forEach(function (fn) { fn(); });
+  }
+
+  /** Runs fn once a verified key is in hand - right away if one already is. */
+  function whenUnlocked(fn) {
+    if (keyUnlocked) fn(); else unlockWaiters.push(fn);
+  }
+
+  function attemptUnlock() {
+    var key = (lockEl.input && lockEl.input.value || '').trim();
+    if (!key) return;
+    if (lockEl.unlock) lockEl.unlock.disabled = true;
+    if (lockEl.err) { lockEl.err.hidden = true; lockEl.err.textContent = ''; }
+    checkKey(key).then(function (result) {
+      if (lockEl.unlock) lockEl.unlock.disabled = false;
+      if (result === 'ok') {
+        storeKey(key);
+        if (lockEl.input) lockEl.input.value = '';
+        hideLock();
+      } else if (result === 'bad') {
+        showLock('That key is not right');
+      } else {
+        showLock('Could not check the key, try again');
+      }
+    });
+  }
+
+  if (lockEl.unlock) lockEl.unlock.addEventListener('click', attemptUnlock);
+  if (lockEl.input) {
+    lockEl.input.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') { ev.preventDefault(); attemptUnlock(); }
+    });
+  }
+  if (lockEl.changeKey) {
+    lockEl.changeKey.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      forgetKey();
+      showLock('');
+    });
+  }
+
+  (function initLock() {
+    var stored = getStoredKey();
+    showLock('');
+    if (!stored) return;
+    checkKey(stored).then(function (result) {
+      if (result === 'ok') hideLock();
+      else if (result === 'bad') { forgetKey(); showLock('The key stopped working, enter it again'); }
+      else showLock('Could not check the key, try again');
+    });
+  })();
+
+  function setBusy(on) {
+    busy = on;
+    if (activeTab === 'rules') el.reload.disabled = on;
+    updateDirty();
+  }
+
+  function doSaveRules() {
+    if (busy || !state) return;
+
+    var checked = V.validateSettings(V.normalize(fromForm()));
+    if (!checked.ok) {
+      showErrors(checked.errors);
+      setMsg(checked.errors.length + ' problem' + (checked.errors.length === 1 ? '' : 's') + ' to fix.', 'err');
+      return;
+    }
+    showErrors(null);
+
+    var key = getStoredKey();
+    if (!key) { showLock('Enter the edit key to save.'); return; }
+
+    setBusy(true);
+    setMsg('Saving…');
+    fetch(api('settings'), {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', 'x-edit-key': key },
+      body: JSON.stringify(checked.settings)
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (body) {
+        return { status: res.status, body: body };
+      });
+    }).then(function (out) {
+      apiUp = true;
+      if (out.status === 401) {
+        forgetKey();
+        showLock('The key stopped working, enter it again');
+        setMsg('That edit key is wrong.', 'err');
+        return;
+      }
+      if (out.status === 400 && out.body && out.body.errors) {
+        showErrors(out.body.errors);
+        setMsg('The server rejected the sheet.', 'err');
+        return;
+      }
+      if (out.status < 200 || out.status >= 300) {
+        setMsg('Save failed (' + out.status + ').', 'err');
+        return;
+      }
+      savedAt = out.body.updatedAt || new Date().toISOString();
+      applySettings(out.body.settings ? V.normalize(out.body.settings) : V.normalize(checked.settings));
+      justSaved = true;
+      updateDirty();
+      renderStatus();
+      if (keptClvCap(out.body)) setMsg('Saved ' + (fmtTime(savedAt) || 'just now'), 'ok');
+      else setMsg('Saved, but the rates server did not keep the CLV cap: the slab-rates function needs its update.', 'err');
+    }).catch(function (err) {
+      apiUp = false;
+      renderStatus();
+      setMsg('Save failed: ' + err.message, 'err');
+    }).then(function () { setBusy(false); });
+  }
+
+  // ── go ─────────────────────────────────────────────────────────────────────
+  (function footer() {
+    var host = 'the rates API';
+    try { host = new URL(api('settings'), location.href).host; } catch (e) { /* keep the fallback */ }
+    el.foot.textContent = 'Saved to ' + host + '. The bot reads /settings on its own, usually within a minute.';
+  })();
+
+  applySettings(V.normalize(V.defaults()));
+  renderStatus();
+  load(false);
+  
+
+  el.save.addEventListener('click', function () { doSaveRules(); });
+  el.reload.addEventListener('click', function () { load(true); });
+
+})();
+</script>
+</body>
+</html>
