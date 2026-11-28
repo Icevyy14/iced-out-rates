@@ -3695,6 +3695,12 @@ html:not([data-iop-theme]) #tab-consignors .stat-math{font-family:var(--font-ui)
   #tab-scanner .sc-sg-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 260ms var(--sc-ease);}
   #tab-scanner .sc-sg-video[hidden]{display:none;}
   #tab-scanner .sc-sg-cam.sc-sg-cam-live .sc-sg-video{opacity:1;}
+  /* App 1.14 (bridge 6): the app draws its own camera BEHIND the page, exactly under this box, once its first frame is there (the page sets
+     html.iop-native-cam). Everything between it and the box goes see-through: the page, its body, every element that holds the box, the
+     box itself; the page's own video is not used. The frame's shade, hint, buttons and the tray draw over the camera unchanged. Before
+     that (starting, off, refused) the box keeps its own opaque colour and covers, so it never flashes see-through or black. */
+  html.iop-native-cam,html.iop-native-cam body,html.iop-native-cam :has(#sc-sg-cam),html.iop-native-cam #tab-scanner .sc-sg-cam{background:transparent !important;background-image:none !important;}
+  html.iop-native-cam #tab-scanner .sc-sg-video{display:none !important;}
   #tab-scanner .sc-sg-cam-wait{
     position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;pointer-events:none;
     color:color-mix(in srgb, var(--sc-danger-ink) 78%, transparent);font-size:var(--sc-fs-label);font-weight:700;line-height:1.35;
@@ -11538,15 +11544,37 @@ window.ViewPrefs = {
 // launch never sits over the sign-in form; it ignores 'penguinscannerclosed' while it holds the panel, and on hide keeps
 // its sheet layout for the panel's 320 ms slide.
 //
+// The scan surface (iPhone and Android 1.14, `penguinNative.version >= 6`; 5 was Crown, see themeForApp): on Scan's one screen the
+// app draws its OWN camera (Apple Vision / ML Kit + zxing, every frame) BEHIND the page, exactly under the page's camera box, and the
+// page goes see-through there; the page's frame, switch, buttons and tray draw over it. One camera, one screen: Auto | Slab | Raw only
+// changes what that camera does, it never stops, restarts or moves. The page sends:
+//   {type: 'setScanSurface', shown, rect: {x, y, w, h}, frame: {x, y, w, h}, radius, watched, seq}  (where the box and the card frame are)
+//   {type: 'setScanPurpose', purpose: 'auto' | 'slab' | 'raw', byItself}                         (what the camera does)
+//   {type: 'setScanCamera', on} / {type: 'setScanTorch', on} / {type: 'openAppSettings'}
+//   {type: 'scanTap', id, point}                                                                  (Slab's tap: the code under the finger)
+//   {type: 'takePhoto', id, crop, pad, maxWidth, quality, slabFirst, point}                       (Raw's tap, and Auto's)
+// and the app answers with window events: 'penguinsurface' {shown, on, starting, live, reason, torch, torchOn, purpose, zoom}
+// (surfaceStateOf), 'penguintap' {id, took: 'slab' | 'none'} (tapAnswerOf), 'penguinphoto' {id, took: 'photo' | 'slab' | 'none', jpeg,
+// width, height, reason} (photoAnswerOf). A cert the native camera reads still comes back through window.penguinScan(raw, format), the
+// same path the old panel used. Nothing in this paragraph is ever sent to an app older than version 6 (they keep the page's own camera).
+// The page's text reader (CARD_FROM_VERSION 5 in singles-pane.html) also needs bridge.cardSupported(), which this bridge never has.
+//
 // Pure (embedded whole into the page by rates-portal/build-portal.js): the window is handed in.
 'use strict';
 
-var MESSAGE_TYPES = ['openScanner', 'closeScanner', 'haptic', 'saveFile', 'copyText', 'setSheet', 'setTheme', 'showScanner', 'hideScanner', 'setCamera'];
+var MESSAGE_TYPES = ['openScanner', 'closeScanner', 'haptic', 'saveFile', 'copyText', 'setSheet', 'setTheme', 'showScanner', 'hideScanner', 'setCamera',
+  'setScanSurface', 'setScanPurpose', 'setScanCamera', 'setScanTorch', 'scanTap', 'takePhoto', 'openAppSettings'];
 var SHEET_STOPS = ['down', 'mid', 'up'];
 var SHEETS_FROM_VERSION = 2;
 var THEMES_FROM_VERSION = 3;
 var CAMERA_PANEL_FROM_VERSION = 4;
 var CAMERA_REASONS = ['page', 'switch', 'denied', 'show'];
+var SCAN_SURFACE_FROM_VERSION = 6;
+var SCAN_PURPOSES = ['auto', 'slab', 'raw'];
+var SURFACE_REASONS = ['page', 'denied', 'failed', 'background', 'show', 'panel'];
+var PHOTO_TOOK = ['photo', 'slab', 'none'];
+var TAP_TOOK = ['slab', 'none'];
+var MAX_WIRE_ID = 2147483647;
 var HEX_COLOUR = /^#[0-9A-Fa-f]{6}$/;
 var THEME_ID = /^[a-z]{1,24}$/;
 
@@ -11577,11 +11605,42 @@ function createNativeBridge(win) {
     var n = native();
     return !!n && Number(n.version) >= CAMERA_PANEL_FROM_VERSION;
   }
+  /** The app draws its own camera behind the page on Scan (version 6 and up: app 1.14). */
+  function scanSurfaceSupported() {
+    var n = native();
+    return !!n && Number(n.version) >= SCAN_SURFACE_FROM_VERSION;
+  }
+  /** A surface message, only to an app that has the surface and only when its fields are well formed. */
+  function surfacePost(type, fields) {
+    if (!fields || !scanSurfaceSupported()) return false;
+    return post(type, fields);
+  }
   return {
     isAvailable: function () { return !!native(); },
     sheetsSupported: sheetsSupported,
     themesSupported: themesSupported,
     cameraPanelSupported: cameraPanelSupported,
+    scanSurfaceSupported: scanSurfaceSupported,
+    /** Where the scan surface goes, or that it goes away (surfaceWire). */
+    setScanSurface: function (msg) { return surfacePost('setScanSurface', surfaceWire(msg)); },
+    /** What the surface's camera does: 'auto' | 'slab' | 'raw', and whether it takes a slab by itself (a real boolean). */
+    setScanPurpose: function (purpose, byItself) {
+      if (SCAN_PURPOSES.indexOf(purpose) < 0 || (byItself !== true && byItself !== false)) return false;
+      return surfacePost('setScanPurpose', { purpose: purpose, byItself: byItself });
+    },
+    /** The surface's camera on or off (a real boolean). */
+    setScanCamera: function (on) { return on === true || on === false ? surfacePost('setScanCamera', { on: on }) : false; },
+    /** The surface's flashlight on or off (a real boolean). */
+    setScanTorch: function (on) { return on === true || on === false ? surfacePost('setScanTorch', { on: on }) : false; },
+    /** Slab's tap: the code under the finger (`point`, CSS px of the box). `id` names the 'penguintap' answer. */
+    scanTap: function (id, point) {
+      var p = pointWire(point);
+      return isWireId(id) && p ? surfacePost('scanTap', { id: id, point: p }) : false;
+    },
+    /** Raw's (and Auto's) tap: a photo of the card frame, or in Auto (`slabFirst`) a slab when the camera finds a cert (photoWire). */
+    takePhoto: function (req) { return surfacePost('takePhoto', photoWire(req)); },
+    /** Opens this app's page in the phone's Settings (camera access was turned off there). */
+    openAppSettings: function () { return surfacePost('openAppSettings', {}); },
     post: post,
     openScanner: function () { return post('openScanner'); },
     closeScanner: function () { return post('closeScanner'); },
@@ -11637,6 +11696,90 @@ function themeWire(msg) {
   if (typeof msg.bg !== 'string' || !HEX_COLOUR.test(msg.bg)) return null;
   if (typeof msg.accent !== 'string' || !HEX_COLOUR.test(msg.accent)) return null;
   return { id: msg.id, light: msg.light, bg: msg.bg, accent: msg.accent };
+}
+
+/** A finite number, rounded to a tenth of a CSS px (the wire never carries NaN, Infinity or a string). */
+function wireNum(v) {
+  return typeof v === 'number' && isFinite(v) ? Math.round(v * 10) / 10 : null;
+}
+/** { x, y, w, h } with finite numbers and a size that is not negative, or null. */
+function rectWire(r) {
+  if (!r || typeof r !== 'object') return null;
+  var x = wireNum(r.x), y = wireNum(r.y), w = wireNum(r.w), h = wireNum(r.h);
+  if (x === null || y === null || w === null || h === null || w < 0 || h < 0) return null;
+  return { x: x, y: y, w: w, h: h };
+}
+/** { x, y } with finite numbers, or null. */
+function pointWire(p) {
+  if (!p || typeof p !== 'object') return null;
+  var x = wireNum(p.x), y = wireNum(p.y);
+  return x === null || y === null ? null : { x: x, y: y };
+}
+function isWireId(id) { return typeof id === 'number' && id >= 1 && id <= MAX_WIRE_ID && Math.floor(id) === id; }
+/**
+ * The exact fields of a 'setScanSurface' message, or null. Hidden: { shown: false, seq } only. Shown: the box `rect` (CSS px of the
+ * visual viewport), the card `frame` (CSS px of the box), `radius` (CSS px, 0 when absent), `watched` (a real boolean) and `seq` (a whole
+ * number that grows by one per message).
+ */
+function surfaceWire(m) {
+  if (!m || typeof m !== 'object' || (m.shown !== true && m.shown !== false)) return null;
+  if (typeof m.seq !== 'number' || m.seq < 0 || Math.floor(m.seq) !== m.seq) return null;
+  if (!m.shown) return { shown: false, seq: m.seq };
+  var rect = rectWire(m.rect), frame = rectWire(m.frame);
+  if (!rect || !frame || (m.watched !== true && m.watched !== false)) return null;
+  var radius = m.radius == null ? 0 : wireNum(m.radius);
+  if (radius === null || radius < 0) return null;
+  return { shown: true, rect: rect, frame: frame, radius: radius, watched: m.watched, seq: m.seq };
+}
+/** The exact fields of a 'takePhoto' message, or null (the defaults are what the page's own grabPhoto takes: 640 px, JPEG 0.82, 4%). */
+function photoWire(r) {
+  if (!r || typeof r !== 'object' || !isWireId(r.id)) return null;
+  var crop = rectWire(r.crop);
+  if (!crop || !crop.w || !crop.h) return null;
+  var point = r.point == null ? { x: Math.round((crop.x + crop.w / 2) * 10) / 10, y: Math.round((crop.y + crop.h / 2) * 10) / 10 } : pointWire(r.point);
+  if (!point) return null;
+  var pad = r.pad == null ? 0.04 : (typeof r.pad === 'number' && isFinite(r.pad) ? r.pad : null);
+  var maxWidth = r.maxWidth == null ? 640 : r.maxWidth;
+  var quality = r.quality == null ? 0.82 : r.quality;
+  if (pad === null || pad < 0 || pad > 0.5) return null;
+  if (typeof maxWidth !== 'number' || maxWidth < 64 || maxWidth > 4096 || Math.floor(maxWidth) !== maxWidth) return null;
+  if (typeof quality !== 'number' || !(quality > 0 && quality <= 1)) return null;
+  return { id: r.id, crop: crop, pad: pad, maxWidth: maxWidth, quality: quality, slabFirst: r.slabFirst === true, point: point };
+}
+
+/**
+ * What a 'penguinsurface' event says, or null when it is not one: { shown, on, starting, live, reason, torch, torchOn, purpose, zoom }
+ * with every flag a real boolean (false when missing), `reason` one of the six the app sends ('' for any other), `purpose` one of the
+ * three ('' for any other) and `zoom` a positive number or null. `on` must be a real true or false.
+ */
+function surfaceStateOf(ev) {
+  var d = ev && ev.detail;
+  if (!d || typeof d !== 'object' || (d.on !== true && d.on !== false)) return null;
+  var flag = function (v) { return v === true; };
+  return {
+    shown: flag(d.shown), on: d.on, starting: flag(d.starting), live: d.on === true && flag(d.live),
+    reason: SURFACE_REASONS.indexOf(d.reason) >= 0 ? d.reason : '',
+    torch: flag(d.torch), torchOn: flag(d.torchOn),
+    purpose: SCAN_PURPOSES.indexOf(d.purpose) >= 0 ? d.purpose : '',
+    zoom: typeof d.zoom === 'number' && isFinite(d.zoom) && d.zoom > 0 ? d.zoom : null,
+  };
+}
+/** What a 'penguinphoto' event says, or null: { id, took, jpeg, width, height, reason }. A 'photo' without a JPEG string is 'none'. */
+function photoAnswerOf(ev) {
+  var d = ev && ev.detail;
+  if (!d || typeof d !== 'object' || !isWireId(d.id) || PHOTO_TOOK.indexOf(d.took) < 0) return null;
+  var reason = typeof d.reason === 'string' ? d.reason.slice(0, 40) : '';
+  if (d.took !== 'photo') return { id: d.id, took: d.took, jpeg: null, width: 0, height: 0, reason: reason };
+  // base64 with no data: prefix, exactly what grabPhoto returns
+  if (typeof d.jpeg !== 'string' || !d.jpeg || !/^[A-Za-z0-9+/]+=*$/.test(d.jpeg)) return { id: d.id, took: 'none', jpeg: null, width: 0, height: 0, reason: 'failed' };
+  var dim = function (v) { return typeof v === 'number' && isFinite(v) && v > 0 ? Math.round(v) : 0; };
+  return { id: d.id, took: 'photo', jpeg: d.jpeg, width: dim(d.width), height: dim(d.height), reason: '' };
+}
+/** What a 'penguintap' event says, or null: { id, took: 'slab' | 'none' }. */
+function tapAnswerOf(ev) {
+  var d = ev && ev.detail;
+  if (!d || typeof d !== 'object' || !isWireId(d.id) || TAP_TOOK.indexOf(d.took) < 0) return null;
+  return { id: d.id, took: d.took };
 }
 
 /** The stop a 'penguinsheet' event names, or null for anything else. */
@@ -11787,6 +11930,13 @@ window.NativeBridge = {
   SHEET_STOPS: SHEET_STOPS,
   THEMES_FROM_VERSION: THEMES_FROM_VERSION,
   CAMERA_PANEL_FROM_VERSION: CAMERA_PANEL_FROM_VERSION,
+  SCAN_SURFACE_FROM_VERSION: SCAN_SURFACE_FROM_VERSION,
+  SCAN_PURPOSES: SCAN_PURPOSES,
+  surfaceWire: surfaceWire,
+  photoWire: photoWire,
+  surfaceStateOf: surfaceStateOf,
+  photoAnswerOf: photoAnswerOf,
+  tapAnswerOf: tapAnswerOf,
   PANEL_MIN_GAP_MS: PANEL_MIN_GAP_MS,
   PANEL_SETTLE_MS: PANEL_SETTLE_MS,
   createNativeBridge: createNativeBridge,
@@ -11798,6 +11948,121 @@ window.NativeBridge = {
   layoutStop: layoutStop,
   installScanReceiver: installScanReceiver,
   createPanelGate: createPanelGate,
+};
+})();
+
+(function () {
+'use strict';
+// The scan surface on the page's side (app 1.14, bridge version 6; scanner/nativeBridge.js has the wire). On Scan's one screen the app
+// draws its own camera BEHIND the page, exactly under the page's camera box (#sc-sg-cam), and the page goes see-through there. This file
+// is the pure part the page needs for it (embedded whole by rates-portal/build-portal.js, like oneScan.js):
+//   - rectMessage: where the box and the card frame are, as a 'setScanSurface' message (CSS px; the box against the VISUAL viewport,
+//     so the camera follows the keyboard; the frame against the box);
+//   - changedEnough: whether a new message is worth sending (any number moved by half a CSS px or more, or a flag changed);
+//   - createRequests: ids for 'takePhoto' / 'scanTap' and their answers, each with a timeout that answers 'none';
+//   - paneStateOf: the app's 'penguinsurface' state in the Singles pane's own cameraState shape ({ starting } / { on, ... } / { on: false }).
+// Nothing here touches the DOM or the bridge: the page hands everything in.
+'use strict';
+
+/** How far (CSS px) a number must move before the app is told again: below this the camera would not visibly move. */
+var MOVE_PX = 0.5;
+/** A takePhoto / scanTap the app never answers counts as 'none' after this long (Auto's hard look is at most 250 ms plus the photo). */
+var ANSWER_MS = 1500;
+
+function num(v) { return typeof v === 'number' && isFinite(v) ? v : 0; }
+
+/**
+ * The 'setScanSurface' fields for a shown surface. `boxRect`: the camera box's getBoundingClientRect() (left, top, width, height: layout
+ * viewport px). `guide`: the card frame in the box ({ x, y, width, height }, SinglesPane.guide()), or null (then the whole box).
+ * `vv`: window.visualViewport or null (its offsetLeft / offsetTop are taken off, so the rect is relative to what is on screen).
+ * `o`: { seq, watched, radius }.
+ */
+function rectMessage(boxRect, guide, vv, o) {
+  o = o || {};
+  var b = boxRect || {};
+  var w = Math.max(0, num(b.width)), h = Math.max(0, num(b.height));
+  var ox = vv ? num(vv.offsetLeft) : 0, oy = vv ? num(vv.offsetTop) : 0;
+  var rect = { x: num(b.left) - ox, y: num(b.top) - oy, w: w, h: h };
+  var frame = guide && num(guide.width) > 0 && num(guide.height) > 0
+    ? { x: num(guide.x), y: num(guide.y), w: num(guide.width), h: num(guide.height) }
+    : { x: 0, y: 0, w: w, h: h };
+  return { shown: true, rect: rect, frame: frame, radius: Math.max(0, num(o.radius)), watched: o.watched !== false, seq: num(o.seq) };
+}
+
+function rectMoved(a, b) {
+  if (!a || !b) return a !== b;
+  return Math.abs(num(a.x) - num(b.x)) >= MOVE_PX || Math.abs(num(a.y) - num(b.y)) >= MOVE_PX ||
+    Math.abs(num(a.w) - num(b.w)) >= MOVE_PX || Math.abs(num(a.h) - num(b.h)) >= MOVE_PX;
+}
+
+/** Whether `next` is worth sending after `last` (the last one sent; null: nothing sent yet). `seq` is never compared. */
+function changedEnough(last, next) {
+  if (!next) return false;
+  if (!last) return true;
+  if (!!last.shown !== !!next.shown) return true;
+  if (!next.shown) return false;
+  if (!!last.watched !== !!next.watched) return true;
+  if (Math.abs(num(last.radius) - num(next.radius)) >= MOVE_PX) return true;
+  return rectMoved(last.rect, next.rect) || rectMoved(last.frame, next.frame);
+}
+
+/**
+ * Requests waiting for the app's answer. `o`: { setTimeout, clearTimeout, timeoutMs, none(id) -> the answer a timeout gives }.
+ * open() -> { id, promise }: the promise resolves with the answer handed to answer(), or none(id) after timeoutMs. answer(ans) -> true
+ * when it matched a request still waiting (by ans.id). dropAll() answers every waiting one with none(id) (the surface went away).
+ */
+function createRequests(o) {
+  o = o || {};
+  var setT = o.setTimeout || setTimeout;
+  var clearT = o.clearTimeout || clearTimeout;
+  var wait = typeof o.timeoutMs === 'number' ? o.timeoutMs : ANSWER_MS;
+  var none = o.none || function (id) { return { id: id, took: 'none', reason: 'timeout' }; };
+  var nextId = 1;
+  var open = {}; // id -> { resolve, timer }
+  function settle(id, ans) {
+    var r = open[id];
+    if (!r) return false;
+    delete open[id];
+    clearT(r.timer);
+    r.resolve(ans);
+    return true;
+  }
+  return {
+    open: function () {
+      var id = nextId++;
+      if (nextId > 2147483646) nextId = 1;
+      var promise = new Promise(function (resolve) {
+        open[id] = { resolve: resolve, timer: setT(function () { settle(id, none(id)); }, wait) };
+      });
+      return { id: id, promise: promise };
+    },
+    answer: function (ans) { return !!ans && typeof ans.id === 'number' && settle(ans.id, ans); },
+    dropAll: function () { Object.keys(open).forEach(function (k) { settle(Number(k), none(Number(k))); }); },
+    waiting: function () { return Object.keys(open).length; },
+  };
+}
+
+/**
+ * The app's surface state (NativeBridge.surfaceStateOf) in the Singles pane's cameraState shape:
+ *  - on: { on: true, native: true, live, torch, torchOn } (live: the first frame is on screen; until then the box stays opaque);
+ *  - starting: { starting: true };
+ *  - off: { on: false, problem } with problem 'denied' (camera access turned off in the phone's Settings), 'failed', or '' (turned off,
+ *    the app went to the background, the panel took the camera: nothing to explain).
+ */
+function paneStateOf(s) {
+  if (!s) return null;
+  if (s.on) return { on: true, native: true, live: !!s.live, torch: !!s.torch, torchOn: !!s.torchOn };
+  if (s.starting) return { starting: true };
+  return { on: false, problem: s.reason === 'denied' ? 'denied' : s.reason === 'failed' ? 'failed' : '' };
+}
+
+window.NativeSurface = {
+  MOVE_PX: MOVE_PX,
+  ANSWER_MS: ANSWER_MS,
+  rectMessage: rectMessage,
+  changedEnough: changedEnough,
+  createRequests: createRequests,
+  paneStateOf: paneStateOf,
 };
 })();
 
@@ -19390,7 +19655,9 @@ window.SinglesPrice = {
       autoTaps = autoTaps.filter(function (t) { return !t.done; }); // a match still out keeps its ticket (dropped when it lands)
       if (undid) { say(SLAB_NOT_RAW); render(); }
     }
-    /** The page's one camera says what it is doing: { starting }, { on, torch, msg, why }, { torchOn } (any of them). */
+    /** The page's one camera says what it is doing: { starting }, { on, torch, msg, why }, { torchOn } (any of them). App 1.14's camera
+        (bridge 6, drawn by the app behind the page) says { on: true, native: true } and then { live: true } once its first frame is drawn:
+        no video element, so no fallback clock either (the box stays opaque until the app says live). */
     function cameraState(st) {
       if (!one() || !st) return;
       if ('starting' in st) { camStarting = !!st.starting; if (st.starting) { camMsg = ''; camWhy = ''; } }
@@ -19403,7 +19670,8 @@ window.SinglesPrice = {
           stream = (el.video && el.video.srcObject) || true;
           camMsg = ''; camWhy = '';
           camLive = false;
-          if (el.video && el.video.videoWidth) videoLive(); else liveTimer = setTimeout(videoLive, LIVE_FALLBACK_MS);
+          if (st.native) { /* live comes from the app (below) */ }
+          else if (el.video && el.video.videoWidth) videoLive(); else liveTimer = setTimeout(videoLive, LIVE_FALLBACK_MS);
         } else {
           stream = null;
           camLive = false;
@@ -19414,6 +19682,7 @@ window.SinglesPrice = {
       }
       if ('torch' in st) torchCap = !!st.torch;
       if ('torchOn' in st) torchOn = !!st.torchOn;
+      if (st.live === true && stream) { if (on) { videoLive(); return; } camLive = true; }
       if (on) render();
     }
     var seeking = false; // an Auto tap's hard look for a slab barcode is running (a second tap meanwhile does nothing)
@@ -19426,6 +19695,17 @@ window.SinglesPrice = {
         var r = el.cam.getBoundingClientRect();
         var tapBox = { x: ev.clientX - r.left, y: ev.clientY - r.top };
         var k = kindNow();
+        lastTapBox = tapBox;
+        // App 1.14 (bridge 6): the app's own camera is behind the page. Slab is its tap under the finger; Auto and Raw are its photo
+        // (Auto: slabFirst, the app takes a slab when it sees or finds a cert, else the photo of the moment of the tap).
+        if (nativeCam()) {
+          if (!host.signedIn()) return;
+          if (k === 'slab') { host.slabTap(tapBox); return; }
+          if (k === 'auto') { nativeShot(true, tapBox); return; }
+          act = 'photo';
+          shutter();
+          return;
+        }
         act = window.OneScan.decideTap({
           kind: k, rawAllowed: rawAllowed(), signedIn: !!host.signedIn(), cameraOn: !!stream,
           certSeen: k === 'auto' && !!host.certInView(),
@@ -19435,6 +19715,27 @@ window.SinglesPrice = {
         if (act === 'seek') act = 'photo';
       } catch (e) { act = 'nothing'; }
       if (act === 'photo') shutter();
+    }
+    var lastTapBox = null; // where the last tap on the camera landed (box px): the app focuses there for its photo
+    /** App 1.14: Scan's camera is the app's own (host.nativeSurface). */
+    function nativeCam() { try { return one() && typeof host.nativeSurface === 'function' && !!host.nativeSurface(); } catch (e) { return false; } }
+    /** App 1.14: the app's photo of the card frame (Raw, or Auto with `slabFirst`). A photo goes to the same matchPhoto as the page's own
+        (through shutter, with the seller of the moment of the tap); 'slab' means the cert already came in through penguinScan. */
+    function nativeShot(slabFirst, tapBox) {
+      if (!on || capturing) return;
+      var forSeller = seller;
+      var kindAt = kindNow(); // the switch at the tap: a flip before the app answers drops the photo (as the browser's seek does)
+      capturing = true;
+      renderCam();
+      var ask;
+      try { ask = Promise.resolve(host.nativePhoto({ slabFirst: !!slabFirst, point: tapBox || null })); } catch (e) { ask = Promise.resolve(null); }
+      ask.catch(function () { return null; }).then(function (a) {
+        capturing = false;
+        if (a && a.took === 'slab') { renderCam(); return; }
+        if (!on || kindNow() !== kindAt) { renderCam(); return; } // flipped (or closed) meanwhile: no raw card from a tap made in another mode
+        if (!a || a.took !== 'photo' || !a.jpeg) { renderCam(); if (on) say("Couldn't take the picture. Try again or type it."); return; }
+        shutter(a.jpeg, forSeller);
+      });
     }
     /** Auto's tap with no cert in view: the photo is taken now (the card as it was at the tap), the slab look runs, and the photo is
         matched only if the look found no cert. */
@@ -19770,14 +20071,16 @@ window.SinglesPrice = {
     }
 
     /** `taken` (optional): a photo already taken (Auto's seek takes it at the tap, before its slab look). */
-    function shutter(taken) {
+    function shutter(taken, takenFor) {
       if (!on || capturing) return;
       if (!stream) { startCamera(); return; }
       if (liveState !== true) { say("Photo matching isn't on right now. Type the card's name or number."); return; }
       if (!idx) { say(bookFailed ? "The card list didn't load. Reopen Singles to try again." : 'The card list is still loading…'); ensureData(); return; }
+      // App 1.14: Raw's photo is the app's (its camera is behind the page); it comes back here as `taken`
+      if (!(typeof taken === 'string' && taken) && nativeCam()) { nativeShot(false, lastTapBox); return; }
       capturing = true;
       renderCam();
-      var forSeller = seller;
+      var forSeller = typeof taken === 'string' && taken && takenFor !== undefined ? takenFor : seller;
       var photo = typeof taken === 'string' && taken ? taken : null;
       if (!photo) { try { photo = grabPhoto(); } catch (e) { photo = null; } }
       capturing = false;
@@ -26366,6 +26669,7 @@ var CompsPane = (function () {
       panelChangedAt = Date.now();
       if (panelHideTimer !== null) { clearTimeout(panelHideTimer); panelHideTimer = null; }
       if (show) {
+        surfaceHide(); // never the app's scan surface and its panel at once (one camera)
         dom.layout.classList.add('sc-native-cam');
         dom.layout.classList.add('sc-cam-panel');
         sheetStop = sheetStop || 'mid'; // the panel always arrives at 'mid'
@@ -30283,6 +30587,201 @@ var CompsPane = (function () {
       if (oneScreen() && singlesOn()) SinglesPane.say(text);
     }
 
+    // ── App 1.14: the scan surface (bridge version 6; scanner/nativeBridge.js has the wire, scanner/nativeSurface.js the pure part).
+    // Penguin 11/27: "the slab scanner is the barcode seeker, but no glitch when we switch to raw ... when we flip the switch it switches its
+    // purpose." On Scan's one screen an app that says version 6 draws its OWN camera (Apple Vision / ML Kit + zxing on every frame, the old
+    // panel's reader) behind the page, exactly under #sc-sg-cam, and the page goes see-through there (html.iop-native-cam, only once the
+    // app says its first frame is drawn). The page's frame, hint, switch, buttons and tray draw over it unchanged. The page never opens its
+    // own camera there (cam stays null, no getUserMedia): it tells the app where the box and the card frame are (setScanSurface, again each
+    // time either moves by half a px), what the camera is for (setScanPurpose: Auto | Slab | Raw, on entering Scan and on every flip; a flip
+    // changes nothing else), and asks for a tap's slab (scanTap) or photo (takePhoto). A cert the app reads comes back through
+    // window.penguinScan -> handleScanned, the same path as always; a photo goes to the Singles pane's matchPhoto unchanged. Apps below 6
+    // (1.10 to 1.13) and a phone's browser never get here: the page's own camera, exactly as before. The Sheet keeps its own camera.
+    var surf = { shown: false, last: null, seq: 0, on: false, starting: false, live: false, reason: '', torch: false, torchOn: false, purpose: '', startTimer: null, poll: null, rafWaiting: false, listening: false };
+    var surfPhotos = NativeSurface.createRequests({ none: function (id) { return { id: id, took: 'none', jpeg: null, width: 0, height: 0, reason: 'timeout' }; } });
+    var surfTaps = NativeSurface.createRequests({ timeoutMs: 3000 }); // the app's own tap rule waits up to 2 s for a code
+    var SURFACE_START_MS = 10000; // an app that says nothing at all about a start this long: the frame says the camera didn't start
+    var SURFACE_POLL_MS = 250;    // a safety re-measure while shown (a move no listener saw); only a real change is ever sent
+    /** Scan's camera is the app's own, drawn behind the page (an app at bridge 6, on the one screen, never the Sheet). */
+    function nativeSurfaceHere() { return oneCamHere() && bridge.scanSurfaceSupported(); }
+    /** The app's camera is running behind the page now. */
+    function surfaceCamOn() { return !!surf && surf.shown && surf.on; }
+    /** The app's camera is on or starting. (Safe before this part of the page has run: `surf` is not set yet then.) */
+    function surfBusy() { return !!surf && (surf.on || surf.starting); }
+    function setNativeCamClass(on) {
+      try { var de = document.documentElement; if (de && de.classList) de.classList.toggle('iop-native-cam', !!on); } catch (e) { /* stays opaque */ }
+    }
+    function surfaceMessage() {
+      var g = null;
+      try { g = SinglesPane.guide(); } catch (e) { g = null; }
+      var vv = null;
+      try { vv = window.visualViewport || null; } catch (e) { vv = null; }
+      var watched = true;
+      try { watched = !camPaused(); } catch (e) { watched = true; }
+      return NativeSurface.rectMessage(sgCam.getBoundingClientRect(), g, vv, { watched: watched, radius: 0 });
+    }
+    /** Sends `msg` when it differs enough from the last one sent; seq grows by one per message actually sent. */
+    function surfaceSend(msg) {
+      if (!NativeSurface.changedEnough(surf.last, msg)) return false;
+      msg.seq = surf.seq + 1;
+      if (!bridge.setScanSurface(msg)) return false;
+      surf.seq = msg.seq;
+      surf.last = msg;
+      return true;
+    }
+    function surfaceSync() {
+      surf.rafWaiting = false;
+      if (!surf.shown) return;
+      if (!nativeSurfaceHere()) { surfaceHide(); return; }
+      surfaceSend(surfaceMessage());
+      surfacePurpose(false); // the login's raw-card access can arrive after Scan opened (Slab until then): only a change is sent
+    }
+    /** Something may have moved: measured once on the next frame (several moves in one frame send one message). */
+    function surfaceSoon() {
+      if (!surf || !surf.shown || surf.rafWaiting) return;
+      surf.rafWaiting = true;
+      try { if (typeof window.requestAnimationFrame === 'function') { window.requestAnimationFrame(surfaceSync); return; } } catch (e) { /* a timer instead */ }
+      setTimeout(surfaceSync, 16);
+    }
+    function surfaceListen() {
+      if (surf.listening) return;
+      surf.listening = true;
+      ['resize', 'orientationchange'].forEach(function (t) { try { window.addEventListener(t, surfaceSoon); } catch (e) { /* the poll catches it */ } });
+      try { window.addEventListener('scroll', surfaceSoon, { capture: true, passive: true }); } catch (e) { /* the poll catches it */ }
+      try {
+        var vv = window.visualViewport;
+        if (vv && typeof vv.addEventListener === 'function') { vv.addEventListener('resize', surfaceSoon); vv.addEventListener('scroll', surfaceSoon); }
+      } catch (e) { /* the poll catches it */ }
+      try { if (typeof ResizeObserver !== 'undefined') new ResizeObserver(surfaceSoon).observe(sgCam); } catch (e) { /* the poll catches it */ }
+    }
+    /** Entering Scan (the one screen, an app at 6): the surface is put under the box, with the camera off until setScanCamera. */
+    function surfaceShow() {
+      if (!surf || !nativeSurfaceHere()) return false;
+      surfaceListen();
+      if (!surf.shown) {
+        surf.shown = true;
+        surf.last = null; // the first one always goes
+        surfaceSend(surfaceMessage());
+        if (!surf.poll) surf.poll = setInterval(surfaceSync, SURFACE_POLL_MS);
+        surfacePurpose(true);
+      }
+      return true;
+    }
+    /** Leaving Scan (another tab, the Sheet, signed out) or before any camera panel: the app stops its camera and the surface goes. */
+    function surfaceHide() {
+      if (!surf) return; // called before this part of the page has run (a panel at launch): there is no surface yet
+      var wasShown = surf.last && surf.last.shown;
+      surf.shown = false;
+      if (surf.poll) { clearInterval(surf.poll); surf.poll = null; }
+      if (surf.startTimer) { clearTimeout(surf.startTimer); surf.startTimer = null; }
+      setNativeCamClass(false);
+      var hadCam = surf.on || surf.starting;
+      surf.on = false; surf.starting = false; surf.live = false; surf.torchOn = false; surf.purpose = '';
+      surfPhotos.dropAll();
+      surfTaps.dropAll();
+      if (wasShown) surfaceSend({ shown: false, seq: 0 });
+      if (hadCam) tellCamera({ on: false });
+    }
+    /** What the camera is for: the switch (Auto | Slab | Raw; a login without raw cards is always Slab) and Scan automatically / Tap to
+        scan. Sent on entering Scan and each time either changes; nothing else is sent with it. */
+    function surfacePurpose(force) {
+      if (!surf || !surf.shown) return;
+      var k = 'slab';
+      try { k = OneScan.effectiveKind(SinglesPane.kind(), !!SinglesPane.rawAllowed()); } catch (e) { k = 'slab'; }
+      var byItself = AutoScan.normalizeMode(scanMode) === 'auto';
+      var key = k + '|' + byItself;
+      if (!force && key === surf.purpose) return;
+      if (bridge.setScanPurpose(k, byItself)) surf.purpose = key;
+    }
+    /** The camera on (the frame's camera button, or the camera starting by itself on Scan). */
+    function surfaceCameraOn() {
+      if (!surfaceShow()) return false;
+      if (surf.on || surf.starting) return true;
+      var denied = surf.reason === 'denied';
+      surf.starting = true;
+      surf.reason = '';
+      tellCamera({ starting: true });
+      bridge.setScanCamera(true);
+      if (denied) bridge.openAppSettings(); // turned off in the phone's Settings: the button takes him there (the camera starts on return)
+      if (surf.startTimer) clearTimeout(surf.startTimer);
+      surf.startTimer = setTimeout(function () {
+        surf.startTimer = null;
+        if (!surf.starting) return;
+        surf.starting = false;
+        tellCamera({ on: false, msg: AutoScan.cameraHelp('failed', platform), why: 'failed' });
+      }, SURFACE_START_MS);
+      return true;
+    }
+    /** The camera off: the frame's opaque "Camera off" cover goes on FIRST, then the app stops its camera (never a see-through flash). */
+    function surfaceCameraOff() {
+      if (!surf || !surf.shown && !surf.on && !surf.starting) return;
+      setNativeCamClass(false);
+      if (surf.startTimer) { clearTimeout(surf.startTimer); surf.startTimer = null; }
+      var had = surf.on || surf.starting;
+      surf.on = false; surf.starting = false; surf.live = false; surf.torchOn = false;
+      if (had) tellCamera({ on: false });
+      if (surf.shown) bridge.setScanCamera(false);
+    }
+    // The app says what its camera is doing: the pane's own camera states, and see-through only once the first frame is drawn.
+    window.addEventListener('penguinsurface', function (ev) {
+      var s = NativeBridge.surfaceStateOf(ev);
+      if (!s || !surf.shown) return; // a late word after the surface went: nothing on screen changes
+      var p = NativeSurface.paneStateOf(s);
+      if (p.on || !p.starting) { if (surf.startTimer) { clearTimeout(surf.startTimer); surf.startTimer = null; } }
+      if (p.starting) {
+        setNativeCamClass(false);
+        if (!surf.starting || surf.on) tellCamera({ starting: true });
+        surf.starting = true; surf.on = false; surf.live = false;
+      } else if (p.on) {
+        var was = surf.on;
+        surf.on = true; surf.starting = false; surf.reason = '';
+        if (!was) tellCamera({ on: true, native: true, torch: s.torch });
+        else if (s.torch !== surf.torch) tellCamera({ torch: s.torch });
+        surf.torch = s.torch;
+        if (s.torchOn !== surf.torchOn) { surf.torchOn = s.torchOn; torchOn = s.torchOn; tellCamera({ torchOn: s.torchOn }); }
+        if (s.live && !surf.live) { surf.live = true; setNativeCamClass(true); tellCamera({ live: true }); }
+        surfaceSoon();
+      } else {
+        var had = surf.on || surf.starting;
+        setNativeCamClass(false);
+        surf.on = false; surf.starting = false; surf.live = false; surf.torchOn = false; torchOn = false;
+        surf.reason = s.reason;
+        if (p.problem) tellCamera({ on: false, msg: AutoScan.cameraHelp(p.problem, platform), why: 'failed' });
+        else if (had) tellCamera({ on: false });
+        surfPhotos.dropAll();
+        surfTaps.dropAll();
+      }
+      try { syncOneBack(); } catch (e) { /* Back follows on the next change */ }
+    });
+    window.addEventListener('penguinphoto', function (ev) { surfPhotos.answer(NativeBridge.photoAnswerOf(ev)); });
+    window.addEventListener('penguintap', function (ev) { surfTaps.answer(NativeBridge.tapAnswerOf(ev)); });
+    /** Slab's tap on the app's camera: the code under the finger (the app's old tap rules); "No barcode found" on the frame when none. */
+    function surfaceTap(tapBox) {
+      feedback.unlock();
+      SinglesPane.say("Looking for the slab's barcode…");
+      var rq = surfTaps.open();
+      if (!bridge.scanTap(rq.id, { x: tapBox.x, y: tapBox.y })) surfTaps.answer({ id: rq.id, took: 'none' });
+      return rq.promise.then(function (a) {
+        if (a && a.took === 'slab') return 'slab'; // the cert came in through penguinScan (handleScanned)
+        feedback.play('nothing');
+        SinglesPane.say('No barcode found. Hold the slab label in the frame, or tap search to type the cert');
+        return 'photo';
+      });
+    }
+    /** Raw's (and Auto's) tap on the app's camera: a promise of the app's answer ({ took: 'photo', jpeg } the same 640 px JPEG grabPhoto
+        gives; 'slab' when Auto found a cert, which came in through penguinScan; 'none'). */
+    function surfacePhoto(opts) {
+      opts = opts || {};
+      var g = null;
+      try { g = SinglesPane.guide(); } catch (e) { g = null; }
+      if (!surfaceCamOn() || !g) return Promise.resolve({ took: 'none', jpeg: null, reason: 'nocamera' });
+      var rq = surfPhotos.open();
+      var point = opts.point && typeof opts.point.x === 'number' ? { x: opts.point.x, y: opts.point.y } : null;
+      var sent = bridge.takePhoto({ id: rq.id, crop: { x: g.x, y: g.y, w: g.width, h: g.height }, pad: 0.04, maxWidth: 640, quality: 0.82, slabFirst: opts.slabFirst === true, point: point });
+      if (!sent) surfPhotos.answer({ id: rq.id, took: 'none', jpeg: null, reason: 'failed' });
+      return rq.promise;
+    }
+
     // ── Scan automatically, in a phone's BROWSER (scanner/autoScan.js; Josh, 11/19, on Safari: "it should be like the app when
     // it's automatic, and then you could set it in settings"). The page's own camera now takes a cert by itself when a slab's
     // barcode is held in the aim box, the way the app's native camera does, with a Settings choice (Scan automatically / Tap
@@ -30327,6 +30826,7 @@ var CompsPane = (function () {
       dom.vf.classList.toggle('sc-auto', live); // the big shutter goes: nothing needs a tap, and a tap on the picture still reads
       if (dom.vfHint) dom.vfHint.textContent = live ? AutoScan.MODE_TEXT.auto.hint : HINT_TAP;
       applyCamWatch();
+      surfacePurpose(false); // the app's camera takes a slab by itself only in Scan automatically
       renderScanModeRows();
     }
     // ── only while the camera is what is being looked at (the Android app's cameraWatched rule): scrolled off screen, a slab that happens
@@ -30342,6 +30842,7 @@ var CompsPane = (function () {
     /** Pause (or not) and read slowly (or at the mode's rate) to match where the camera view is. */
     function applyCamWatch() {
       auto.setPaused(camPaused());
+      surfaceSoon(); // the app's camera: the tray up / a sheet over it is 'watched: false'
       // one screen, Raw: no barcode is read at all, so the camera is only looked at slowly (the photo is taken from the same stream on a tap)
       if (cam) cam.setWatchGap(oneCamHere() && !SinglesPane.readsBarcodes() ? AutoScan.OFFSCREEN_GAP_MS : AutoScan.watchGapFor(liveScan(), camOnScreen));
     }
@@ -30518,6 +31019,7 @@ var CompsPane = (function () {
     }
 
     function closeCamera() {
+      surfaceCameraOff(); // the app's camera (bridge 6): its cover first, then off
       camGen++; // a start still waiting on the browser is dropped: its camera, if it ever arrives, is stopped
       cameraStarting = false;
       dom.start.disabled = false;
@@ -30556,6 +31058,12 @@ var CompsPane = (function () {
     var cameraStarting = false;
     function turnCameraOn() {
       if (singlesOn() && !oneScreen()) return; // the old flow: Singles has its own camera, never two at once
+      // App 1.14 (bridge 6) on Scan: the app's own camera behind the page; the page's camera is never opened here.
+      if (nativeSurfaceHere()) {
+        if (!session) return; // sign in first: never a camera over the form
+        surfaceCameraOn();
+        return;
+      }
       // App 1.10 (camera panel): its own switch turns the camera on; this button is hidden there (CSS), but if it is
       // ever reached it asks the panel for the camera, and never opens the old full camera.
       if (nativePanelWanted()) {
@@ -30567,6 +31075,7 @@ var CompsPane = (function () {
       // Inside the app its own scanner replaces the browser camera; every barcode it reads
       // comes back through window.penguinScan -> handleScanned, the same path the camera uses. (One screen: the page's camera, always.)
       if (bridge.isAvailable() && legacyCam()) {
+        surfaceHide();
         setNativeCamera(bridge.openScanner());
         if (nativeScannerOpen) return;
       }
@@ -30599,8 +31108,9 @@ var CompsPane = (function () {
       if (SinglesPane.claimsCamera()) return false; // Singles has its own camera (while it is on): never two at once
       if (portalOn()) return false; // portal shell: a portal pane (Home, Search, Collections, Account) is on: no camera at all
       if (nativePanelWanted()) return false; // app 1.10: the camera starts OFF, its panel's switch turns it on
-      if (cam || cameraStarting) return true;
+      if (cam || cameraStarting || surfBusy()) return true;
       if (!scannerActive || cameraTurnedOff || !session || nativeScannerOpen) return false;
+      if (oneCamHere() && launchPlaceWaits()) return false; // the launch may still go to Home: no camera (or camera prompt) before it does
       if (oneCamHere()) {
         // One screen: the camera starts ON in the apps and on a phone (Penguin 11/26), unless he turned it off this app session; a
         // computer's browser only once it has already allowed the camera (below). Page tests opt in (IOP_TEST_CAM_AUTO).
@@ -30802,7 +31312,9 @@ var CompsPane = (function () {
     var scanUi = { section: document.getElementById('sc-scanmode'), list: document.getElementById('sc-scanmode-list') };
     function renderScanModeRows() {
       if (!scanUi.section || !scanUi.list) return;
-      scanUi.section.hidden = bridge.isAvailable() || camKind === 'webview' || !cameraSupported();
+      // App 1.14 (bridge 6): Scan's camera is the app's own but this page decides Scan automatically / Tap to scan for it (setScanPurpose
+      // byItself), so the choice is here; the Sheet panel's gear keeps its own (QA 11/27: in the app nobody could change it for Scan).
+      scanUi.section.hidden = !bridge.scanSurfaceSupported() && (bridge.isAvailable() || camKind === 'webview' || !cameraSupported());
       if (scanUi.section.hidden || !settingsOpen()) return; // drawn when the sheet opens
       if (!scanUi.list.firstChild) {
         AutoScan.MODES.forEach(function (mode) {
@@ -31319,13 +31831,21 @@ var CompsPane = (function () {
         turnCameraOn();
       },
       cameraOff: function () { cameraTurnedOff = true; camChoice('scan', false); closeCamera(); },
-      torch: function () { toggleTorch(); },
+      torch: function () {
+        if (surfaceCamOn()) { if (surf.torch) bridge.setScanTorch(!surf.torchOn); return; } // the app's camera owns the flashlight
+        toggleTorch();
+      },
+      /** App 1.14: Scan's camera is the app's own, running behind the page (taps go to it: nativePhoto, slabTap). */
+      nativeSurface: function () { return surfaceCamOn(); },
+      /** App 1.14: Raw's / Auto's tap: the app's photo of the card frame (or in Auto, `slabFirst`, a slab when it finds a cert). */
+      nativePhoto: function (opts) { userGesture = true; return surfacePhoto(opts); },
       /** A tap on the camera that is a slab tap (Slab; Auto with a cert in view): the old tap, under the finger (camera box px). */
-      slabTap: function (tapBox) { userGesture = true; if (cam) take(tapBox); },
+      slabTap: function (tapBox) { userGesture = true; if (surfaceCamOn()) surfaceTap(tapBox); else if (cam) take(tapBox); },
       /** Auto's tap with no cert in view (OneScan 'seek'): Slab's hard look first. Resolves 'slab' (taken as a slab) or 'photo'. */
       slabSeek: function (tapBox) { userGesture = true; return cam ? take(tapBox, true) : Promise.resolve('photo'); },
       /** Whether a cert-shaped code is anywhere in the camera's view right now (seen within OneScan.SEEN_MS): Auto's tap then takes that slab. */
       certInView: function () {
+        if (nativeSurfaceHere()) return false; // the app's camera decides Auto's tap itself (takePhoto slabFirst)
         if (!cam) return false;
         try {
           var m = cam.mapping();
@@ -31345,7 +31865,7 @@ var CompsPane = (function () {
         return { ok: false, why: dom.boxErr && !dom.boxErr.hidden ? dom.boxErr.textContent : '' };
       },
       /** The switch moved (or the pane changed what it does): the reading rate, the pause and the switch follow; nothing else moves. */
-      kindChanged: function () { setOneUp(false); applyCamWatch(); renderScanSwitch(); },
+      kindChanged: function () { setOneUp(false); applyCamWatch(); renderScanSwitch(); surfacePurpose(false); },
       /** The slab pile for the tray: the header's figures (PileRates.pileTotals, the very numbers the pile shows) and the compact rows. */
       slabTray: function () { return slabTrayData(); },
       /** Review / the grab handle on the tray in Slab: the whole slab screen (every control), pulled up over the camera; and back down. */
@@ -31616,12 +32136,21 @@ var CompsPane = (function () {
     // camera starts on its own video. When it goes (another tab, the Sheet, signing out) its camera stops. The Sheet keeps its own camera. ──
     var oneShown; // 'scan' | 'sheet' | null (no initial value: renderTabs can run before this line has)
     var kindTapped; // the switch was tapped this launch (the launch's jump to Home is then not made)
+    var oneCamWaits = false; // Scan came up while the launch's place was still being decided: its camera starts once it is (or never)
+    /** The launch has not placed him yet: a login whose role the server is still checking (a sourcer's first launch on this phone) may be
+        sent to Home in a moment, so Scan's camera must not start meanwhile (QA 11/27: the camera came on and off within 30 ms of loading,
+        and the phone asked for camera access over Home). Tests of Scan itself start there and never wait. */
+    function launchPlaceWaits() {
+      if (openedHome || kindTapped || tabTapping || window.IOP_TEST_START_SCAN) return false;
+      return !!tabMem && !!session && barRole() === 'none';
+    }
     function syncOneScreen() {
       if (!oneScreen() || !camOwner) return;
       var want = scannerActive && !!session && !portalOn() && !sheetOn();
       if (want) {
         var fresh = oneShown !== 'scan';
         oneShown = 'scan';
+        if (fresh) oneCamWaits = true;
         if (fresh) {
           if (cam && camOnVideo !== sgVideo) closeCamera(); // the Sheet's camera (its own box) stops: the one camera takes over
           if (nativeScannerOpen) { bridge.closeScanner(); setNativeCamera(false); }
@@ -31630,15 +32159,21 @@ var CompsPane = (function () {
         }
         if (!SinglesPane.isOn()) SinglesPane.show();
         oneSectionsInTray(true); // the slab sections live in the tray while the one screen is up
-        if (fresh) autoCamera();
+        if (oneCamWaits && !launchPlaceWaits()) {
+          oneCamWaits = false;
+          surfaceShow(); // app 1.14: its camera goes under the box (off until the camera starts)
+          autoCamera();
+        }
       } else {
+        oneCamWaits = false;
         var was = oneShown;
         oneShown = sheetOn() && scannerActive && session ? 'sheet' : null;
         if (was === 'scan') {
           setOneUp(false);
           oneSectionsInTray(false); // back to their own places (the Sheet, signed out)
           if (SinglesPane.isOn()) SinglesPane.hide();
-          if (cam || cameraStarting || camOwner.video()) closeCamera();
+          if (cam || cameraStarting || camOwner.video() || surfBusy()) closeCamera();
+          surfaceHide();
         }
         if (oneShown === 'sheet' && was !== 'sheet') { if (nativePanelWanted()) showPanelIfReady({ instant: true }); else autoCamera(); }
       }
@@ -31695,7 +32230,7 @@ var CompsPane = (function () {
         the type box, then the camera, as the old panel did), and keeps an entry again while there is more. Only inside the Android app. */
     var oneBackPushed = false, oneBackSkip = 0;
     function oneBackHere() { return platform === 'androidnative' && oneCamHere() && SinglesPane.isOn(); }
-    function oneBackWanted() { return oneBackHere() && (oneTrayUp() || !!SinglesPane.backWanted() || !!cam || !!cameraStarting); }
+    function oneBackWanted() { return oneBackHere() && (oneTrayUp() || !!SinglesPane.backWanted() || !!cam || !!cameraStarting || surfBusy()); }
     function syncOneBack() {
       if (!window.history || typeof window.history.pushState !== 'function') return;
       var want = oneBackWanted();
@@ -31714,7 +32249,7 @@ var CompsPane = (function () {
       if (oneBackHere()) {
         if (oneTrayUp()) setOneUp(false);
         else if (SinglesPane.back()) { /* a sheet or the type box closed */ }
-        else if (cam || cameraStarting) { cameraTurnedOff = true; camChoice('scan', false); closeCamera(); }
+        else if (cam || cameraStarting || surfBusy()) { cameraTurnedOff = true; camChoice('scan', false); closeCamera(); } // app 1.14: its camera too
       }
       setTimeout(syncOneBack, 0);
     });
@@ -31879,14 +32414,16 @@ var CompsPane = (function () {
       try { if (Panes && Panes._sync) Panes._sync(portalPane, portalContext()); } catch (e) { /* the pane shows what it had */ }
     }
     /** Back to Scan from a portal pane: the side it was left on comes back with its camera (Singles only while it may open). */
-    function leavePortal() {
+    /** `toSheet`: the Sheet opens right after (Account > Admin > Sheet): the one screen is not brought back on the way (its camera would
+        start and stop again just before the Sheet's camera, QA 11/27). */
+    function leavePortal(toSheet) {
       if (!portalPane) return;
       var root = document.getElementById('tab-scanner');
       portalPane = null;
       if (root && root.classList) root.classList.remove('sc-portal-on');
       closeComps();
       try { if (Panes && Panes._sync) Panes._sync(null, portalContext()); } catch (e) { /* hidden by the class anyway */ }
-      if (oneScreen()) { syncOneScreen(); return; } // one screen: back on it, in the mode it was left in, with its camera
+      if (oneScreen()) { if (!toSheet) syncOneScreen(); return; } // one screen: back on it, in the mode it was left in, with its camera
       if (scanSide === 'singles' && screenAllowed('singles')) {
         SinglesPane.pick('singles');
         if (singlesOn()) return;
@@ -31921,7 +32458,7 @@ var CompsPane = (function () {
           var sideKept = scanSide;
           if (id === 'sheet') scanSide = 'slabs';
           tabTapping = true;
-          leavePortal();
+          leavePortal(id === 'sheet');
           scanSide = sideKept;
         }
         var scr = screenOn();
