@@ -6952,6 +6952,15 @@ window.ScanPick = {
  */
 var ZXING_FORMATS = ['Code128', 'Code39', 'Code93', 'ITF', 'QRCode', 'DataMatrix'];
 
+/**
+ * What most watching frames read (zxing): every type a PSA label of any era carries (REQUIRED_DETECTOR_FORMATS in zxing's names), not
+ * Code 93 or Data Matrix. Measured 11/27 on a slab-label frame (see readerOptions): about 40% of the decode time of
+ * the full list with rotation, with the same reads on an upright label. Every WATCH_FULL_EVERY-th watching frame, and every hard look,
+ * still reads the full list, turned too.
+ */
+var WATCH_FORMATS = ['Code128', 'Code39', 'ITF', 'QRCode'];
+var WATCH_FULL_EVERY = 3;
+
 /** The same list in BarcodeDetector's own names. */
 var DETECTOR_FORMATS = ['code_128', 'code_39', 'code_93', 'itf', 'qr_code', 'data_matrix'];
 
@@ -7002,17 +7011,22 @@ function chooseEngine(hasDetector, supported) {
 }
 
 /**
- * Watching (`hard` false): every barcode in the picture, tried rotated too, quickly. Looking hard
- * (`hard` true, used when a tap/shutter press finds nothing in view): every trick zxing-cpp has,
- * alternating how it turns grey into black and white across passes. Identical tuning to
- * scanDecode.ts's readerOptions.
+ * Watching (`hard` false): every barcode in the picture, quickly. Two of every three watching frames read only the slab label types
+ * (WATCH_FORMATS) the way the phone holds the label (not turned 90 degrees); the third reads every type, tried rotated too, so a slab
+ * held sideways or a rarer code is still read, a frame or two later. Looking hard (`hard` true, used when a tap/shutter press finds
+ * nothing in view): every type and every trick zxing-cpp has, alternating how it turns grey into black and white across passes.
+ * Otherwise the tuning of scanDecode.ts's readerOptions.
+ * Why the lean frames (11/27, Penguin: slabs got harder to pick up on the one screen): on a 1080x1920 slab-label frame the full read took
+ * 22 ms at 1920 px on a Mac and the lean one 9 ms, both reading the label; the camera's watch size only grows past 1280 px while a read is
+ * cheap (ScanCamera.nextTrackSide), and an 8-degree tilted label read only from 1600 px up. Faster frames let an iPhone read bigger ones.
  */
 function readerOptions(hard, pass) {
   pass = pass || 0;
+  var full = !!hard || pass % WATCH_FULL_EVERY === WATCH_FULL_EVERY - 1;
   return {
-    formats: ZXING_FORMATS,
+    formats: full ? ZXING_FORMATS : WATCH_FORMATS,
     tryHarder: true,
-    tryRotate: true,
+    tryRotate: full,
     tryInvert: !!(hard || pass % 4 === 3),
     tryDownscale: true,
     tryDenoise: !!(hard && pass % 2 === 1),
@@ -7038,6 +7052,8 @@ function toFound(results) {
 
 window.ScanDecode = {
   ZXING_FORMATS: ZXING_FORMATS,
+  WATCH_FORMATS: WATCH_FORMATS,
+  WATCH_FULL_EVERY: WATCH_FULL_EVERY,
   DETECTOR_FORMATS: DETECTOR_FORMATS,
   REQUIRED_DETECTOR_FORMATS: REQUIRED_DETECTOR_FORMATS,
   PRODUCT_FORMATS: PRODUCT_FORMATS,
@@ -8431,6 +8447,21 @@ function createAutoCapture(opts) {
     return open[0];
   }
 
+  /**
+   * The code to take by itself now from anywhere in view (one scanner, one screen: Slab and Auto), or null. `candidates` as for next();
+   * the one meant is the cert nearest `centre` (the card frame's centre). It is taken unless it is already done: while a done slab is
+   * the nearest, nothing else in view is taken (a slab at the edge of the view is not picked up because the one held was scanned).
+   * Nothing within spacingMs of the last code sent.
+   */
+  function nearest(candidates, centre) {
+    if (mode !== 'auto') return null;
+    if (lastSentAt != null && now() - lastSentAt < spacingMs) return null;
+    var list = (candidates || []).slice();
+    if (!list.length || !centre) return null;
+    list.sort(function (a, b) { return distance(a.center, centre) - distance(b.center, centre); });
+    return isDone(list[0].payload) ? null : list[0];
+  }
+
   function reset() { done = {}; lastSentAt = null; lastFrameAt = null; }
 
   return {
@@ -8438,6 +8469,7 @@ function createAutoCapture(opts) {
     isDone: isDone,
     frame: frame,
     next: next,
+    nearest: nearest,
     reset: reset,
     getMode: function () { return mode; },
     setMode: function (m) { mode = normalizeMode(m); }
@@ -8461,6 +8493,14 @@ function createAutoScanner(opts) {
     var f = frameOf(items, area);
     cap.frame(f.reads, []);
     if (!active()) return null;
+    // `aim.anywhere` (one scanner, one screen, OneScan.seekAim): a cert anywhere in view counts, the one nearest the aim's centre (the
+    // card frame's; the middle of the view without one). Codes cut off by an edge never count (frameOf's wholeIn).
+    if (aim && aim.anywhere) {
+      var centre = aim.center && typeof aim.center.x === 'number' ? aim.center : { x: area.w / 2, y: area.h / 2 };
+      var near = cap.nearest(f.candidates, centre);
+      if (near) cap.sent(near.payload, near.box);
+      return near;
+    }
     // `aim` (optional): the zone to take from instead of the middle of the view (one scanner, one screen: the card frame, where a slab
     // held to fill it has its label in the top third). Without it, the middle half of the view, as always.
     var zone = aim && typeof aim.left === 'number' && aim.right > aim.left && aim.bottom > aim.top
@@ -8706,8 +8746,10 @@ window.AutoScan = {
 //    slab flow exactly as before (handleScanned, pricing untouched). A tap on the camera is the old tap: a hard look for a barcode.
 //    Nothing is ever photo matched.
 //  - Raw: no barcode is read. A tap takes the photo and the Mac mini matcher identifies the card (the Singles flow, unchanged).
-//  - Auto: the barcode reader runs all the time; a cert read in the card frame goes to the slab flow. A tap with no cert seen in the frame
-//    lately goes straight to the photo match (no hard look first); a tap while a cert is in the frame takes that cert.
+//  - Auto: the barcode reader runs all the time; a cert read anywhere in the camera's view goes to the slab flow (several at once: the
+//    one nearest the card frame's centre). A tap while a cert is in view takes that cert. A tap with none in view first takes Slab's
+//    hard look for a barcode (the slab scanner is the barcode seeker, Penguin 11/27); only when that finds no cert does the tap go to
+//    the photo match, with the photo taken at the moment of the tap.
 // A login that may not have Singles (raw cards) gets the same screen fixed to Slab, with no switch: effectiveKind() says 'slab' for it
 // whatever was saved. The choice lasts the app session (sessionStorage, iopScanKind), Auto when nothing was chosen.
 'use strict';
@@ -8725,7 +8767,7 @@ var HINT = {
   slab: "Point at the slab's barcode",
   raw: 'Fill the frame with one card, then tap'
 };
-/** A cert-shaped code seen inside the frame this recently makes a tap in Auto take that slab instead of photo matching (ScanCamera.SEEN_MS). */
+/** A cert-shaped code seen in view this recently makes a tap in Auto take that slab at once (ScanCamera.SEEN_MS). */
 var SEEN_MS = 700;
 
 /** Anything but a known kind is Auto. The old screen ids map across: 'slabs' is Slab, 'singles' is Raw. */
@@ -8772,9 +8814,11 @@ function photoMatches(kind, rawAllowed) {
  * What a tap on the running camera does:
  *  - 'nothing': signed out, or the camera is not running;
  *  - 'slab': the slab tap (the camera's capture: the code under the finger, or a hard look for one), then the slab flow;
+ *  - 'seek': Auto with no cert in view: the same hard look first; a cert it finds is the slab (the slab flow), and only when it finds
+ *    none is the tap a photo match (the photo taken at the tap);
  *  - 'photo': the photo match (the raw card flow).
- * `ctx` is { kind, rawAllowed, signedIn, cameraOn, certSeen } where certSeen says a cert-shaped code was seen inside the frame within
- * SEEN_MS (the page asks its camera). Slab never photo matches; Raw never reads a barcode; Auto photo matches only when no cert is there.
+ * `ctx` is { kind, rawAllowed, signedIn, cameraOn, certSeen } where certSeen says a cert-shaped code was seen in view within SEEN_MS
+ * (the page asks its camera). Slab never photo matches; Raw never reads a barcode; Auto photo matches only when no cert is found.
  */
 function decideTap(ctx) {
   ctx = ctx || {};
@@ -8782,7 +8826,17 @@ function decideTap(ctx) {
   var k = effectiveKind(ctx.kind, !!ctx.rawAllowed);
   if (k === 'slab') return 'slab';
   if (k === 'raw') return 'photo';
-  return ctx.certSeen ? 'slab' : 'photo';
+  return ctx.certSeen ? 'slab' : 'seek';
+}
+
+/**
+ * What an Auto 'seek' tap ends as, once the hard look is back: `found` is the code it took ({ text, format }) or null, `isCert` the
+ * cert-shape rule (AutoScan.sendsItself). 'slab' for a cert-shaped code, else 'photo' (nothing found, or a code that is not a cert).
+ */
+function seekOutcome(found, isCert) {
+  if (!found || found.text == null) return 'photo';
+  if (typeof isCert === 'function' && !isCert(found.text, found.format)) return 'photo';
+  return 'slab';
 }
 
 /**
@@ -8815,6 +8869,17 @@ function aimFromGuide(guide) {
   if (!guide || !(guide.width > 0) || !(guide.height > 0)) return null;
   var left = Number(guide.x) || 0, top = Number(guide.y) || 0;
   return { left: left, right: left + guide.width, top: top, bottom: top + guide.height, center: { x: left + guide.width / 2, y: top + guide.height / 2 } };
+}
+
+/**
+ * Where Slab and Auto take a code by themselves from: the whole camera view (a code anywhere on screen counts, cut-off codes never),
+ * and with several certs in view the one nearest the card frame's centre. `guide` is the card frame (null: the middle of the view).
+ * The aim AutoScan.onFrame takes, marked `anywhere` (no frame: no rect, and the middle of the view is the centre).
+ */
+function seekAim(guide) {
+  var a = aimFromGuide(guide) || {};
+  a.anywhere = true;
+  return a;
 }
 
 /**
@@ -8862,10 +8927,12 @@ window.OneScan = {
   readsBarcodes: readsBarcodes,
   photoMatches: photoMatches,
   decideTap: decideTap,
+  seekOutcome: seekOutcome,
   routeCert: routeCert,
   hintFor: hintFor,
   trayPile: trayPile,
   aimFromGuide: aimFromGuide,
+  seekAim: seekAim,
   certInFrame: certInFrame,
   camChoiceOf: camChoiceOf,
 };
@@ -19349,10 +19416,13 @@ window.SinglesPrice = {
       if ('torchOn' in st) torchOn = !!st.torchOn;
       if (on) render();
     }
-    /** A tap on the running camera (OneScan.decideTap): Slab's tap (a hard look under the finger), or the photo match. */
+    var seeking = false; // an Auto tap's hard look for a slab barcode is running (a second tap meanwhile does nothing)
+    /** A tap on the running camera (OneScan.decideTap): Slab's tap (a hard look under the finger), Auto's seek (the same hard look,
+        then the photo match only when it finds no cert), or the photo match. */
     function oneTap(ev) {
       var act = 'nothing';
       try {
+        if (seeking) return;
         var r = el.cam.getBoundingClientRect();
         var tapBox = { x: ev.clientX - r.left, y: ev.clientY - r.top };
         var k = kindNow();
@@ -19361,8 +19431,22 @@ window.SinglesPrice = {
           certSeen: k === 'auto' && !!host.certInView(),
         });
         if (act === 'slab') { host.slabTap(tapBox); return; }
+        if (act === 'seek' && typeof host.slabSeek === 'function') { seek(tapBox); return; }
+        if (act === 'seek') act = 'photo';
       } catch (e) { act = 'nothing'; }
       if (act === 'photo') shutter();
+    }
+    /** Auto's tap with no cert in view: the photo is taken now (the card as it was at the tap), the slab look runs, and the photo is
+        matched only if the look found no cert. */
+    function seek(tapBox) {
+      var photo = null;
+      if (on && !capturing && liveState === true && idx) { try { photo = grabPhoto(); } catch (e) { photo = null; } }
+      seeking = true;
+      Promise.resolve().then(function () { return host.slabSeek(tapBox); }).catch(function () { return 'photo'; }).then(function (got) {
+        seeking = false;
+        if (got === 'slab' || !on || kindNow() !== 'auto') { renderCam(); return; }
+        shutter(photo);
+      });
     }
 
     /** A slab barcode while Singles is on (the app's scanner, a scanner gun, or a cert typed in the search). */
@@ -19685,7 +19769,8 @@ window.SinglesPrice = {
       return !!(b && n && Number(n.version) >= CARD_FROM_VERSION && typeof b.cardSupported === 'function' && b.cardSupported());
     }
 
-    function shutter() {
+    /** `taken` (optional): a photo already taken (Auto's seek takes it at the tap, before its slab look). */
+    function shutter(taken) {
       if (!on || capturing) return;
       if (!stream) { startCamera(); return; }
       if (liveState !== true) { say("Photo matching isn't on right now. Type the card's name or number."); return; }
@@ -19693,8 +19778,8 @@ window.SinglesPrice = {
       capturing = true;
       renderCam();
       var forSeller = seller;
-      var photo = null;
-      try { photo = grabPhoto(); } catch (e) { photo = null; }
+      var photo = typeof taken === 'string' && taken ? taken : null;
+      if (!photo) { try { photo = grabPhoto(); } catch (e) { photo = null; } }
       capturing = false;
       if (!photo) { say("Couldn't take the picture. Try again or type it."); return; }
       if (one()) { lastPile = 'raw'; applyKind(); } // Auto: the tray shows the raw cards this photo goes to
@@ -30318,8 +30403,8 @@ var CompsPane = (function () {
       auto.setPaused(camPaused()); // a sheet over the camera (Settings, Rates, Edit card) takes nothing, nor does a camera scrolled off screen
       var m = cam.mapping();
       var onScreen = items.map(function (it) { return { text: it.text, format: it.format, ready: it.ready, corners: cam.onScreen(it, m) }; });
-      // one screen: the code is taken from the card frame (a slab held to fill it has its label in the top third), not the middle of the view
-      var pick = auto.onFrame(onScreen, camBox, one ? OneScan.aimFromGuide(SinglesPane.guide()) : null);
+      // one screen: a cert anywhere in the camera's view is taken (several: the one nearest the card frame's centre), not only one in the frame
+      var pick = auto.onFrame(onScreen, camBox, one ? OneScan.seekAim(SinglesPane.guide()) : null);
       if (pick) autoTake(pick);
     }
     var lastAutoTake = null; // { text, at } of the code taken by itself last, so a tap's hard look that finds the same slab does not take it again
@@ -30651,30 +30736,41 @@ var CompsPane = (function () {
       });
     }
 
-    function take(tapBox) {
-      if (!cam) return;
+    /**
+     * A tap's barcode look (the camera's capture: what is in view, else the hard look). `seek` (one screen, Auto with no cert in view):
+     * only a cert-shaped code is a slab, nothing is said or played when none is found, and the promise answers 'slab' (the slab flow
+     * took it, or the camera took it by itself while the tap looked) or 'photo' (no cert: the caller photo matches). Without `seek` it is
+     * the old tap (Slab, the old camera box) and answers the same way.
+     */
+    function take(tapBox, seek) {
+      if (!cam) return Promise.resolve('photo');
       // Every tap/shutter press is a user gesture, so this doubles as the "re-prime a context an
       // iOS backgrounding re-suspended" hook feedback.js's own header calls for - cheap and safe to
       // call on every single capture attempt, not just the first.
       feedback.unlock();
       var one = oneCamHere();
       dom.vfStatus.textContent = 'Looking…'; // the tap answers at once, before the frame is read
-      if (one) SinglesPane.say("Looking for the slab's barcode…");
+      if (one) SinglesPane.say(seek ? 'Looking…' : "Looking for the slab's barcode…");
       var tapAt = Date.now();
-      cam.capture(tapBox).then(function (found) {
+      return cam.capture(tapBox).then(function (found) {
+        // The slab was taken by itself while the tap looked: once, not twice (and in Auto that tap was the slab, not a raw card).
+        if (lastAutoTake && lastAutoTake.at >= tapAt && (!found || AutoScan.sameCode(lastAutoTake.text, found.text))) return 'slab';
+        if (seek && OneScan.seekOutcome(found, AutoScan.sendsItself) !== 'slab') {
+          dom.vfStatus.textContent = AutoScan.stageText('ready');
+          return 'photo';
+        }
         if (!found) {
           feedback.play('nothing');
           dom.vfStatus.textContent = 'Nothing found - try again or type it below';
           if (one) SinglesPane.say('No barcode found. Hold the slab label in the frame, or tap search to type the cert');
-          return;
+          return 'photo';
         }
-        // The slab the tap's hard look found was already taken by itself while it looked: once, not twice.
-        if (lastAutoTake && lastAutoTake.at >= tapAt && AutoScan.sameCode(lastAutoTake.text, found.text)) return;
         auto.noteSent(found.text); // what a tap sends is done for Scan automatically too: it never adds the same slab a second time
         flashRead();
         handleScanned(found.text, one && bridge.isAvailable(), found.format);
         scheduleIdle();
-      });
+        return 'slab';
+      }, function () { return 'photo'; });
     }
 
     dom.vf.addEventListener('click', function (ev) {
@@ -31224,15 +31320,17 @@ var CompsPane = (function () {
       },
       cameraOff: function () { cameraTurnedOff = true; camChoice('scan', false); closeCamera(); },
       torch: function () { toggleTorch(); },
-      /** A tap on the camera that is a slab tap (Slab; Auto with a cert in the frame): the old tap, under the finger (camera box px). */
+      /** A tap on the camera that is a slab tap (Slab; Auto with a cert in view): the old tap, under the finger (camera box px). */
       slabTap: function (tapBox) { userGesture = true; if (cam) take(tapBox); },
-      /** Whether a cert-shaped code is in the card frame right now (seen within OneScan.SEEN_MS): Auto's tap then takes that slab. */
+      /** Auto's tap with no cert in view (OneScan 'seek'): Slab's hard look first. Resolves 'slab' (taken as a slab) or 'photo'. */
+      slabSeek: function (tapBox) { userGesture = true; return cam ? take(tapBox, true) : Promise.resolve('photo'); },
+      /** Whether a cert-shaped code is anywhere in the camera's view right now (seen within OneScan.SEEN_MS): Auto's tap then takes that slab. */
       certInView: function () {
         if (!cam) return false;
         try {
           var m = cam.mapping();
           var seen = cam.seen().map(function (x) { return { text: x.text, format: x.format, corners: cam.onScreen(x, m) }; });
-          return OneScan.certInFrame(seen, AutoScan.sendsItself, OneScan.aimFromGuide(SinglesPane.guide()));
+          return OneScan.certInFrame(seen, AutoScan.sendsItself, null);
         } catch (e) { return false; }
       },
       /** A cert typed in the search on the frame (Auto or Slab): the cert box's own path, exactly as if it were typed there. */
